@@ -19,20 +19,20 @@
  * SOFTWARE.
  */
 
-import { assert } from "../util";
-import { EventDispatcher } from "./EventDispatcher";
-import { Directory } from "./Directory";
+import { assert } from '../util';
+import { EventDispatcher } from './EventDispatcher';
+import { Directory } from './Directory';
 
 export class Project extends Directory {
-  onDidChangeStatus = new EventDispatcher("Status Change");
-  onChange = new EventDispatcher("Project Change");
-  onDirtyFileUsed = new EventDispatcher("Dirty File Used");
+  onDidChangeStatus = new EventDispatcher('Status Change');
+  onChange = new EventDispatcher('Project Change');
+  onDirtyFileUsed = new EventDispatcher('Dirty File Used');
 
-  constructor() {
-    super("Project");
+  constructor(name: string = 'Project') {
+    super(name);
   }
 
-  private status: string [] = ["Idle"];
+  private status: string[] = ['Idle'];
   hasStatus() {
     return this.status.length > 1;
   }
@@ -40,7 +40,7 @@ export class Project extends Directory {
     if (this.hasStatus()) {
       return this.status[this.status.length - 1];
     }
-    return "";
+    return '';
   }
   pushStatus(status: string) {
     this.status.push(status);

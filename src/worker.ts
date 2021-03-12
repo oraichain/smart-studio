@@ -19,7 +19,7 @@
  * SOFTWARE.
  */
 
-import { IWorkerRequest, WorkerCommand, IWorkerResponse } from "./message";
+import { IWorkerRequest, WorkerCommand, IWorkerResponse } from './message';
 
 declare var importScripts: Function;
 
@@ -35,7 +35,7 @@ declare interface BinaryenModule {
   emitBinary(): ArrayBuffer;
   emitText(): string;
   emitAsmjs(): string;
-  runPasses(passes: string []): any;
+  runPasses(passes: string[]): any;
 }
 
 declare var Binaryen: {
@@ -46,21 +46,21 @@ declare var Binaryen: {
 };
 
 declare var wabt: {
-  ready: Promise<any>
+  ready: Promise<any>;
   readWasm: Function;
   parseWat: Function;
 };
 
 async function loadBinaryen() {
-  if (typeof Binaryen === "undefined") {
-    importScripts("../lib/binaryen.js");
+  if (typeof Binaryen === 'undefined') {
+    importScripts('../lib/binaryen.js');
   }
 }
 
 async function loadWabt() {
-  if (typeof wabt === "undefined") {
+  if (typeof wabt === 'undefined') {
     (self as any).global = self; // Wabt installs itself on the global object.
-    importScripts("../lib/wabt.js");
+    importScripts('../lib/wabt.js');
   }
 }
 
@@ -69,8 +69,8 @@ declare var wasm_bindgen: any;
 
 async function loadTwiggy() {
   if (!Twiggy) {
-    importScripts("../lib/twiggy_wasm_api.js");
-    await wasm_bindgen("../lib/twiggy_wasm_api_bg.wasm");
+    importScripts('../lib/twiggy_wasm_api.js');
+    await wasm_bindgen('../lib/twiggy_wasm_api_bg.wasm');
     Twiggy = {
       Items: wasm_bindgen.Items,
       Top: wasm_bindgen.Top,
@@ -81,7 +81,7 @@ async function loadTwiggy() {
   }
 }
 
-onmessage = (e: {data: IWorkerRequest}) => {
+onmessage = (e: { data: IWorkerRequest }) => {
   const fn = {
     [WorkerCommand.OptimizeWasmWithBinaryen]: optimizeWasmWithBinaryen,
     [WorkerCommand.ValidateWasmWithBinaryen]: validateWasmWithBinaryen,
@@ -131,9 +131,11 @@ async function createWasmCallGraphWithBinaryen(data: ArrayBuffer): Promise<strin
   await loadBinaryen();
   const module = Binaryen.readBinary(new Uint8Array(data));
   const old = Binaryen.print;
-  let ret = "";
-  Binaryen.print = (x: string) => { ret += x + "\n"; };
-  module.runPasses(["print-call-graph"]);
+  let ret = '';
+  Binaryen.print = (x: string) => {
+    ret += x + '\n';
+  };
+  module.runPasses(['print-call-graph']);
   Binaryen.print = old;
   return Promise.resolve(ret);
 }
@@ -167,14 +169,14 @@ async function disassembleWasmWithWabt(data: ArrayBuffer): Promise<string> {
 
 async function assembleWatWithWabt(data: string): Promise<ArrayBuffer> {
   await loadWabt();
-  const module = wabt.parseWat("test.wat", data);
+  const module = wabt.parseWat('test.wat', data);
   module.resolveNames();
   module.validate();
   return Promise.resolve(module.toBinary({ log: true, write_debug_names: true }).buffer);
 }
 
 interface IDominator {
-  children: IDominator [];
+  children: IDominator[];
   name: string;
   retained_size: number;
   retained_size_percent: number;
@@ -187,23 +189,23 @@ async function twiggyWasm(data: ArrayBuffer): Promise<string> {
   let opts;
   const items = Twiggy.Items.parse(new Uint8Array(data));
 
-  let md = "# Twiggy Analysis\n\nTwiggy is a code size profiler, learn more about it [here](https://github.com/rustwasm/twiggy).\n\n";
+  let md = '# Twiggy Analysis\n\nTwiggy is a code size profiler, learn more about it [here](https://github.com/rustwasm/twiggy).\n\n';
 
   // Top
   opts = Twiggy.Top.new();
-  const top: Array<{name: string, shallow_size: number, shallow_size_percent: number}> = JSON.parse(items.top(opts));
+  const top: Array<{ name: string; shallow_size: number; shallow_size_percent: number }> = JSON.parse(items.top(opts));
 
-  md += "## Top\n\n";
-  md += "| Shallow Bytes | Shallow % | Item |\n";
-  md += "| ------------: | --------: | :--- |\n";
+  md += '## Top\n\n';
+  md += '| Shallow Bytes | Shallow % | Item |\n';
+  md += '| ------------: | --------: | :--- |\n';
 
   let ignoreCount = 0;
   const shallowSizePercentIgnoreThreshold = 0.1;
-  top.forEach(entry => {
+  top.forEach((entry) => {
     if (entry.shallow_size_percent >= shallowSizePercentIgnoreThreshold) {
       md += `| ${entry.shallow_size} | ${entry.shallow_size_percent.toFixed(2)} | \`${entry.name}\` |\n`;
     } else {
-      ignoreCount ++;
+      ignoreCount++;
     }
   });
 
@@ -223,9 +225,9 @@ async function twiggyWasm(data: ArrayBuffer): Promise<string> {
   // opts.set_max_monos(10);
   // const monos = JSON.parse(items.monos(opts));
 
-  md += "\n\n## Dominators\n\n";
-  md += "| Retained Bytes | Retained % | Dominator Tree |\n";
-  md += "| ------------: | --------: | :--- |\n";
+  md += '\n\n## Dominators\n\n';
+  md += '| Retained Bytes | Retained % | Dominator Tree |\n';
+  md += '| ------------: | --------: | :--- |\n';
 
   // Dominators
   const retainedSizePercentIgnoreThreshold = 0.1;
@@ -233,20 +235,20 @@ async function twiggyWasm(data: ArrayBuffer): Promise<string> {
   opts = Twiggy.Dominators.new();
   const dominator: IDominator = JSON.parse(items.dominators(opts));
   function printDominator(dominator: IDominator, depth: number) {
-    let prefix = "";
+    let prefix = '';
     for (let i = 0; i < depth - 1; i++) {
-      prefix += "   ";
+      prefix += '   ';
     }
     if (depth) {
-      prefix += "⤷ ";
+      prefix += '⤷ ';
     }
     md += `| ${dominator.retained_size} | ${dominator.retained_size_percent.toFixed(2)} | \`${prefix + dominator.name}\` |\n`;
     if (dominator.children) {
-      dominator.children.forEach(child => {
+      dominator.children.forEach((child) => {
         if (child.retained_size_percent >= retainedSizePercentIgnoreThreshold) {
           printDominator(child, depth + 1);
         } else {
-          ignoreCount ++;
+          ignoreCount++;
         }
       });
     }

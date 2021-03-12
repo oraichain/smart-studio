@@ -19,13 +19,14 @@
  * SOFTWARE.
  */
 
-import { assert, getNextKey } from "../util";
-import { Service } from "../service";
-import { FileType, IStatusProvider, isBinaryFileType, languageForFileType } from "./types";
-import { Directory } from "./Directory";
-import { EventDispatcher } from "./EventDispatcher";
-import { Problem } from "./Problem";
-import { Project } from "./Project";
+import { assert, getNextKey } from '../util';
+import { Service } from '../service';
+import { FileType, IStatusProvider, isBinaryFileType, languageForFileType } from './types';
+import { Directory } from './Directory';
+import { EventDispatcher } from './EventDispatcher';
+import { Problem } from './Problem';
+import { Project } from './Project';
+import { logLn } from '../actions/AppActions';
 
 export class File {
   name: string;
@@ -43,10 +44,10 @@ export class File {
    * backing store.
    */
   isTransient = false;
-  readonly onDidChangeData = new EventDispatcher("File Data Change");
-  readonly onDidChangeBuffer = new EventDispatcher("File Buffer Change");
-  readonly onDidChangeProblems = new EventDispatcher("File Problems Change");
-  readonly onDidChangeDirty = new EventDispatcher("File Dirty Flag Change");
+  readonly onDidChangeData = new EventDispatcher('File Data Change');
+  readonly onDidChangeBuffer = new EventDispatcher('File Buffer Change');
+  readonly onDidChangeProblems = new EventDispatcher('File Problems Change');
+  readonly onDidChangeDirty = new EventDispatcher('File Dirty Flag Change');
   readonly key = String(getNextKey());
   readonly buffer?: monaco.editor.IModel;
   /**
@@ -62,7 +63,7 @@ export class File {
     this.data = null;
     if (isBinaryFileType(type)) {
       this.bufferType = FileType.Unknown;
-      this.buffer = monaco.editor.createModel("");
+      this.buffer = monaco.editor.createModel('');
     } else {
       this.bufferType = type;
       this.buffer = monaco.editor.createModel(this.data as any, languageForFileType(type));
@@ -79,7 +80,7 @@ export class File {
         this.notifyDidChangeDirty();
       }
       this.notifyDidChangeBuffer();
-      monaco.editor.setModelMarkers(this.buffer, "compiler", []);
+      monaco.editor.setModelMarkers(this.buffer, 'compiler', []);
     });
     this.parent = null;
   }
@@ -119,21 +120,24 @@ export class File {
   }
   private async updateBuffer(status?: IStatusProvider) {
     if (this.type === FileType.Wasm) {
-      const result = await Service.disassembleWasm(this.data as ArrayBuffer, status);
-      this.buffer.setValue(result);
-      this.resetDirty();
-      this.bufferType = FileType.Wat;
-      this.notifyDidChangeBuffer();
-      monaco.editor.setModelLanguage(this.buffer, languageForFileType(FileType.Wat));
-      this.description = "This .wasm file is editable as a .wat file, and is automatically reassembled to .wasm when saved.";
-      return;
+      // const result = await Service.disassembleWasm(this.data as ArrayBuffer, status);
+      // this.buffer.setValue(result);
+      // this.resetDirty();
+      // this.bufferType = FileType.Wat;
+      // this.notifyDidChangeBuffer();
+      // monaco.editor.setModelLanguage(this.buffer, languageForFileType(FileType.Wat));
+      // this.description = "This .wasm file is editable as a .wat file, and is automatically reassembled to .wasm when saved.";
+      // return;
+      this.buffer.setValue('');
+      this.description = this.data as string;
+      this.isBufferReadOnly = true;
     } else {
       this.buffer.setValue(this.data as string);
       this.resetDirty();
       this.notifyDidChangeBuffer();
     }
   }
-  setProblems(problems: Problem []) {
+  setProblems(problems: Problem[]) {
     this.problems = problems;
     let file: File = this;
     while (file) {
@@ -144,7 +148,7 @@ export class File {
   async getEmitOutput(): Promise<any> {
     const model = this.buffer;
     if (this.type !== FileType.TypeScript) {
-      return Promise.resolve("");
+      return Promise.resolve('');
     }
     const worker = await monaco.languages.typescript.getTypeScriptWorker();
     const client = await worker(model.uri);
@@ -197,7 +201,7 @@ export class File {
       parent = parent.parent;
     }
     path.push(this.name);
-    return path.join("/");
+    return path.join('/');
   }
   async save(status: IStatusProvider) {
     if (!this.isDirty) {
@@ -210,7 +214,7 @@ export class File {
           this.resetDirty();
           this.data = data;
         } catch (e) {
-          status.logLn(e.message, "error");
+          status.logLn(e.message, 'error');
         }
       }
     } else {
@@ -220,7 +224,7 @@ export class File {
     this.notifyDidChangeData();
   }
   toString() {
-    return "File [" + this.name + "]";
+    return 'File [' + this.name + ']';
   }
   isDescendantOf(element: File): boolean {
     let parent = this.parent;

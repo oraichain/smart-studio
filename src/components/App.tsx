@@ -229,7 +229,7 @@ export class App extends React.Component<AppProps, AppState> {
     return `${window.innerWidth}x${window.innerHeight}@${window.devicePixelRatio}`;
   }
   private async loadProjectFromFiddle(uri: string) {
-    const project = new Project();
+    const project = new Project(uri);
     pushStatus('Downloading Project');
     const fiddle = await Service.loadJSON(uri);
     popStatus();
@@ -238,6 +238,7 @@ export class App extends React.Component<AppProps, AppState> {
       loadProject(project);
       if (project.getFile('README.md')) {
         openFiles([['README.md']]);
+        // logLn('Compile : ' + project.name + ' succeed!');
       }
     } else {
       if (this.toastContainer) {

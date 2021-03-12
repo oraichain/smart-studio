@@ -1,0 +1,11 @@
+version: '3.3'
+services:
+  app:
+    image: orai/smart-studio:0.10.7
+    entrypoint: tail -f /dev/null
+    ports:
+      - 3000:3000
+    volumes:
+      - .registry_cache:/usr/local/cargo/registry:delegated
+      - ./smart-contracts:/code
+      - ./fiddles:/workspace

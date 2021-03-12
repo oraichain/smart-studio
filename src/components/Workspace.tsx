@@ -69,6 +69,7 @@ export class Workspace extends React.Component<WorkspaceProps, WorkSpaceState> {
   };
   render() {
     const project = this.props.project;
+
     return (
       <div className="workspaceContainer">
         <Header />
@@ -81,7 +82,7 @@ export class Workspace extends React.Component<WorkspaceProps, WorkSpaceState> {
               this.setState({ splits: splits });
             }}
           >
-            <div className="workspaceProjectName">Project Name</div>
+            <div className="workspaceProjectName">{project.obj.name}</div>
             <DirectoryTree
               ref={(ref) => (this.directoryTree = ref)}
               directory={project}
