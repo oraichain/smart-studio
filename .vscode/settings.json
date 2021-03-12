@@ -27,5 +27,6 @@
     "**/.hg": true,
     "**/CVS": true,
     "**/.DS_Store": true
-  }
+  },
+  "prettier.printWidth": 180
 }

@@ -6,7 +6,7 @@
   "scripts": {
     "build": "webpack --mode production && npm run templates",
     "build-watch": "webpack --watch --mode development",
-    "dev-server": "npm run templates && webpack-dev-server -d --https --port 28443",
+    "dev-server": "npm run templates && webpack-dev-server -d --https --host 0.0.0.0",
     "test": "webpack --mode production && node bin/check-bundle-size.js && npm run jest && npm run tslint",
     "test:ci": "node bin/check-bundle-size.js && npm run tslint && npm run coverage && npm run e2e && npm run coveralls",
     "jest": "jest --maxWorkers=2",
@@ -14,9 +14,8 @@
     "coveralls": "cat ./coverage/lcov.info | coveralls",
     "clean": "rm -r dist/*",
     "tslint": "tslint -p ./tsconfig.json; tslint -p ./tsconfig.test.json",
-    "templates": "npm run templates:build-templates && npm run templates:build-arc-templates",
+    "templates": "npm run templates:build-templates",
     "templates:build-templates": "node ./bin/bundle-templates.js templates dist/templates",
-    "templates:build-arc-templates": "node ./bin/bundle-templates.js misc/arc-templates dist/arc-templates",
     "mutate": "./node_modules/.bin/stryker run",
     "analyse": "mkdir -p ./stats && webpack --profile --json > ./stats/stats.json && webpack-bundle-analyzer ./stats/stats.json ./dist -r stats/index.html",
     "e2e": "jest --maxWorkers=2 -c jest.e2e.config.json"
@@ -93,7 +92,7 @@
     "css-loader": "^0.28.11",
     "enzyme": "^3.7.0",
     "enzyme-adapter-react-16": "^1.7.0",
-    "fs-extra": "^7.0.1",
+    "fs-extra": "^9.1.0",
     "jest": "^22.4.4",
     "jest-enzyme": "^6.1.2",
     "jest-puppeteer": "^3.5.2",

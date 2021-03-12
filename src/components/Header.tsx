@@ -19,12 +19,14 @@
  * SOFTWARE.
  */
 
-import * as React from "react";
+import * as React from 'react';
 
 export class Header extends React.Component<{}, {}> {
   render() {
-    return <div className="wasmStudioHeader">
-      <span className="waHeaderText">WebAssembly Studio</span>
-    </div>;
+    return (
+      <div className="wasmStudioHeader">
+        <img className="waHeaderText" src="/img/full-logo-light.png" alt="Oraichain Studio" />
+      </div>
+    );
   }
 }

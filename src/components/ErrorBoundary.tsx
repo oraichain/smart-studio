@@ -19,14 +19,13 @@
  * SOFTWARE.
  */
 
-import * as React from "react";
-import * as ReactModal from "react-modal";
-import { Logger } from "../utils/Logger";
-import { Button } from "./shared/Button";
-import { GoOpenIssue, GoSync } from "./shared/Icons";
+import * as React from 'react';
+import * as ReactModal from 'react-modal';
+import { Logger } from '../utils/Logger';
+import { Button } from './shared/Button';
+import { GoOpenIssue, GoSync } from './shared/Icons';
 
-export interface ErrorBoundaryProps {
-}
+export interface ErrorBoundaryProps {}
 
 export interface ErrorBoundaryState {
   error: any;
@@ -47,29 +46,21 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
     return `https://github.com/wasdk/WebAssemblyStudio/issues/new?body=Error%20ID:%20${id}`;
   }
   getStackTrace() {
-    return this.state.info.componentStack
-      .split("\n")
-      .map((line: string, i: any) => (
-        <span key={`stacktrace-line-${i}`} className="error-dialog-stacktrace-line">{line}</span>
-      ));
+    return this.state.info.componentStack.split('\n').map((line: string, i: any) => (
+      <span key={`stacktrace-line-${i}`} className="error-dialog-stacktrace-line">
+        {line}
+      </span>
+    ));
   }
   render() {
     if (this.state.error) {
       return (
-        <ReactModal
-          isOpen={true}
-          contentLabel="An error occured"
-          className="modal"
-          overlayClassName="overlay"
-          ariaHideApp={false}
-        >
-          <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+        <ReactModal isOpen={true} contentLabel="An error occured" className="modal" overlayClassName="overlay" ariaHideApp={false}>
+          <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
             <div className="modal-title-bar">An error occured</div>
             <div className="error-dialog-description">
               <p>
-                An error occured in WebAssembly Studio.
-                The error has been logged and will be investigated as soon as possible.
-                Please open an issue on Github for further support.
+                An error occured in Oraichain Studio. The error has been logged and will be investigated as soon as possible. Please open an issue on Github for further support.
               </p>
               <div className="error-dialog-stacktrace">
                 <span className="error-dialog-stacktrace-title">Error: {this.state.error.message}</span>
@@ -78,20 +69,8 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
               <span className="error-dialog-error-id">Error ID: {Logger.getLastEventId()}</span>
             </div>
             <div>
-              <Button
-                icon={<GoSync />}
-                label="Reload"
-                title="Reload"
-                href="https://webassembly.studio/"
-              />
-              <Button
-                icon={<GoOpenIssue />}
-                label="Open Issue on Github"
-                title="Open Issue on Github"
-                href={this.getNewIssueUrl()}
-                target="_blank"
-                rel="noopener noreferrer"
-              />
+              <Button icon={<GoSync />} label="Reload" title="Reload" href="https://webassembly.studio/" />
+              <Button icon={<GoOpenIssue />} label="Open Issue on Github" title="Open Issue on Github" href={this.getNewIssueUrl()} target="_blank" rel="noopener noreferrer" />
             </div>
           </div>
         </ReactModal>

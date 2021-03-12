@@ -19,11 +19,11 @@
  * SOFTWARE.
  */
 
-import * as React from "react";
-import { Split } from "./Split";
-import { Project, mimeTypeForFileType, SandboxRun } from "../models";
-import { logLn } from "../actions/AppActions";
-import appStore from "../stores/AppStore";
+import * as React from 'react';
+import { Split } from './Split';
+import { Project, mimeTypeForFileType, SandboxRun } from '../models';
+import { logLn } from '../actions/AppActions';
+import appStore from '../stores/AppStore';
 
 interface SandboxWindow extends Window {
   /**
@@ -32,21 +32,23 @@ interface SandboxWindow extends Window {
   getFileURL(path: string): string;
 }
 
-export class Sandbox extends React.Component<{}, {}>  {
+export class Sandbox extends React.Component<{}, {}> {
   container: HTMLDivElement;
   private setContainer(container: HTMLDivElement) {
-    if (container == null) { return; }
+    if (container == null) {
+      return;
+    }
     this.container = container;
   }
   onResizeBegin = () => {
-    this.container.style.pointerEvents = "none";
-  }
+    this.container.style.pointerEvents = 'none';
+  };
   onResizeEnd = () => {
-    this.container.style.pointerEvents = "auto";
-  }
+    this.container.style.pointerEvents = 'auto';
+  };
   onSandboxRun = (e: SandboxRun) => {
     this.run(e.project, e.src);
-  }
+  };
   componentDidMount() {
     Split.onResizeBegin.register(this.onResizeBegin);
     Split.onResizeEnd.register(this.onResizeEnd);
@@ -58,43 +60,48 @@ export class Sandbox extends React.Component<{}, {}>  {
     appStore.onSandboxRun.unregister(this.onSandboxRun);
   }
   run(project: Project, src: string) {
-    const iframe = document.createElement("iframe");
-    iframe.className = "sandbox";
-    iframe.src = URL.createObjectURL(new Blob([src], { type: "text/html" }));
+    const iframe = document.createElement('iframe');
+    iframe.className = 'sandbox';
+    iframe.src = URL.createObjectURL(new Blob([src], { type: 'text/html' }));
     if (this.container.firstChild) {
       this.container.removeChild(this.container.firstChild);
     }
     this.container.appendChild(iframe);
     const contentWindow = iframe.contentWindow as SandboxWindow;
-    const logger = { logLn, };
+    const logger = { logLn };
     // Hijack Console
-    contentWindow.console.log = (log => function() {
-      logger.logLn(Array.prototype.join.call(arguments));
-      log.apply(contentWindow.console, arguments);
-    })(contentWindow.console.log);
-    contentWindow.console.info = (info => function() {
-      logger.logLn(Array.prototype.join.call(arguments), "info");
-      info.apply(contentWindow.console, arguments);
-    })(contentWindow.console.info);
-    contentWindow.console.warn = (warn => function() {
-      logger.logLn(Array.prototype.join.call(arguments), "warn");
-      warn.apply(contentWindow.console, arguments);
-    })(contentWindow.console.warn);
-    contentWindow.console.error = (error => function() {
-      logger.logLn(Array.prototype.join.call(arguments), "error");
-      error.apply(contentWindow.console, arguments);
-    })(contentWindow.console.error);
+    const console = contentWindow.window.console;
+    console.log = ((log) =>
+      function() {
+        logger.logLn(Array.prototype.join.call(arguments));
+        log.apply(console, arguments);
+      })(console.log);
+    console.info = ((info) =>
+      function() {
+        logger.logLn(Array.prototype.join.call(arguments), 'info');
+        info.apply(console, arguments);
+      })(console.info);
+    console.warn = ((warn) =>
+      function() {
+        logger.logLn(Array.prototype.join.call(arguments), 'warn');
+        warn.apply(console, arguments);
+      })(console.warn);
+    console.error = ((error) =>
+      function() {
+        logger.logLn(Array.prototype.join.call(arguments), 'error');
+        error.apply(console, arguments);
+      })(console.error);
     // Hijack fetch
-    contentWindow.fetch =  async (input: string, init?: RequestInit) => {
-      const url = new URL(input, "http://example.org/src/main.html");
+    contentWindow.fetch = async (input: string, init?: RequestInit) => {
+      const url = new URL(input, 'http://example.org/src/main.html');
       const file = project.getFile(url.pathname.substr(1));
       if (file) {
         return Promise.resolve(
           new Response(file.getData(), {
             status: 200,
-            statusText: "OK",
+            statusText: 'OK',
             headers: {
-              "Content-Type": mimeTypeForFileType(file.type)
+              'Content-Type': mimeTypeForFileType(file.type)
             }
           })
         );
@@ -109,7 +116,7 @@ export class Sandbox extends React.Component<{}, {}>  {
     contentWindow.getFileURL = (path: string) => {
       const file = project.getFile(path);
       if (!file) {
-        logger.logLn(`Cannot find file ${path}`, "error");
+        logger.logLn(`Cannot find file ${path}`, 'error');
         return;
       }
       const blob = new Blob([file.getData()], { type: mimeTypeForFileType(file.type) });
@@ -122,9 +129,6 @@ export class Sandbox extends React.Component<{}, {}>  {
     });
   }
   render() {
-    return <div
-      className="fill"
-      ref={(ref) => this.setContainer(ref)}
-    />;
+    return <div className="fill" ref={(ref) => this.setContainer(ref)} />;
   }
 }

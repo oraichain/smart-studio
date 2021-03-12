@@ -19,69 +19,27 @@
  * SOFTWARE.
  */
 
-import { Wat } from "../languages/wat";
-import { Log } from "../languages/log";
-import { Rust } from "../languages/rust";
-import { Cton } from "../languages/cton";
-import { X86 } from "../languages/x86";
+import { Rust } from '../languages/rust';
+import { Toml } from '../languages/toml';
 
 export default async function registerLanguages() {
+  // toml
 
-  // Wat
-
-  monaco.languages.onLanguage("wat", () => {
-    monaco.languages.setMonarchTokensProvider("wat", Wat.MonarchDefinitions as any);
-    monaco.languages.setLanguageConfiguration("wat", Wat.LanguageConfiguration);
-    monaco.languages.registerCompletionItemProvider("wat", Wat.CompletionItemProvider);
-    monaco.languages.registerHoverProvider("wat", Wat.HoverProvider as any);
+  monaco.languages.onLanguage('toml', () => {
+    monaco.languages.setMonarchTokensProvider('toml', Toml.MonarchDefinitions);
+    monaco.languages.registerCompletionItemProvider('toml', Toml.CompletionItemProvider);
   });
   monaco.languages.register({
-    id: "wat"
-  });
-
-  // Log
-
-  monaco.languages.onLanguage("log", () => {
-    monaco.languages.setMonarchTokensProvider("log", Log.MonarchTokensProvider as any);
-  });
-  monaco.languages.register({
-    id: "log"
-  });
-
-  // Cretonne
-
-  monaco.languages.onLanguage("cton", () => {
-    monaco.languages.setMonarchTokensProvider("cton", Cton.MonarchDefinitions as any);
-  });
-  monaco.languages.register({
-    id: "cton"
-  });
-
-  // X86
-
-  monaco.languages.onLanguage("x86", () => {
-    monaco.languages.setMonarchTokensProvider("x86", X86.MonarchDefinitions as any);
-  });
-  monaco.languages.register({
-    id: "x86"
+    id: 'toml'
   });
 
   // Rust
 
-  monaco.languages.onLanguage("rust", () => {
-    monaco.languages.setMonarchTokensProvider("rust", Rust.MonarchDefinitions as any);
+  monaco.languages.onLanguage('rust', () => {
+    monaco.languages.setMonarchTokensProvider('rust', Rust.MonarchDefinitions);
+    monaco.languages.registerCompletionItemProvider('rust', Rust.CompletionItemProvider);
   });
   monaco.languages.register({
-    id: "rust"
+    id: 'rust'
   });
-
-  let response = await fetch("lib/lib.es6.d.ts");
-  monaco.languages.typescript.typescriptDefaults.addExtraLib(await response.text());
-
-  response = await fetch("lib/fiddle.d.ts");
-  monaco.languages.typescript.typescriptDefaults.addExtraLib(await response.text());
-
-  monaco.languages.typescript.typescriptDefaults.setCompilerOptions({ noLib: true, allowNonTsExtensions: true });
-  monaco.languages.typescript.javascriptDefaults.setCompilerOptions({ noLib: true, allowNonTsExtensions: true });
-
 }

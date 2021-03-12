@@ -19,31 +19,24 @@
  * SOFTWARE.
  */
 
-import * as React from "react";
-import * as ReactModal from "react-modal";
+import * as React from 'react';
+import * as ReactModal from 'react-modal';
 
-export class BrowserNotSupported extends React.Component<{
-}, {
-  }> {
+export class BrowserNotSupported extends React.Component<{}, {}> {
   constructor(props: any) {
     super(props);
   }
   render() {
-    return <ReactModal
-      isOpen={true}
-      contentLabel="Browser Not Supported"
-      className="modal"
-      overlayClassName="overlay"
-      ariaHideApp={false}
-    >
-    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-      <div className="modal-title-bar">
-        Browser Version Not Supported
-      </div>
-      <div className="browser-not-supported-description">
-        <a href="https://developer.mozilla.org/en-US/docs/WebAssembly">WebAssembly</a> is not available in your browser. Please try using the latest version of Edge, Safari, Chrome or Firefox.
-      </div>
-    </div>
-    </ReactModal>;
+    return (
+      <ReactModal isOpen={true} contentLabel="Browser Not Supported" className="modal" overlayClassName="overlay" ariaHideApp={false}>
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+          <div className="modal-title-bar">Browser Version Not Supported</div>
+          <div className="browser-not-supported-description">
+            <a href="https://developer.mozilla.org/en-US/docs/WebAssembly">Oraichain</a> is not available in your browser. Please try using the latest version of Edge, Safari,
+            Chrome or Firefox.
+          </div>
+        </div>
+      </ReactModal>
+    );
   }
 }

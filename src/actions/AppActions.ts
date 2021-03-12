@@ -19,38 +19,38 @@
  * SOFTWARE.
  */
 
-import dispatcher from "../dispatcher";
-import { File, Directory, Project } from "../models";
-import { App } from "../components/App";
-import { Template } from "../components/NewProjectDialog";
-import { View, ViewType } from "../components/editor/View";
-import appStore from "../stores/AppStore";
-import { Service, Language, IFiddleFile } from "../service";
-import Group from "../utils/group";
-import { Errors } from "../errors";
-import getConfig from "../config";
-import { rewriteHTML, RewriteSourcesContext } from "../utils/rewriteSources";
-import { runTask as runGulpTask, RunTaskExternals } from "../utils/taskRunner";
+import dispatcher from '../dispatcher';
+import { File, Directory, Project } from '../models';
+import { App } from '../components/App';
+import { Template } from '../components/NewProjectDialog';
+import { View, ViewType } from '../components/editor/View';
+import appStore from '../stores/AppStore';
+import { Service, Language, IFiddleFile } from '../service';
+import Group from '../utils/group';
+import { Errors } from '../errors';
+import getConfig from '../config';
+import { rewriteHTML, RewriteSourcesContext } from '../utils/rewriteSources';
+import { runTask as runGulpTask, RunTaskExternals } from '../utils/taskRunner';
 
 export enum AppActionType {
-  ADD_FILE_TO = "ADD_FILE_TO",
-  LOAD_PROJECT = "LOAD_PROJECT",
-  CLEAR_PROJECT_MODIFIED = "CLEAR_PROJECT_MODIFIED",
-  INIT_STORE = "INIT_STORE",
-  UPDATE_FILE_NAME_AND_DESCRIPTION = "UPDATE_FILE_NAME_AND_DESCRIPTION",
-  DELETE_FILE = "DELETE_FILE",
-  SPLIT_GROUP = "SPLIT_GROUP",
-  SET_VIEW_TYPE = "SET_VIEW_TYPE",
-  OPEN_FILE = "OPEN_FILE",
-  OPEN_FILES = "OPEN_PROJECT_FILES",
-  FOCUS_TAB_GROUP = "FOCUS_TAB_GROUP",
-  LOG_LN = "LOG_LN",
-  PUSH_STATUS = "PUSH_STATUS",
-  POP_STATUS = "POP_STATUS",
-  SANDBOX_RUN = "SANDBOX_RUN",
-  CLOSE_VIEW = "CLOSE_VIEW",
-  CLOSE_TABS = "CLOSE_TABS",
-  OPEN_VIEW = "OPEN_VIEW",
+  ADD_FILE_TO = 'ADD_FILE_TO',
+  LOAD_PROJECT = 'LOAD_PROJECT',
+  CLEAR_PROJECT_MODIFIED = 'CLEAR_PROJECT_MODIFIED',
+  INIT_STORE = 'INIT_STORE',
+  UPDATE_FILE_NAME_AND_DESCRIPTION = 'UPDATE_FILE_NAME_AND_DESCRIPTION',
+  DELETE_FILE = 'DELETE_FILE',
+  SPLIT_GROUP = 'SPLIT_GROUP',
+  SET_VIEW_TYPE = 'SET_VIEW_TYPE',
+  OPEN_FILE = 'OPEN_FILE',
+  OPEN_FILES = 'OPEN_PROJECT_FILES',
+  FOCUS_TAB_GROUP = 'FOCUS_TAB_GROUP',
+  LOG_LN = 'LOG_LN',
+  PUSH_STATUS = 'PUSH_STATUS',
+  POP_STATUS = 'POP_STATUS',
+  SANDBOX_RUN = 'SANDBOX_RUN',
+  CLOSE_VIEW = 'CLOSE_VIEW',
+  CLOSE_TABS = 'CLOSE_TABS',
+  OPEN_VIEW = 'OPEN_VIEW'
 }
 
 export interface AppAction {
@@ -67,7 +67,7 @@ export function addFileTo(file: File, parent: Directory) {
   dispatcher.dispatch({
     type: AppActionType.ADD_FILE_TO,
     file,
-    parent,
+    parent
   } as AddFileToAction);
 }
 
@@ -79,13 +79,13 @@ export interface LoadProjectAction extends AppAction {
 export function loadProject(project: Project) {
   dispatcher.dispatch({
     type: AppActionType.LOAD_PROJECT,
-    project,
+    project
   } as LoadProjectAction);
 }
 
 export function initStore() {
   dispatcher.dispatch({
-    type: AppActionType.INIT_STORE,
+    type: AppActionType.INIT_STORE
   } as AppAction);
 }
 
@@ -101,7 +101,7 @@ export function updateFileNameAndDescription(file: File, name: string, descripti
     type: AppActionType.UPDATE_FILE_NAME_AND_DESCRIPTION,
     file,
     name,
-    description,
+    description
   } as UpdateFileNameAndDescriptionAction);
 }
 
@@ -113,23 +113,23 @@ export interface DeleteFileAction extends AppAction {
 export function deleteFile(file: File) {
   dispatcher.dispatch({
     type: AppActionType.DELETE_FILE,
-    file,
+    file
   } as DeleteFileAction);
 }
 
 export interface LogLnAction extends AppAction {
   type: AppActionType.LOG_LN;
   message: string;
-  kind: ("" | "info" | "warn" | "error");
+  kind: '' | 'info' | 'warn' | 'error';
 }
 
-export type logKind = "" | "info" | "warn" | "error";
+export type logKind = '' | 'info' | 'warn' | 'error';
 
-export function logLn(message: string, kind: logKind = "") {
+export function logLn(message: string, kind: logKind = '') {
   dispatcher.dispatch({
     type: AppActionType.LOG_LN,
     message,
-    kind,
+    kind
   } as LogLnAction);
 }
 
@@ -217,13 +217,13 @@ export async function openProjectFiles(template: Template) {
     type: AppActionType.LOAD_PROJECT,
     project: newProject
   } as LoadProjectAction);
-  if (newProject.getFile("README.md")) {
-    openFiles([["README.md"]]);
+  if (newProject.getFile('README.md')) {
+    openFiles([['README.md']]);
   }
 }
 
 export async function saveProject(fiddle: string): Promise<string> {
-  logLn("Saving Project ...");
+  logLn('Saving Project ...');
   const tabGroups = appStore.getTabGroups();
   const projectModel = appStore.getProject().getModel();
 
@@ -232,10 +232,10 @@ export async function saveProject(fiddle: string): Promise<string> {
   });
 
   const uri = await Service.saveProject(projectModel, openedFiles, fiddle);
-  logLn("Saved Project OK");
+  logLn('Saved Project OK');
 
   dispatcher.dispatch({
-    type: AppActionType.CLEAR_PROJECT_MODIFIED,
+    type: AppActionType.CLEAR_PROJECT_MODIFIED
   } as AppAction);
   return uri;
 }
@@ -264,13 +264,13 @@ export interface PopStatusAction extends AppAction {
 export function pushStatus(status: string) {
   dispatcher.dispatch({
     type: AppActionType.PUSH_STATUS,
-    status,
+    status
   } as PushStatusAction);
 }
 
 export function popStatus() {
   dispatcher.dispatch({
-    type: AppActionType.POP_STATUS,
+    type: AppActionType.POP_STATUS
   } as PopStatusAction);
 }
 
@@ -279,40 +279,37 @@ export interface SandboxRunAction extends AppAction {
   src: string;
 }
 
-export async function runTask(
-  name: string,
-  optional: boolean = false,
-  externals: RunTaskExternals = RunTaskExternals.Default
-) {
+export async function runTask(name: string, optional: boolean = false, externals: RunTaskExternals = RunTaskExternals.Default) {
+  console.log('let run at our server instead', name, optional, externals);
   // Runs the provided source in our fantasy gulp context
-  const run = async (src: string) => {
-    const project = appStore.getProject().getModel();
-    await runGulpTask(src, name, optional, project, logLn, externals);
-  };
-  let gulpfile = appStore.getFileByName("gulpfile.js");
-  if (gulpfile) {
-    await run(appStore.getFileSource(gulpfile));
-  } else {
-    if (gulpfile = appStore.getFileByName("build.ts")) {
-      const output = await gulpfile.getModel().getEmitOutput();
-      await run(output.outputFiles[0].text);
-    } else {
-      if (gulpfile = appStore.getFileByName("build.js")) {
-        await run(appStore.getFileSource(gulpfile));
-      } else {
-        logLn(Errors.BuildFileMissing, "error");
-      }
-    }
-  }
+  // const run = async (src: string) => {
+  //   const project = appStore.getProject().getModel();
+  //   await runGulpTask(src, name, optional, project, logLn, externals);
+  // };
+  // let gulpfile = appStore.getFileByName("gulpfile.js");
+  // if (gulpfile) {
+  //   await run(appStore.getFileSource(gulpfile));
+  // } else {
+  //   if (gulpfile = appStore.getFileByName("build.ts")) {
+  //     const output = await gulpfile.getModel().getEmitOutput();
+  //     await run(output.outputFiles[0].text);
+  //   } else {
+  //     if (gulpfile = appStore.getFileByName("build.js")) {
+  //       await run(appStore.getFileSource(gulpfile));
+  //     } else {
+  //       logLn(Errors.BuildFileMissing, "error");
+  //     }
+  //   }
+  // }
 }
 
 export async function run() {
-  const mainFileName = "src/main.html";
+  const mainFileName = 'src/main.html';
   const projectModel = appStore.getProject().getModel();
   const context = new RewriteSourcesContext(projectModel);
   context.logLn = logLn;
-  context.createFile = (src: ArrayBuffer|string, type: string) => {
-    const blob = new Blob([src], { type, });
+  context.createFile = (src: ArrayBuffer | string, type: string) => {
+    const blob = new Blob([src], { type });
     return window.URL.createObjectURL(blob);
   };
 
@@ -324,13 +321,13 @@ export async function run() {
 
   dispatcher.dispatch({
     type: AppActionType.SANDBOX_RUN,
-    src,
+    src
   } as SandboxRunAction);
 }
 
 export async function build() {
-  pushStatus("Building Project");
-  await runTask("build");
+  pushStatus('Building Project');
+  await runTask('build');
   popStatus();
 }
 

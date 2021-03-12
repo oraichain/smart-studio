@@ -3,4 +3,3 @@
 // Definitions by: [Florian Gilcher] <flo@andersground.net>
 
 declare module '*';
-
