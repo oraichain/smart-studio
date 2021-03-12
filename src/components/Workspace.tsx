@@ -19,12 +19,12 @@
  * SOFTWARE.
  */
 
-import * as React from "react";
-import { Header } from "./Header";
-import { DirectoryTree } from "./DirectoryTree";
-import { Project, File, Directory, ModelRef } from "../models";
-import { SplitOrientation, SplitInfo, Split } from "./Split";
-import appStore from "../stores/AppStore";
+import * as React from 'react';
+import { Header } from './Header';
+import { DirectoryTree } from './DirectoryTree';
+import { Project, File, Directory, ModelRef } from '../models';
+import { SplitOrientation, SplitInfo, Split } from './Split';
+import appStore from '../stores/AppStore';
 
 export interface WorkspaceProps {
   /**
@@ -66,37 +66,39 @@ export class Workspace extends React.Component<WorkspaceProps, WorkSpaceState> {
   }
   refreshTree = () => {
     this.directoryTree.tree.refresh();
-  }
+  };
   render() {
     const project = this.props.project;
-    return <div className="workspaceContainer">
-      <Header />
-      <div style={{ height: "calc(100% - 41px)" }}>
-        <Split
-          name="Workspace"
-          orientation={SplitOrientation.Horizontal}
-          splits={this.state.splits}
-          onChange={(splits) => {
-            this.setState({ splits: splits });
-          }}
-        >
-          <div/>
-          <DirectoryTree
-            ref={(ref) => this.directoryTree = ref}
-            directory={project}
-            value={this.props.file}
-            onNewFile={this.props.onNewFile}
-            onNewDirectory={this.props.onNewDirectory}
-            onEditFile={this.props.onEditFile}
-            onDeleteFile={this.props.onDeleteFile}
-            onUploadFile={this.props.onUploadFile}
-            onMoveFile={this.props.onMoveFile}
-            onClickFile={this.props.onClickFile}
-            onDoubleClickFile={this.props.onDoubleClickFile}
-            onCreateGist={this.props.onCreateGist}
-          />
-        </Split>
+    return (
+      <div className="workspaceContainer">
+        <Header />
+        <div style={{ height: 'calc(100% - 41px)' }}>
+          <Split
+            name="Workspace"
+            orientation={SplitOrientation.Horizontal}
+            splits={this.state.splits}
+            onChange={(splits) => {
+              this.setState({ splits: splits });
+            }}
+          >
+            <div className="workspaceProjectName">Project Name</div>
+            <DirectoryTree
+              ref={(ref) => (this.directoryTree = ref)}
+              directory={project}
+              value={this.props.file}
+              onNewFile={this.props.onNewFile}
+              onNewDirectory={this.props.onNewDirectory}
+              onEditFile={this.props.onEditFile}
+              onDeleteFile={this.props.onDeleteFile}
+              onUploadFile={this.props.onUploadFile}
+              onMoveFile={this.props.onMoveFile}
+              onClickFile={this.props.onClickFile}
+              onDoubleClickFile={this.props.onDoubleClickFile}
+              onCreateGist={this.props.onCreateGist}
+            />
+          </Split>
+        </div>
       </div>
-    </div>;
+    );
   }
 }
