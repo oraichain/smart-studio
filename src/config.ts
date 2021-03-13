@@ -27,12 +27,15 @@ export interface IConfig {
   templates: { [name: string]: string };
 }
 
-const configUrl = "./config.json";
+const configUrl = './config.json';
 let config: IConfig;
 
 export default async function getConfig() {
   if (!config) {
-    config = await fetch(configUrl).then(resp => resp.json());
+    config = await fetch(configUrl).then((resp) => resp.json());
+    if (!config.serviceUrl) {
+      config.serviceUrl = process.env.SERVICE_URL || '/';
+    }
   }
 
   return config;

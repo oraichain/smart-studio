@@ -19,18 +19,18 @@
  * SOFTWARE.
  */
 export enum Language {
-  C = "c",
-  Cpp = "cpp",
-  Wat = "wat",
-  Wasm = "wasm",
-  Rust = "rust",
-  Cretonne = "cton",
-  x86 = "x86",
-  Json = "json",
-  JavaScript = "javascript",
-  TypeScript = "typescript",
-  Toml = "toml",
-  Text = "text"
+  C = 'c',
+  Cpp = 'cpp',
+  Wat = 'wat',
+  Wasm = 'wasm',
+  Rust = 'rust',
+  Cretonne = 'cton',
+  x86 = 'x86',
+  Json = 'json',
+  JavaScript = 'javascript',
+  TypeScript = 'typescript',
+  Toml = 'toml',
+  Text = 'text'
 }
 
 export interface InputFile {
@@ -39,7 +39,7 @@ export interface InputFile {
 }
 
 export interface ServiceInput {
-  files: { [name: string]: InputFile; };
+  files: { [name: string]: InputFile };
   options?: any;
 }
 
@@ -51,7 +51,7 @@ export interface OutputItem {
 
 export interface ServiceOutput {
   success: boolean;
-  items: { [name: string]: OutputItem; };
+  items: { [name: string]: OutputItem };
   console?: string;
 }
 

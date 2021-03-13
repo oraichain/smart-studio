@@ -19,83 +19,80 @@
  * SOFTWARE.
  */
 
-import * as React from "react";
-import { Service } from "../service";
-import * as ReactModal from "react-modal";
-import { Button } from "./shared/Button";
-import { GoFile, GoX, Icon } from "./shared/Icons";
-import appStore from "../stores/AppStore";
-import { Directory, ModelRef } from "../models";
-import { ChangeEvent } from "react";
-import { TextInputBox } from "./Widgets";
+import * as React from 'react';
+import { Service } from '../service';
+import * as ReactModal from 'react-modal';
+import { Button } from './shared/Button';
+import { GoFile, GoX, Icon } from './shared/Icons';
+import appStore from '../stores/AppStore';
+import { Directory, ModelRef } from '../models';
+import { ChangeEvent } from 'react';
+import { TextInputBox } from './Widgets';
 
-export class NewDirectoryDialog extends React.Component<{
-  isOpen: boolean;
-  directory: ModelRef<Directory>
-  onCreate: (directory: Directory) => void;
-  onCancel: () => void;
-}, {
+export class NewDirectoryDialog extends React.Component<
+  {
+    isOpen: boolean;
+    directory: ModelRef<Directory>;
+    onCreate: (directory: Directory) => void;
+    onCancel: () => void;
+  },
+  {
     name: string;
-  }> {
+  }
+> {
   constructor(props: any) {
     super(props);
     this.state = {
-      name: ""
+      name: ''
     };
   }
   onChangeName = (event: ChangeEvent<any>) => {
     this.setState({ name: event.target.value });
-  }
+  };
   nameError() {
     const directory = this.props.directory;
     if (this.state.name) {
       if (!/^[a-z0-9\.\-\_]+$/i.test(this.state.name)) {
-        return "Illegal characters in directory name.";
+        return 'Illegal characters in directory name.';
       } else if (directory && appStore.getImmediateChild(directory, this.state.name)) {
         return `Directory '${this.state.name}' already exists.`;
       }
     }
-    return "";
+    return '';
   }
   createButtonLabel() {
-    return "Create";
+    return 'Create';
   }
   render() {
-    return <ReactModal
-      isOpen={this.props.isOpen}
-      contentLabel="Create New Directory"
-      className="modal"
-      overlayClassName="overlay"
-      ariaHideApp={false}
-    >
-      <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-        <div className="modal-title-bar">
-          Create New Directory
+    return (
+      <ReactModal isOpen={this.props.isOpen} contentLabel="Create New Directory" className="modal" overlayClassName="overlay" ariaHideApp={false}>
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+          <div className="modal-title-bar">Create New Directory</div>
+          <div style={{ flex: 1, padding: '8px' }}>
+            <TextInputBox label="Name:" error={this.nameError()} value={this.state.name} onChange={this.onChangeName} />
+          </div>
+          <div>
+            <Button
+              icon={<GoX />}
+              label="Cancel"
+              title="Cancel"
+              onClick={() => {
+                this.props.onCancel();
+              }}
+            />
+            <Button
+              icon={<GoFile />}
+              label={this.createButtonLabel()}
+              title="Create New Directory"
+              isDisabled={!this.state.name || !!this.nameError()}
+              onClick={() => {
+                const directory = new Directory(this.state.name);
+                return this.props.onCreate && this.props.onCreate(directory);
+              }}
+            />
+          </div>
         </div>
-        <div style={{ flex: 1, padding: "8px" }}>
-          <TextInputBox label="Name:" error={this.nameError()} value={this.state.name} onChange={this.onChangeName}/>
-        </div>
-        <div>
-          <Button
-            icon={<GoX />}
-            label="Cancel"
-            title="Cancel"
-            onClick={() => {
-              this.props.onCancel();
-            }}
-          />
-          <Button
-            icon={<GoFile />}
-            label={this.createButtonLabel()}
-            title="Create New Directory"
-            isDisabled={!this.state.name || !!this.nameError()}
-            onClick={() => {
-              const directory = new Directory(this.state.name);
-              return this.props.onCreate && this.props.onCreate(directory);
-            }}
-          />
-        </div>
-      </div>
-    </ReactModal>;
+      </ReactModal>
+    );
   }
 }

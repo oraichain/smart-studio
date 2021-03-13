@@ -1,8 +1,7 @@
-import glob from 'glob';
 import fs from 'fs';
 import path from 'path';
 
-export const getFiles = (dir, results = []): string[] => {
+export const getFiles = (dir: string, results = []): string[] => {
   const dirents = fs.readdirSync(dir, { withFileTypes: true });
 
   for (const dirent of dirents) {
@@ -16,7 +15,7 @@ export const getFiles = (dir, results = []): string[] => {
   return results;
 };
 
-export const getFileSize = (size) => {
+export const getFileSize = (size: number): string => {
   const fileSize = size.toString();
   if (fileSize.length < 4) return `${fileSize} bytes`;
   if (fileSize.length < 7)

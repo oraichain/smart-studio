@@ -221,6 +221,7 @@ export class File {
       this.data = this.buffer.getValue();
       this.resetDirty();
     }
+    console.log('save', status);
     this.notifyDidChangeData();
   }
   toString() {

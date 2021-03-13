@@ -47,6 +47,12 @@ export interface IFiddleFile {
   type?: 'binary' | 'text';
 }
 
+export interface ISaveFiddleResponse {
+  id: string;
+  message: string;
+  success: boolean;
+}
+
 export interface ICreateFiddleRequest {
   files: IFiddleFile[];
 }
@@ -350,27 +356,23 @@ export class Service {
 
   static async loadJSON(uri: string): Promise<ILoadFiddleResponse> {
     const baseURL = await getServiceURL(ServiceTypes.Service);
-    const url = `${baseURL}/project?name=${uri}`;
-    console.log(url);
-    const response = await fetch(url, {
+    const response = await fetch(`${baseURL}/project?name=${uri}`, {
       headers: new Headers({ 'Content-type': 'application/json; charset=utf-8' })
     });
     return await response.json();
   }
 
-  static async saveJSON(json: ICreateFiddleRequest, uri: string): Promise<string> {
+  static async saveJSON(json: ICreateFiddleRequest, uri: string): Promise<ISaveFiddleResponse> {
     const update = !!uri;
     if (update) {
-      throw new Error('NYI');
-    } else {
-      const response = await fetch('https://webassembly-studio-fiddles.herokuapp.com/set-fiddle', {
+      const baseURL = await getServiceURL(ServiceTypes.Service);
+      const response = await fetch(`${baseURL}/project?name=${uri}`, {
         method: 'POST',
         headers: new Headers({ 'Content-type': 'application/json; charset=utf-8' }),
         body: JSON.stringify(json)
       });
-      let jsonURI = (await response.json()).id;
-      jsonURI = jsonURI.substring(jsonURI.lastIndexOf('/') + 1);
-      return jsonURI;
+      const ret = await response.json();
+      return ret;
     }
   }
 
@@ -403,7 +405,7 @@ export class Service {
     return await this.createGist(json);
   }
 
-  static async saveProject(project: Project, openedFiles: string[][], uri?: string): Promise<string> {
+  static async saveProject(project: Project, openedFiles: string[][], uri?: string): Promise<ISaveFiddleResponse> {
     const files: IFiddleFile[] = [];
     project.forEachFile(
       (f: File) => {

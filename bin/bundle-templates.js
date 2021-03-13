@@ -19,16 +19,16 @@
  * SOFTWARE.
  */
 
-const path = require("path");
-const fs = require("fs");
-const fse = require("fs-extra");
+const path = require('path');
+const fs = require('fs');
+const fse = require('fs-extra');
 
 const templatesDir = process.argv[2];
 const outputPath = process.argv[3];
 
 function walk(base, callback) {
   let files = fs.readdirSync(base);
-  files.forEach(file => {
+  files.forEach((file) => {
     let fullpath = path.join(base, file);
     if (fs.statSync(fullpath).isDirectory()) {
       walk(fullpath, callback);
@@ -39,33 +39,26 @@ function walk(base, callback) {
 }
 
 function bundleTemplate(templateName) {
-  let description = "";
-  let icon = "";
+  let description = '';
+  let icon = 'rust-lang-file-icon';
 
   let base = path.join(templatesDir, templateName);
   let files = [];
   walk(base, (path) => {
     let name = path.substring(base.length + 1);
-    if (name == "package.json") {
-      const pkg = JSON.parse(fs.readFileSync(path, "utf8"));
-      templateName = pkg.name;
-      description = pkg.description;
-      if (pkg.wasmStudio) {
-        templateName = pkg.wasmStudio.name || name;
-        description = pkg.wasmStudio.description || description;
-        icon = pkg.wasmStudio.icon || icon;
-      }
+    if (name === 'README.md') {
+      description = fs.readFileSync(path, 'utf8');
     }
     files.push({
-      name,
+      name
     });
-  })
+  });
   return {
     name: templateName,
     description,
     icon,
-    files,
-  }
+    files
+  };
 }
 
 let templates = fs.readdirSync(templatesDir);
@@ -83,6 +76,4 @@ fse.removeSync(path.resolve(outputPath));
 fse.mkdirpSync(path.resolve(outputPath));
 fse.copySync(path.resolve(templatesDir), path.resolve(outputPath));
 
-fs.writeFileSync(
-  path.resolve(outputPath, "index.js"),
-  JSON.stringify(output, null, 2));
+fs.writeFileSync(path.resolve(outputPath, 'index.js'), JSON.stringify(output, null, 2));

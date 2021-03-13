@@ -30,6 +30,7 @@ export class Project extends Directory {
 
   constructor(name: string = 'Project') {
     super(name);
+    this.name = name;
   }
 
   private status: string[] = ['Idle'];

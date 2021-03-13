@@ -19,14 +19,14 @@
  * SOFTWARE.
  */
 
-import { fileTypeForExtension, FileType, fileTypeForMimeType, nameForFileType, extensionForFileType, isBinaryFileType, Directory } from "./models";
+import { fileTypeForExtension, FileType, fileTypeForMimeType, nameForFileType, extensionForFileType, isBinaryFileType, Directory } from './models';
 
 export function toAddress(n: number) {
   let s = n.toString(16);
   while (s.length < 6) {
-    s = "0" + s;
+    s = '0' + s;
   }
-  return "0x" + s;
+  return '0x' + s;
 }
 
 export function padRight(s: string, n: number, c: string) {
@@ -45,6 +45,7 @@ export function padLeft(s: string, n: number, c: string) {
   return s;
 }
 
+// prettier-ignore
 const x86JumpInstructions = [
   "jmp", "ja", "jae", "jb", "jbe", "jc", "je", "jg", "jge", "jl", "jle", "jna", "jnae",
   "jnb", "jnbe", "jnc", "jne", "jng", "jnge", "jnl", "jnle", "jno", "jnp", "jns", "jnz",
@@ -55,6 +56,7 @@ export function isBranch(instr: any) {
   return x86JumpInstructions.indexOf(instr.mnemonic) >= 0;
 }
 
+// prettier-ignore
 const base64DecodeMap = [ // starts at 0x2B
   62, 0, 0, 0, 63, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61,
   0, 0, 0, 0, 0, 0, 0, // 0x3A-0x40
@@ -64,8 +66,8 @@ const base64DecodeMap = [ // starts at 0x2B
   44, 45, 46, 47, 48, 49, 50, 51
 ];
 
-const base64DecodeMapOffset = 0x2B;
-const base64EOF = 0x3D;
+const base64DecodeMapOffset = 0x2b;
+const base64EOF = 0x3d;
 
 const _concat3array = new Array(3);
 const _concat4array = new Array(4);
@@ -81,24 +83,24 @@ const _concat9array = new Array(9);
  */
 
 export function concat3(s0: any, s1: any, s2: any) {
-    _concat3array[0] = s0;
-    _concat3array[1] = s1;
-    _concat3array[2] = s2;
-    return _concat3array.join("");
+  _concat3array[0] = s0;
+  _concat3array[1] = s1;
+  _concat3array[2] = s2;
+  return _concat3array.join('');
 }
 
 export function concat4(s0: any, s1: any, s2: any, s3: any) {
-    _concat4array[0] = s0;
-    _concat4array[1] = s1;
-    _concat4array[2] = s2;
-    _concat4array[3] = s3;
-    return _concat4array.join("");
+  _concat4array[0] = s0;
+  _concat4array[1] = s1;
+  _concat4array[2] = s2;
+  _concat4array[3] = s3;
+  return _concat4array.join('');
 }
 
 // https://gist.github.com/958841
 export function base64EncodeBytes(bytes: Uint8Array) {
-  let base64 = "";
-  const encodings = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  let base64 = '';
+  const encodings = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
 
   const byteLength = bytes.byteLength;
   const byteRemainder = byteLength % 3;
@@ -121,8 +123,7 @@ export function base64EncodeBytes(bytes: Uint8Array) {
     c = (chunk & 4032) >> 6; // 4032 = (2^6 - 1) << 6
     d = chunk & 63; // 63 = 2^6 - 1
     // Convert the raw binary segments to the appropriate ASCII encoding
-    base64 += concat4(encodings[a], encodings[b], encodings[c],
-                      encodings[d]);
+    base64 += concat4(encodings[a], encodings[b], encodings[c], encodings[d]);
   }
 
   // Deal with the remaining bytes and padding
@@ -132,7 +133,7 @@ export function base64EncodeBytes(bytes: Uint8Array) {
     a = (chunk & 252) >> 2; // 252 = (2^6 - 1) << 2
     // Set the 4 least significant bits to zero
     b = (chunk & 3) << 4; // 3 = 2^2 - 1
-    base64 += concat3(encodings[a], encodings[b], "==");
+    base64 += concat3(encodings[a], encodings[b], '==');
   } else if (byteRemainder === 2) {
     chunk = (bytes[mainLength] << 8) | bytes[mainLength + 1];
 
@@ -140,7 +141,7 @@ export function base64EncodeBytes(bytes: Uint8Array) {
     b = (chunk & 1008) >> 4; // 1008 = (2^6 - 1) << 4
     // Set the 2 least significant bits to zero
     c = (chunk & 15) << 2; // 15 = 2^4 - 1
-    base64 += concat4(encodings[a], encodings[b], encodings[c], "=");
+    base64 += concat4(encodings[a], encodings[b], encodings[c], '=');
   }
   return base64;
 }
@@ -151,10 +152,10 @@ export function decodeRestrictedBase64ToBytes(encoded: string) {
   let code2: any;
 
   const len = encoded.length;
-  const padding = encoded.charAt(len - 2) === "=" ? 2 : encoded.charAt(len - 1) === "=" ? 1 : 0;
+  const padding = encoded.charAt(len - 2) === '=' ? 2 : encoded.charAt(len - 1) === '=' ? 1 : 0;
   const decoded = new Uint8Array((encoded.length >> 2) * 3 - padding);
 
-  for (let i = 0, j = 0; i < encoded.length;) {
+  for (let i = 0, j = 0; i < encoded.length; ) {
     ch = encoded.charCodeAt(i++);
     code = base64DecodeMap[ch - base64DecodeMapOffset];
     ch = encoded.charCodeAt(i++);
@@ -187,7 +188,7 @@ export function layout() {
   }
   window.setTimeout(() => {
     layoutTimeout = 0;
-    document.dispatchEvent(new Event("layout"));
+    document.dispatchEvent(new Event('layout'));
   }, layoutThrottleDuration);
 }
 
@@ -205,29 +206,29 @@ export function clamp(x: number, min: number, max: number): number {
   return Math.min(Math.max(min, x), max);
 }
 
-export async function readUploadedFile(inputFile: File, readAs: "text" | "arrayBuffer"): Promise<string | ArrayBuffer> {
+export async function readUploadedFile(inputFile: File, readAs: 'text' | 'arrayBuffer'): Promise<string | ArrayBuffer> {
   const temporaryFileReader = new FileReader();
   return new Promise<string | ArrayBuffer>((resolve, reject) => {
     temporaryFileReader.onerror = () => {
       temporaryFileReader.abort();
-      reject(new DOMException("Problem parsing input file."));
+      reject(new DOMException('Problem parsing input file.'));
     };
     temporaryFileReader.onload = () => {
       resolve(temporaryFileReader.result as any);
     };
-    if (readAs === "text") {
+    if (readAs === 'text') {
       temporaryFileReader.readAsText(inputFile);
-    } else if (readAs === "arrayBuffer") {
+    } else if (readAs === 'arrayBuffer') {
       temporaryFileReader.readAsArrayBuffer(inputFile);
     } else {
-      assert(false, "NYI");
+      assert(false, 'NYI');
     }
   });
 }
 
 export async function readUploadedDirectory(inputEntry: any, root: Directory, customRoot?: string) {
   const reader = inputEntry.createReader();
-  reader.readEntries(((entries: any) => {
+  reader.readEntries((entries: any) => {
     entries.forEach(async (entry: any) => {
       if (entry.isDirectory) {
         return readUploadedDirectory(entry, root, customRoot);
@@ -235,27 +236,27 @@ export async function readUploadedDirectory(inputEntry: any, root: Directory, cu
       entry.file(async (file: File) => {
         try {
           const name: string = file.name;
-          let path: string = entry.fullPath.replace(/^\/+/g, "");
+          let path: string = entry.fullPath.replace(/^\/+/g, '');
           if (customRoot) {
-            const pathArray = path.split("/");
+            const pathArray = path.split('/');
             pathArray[0] = customRoot;
-            path = pathArray.join("/");
+            path = pathArray.join('/');
           }
-          const fileType = fileTypeForExtension(name.split(".").pop());
-          const data = await readUploadedFile(file, isBinaryFileType(fileType) ? "arrayBuffer" : "text");
+          const fileType = fileTypeForExtension(name.split('.').pop());
+          const data = await readUploadedFile(file, isBinaryFileType(fileType) ? 'arrayBuffer' : 'text');
           const newFile = root.newFile(path, fileType, false, true);
           newFile.setData(data);
         } catch (e) {
-          console.log("Unable to read the file!");
+          console.log('Unable to read the file!');
         }
       });
     });
-  }));
+  });
 }
 
 export async function uploadFilesToDirectory(items: any, root: Directory) {
   Array.from(items).forEach(async (item: any) => {
-    if (typeof item.webkitGetAsEntry === "function") {
+    if (typeof item.webkitGetAsEntry === 'function') {
       const entry = item.webkitGetAsEntry();
       if (entry.isDirectory) {
         if (root.getImmediateChild(entry.name)) {
@@ -273,20 +274,21 @@ export async function uploadFilesToDirectory(items: any, root: Directory) {
     }
     const name: string = file.name;
     const path: string = (file as any).webkitRelativePath || name; // This works in FF also.
-    const fileType = fileTypeForExtension(name.split(".").pop());
+    const fileType = fileTypeForExtension(name.split('.').pop());
     let data: any;
     try {
-      data = await readUploadedFile(file, isBinaryFileType(fileType) ? "arrayBuffer" : "text");
+      data = await readUploadedFile(file, isBinaryFileType(fileType) ? 'arrayBuffer' : 'text');
       const newFile = root.newFile(path, fileType, false, true);
       newFile.setData(data);
     } catch (e) {
-      console.log("Unable to read the file!");
+      console.log('Unable to read the file!');
     }
   });
 }
 
 export function isUploadAllowedForMimeType(type: string) {
-  if (type === "") { // Firefox doesn't show the "application/wasm" mime type.
+  if (type === '') {
+    // Firefox doesn't show the "application/wasm" mime type.
     return true;
   }
   return fileTypeForMimeType(type) !== FileType.Unknown;
@@ -304,10 +306,10 @@ export function validateFileName(name: string, sourceType: FileType): string {
   }
 
   if (!/^[a-z0-9\.\-\_]+$/i.test(name)) {
-    return "Illegal characters in file name";
+    return 'Illegal characters in file name';
   }
 
-  const sourceTypeExtension = "." + extensionForFileType(sourceType);
+  const sourceTypeExtension = '.' + extensionForFileType(sourceType);
   if (sourceTypeExtension === name) {
     return "File name can't be empty";
   }
@@ -316,5 +318,5 @@ export function validateFileName(name: string, sourceType: FileType): string {
     return `${nameForFileType(sourceType)} file extension is missing or incorrect`;
   }
 
-  return "";
+  return '';
 }

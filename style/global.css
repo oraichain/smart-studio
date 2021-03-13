@@ -565,8 +565,9 @@ a {
 
 .modal {
   position: absolute;
-  top: calc(50% - 180px);
-  left: calc(50% - 300px);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   width: 600px;
   height: 360px;
   background-color: rgb(48, 48, 48);
@@ -708,6 +709,10 @@ a {
   position: fixed;
   top: 0;
   left: 0;
+}
+
+.modal.newProject {
+  height: 400px;
 }
 
 .new-file-dialog-description {

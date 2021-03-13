@@ -213,6 +213,7 @@ export interface OpenFilesAction extends AppAction {
 export async function openProjectFiles(template: Template) {
   const newProject = new Project();
   await Service.loadFilesIntoProject(template.files, newProject, template.baseUrl);
+
   dispatcher.dispatch({
     type: AppActionType.LOAD_PROJECT,
     project: newProject
@@ -222,16 +223,38 @@ export async function openProjectFiles(template: Template) {
   }
 }
 
-export async function saveProject(fiddle: string): Promise<string> {
+export async function openProject(newProject: Project) {
+  dispatcher.dispatch({
+    type: AppActionType.LOAD_PROJECT,
+    project: newProject
+  } as LoadProjectAction);
+  if (newProject.getFile('README.md')) {
+    openFiles([['README.md']]);
+  }
+}
+
+export async function saveProject(fiddle: string, newProject?: Project): Promise<string> {
   logLn('Saving Project ...');
+
   const tabGroups = appStore.getTabGroups();
-  const projectModel = appStore.getProject().getModel();
+  const projectModel = newProject || appStore.getProject().getModel();
 
   const openedFiles = tabGroups.map((group) => {
     return group.views.map((view) => view.file.getPath());
   });
 
-  const uri = await Service.saveProject(projectModel, openedFiles, fiddle);
+  pushStatus('Saving Project');
+  const ret = await Service.saveProject(projectModel, openedFiles, fiddle);
+  popStatus();
+
+  if (!ret.success) {
+    logLn('Saved Project Failed');
+    logLn(ret.message, 'error');
+    return null;
+  }
+
+  // if save ok no error from server
+  let uri = ret.id;
   logLn('Saved Project OK');
 
   dispatcher.dispatch({

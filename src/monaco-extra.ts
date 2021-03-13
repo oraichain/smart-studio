@@ -2,7 +2,7 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-"use strict";
+'use strict';
 
 // import WinJS = require('vs/base/common/winjs.base');
 // import Touch = require('vs/base/browser/touch');
@@ -15,36 +15,23 @@
 // import { Color } from 'vs/base/common/color';
 // import { IItemCollapseEvent, IItemExpandEvent } from 'vs/base/parts/tree/browser/treeModel';
 
-export interface Event<T> {
+export interface Event<T> {}
 
-}
+export interface IItemExpandEvent {}
 
-export interface IItemExpandEvent {
+export interface IItemCollapseEvent {}
 
-}
+export interface INavigator<T> {}
 
-export interface IItemCollapseEvent {
+export interface Color {}
 
-}
+export interface GestureEvent {}
 
-export interface INavigator <T> {
-
-}
-
-export interface Color {
-
-}
-
-export interface GestureEvent {
-
-}
-
-export interface  DragMouseEvent {
-  browserEvent: DragEvent
+export interface DragMouseEvent {
+  browserEvent: DragEvent;
 }
 
 export interface ITree {
-
   onDidFocus: Event<void>;
   onDidBlur: Event<void>;
   onDidChangeFocus: Event<IFocusEvent>;
@@ -371,7 +358,6 @@ export interface ITree {
 }
 
 export interface IDataSource {
-
   /**
    * Returns the unique identifier of the given element.
    * No more than one element may use a given identifier.
@@ -400,7 +386,6 @@ export interface IDataSource {
 }
 
 export interface IRenderer {
-
   /**
    * Returns the element's height in the tree, in pixels.
    */
@@ -440,7 +425,6 @@ export interface IRenderer {
 }
 
 export interface IAccessibilityProvider {
-
   /**
    * Given an element in the tree, return the ARIA label that should be associated with the
    * item. This helps screen readers to provide a meaningful label for the currently focused
@@ -467,68 +451,64 @@ export interface IAccessibilityProvider {
 }
 
 export /* abstract */ class ContextMenuEvent {
-
   public _posx: number; // HACK(0.14)
   public _posy: number; // HACK(0.14)
   private _target: HTMLElement;
 
   constructor(posx: number, posy: number, target: HTMLElement) {
-  this._posx = posx;
-  this._posy = posy;
-  this._target = target;
+    this._posx = posx;
+    this._posy = posy;
+    this._target = target;
   }
 
   public preventDefault(): void {
-  // no-op
+    // no-op
   }
 
   public stopPropagation(): void {
-  // no-op
+    // no-op
   }
 
   public get target(): HTMLElement {
-  return this._target;
+    return this._target;
   }
 }
 
 export class MouseContextMenuEvent extends ContextMenuEvent {
-
   private originalEvent: monaco.IMouseEvent;
 
   constructor(originalEvent: monaco.IMouseEvent) {
-  super(originalEvent.posx, originalEvent.posy, originalEvent.target);
-  this.originalEvent = originalEvent;
+    super(originalEvent.posx, originalEvent.posy, originalEvent.target);
+    this.originalEvent = originalEvent;
   }
 
   public preventDefault(): void {
-  this.originalEvent.preventDefault();
+    this.originalEvent.preventDefault();
   }
 
   public stopPropagation(): void {
-  this.originalEvent.stopPropagation();
+    this.originalEvent.stopPropagation();
   }
 }
 
 export class KeyboardContextMenuEvent extends ContextMenuEvent {
-
   private originalEvent: monaco.IKeyboardEvent;
 
   constructor(posx: number, posy: number, originalEvent: monaco.IKeyboardEvent) {
-  super(posx, posy, originalEvent.target);
-  this.originalEvent = originalEvent;
+    super(posx, posy, originalEvent.target);
+    this.originalEvent = originalEvent;
   }
 
   public preventDefault(): void {
-  this.originalEvent.preventDefault();
+    this.originalEvent.preventDefault();
   }
 
   public stopPropagation(): void {
-  this.originalEvent.stopPropagation();
+    this.originalEvent.stopPropagation();
   }
 }
 
 export interface IController {
-
   /**
    * Called when an element is clicked.
    */
@@ -595,7 +575,6 @@ export interface IDragAndDropData {
 }
 
 export interface IDragAndDrop {
-
   /**
    * Returns a uri if the given element should be allowed to drag.
    * Returns null, otherwise.
@@ -625,7 +604,6 @@ export interface IDragAndDrop {
 }
 
 export interface IFilter {
-
   /**
    * Returns whether the given element should be visible.
    */
@@ -637,7 +615,6 @@ export type IElementCallback = (tree: ITree, element: any) => void;
 export type ICallback = () => void;
 
 export interface ISorter {
-
   /**
    * Compare two elements in the viewer to define the sorting order.
    */

@@ -20,15 +20,14 @@
  */
 
 import * as React from 'react';
-import * as ReactDOM from 'react-dom';
-import * as ReactModal from 'react-modal';
+import { hot } from 'react-hot-loader/root';
 
 import { Workspace } from './Workspace';
 import { EditorView, ViewTabs, View, Tab, Tabs } from './editor';
 import { Header } from './Header';
 import { Toolbar } from './Toolbar';
 import { ViewType, defaultViewTypeForFileType } from './editor/View';
-import { build, run, runTask, openFiles, pushStatus, popStatus } from '../actions/AppActions';
+import { build, run, runTask, openFiles, pushStatus, popStatus, openProject } from '../actions/AppActions';
 
 import appStore from '../stores/AppStore';
 import {
@@ -176,6 +175,7 @@ export interface AppWindowContext {
   promptWhenClosing: boolean;
 }
 
+@hot
 export class App extends React.Component<AppProps, AppState> {
   fiddle: string;
   toastContainer: ToastContainer;
@@ -230,6 +230,7 @@ export class App extends React.Component<AppProps, AppState> {
   }
   private async loadProjectFromFiddle(uri: string) {
     const project = new Project(uri);
+
     pushStatus('Downloading Project');
     const fiddle = await Service.loadJSON(uri);
     popStatus();
@@ -238,7 +239,7 @@ export class App extends React.Component<AppProps, AppState> {
       loadProject(project);
       if (project.getFile('README.md')) {
         openFiles([['README.md']]);
-        // logLn('Compile : ' + project.name + ' succeed!');
+        logLn('Load : ' + project.name + ' succeed!');
       }
     } else {
       if (this.toastContainer) {
@@ -361,6 +362,7 @@ export class App extends React.Component<AppProps, AppState> {
   async update() {
     saveProject(this.state.fiddle);
   }
+
   async fork() {
     pushStatus('Forking Project');
     const fiddle = await saveProject('');
@@ -441,13 +443,13 @@ export class App extends React.Component<AppProps, AppState> {
     if (this.props.embeddingParams.type === EmbeddingType.None) {
       toolbarButtons.push(
         <Button
-          key="UpdateProject"
-          icon={<GoPencil />}
-          label="Update"
-          title="Update Project"
+          key="DeleteProject"
+          icon={<GoDelete />}
+          label="Delete"
+          title="Delete Project"
           isDisabled={this.toolbarButtonsAreDisabled()}
           onClick={() => {
-            this.update();
+            this.toastContainer.showToast(<span>TODO: delete the project</span>);
           }}
         />,
         <Button
@@ -564,8 +566,22 @@ export class App extends React.Component<AppProps, AppState> {
             onCancel={() => {
               this.setState({ newProjectDialog: null });
             }}
-            onCreate={async (template: Template) => {
-              await openProjectFiles(template);
+            onCreate={async (template: Template, name: string) => {
+              if (!name) {
+                this.toastContainer.showToast(<span>Project name is empty!</span>);
+                return;
+              }
+
+              // create new project and save
+              const newProject = new Project(name);
+              await Service.loadFilesIntoProject(template.files, newProject, template.baseUrl);
+
+              // save project before save into app store
+              const fiddle = await saveProject(name, newProject);
+              if (!fiddle) return;
+
+              // open new project and hide dialog
+              await openProject(newProject);
               this.setState({ newProjectDialog: false });
             }}
           />

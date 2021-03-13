@@ -19,19 +19,20 @@
  * SOFTWARE.
  */
 
-import { assert } from "../util";
-import { Minimatch } from "minimatch";
-import { File } from "./File";
-import { EventDispatcher } from "./EventDispatcher";
-import { FileType } from "./types";
+import { assert } from '../util';
+import { Minimatch } from 'minimatch';
+import { File } from './File';
+import { EventDispatcher } from './EventDispatcher';
+import { FileType } from './types';
 
 export class Directory extends File {
   name: string;
   children: File[] = [];
   isOpen: boolean = true;
-  readonly onDidChangeChildren = new EventDispatcher("Directory Changed ");
+  readonly onDidChangeChildren = new EventDispatcher('Directory Changed ');
   constructor(name: string) {
     super(name, FileType.Directory);
+    this.name = name;
   }
   notifyDidChangeChildren(file: File) {
     let directory: Directory = this;
@@ -57,28 +58,31 @@ export class Directory extends File {
     }
   }
   mapEachFile<T>(fn: (file: File) => T, excludeTransientFiles = false): T[] {
-    return this.children.filter((file: File) => {
-      if (excludeTransientFiles && file.isTransient) {
-        return false;
-      }
-      return true;
-    }).map(fn);
+    return this.children
+      .filter((file: File) => {
+        if (excludeTransientFiles && file.isTransient) {
+          return false;
+        }
+        return true;
+      })
+      .map(fn);
   }
   handleNameCollision(name: string, isDirectory?: boolean) {
+    if (!name) return;
     for (let i = 1; i <= this.children.length; i++) {
-      const nameParts = name.split(".");
+      const nameParts = name.split('.');
       const extension = nameParts.pop();
       let newName;
       if (isDirectory) {
         newName = `${name}${i + 1}`;
       } else {
-        newName = `${nameParts.join(".")}.${i + 1}.${extension}`;
+        newName = `${nameParts.join('.')}.${i + 1}.${extension}`;
       }
       if (!this.getImmediateChild(newName)) {
         return newName;
       }
     }
-    throw new Error("Name collision not handled");
+    throw new Error('Name collision not handled');
   }
   addFile(file: File) {
     assert(file.parent === null);
@@ -98,8 +102,8 @@ export class Directory extends File {
     this.notifyDidChangeChildren(file);
   }
   newDirectory(path: string | string[]): Directory {
-    if (typeof path === "string") {
-      path = path.split("/");
+    if (typeof path === 'string') {
+      path = path.split('/');
     }
     let directory: Directory = this;
     while (path.length) {
@@ -117,8 +121,8 @@ export class Directory extends File {
     return directory;
   }
   newFile(path: string | string[], type: FileType, isTransient = false, handleNameCollision = false): File {
-    if (typeof path === "string") {
-      path = path.split("/");
+    if (typeof path === 'string') {
+      path = path.split('/');
     }
     let directory: Directory = this;
     if (path.length > 1) {
@@ -141,8 +145,8 @@ export class Directory extends File {
     });
   }
   getFile(path: string | string[]): File {
-    if (typeof path === "string") {
-      path = path.split("/");
+    if (typeof path === 'string') {
+      path = path.split('/');
     }
     const file = this.getImmediateChild(path[0]);
     if (path.length > 1) {
@@ -158,9 +162,9 @@ export class Directory extends File {
     const list: string[] = [];
     function recurse(prefix: string, x: Directory) {
       if (prefix) {
-        prefix += "/";
+        prefix += '/';
       }
-      x.forEachFile(file => {
+      x.forEachFile((file) => {
         const path = prefix + file.name;
         if (file instanceof Directory) {
           recurse(path, file);
@@ -169,15 +173,15 @@ export class Directory extends File {
         }
       });
     }
-    recurse("", this);
+    recurse('', this);
     return list;
   }
   glob(pattern: string): string[] {
     const mm = new Minimatch(pattern);
-    return this.list().filter(path => mm.match(path));
+    return this.list().filter((path) => mm.match(path));
   }
   globFiles(pattern: string): File[] {
-    return this.glob(pattern).map(path => this.getFile(path));
+    return this.glob(pattern).map((path) => this.getFile(path));
   }
   hasChildren() {
     return this.children.length > 0;

@@ -1,6 +1,6 @@
-import { Controller, Get, Req } from '@nestjs/common';
+import { Controller, Get, Post, Req } from '@nestjs/common';
 import { Request } from 'express';
-import { AppService } from './app.service';
+import { AppService, ILoadFiddleResponse } from './app.service';
 
 @Controller()
 export class AppController {
@@ -12,7 +12,12 @@ export class AppController {
   }
 
   @Get('project')
-  async getProject(@Req() request: Request): Promise<any> {
+  async getProject(@Req() request: Request): Promise<ILoadFiddleResponse> {
     return this.appService.getProject(request);
+  }
+
+  @Post('project')
+  async postProject(@Req() request: Request): Promise<any> {
+    return this.appService.postProject(request);
   }
 }

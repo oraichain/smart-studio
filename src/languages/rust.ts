@@ -25,10 +25,10 @@
 // Derrived and modified from
 // https://github.com/mattgodbolt/compiler-explorer/blob/0a87dcb00abfc5931067a0eaf961b68a1d0a9bac/static/rust-mode.js
 
-import IRichLanguageConfiguration = monaco.languages.LanguageConfiguration;
-import ILanguage = monaco.languages.IMonarchLanguage;
-import IModel = monaco.editor.IModel;
-import IPosition = monaco.IPosition;
+type IRichLanguageConfiguration = monaco.languages.LanguageConfiguration;
+type ILanguage = monaco.languages.IMonarchLanguage;
+type IModel = monaco.editor.IModel;
+type IPosition = monaco.IPosition;
 
 let completionItems: monaco.languages.CompletionItem[] = null;
 function getCompletionItems(): monaco.languages.CompletionItem[] {
