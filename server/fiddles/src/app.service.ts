@@ -15,7 +15,7 @@ export interface IFiddleFile {
 }
 
 export interface ISaveFiddleResponse {
-  id: string;
+  id?: string;
   message: string;
   success: boolean;
 }
@@ -41,7 +41,7 @@ export class AppService {
     if (!fs.existsSync(contractPath)) {
       return {
         success: false,
-        message: `Smart Contract ${name} does not existed`,
+        message: `Smart Contract ${name} does not exist`,
       };
     } else {
       try {
@@ -78,21 +78,54 @@ export class AppService {
 
     if (fs.existsSync(contractPath)) {
       return {
-        id: null,
         success: false,
         message: `Smart Contract ${name} existed`,
       };
     }
 
-    // save all files
-    for (let file of files as IFiddleFile[]) {
-      fse.outputFileSync(path.join(contractPath, file.name), file.data);
+    try {
+      // save all files
+      for (let file of files as IFiddleFile[]) {
+        await fse.outputFile(path.join(contractPath, file.name), file.data);
+      }
+
+      return {
+        id: name.toString(),
+        message: `Project ${name} created`,
+        success: true,
+      };
+    } catch (ex) {
+      return {
+        success: false,
+        message: ex.message,
+      };
+    }
+  }
+
+  async postFile(req: Request): Promise<ISaveFiddleResponse> {
+    const { name, data }: IFiddleFile = req.body;
+    const filePath = path.join(smartContractFolder, name.toString());
+
+    if (!fs.existsSync(filePath)) {
+      return {
+        success: false,
+        message: `File ${name} does not exist`,
+      };
     }
 
-    return {
-      id: name.toString(),
-      message: `Project ${name} created`,
-      success: true,
-    };
+    try {
+      // save file
+      await fse.outputFile(filePath, data);
+      return {
+        id: name.toString(),
+        message: `Project ${name} created`,
+        success: true,
+      };
+    } catch (ex) {
+      return {
+        success: false,
+        message: ex.message,
+      };
+    }
   }
 }

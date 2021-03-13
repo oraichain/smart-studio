@@ -26,7 +26,9 @@ import { Directory } from './Directory';
 import { EventDispatcher } from './EventDispatcher';
 import { Problem } from './Problem';
 import { Project } from './Project';
-import { logLn } from '../actions/AppActions';
+import { AppAction, AppActionType, logLn } from '../actions/AppActions';
+import dispatcher from '../dispatcher';
+import appStore from '../stores/AppStore';
 
 export class File {
   name: string;
@@ -221,8 +223,14 @@ export class File {
       this.data = this.buffer.getValue();
       this.resetDirty();
     }
-    console.log('save', status);
+
     this.notifyDidChangeData();
+
+    // save data
+    const ret = await Service.saveFile(this);
+    if (!ret.success) {
+      status.logLn(ret.message, 'error');
+    }
   }
   toString() {
     return 'File [' + this.name + ']';

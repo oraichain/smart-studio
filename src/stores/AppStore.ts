@@ -19,10 +19,10 @@
  * SOFTWARE.
  */
 
-import { EventDispatcher, ModelRef, Project, File, Directory, FileType, SandboxRun } from "../models";
-import { Service } from "../service";
+import { EventDispatcher, ModelRef, Project, File, Directory, FileType, SandboxRun } from '../models';
+import { Service } from '../service';
 
-import dispatcher from "../dispatcher";
+import dispatcher from '../dispatcher';
 import {
   AppActionType,
   AppAction,
@@ -41,10 +41,10 @@ import {
   CloseViewAction,
   CloseTabsAction,
   OpenFileAction
-} from "../actions/AppActions";
-import Group from "../utils/group";
-import { assert } from "../util";
-import { ViewType, View, defaultViewTypeForFileType } from "../components/editor/View";
+} from '../actions/AppActions';
+import Group from '../utils/group';
+import { assert } from '../util';
+import { ViewType, View, defaultViewTypeForFileType } from '../components/editor/View';
 
 export class AppStore {
   private project: Project;
@@ -53,19 +53,19 @@ export class AppStore {
   private tabGroups: Group[];
   private activeTabGroup: Group;
 
-  onLoadProject = new EventDispatcher("AppStore onLoadProject");
-  onDidChangeStatus = new EventDispatcher("AppStore onDidChangeStatus");
-  onDidChangeProblems = new EventDispatcher("AppStore onDidChangeProblems");
-  onChange = new EventDispatcher("AppStore onChange");
-  onDirtyFileUsed = new EventDispatcher("AppStore onDirtyFileUsed");
-  onDidChangeBuffer = new EventDispatcher("AppStore onDidChangeBuffer");
-  onDidChangeData = new EventDispatcher("AppStore onDidChangeData");
-  onDidChangeDirty = new EventDispatcher("AppStore onDidChangeDirty");
-  onDidChangeChildren = new EventDispatcher("AppStore onDidChangeChildren");
-  onOutputChanged = new EventDispatcher("AppStore onOutputChanged");
-  onTabsChange = new EventDispatcher("AppStore onTabsChange");
-  onSandboxRun = new EventDispatcher("AppStore onSandboxRun");
-  onDidChangeIsContentModified = new EventDispatcher("AppStore onDidChangeIsContentModified");
+  onLoadProject = new EventDispatcher('AppStore onLoadProject');
+  onDidChangeStatus = new EventDispatcher('AppStore onDidChangeStatus');
+  onDidChangeProblems = new EventDispatcher('AppStore onDidChangeProblems');
+  onChange = new EventDispatcher('AppStore onChange');
+  onDirtyFileUsed = new EventDispatcher('AppStore onDirtyFileUsed');
+  onDidChangeBuffer = new EventDispatcher('AppStore onDidChangeBuffer');
+  onDidChangeData = new EventDispatcher('AppStore onDidChangeData');
+  onDidChangeDirty = new EventDispatcher('AppStore onDidChangeDirty');
+  onDidChangeChildren = new EventDispatcher('AppStore onDidChangeChildren');
+  onOutputChanged = new EventDispatcher('AppStore onOutputChanged');
+  onTabsChange = new EventDispatcher('AppStore onTabsChange');
+  onSandboxRun = new EventDispatcher('AppStore onSandboxRun');
+  onDidChangeIsContentModified = new EventDispatcher('AppStore onDidChangeIsContentModified');
 
   constructor() {
     this.project = null;
@@ -79,7 +79,7 @@ export class AppStore {
     this.tabGroups = [this.activeTabGroup];
     this.bindProject();
     this.isContentModified = false;
-    this.output = new File("output", FileType.Log);
+    this.output = new File('output', FileType.Log);
   }
 
   private loadProject(project: Project) {
@@ -185,18 +185,16 @@ export class AppStore {
     return this.project.hasStatus();
   }
 
-  private logLn(message: string, kind: "" | "info" | "warn" | "error" = "") {
-    message = message + "\n";
+  private logLn(message: string, kind: '' | 'info' | 'warn' | 'error' = '') {
+    message = message + '\n';
     if (kind) {
-      message = "[" + kind + "]: " + message;
+      message = '[' + kind + ']: ' + message;
     }
     const model = this.output.buffer;
     const lineCount = model.getLineCount();
     const lastLineLength = model.getLineMaxColumn(lineCount);
     const range = new monaco.Range(lineCount, lastLineLength, lineCount, lastLineLength);
-    model.applyEdits([
-      { forceMoveMarkers: true, range, text: message }
-    ]);
+    model.applyEdits([{ forceMoveMarkers: true, range, text: message }]);
     this.onOutputChanged.dispatch();
   }
 
@@ -205,7 +203,7 @@ export class AppStore {
     if (activeTabGroup.views.length === 0) {
       return;
     }
-    const activeGroupIndex = tabGroups.findIndex(group => group === activeTabGroup);
+    const activeGroupIndex = tabGroups.findIndex((group) => group === activeTabGroup);
 
     // Create a new group from the last file of currently active group
     const view = activeTabGroup.currentView.clone();
@@ -238,14 +236,14 @@ export class AppStore {
     const { tabGroups } = this;
     const groupsToClose: Group[] = [];
 
-    tabGroups.forEach(group => {
-      const viewFileDeleted = group.views.find(view => view.file === file);
+    tabGroups.forEach((group) => {
+      const viewFileDeleted = group.views.find((view) => view.file === file);
       group.close(viewFileDeleted);
       if (group.views.length === 0) {
         groupsToClose.push(group);
       }
     });
-    groupsToClose.forEach(group => {
+    groupsToClose.forEach((group) => {
       this.closeGroup(group);
     });
     this.onTabsChange.dispatch();
@@ -270,7 +268,7 @@ export class AppStore {
 
   private openFiles(files: string[][]) {
     const groups = files.map((paths: string[]) => {
-      const views = paths.map(file => {
+      const views = paths.map((file) => {
         const newFile = this.getFileByName(file).getModel();
         return new View(newFile, defaultViewTypeForFileType(newFile.type));
       });
@@ -296,11 +294,11 @@ export class AppStore {
   private sendSandboxRun(src: string) {
     this.onSandboxRun.dispatch({
       project: this.project,
-      src,
+      src
     } as SandboxRun);
   }
 
-  public handleActions(action: AppAction ) {
+  public handleActions(action: AppAction) {
     switch (action.type) {
       case AppActionType.OPEN_VIEW: {
         const { view, preview } = action as OpenViewAction;

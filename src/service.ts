@@ -376,6 +376,21 @@ export class Service {
     }
   }
 
+  static async saveFile(file: File): Promise<ISaveFiddleResponse> {
+    const json: IFiddleFile = {
+      name: file.getPath(),
+      data: file.getData().toString()
+    };
+    const baseURL = await getServiceURL(ServiceTypes.Service);
+    const response = await fetch(`${baseURL}/file`, {
+      method: 'POST',
+      headers: new Headers({ 'Content-type': 'application/json; charset=utf-8' }),
+      body: JSON.stringify(json)
+    });
+    const ret = await response.json();
+    return ret;
+  }
+
   static parseFiddleURI(): string {
     let uri = window.location.search.substring(1);
     if (uri) {

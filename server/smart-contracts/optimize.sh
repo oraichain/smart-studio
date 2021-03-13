@@ -28,10 +28,11 @@ echo "Building contract in $(realpath -m "$contractdir")"
     RUSTFLAGS='-C link-arg=-s' cargo build --release --target wasm32-unknown-unknown -p $contractdir    
 )
 
+wasm=$(basename $contractdir).wasm 
 # wasm-optimize on all results
 mkdir -p $contractdir/artifacts
-echo "Optimizing $contractdir.wasm"
-wasm-opt -Os "target/wasm32-unknown-unknown/release/$contractdir.wasm" -o "$contractdir/artifacts/$contractdir.wasm"
+echo "Optimizing $wasm"
+wasm-opt -Os "target/wasm32-unknown-unknown/release/$wasm" -o "$contractdir/artifacts/$wasm"
 
 
 # create hash

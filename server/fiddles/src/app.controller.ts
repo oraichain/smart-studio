@@ -20,4 +20,9 @@ export class AppController {
   async postProject(@Req() request: Request): Promise<any> {
     return this.appService.postProject(request);
   }
+
+  @Post('file')
+  async postFile(@Req() request: Request): Promise<any> {
+    return this.appService.postFile(request);
+  }
 }
