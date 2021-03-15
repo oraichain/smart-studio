@@ -7,6 +7,8 @@ const shell = require('shelljs');
 const distPath = path.resolve(__dirname, process.env.DIST_FOLDER || 'dist');
 
 module.exports = (env, options) => {
+  shell.exec(`yarn templates ${distPath}/templates`);
+
   const config = {
     entry: './src/index.tsx',
     output: {
