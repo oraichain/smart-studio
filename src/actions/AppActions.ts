@@ -310,7 +310,8 @@ export async function runTask(name: string, optional: boolean = false, externals
       const fiddle = await Service.buildProject(project.name);
 
       if (!fiddle.success) {
-        logLn(fiddle.message, 'error');
+        // raw error log
+        logLn(fiddle.message);
         return;
       } else {
         logLn(`Build project ${project.name} succeeded!`);
