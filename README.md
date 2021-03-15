@@ -2,8 +2,10 @@
 
 To build Oraichain Studio whenever a file changes run:
 
-```
+```bash
 yarn build-watch
+# to build client
+DIST_FOLDER=server/fiddles/dist yarn build
 ```
 
 To start a dev web server run:

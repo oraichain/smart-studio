@@ -21,13 +21,14 @@
     "**/bower_components": true
   },
   "files.exclude": {
-    "node_modules/**": true,
-    "**/.git": true,
+    "**/.git": true, // this is a default value
+    "**/.registry_cache": true,
+    "**/.DS_Store": true, // this is a default value
+    "**/node_modules": true, // this excludes all folders     
     "**/.svn": true,
     "**/.hg": true,
     "**/CVS": true,
-    "**/.DS_Store": true
   },
   "js/ts.implicitProjectConfig.experimentalDecorators": true,
-  "prettier.printWidth": 180
+  "prettier.printWidth": 180,
 }

@@ -31,10 +31,8 @@ export interface ILoadFiddleResponse {
 
 @Injectable()
 export class AppService {
-  getHello(): string {
-    return 'Hello World!';
-  }
-
+  // it run in dist folder
+  static readonly clientPath: string = path.join(__dirname);
   async getProject(req: Request): Promise<ILoadFiddleResponse> {
     const { name } = req.query;
 

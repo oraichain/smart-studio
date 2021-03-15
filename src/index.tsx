@@ -25,13 +25,10 @@ import ReactDOM from 'react-dom';
 import { App, EmbeddingParams, EmbeddingType } from './components/App';
 import { layout } from './util';
 import { MonacoUtils } from './monaco-utils';
-// import { BrowserNotSupported } from './components/BrowserNotSupported';
 import registerLanguages from './utils/registerLanguages';
 import registerTheme from './utils/registerTheme';
-// import { Logger } from './utils/Logger';
-// import { ErrorBoundary } from './components/ErrorBoundary';
 
-import '../style/global.css';
+import './global.css';
 
 export function forEachUrlParameter(callback: (key: string, value: any) => void) {
   let url = window.location.search.substring(1);

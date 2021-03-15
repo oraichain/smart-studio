@@ -4,7 +4,7 @@
   "description": "Oraichain Studio helps building smart contracts written in WebAssembly over the air",
   "main": "index.js",
   "scripts": {
-    "build": "webpack --mode production && npm run templates",
+    "build": "webpack --mode production --progress",
     "build-watch": "webpack --watch --mode development",
     "start": "webpack-dev-server -d --host 0.0.0.0 --hot",
     "test": "webpack --mode production && node bin/check-bundle-size.js && npm run jest && npm run tslint",
@@ -77,7 +77,8 @@
     "react-modal": "^3.6.1",
     "request": "^2.88.0",
     "tar-js": "^0.3.0",
-    "tslint-react": "^3.6.0"
+    "tslint-react": "^3.6.0",
+    "shelljs": "^0.8.4"
   },
   "devDependencies": {
     "@babel/core": "^7.6.0",

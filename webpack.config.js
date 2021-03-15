@@ -2,15 +2,18 @@ const path = require('path');
 const webpack = require('webpack');
 const MonacoWebpackPlugin = require('monaco-editor-webpack-plugin');
 const ForkTsCheckerWebpackPlugin = require('fork-ts-checker-webpack-plugin');
+const shell = require('shelljs');
 
-module.exports = (env) => {
+const distPath = path.resolve(__dirname, process.env.DIST_FOLDER || 'dist');
+
+module.exports = (env, options) => {
   const config = {
     entry: './src/index.tsx',
     output: {
       filename: '[name].bundle.js',
       chunkFilename: '[name].bundle.js',
-      path: path.resolve(__dirname, 'dist/'),
-      publicPath: '/dist/',
+      path: distPath,
+      publicPath: '/',
       globalObject: 'this'
     },
 
@@ -99,5 +102,20 @@ module.exports = (env) => {
     }
   };
 
+  if (options.mode === 'production') {
+    config.plugins.push({
+      apply: (compiler) => {
+        compiler.hooks.afterEmit.tap('AfterEmitPlugin', (compilation) => {
+          // copy file to destination
+          shell.cp(path.resolve(__dirname, 'index.html'), distPath);
+          shell.cp(path.resolve(__dirname, 'config.json'), distPath);
+          shell.cp('-r', path.resolve(__dirname, 'style'), distPath);
+          shell.cp('-r', path.resolve(__dirname, 'fonts'), distPath);
+          shell.cp('-r', path.resolve(__dirname, 'lib'), distPath);
+          shell.cp('-r', path.resolve(__dirname, 'img'), distPath);
+        });
+      }
+    });
+  }
   return config;
 };

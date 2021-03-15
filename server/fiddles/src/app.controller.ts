@@ -1,4 +1,5 @@
-import { Controller, Get, Post, Delete, Req, Put } from '@nestjs/common';
+import path from 'path';
+import { Controller, Get, Post, Delete, Req, Put, Res } from '@nestjs/common';
 import { Request } from 'express';
 import {
   AppService,
@@ -11,8 +12,8 @@ export class AppController {
   constructor(private readonly appService: AppService) {}
 
   @Get()
-  getHello(): string {
-    return this.appService.getHello();
+  root(@Res() response): void {
+    response.sendFile(path.resolve(AppService.clientPath, 'index.html'));
   }
 
   @Get('project')

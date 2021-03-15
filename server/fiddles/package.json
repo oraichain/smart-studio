@@ -25,6 +25,7 @@
     "@nestjs/common": "^7.6.13",
     "@nestjs/core": "^7.6.13",
     "@nestjs/platform-express": "^7.6.13",
+    "@nestjs/serve-static": "^2.1.4",
     "fs-extra": "^9.1.0",
     "reflect-metadata": "^0.1.13",
     "rimraf": "^3.0.2",
