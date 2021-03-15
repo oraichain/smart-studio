@@ -4,7 +4,13 @@ import path from 'path';
 import fs from 'fs';
 import fse from 'fs-extra';
 
-import { getFiles, getFileSize, SmartContractUtils } from './app.utils';
+import {
+  filterName,
+  filterPath,
+  getFiles,
+  getFileSize,
+  SmartContractUtils,
+} from './app.utils';
 
 const smartContractFolder = process.env.CONTRACT_FOLDER || '/code';
 const smartContractPackages = path.join(smartContractFolder, 'packages');
@@ -34,9 +40,9 @@ export class AppService {
   // it run in dist folder
   static readonly clientPath: string = path.join(__dirname);
   async getProject(req: Request): Promise<ILoadFiddleResponse> {
-    const { name } = req.query;
-
-    const contractPath = path.join(smartContractPackages, name.toString());
+    let { name } = req.query;
+    name = filterName(name);
+    const contractPath = path.join(smartContractPackages, name);
 
     if (!fs.existsSync(contractPath)) {
       return {
@@ -72,28 +78,25 @@ export class AppService {
   }
 
   async saveProject(req: Request): Promise<ISaveFiddleResponse> {
-    const { name } = req.query;
+    let { name } = req.query;
+    name = filterName(name);
     const { files } = req.body;
-    const contractPath = path.join(smartContractPackages, name.toString());
+    const contractPath = path.join(smartContractPackages, name);
 
     // TODO: check permission
-    // if (fs.existsSync(contractPath)) {
-    //   return {
-    //     success: false,
-    //     message: `Smart Contract ${name} existed`,
-    //   };
-    // }
-
     const status = fs.existsSync(contractPath) ? 'saved' : 'created';
 
     try {
       // save all files
       for (let file of files as IFiddleFile[]) {
-        await fse.outputFile(path.join(contractPath, file.name), file.data);
+        await fse.outputFile(
+          path.join(contractPath, filterPath(file.name)),
+          file.data,
+        );
       }
 
       // add Cargo.toml to project of workspace, so make sure there is file in project to init
-      smartContractUtils.initProject(name.toString());
+      smartContractUtils.initProject(name);
 
       return {
         id: name.toString(),
@@ -109,8 +112,9 @@ export class AppService {
   }
 
   async saveFile(req: Request): Promise<ISaveFiddleResponse> {
-    const { name, data }: IFiddleFile = req.body;
-    const filePath = path.join(smartContractPackages, name.toString());
+    let { name, data }: IFiddleFile = req.body;
+    name = filterPath(name);
+    const filePath = path.join(smartContractPackages, name);
 
     if (filePath.endsWith('Cargo.toml')) {
       return {
@@ -138,8 +142,9 @@ export class AppService {
   }
 
   async deleteFile(req: Request): Promise<ISaveFiddleResponse> {
-    const { name }: IFiddleFile = req.body;
-    const filePath = path.join(smartContractPackages, name.toString());
+    let { name } = req.body;
+    name = filterPath(name);
+    const filePath = path.join(smartContractPackages, name);
 
     if (filePath.endsWith('Cargo.toml')) {
       return {
@@ -159,7 +164,7 @@ export class AppService {
       // delete file
       await fse.remove(filePath);
       return {
-        id: name.toString(),
+        id: name,
         message: `File ${name} deleted`,
         success: true,
       };
@@ -172,8 +177,10 @@ export class AppService {
   }
 
   async renameFile(req: Request): Promise<ISaveFiddleResponse> {
-    const { name, newName } = req.body;
-    const filePath = path.join(smartContractPackages, name.toString());
+    let { name, newName } = req.body;
+    name = filterPath(name);
+    newName = filterPath(newName);
+    const filePath = path.join(smartContractPackages, name);
 
     if (filePath.endsWith('Cargo.toml')) {
       return {
@@ -191,10 +198,10 @@ export class AppService {
 
     try {
       // rename file from the same folder
-      const newFilePath = path.join(path.dirname(filePath), newName.toString());
+      const newFilePath = path.join(path.dirname(filePath), newName);
       await fse.rename(filePath, newFilePath);
       return {
-        id: name.toString(),
+        id: newName,
         message: `File ${name} renamed to ${newName}`,
         success: true,
       };
@@ -207,14 +214,14 @@ export class AppService {
   }
 
   async buildProject(req: Request): Promise<ILoadFiddleResponse> {
-    const { name } = req.body;
+    let { name } = req.body;
+    name = filterName(name);
+    const ret = smartContractUtils.buildProject(name);
 
-    const success = smartContractUtils.buildProject(name);
-
-    if (!success) {
+    if (!ret.success) {
       return {
         success: false,
-        message: 'Build failed!',
+        message: ret.message,
       };
     }
 

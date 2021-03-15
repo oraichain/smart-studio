@@ -26,10 +26,32 @@ export const getFileSize = (size: number): string => {
   return `${(Math.round(+fileSize / 1024) / 1000).toFixed(2)} MB`;
 };
 
+export const filterPath = (name: any): string => {
+  const [base, ext] = name.toString().split('.');
+
+  let filePath = base
+    .replace(/[^\w\/]/g, '')
+    .replace(/\/{2,}/g, '/')
+    .replace(/^\//, '');
+  if (ext) {
+    filePath = `${filePath}.${ext}`;
+  }
+  return filePath;
+};
+
+export const filterName = (name: any): string => {
+  return name.toString().replace(/[^\w]/g, '');
+};
+
 export interface WorkSpace extends JsonMap {
   workspace?: {
     members: string[];
   };
+}
+
+export interface IBuildFiddleResponse {
+  message: string;
+  success: boolean;
 }
 
 export class SmartContractUtils {
@@ -88,28 +110,39 @@ cosmwasm-schema = {version = "0.11.0"}`;
     // delete folder
   }
 
-  public buildProject(name: string): Boolean {
+  public buildProject(name: string): IBuildFiddleResponse {
     // shell session for each operation in queue will go to contractPath
     shell.cd(this.contractPath);
-
     // buid project
-    if (
-      shell.exec(
-        `RUSTFLAGS='-C link-arg=-s' cargo build --release --target wasm32-unknown-unknown -p ${name}`,
-      ).code !== 0
-    ) {
-      return false;
+    let execution = shell.exec(
+      `RUSTFLAGS='-C link-arg=-s' cargo build -q --release --target wasm32-unknown-unknown -p ${name}`,
+    );
+    if (execution.code !== 0) {
+      return {
+        // filter leaner message
+        message: execution.stderr
+          .replace(/(?:= note|error):.*\n/g, '')
+          .replace(/To learn more.*/, '')
+          .trim(),
+        success: false,
+      };
     }
 
     // wasm-optimize on all results
-    if (
-      shell.exec(
-        `mkdir -p packages/${name}/artifacts && wasm-opt -Os "target/wasm32-unknown-unknown/release/${name}.wasm" -o "packages/${name}/artifacts/${name}.wasm"`,
-      ).code !== 0
-    ) {
-      return false;
+    execution = shell.exec(
+      `mkdir -p packages/${name}/artifacts && wasm-opt -Os "target/wasm32-unknown-unknown/release/${name}.wasm" -o "packages/${name}/artifacts/${name}.wasm"`,
+    );
+    if (execution.code !== 0) {
+      return {
+        message: execution.stderr,
+        success: false,
+      };
     }
 
-    return true;
+    // return true
+    return {
+      message: execution.stdout,
+      success: true,
+    };
   }
 }

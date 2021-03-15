@@ -20,7 +20,7 @@
  */
 
 import dispatcher from '../dispatcher';
-import { File, Directory, Project } from '../models';
+import { File, Directory, Project, Problem } from '../models';
 import { App } from '../components/App';
 import { Template } from '../components/NewProjectDialog';
 import { View, ViewType } from '../components/editor/View';
@@ -308,12 +308,14 @@ export async function runTask(name: string, optional: boolean = false, externals
   switch (name) {
     case 'build':
       const fiddle = await Service.buildProject(project.name);
+
       if (!fiddle.success) {
         logLn(fiddle.message, 'error');
         return;
       } else {
         logLn(`Build project ${project.name} succeeded!`);
       }
+
       // load wasm file to show
       await Service.loadFilesIntoProject(fiddle.files, project);
       return;
