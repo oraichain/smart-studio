@@ -205,6 +205,7 @@ export class File {
     path.push(this.name);
     return path.join('/');
   }
+
   async save(status: IStatusProvider) {
     if (!this.isDirty) {
       return;

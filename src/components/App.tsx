@@ -396,8 +396,18 @@ export class App extends React.Component<AppProps, AppState> {
           label="Delete"
           title="Delete Project"
           isDisabled={this.toolbarButtonsAreDisabled()}
-          onClick={() => {
-            this.showToast(<span>TODO: delete the project</span>);
+          onClick={async () => {
+            const message = `Are you sure you want to delete Project '${this.state.fiddle}' and its contents?`;
+
+            if (confirm(message)) {
+              const projectModel = this.state.project.getModel();
+              const ret = await Service.deleteFile(projectModel);
+              if (ret.success) {
+                location.search = '';
+              } else {
+                this.showToast(<span>${ret.message}</span>, 'error');
+              }
+            }
           }}
         />,
         <Button
@@ -527,6 +537,9 @@ export class App extends React.Component<AppProps, AppState> {
               // save project before save into app store
               const fiddle = await saveProject(newProject);
               if (!fiddle) return;
+
+              // change url
+              history.replaceState({}, fiddle, `?f=${fiddle}`);
 
               // open new project and hide dialog
               await openProject(newProject);

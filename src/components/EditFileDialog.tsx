@@ -101,8 +101,8 @@ export class EditFileDialog extends React.Component<EditFileDialogProps, EditFil
             />
             <Button
               icon={<GoPencil />}
-              label="Edit"
-              title="Edit"
+              label="Save"
+              title="Save"
               isDisabled={!this.state.name || !!this.getNameError()}
               onClick={() => {
                 return this.props.onChange && this.props.onChange(this.state.name, this.state.description);

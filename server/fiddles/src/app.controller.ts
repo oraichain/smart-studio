@@ -21,13 +21,13 @@ export class AppController {
   }
 
   @Post('project')
-  async postProject(@Req() request: Request): Promise<ISaveFiddleResponse> {
-    return this.appService.postProject(request);
+  async saveProject(@Req() request: Request): Promise<ISaveFiddleResponse> {
+    return this.appService.saveProject(request);
   }
 
   @Post('file')
-  async postFile(@Req() request: Request): Promise<ISaveFiddleResponse> {
-    return this.appService.postFile(request);
+  async saveFile(@Req() request: Request): Promise<ISaveFiddleResponse> {
+    return this.appService.saveFile(request);
   }
 
   @Put('file')

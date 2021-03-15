@@ -252,9 +252,19 @@ export class Service {
   }
 
   static async saveFile(file: File): Promise<ISaveFiddleResponse> {
+    const fileData = file.getData();
+    // there is no content to save
+    if (!fileData) {
+      return {
+        id: file.name,
+        success: true,
+        message: `File ${file.name} created`
+      };
+    }
+
     const json: IFiddleFile = {
       name: file.getPath(),
-      data: file.getData().toString()
+      data: fileData.toString()
     };
     const baseURL = await getServiceURL(ServiceTypes.Service);
     const response = await fetch(`${baseURL}/file`, {
@@ -338,35 +348,34 @@ export class Service {
   static async saveProject(project: Project, uploadedFiles?: File[]): Promise<ISaveFiddleResponse> {
     const files: IFiddleFile[] = [];
     // if there is no upload files, save current projects, otherwise save new uploadedFiles
+    const processFile = (f: File) => {
+      let data: string;
+      let type: 'binary' | 'text';
+      if (isBinaryFileType(f.type)) {
+        data = base64EncodeBytes(new Uint8Array(f.data as ArrayBuffer));
+        type = 'binary';
+      } else {
+        data = f.data as string;
+        type = 'text';
+      }
+      const file = {
+        name: f.getPath(project),
+        data,
+        type
+      };
+      files.push(file);
+    };
+
     if (!Array.isArray(uploadedFiles)) {
-      project.forEachFile(
-        (f: File) => {
-          let data: string;
-          let type: 'binary' | 'text';
-          if (isBinaryFileType(f.type)) {
-            data = base64EncodeBytes(new Uint8Array(f.data as ArrayBuffer));
-            type = 'binary';
-          } else {
-            data = f.data as string;
-            type = 'text';
-          }
-          const file = {
-            name: f.getPath(project),
-            data,
-            type
-          };
-          files.push(file);
-        },
-        true,
-        true
-      );
+      project.forEachFile(processFile, true, true);
     } else {
-      // get content from File array
-      for (let file of uploadedFiles) {
-        files.push({
-          name: file.name,
-          data: file.data.toString()
-        });
+      // if there is directory, do loop
+      for (let f of uploadedFiles) {
+        if (f.type === FileType.Directory) {
+          (f as Directory).forEachFile(processFile, true, true);
+        } else {
+          processFile(f);
+        }
       }
     }
 

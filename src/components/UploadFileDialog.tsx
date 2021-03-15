@@ -21,7 +21,6 @@
 
 import React from 'react';
 import ReactModal from 'react-modal';
-import appStore from '../stores/AppStore';
 import { Button } from './shared/Button';
 import { GoFile, GoX, GoCloudUpload, GoFileDirectory } from './shared/Icons';
 import { File, Directory, ModelRef } from '../models';
@@ -46,9 +45,14 @@ export interface UploadFileDialogState {
 export class UploadFileDialog extends React.Component<UploadFileDialogProps, UploadFileDialogState> {
   root: ModelRef<Directory>;
   uploadInput: UploadInput;
-  constructor(props: any) {
+  constructor(props: UploadFileDialogProps) {
     super(props);
-    this.root = ModelRef.getRef(new Directory('root'));
+    // immediate folder from current directory
+    const currentDir = props.directory.getModel();
+    const project = currentDir.getProject();
+    const rootPath = currentDir.parent ? currentDir.getPath(project) : '';
+
+    this.root = ModelRef.getRef(new Directory(rootPath));
     this.root.getModel().onDidChangeChildren.register(() => this.onRootChildrenChange());
     this.state = { hasFilesToUpload: false };
   }
@@ -128,6 +132,7 @@ export class UploadFileDialog extends React.Component<UploadFileDialogProps, Upl
                 this.uploadInput.open('directory');
               }}
             />
+
             <Button
               icon={<GoCloudUpload />}
               label="Upload"
@@ -137,17 +142,6 @@ export class UploadFileDialog extends React.Component<UploadFileDialogProps, Upl
                 return this.props.onUpload && this.props.onUpload(root.children.slice(0));
               }}
             />
-            {root.children.length === 1 &&
-              root.children[0] instanceof Directory && (
-                <Button
-                  icon={<GoCloudUpload />}
-                  label={'Upload Root Contents'}
-                  title={'Upload contents of ' + root.children[0].name}
-                  onClick={() => {
-                    return this.props.onUpload && this.props.onUpload((root.children[0] as Directory).children.slice(0));
-                  }}
-                />
-              )}
           </div>
         </div>
       </ReactModal>

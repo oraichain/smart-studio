@@ -73,17 +73,20 @@ export class AppService {
     }
   }
 
-  async postProject(req: Request): Promise<ISaveFiddleResponse> {
+  async saveProject(req: Request): Promise<ISaveFiddleResponse> {
     const { name } = req.query;
     const { files } = req.body;
     const contractPath = path.join(smartContractPackages, name.toString());
 
-    if (fs.existsSync(contractPath)) {
-      return {
-        success: false,
-        message: `Smart Contract ${name} existed`,
-      };
-    }
+    // TODO: check permission
+    // if (fs.existsSync(contractPath)) {
+    //   return {
+    //     success: false,
+    //     message: `Smart Contract ${name} existed`,
+    //   };
+    // }
+
+    const status = fs.existsSync(contractPath) ? 'saved' : 'created';
 
     try {
       // save all files
@@ -96,7 +99,7 @@ export class AppService {
 
       return {
         id: name.toString(),
-        message: `Project ${name} created`,
+        message: `Project ${name} ${status}`,
         success: true,
       };
     } catch (ex) {
@@ -107,7 +110,7 @@ export class AppService {
     }
   }
 
-  async postFile(req: Request): Promise<ISaveFiddleResponse> {
+  async saveFile(req: Request): Promise<ISaveFiddleResponse> {
     const { name, data }: IFiddleFile = req.body;
     const filePath = path.join(smartContractPackages, name.toString());
 
@@ -189,8 +192,8 @@ export class AppService {
     }
 
     try {
-      // rename file
-      const newFilePath = path.join(smartContractPackages, newName.toString());
+      // rename file from the same folder
+      const newFilePath = path.join(path.dirname(filePath), newName.toString());
       await fse.rename(filePath, newFilePath);
       return {
         id: name.toString(),
