@@ -311,6 +311,8 @@ export async function runTask(name: string, optional: boolean = false, externals
       if (!fiddle.success) {
         logLn(fiddle.message, 'error');
         return;
+      } else {
+        logLn(`Build project ${project.name} succeeded!`);
       }
       // load wasm file to show
       await Service.loadFilesIntoProject(fiddle.files, project);
