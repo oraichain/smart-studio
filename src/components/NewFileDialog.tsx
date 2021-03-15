@@ -19,8 +19,8 @@
  * SOFTWARE.
  */
 
-import * as React from 'react';
-import * as ReactModal from 'react-modal';
+import React from 'react';
+import ReactModal from 'react-modal';
 import { Button } from './shared/Button';
 import { GoFile, GoX } from './shared/Icons';
 import appStore from '../stores/AppStore';

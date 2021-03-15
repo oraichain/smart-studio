@@ -19,35 +19,38 @@
  * SOFTWARE.
  */
 
-import * as React from "react";
-import { Service } from "../service";
-import { View } from "./editor";
+import React from 'react';
+import { Service } from '../service';
+import { View } from './editor';
 
 export interface MarkdownProps {
   src: string;
 }
 
-export class Markdown extends React.Component<MarkdownProps, {
-  html: string
-}> {
+export class Markdown extends React.Component<
+  MarkdownProps,
+  {
+    html: string;
+  }
+> {
   constructor(props: MarkdownProps) {
     super(props);
     this.state = {
-      html: "Loading ..."
+      html: 'Loading ...'
     };
   }
   async componentDidMount() {
     const html = await Service.compileMarkdownToHtml(this.props.src);
-    this.setState({html});
+    this.setState({ html });
   }
   async componentWillReceiveProps(props: MarkdownProps) {
     if (this.props.src !== props.src) {
       const html = await Service.compileMarkdownToHtml(props.src);
-      this.setState({html});
+      this.setState({ html });
     }
   }
   render() {
-    return <div style={{padding: "8px", height: "100%", overflow: "scroll"}} className="md" dangerouslySetInnerHTML={{__html: this.state.html}}/>;
+    return <div style={{ padding: '8px', height: '100%', overflow: 'scroll' }} className="md" dangerouslySetInnerHTML={{ __html: this.state.html }} />;
   }
 }
 
@@ -55,9 +58,12 @@ export interface MarkdownViewProps {
   view: View;
 }
 
-export class MarkdownView extends React.Component<MarkdownViewProps, {
-  markdown: string;
-}> {
+export class MarkdownView extends React.Component<
+  MarkdownViewProps,
+  {
+    markdown: string;
+  }
+> {
   constructor(props: MarkdownViewProps) {
     super(props);
     this.state = {
@@ -68,7 +74,7 @@ export class MarkdownView extends React.Component<MarkdownViewProps, {
     this.setState({
       markdown: this.props.view.file.buffer.getValue()
     });
-  }
+  };
   componentDidMount() {
     this.props.view.file.onDidChangeBuffer.register(this.onDidChangeBuffer);
   }
@@ -87,6 +93,6 @@ export class MarkdownView extends React.Component<MarkdownViewProps, {
     }
   }
   render() {
-    return <Markdown src={this.state.markdown}/>;
+    return <Markdown src={this.state.markdown} />;
   }
 }

@@ -19,33 +19,36 @@
  * SOFTWARE.
  */
 
-import * as React from "react";
-import { Service } from "../service";
-import { View } from "./editor";
+import React from 'react';
+import { Service } from '../service';
+import { View } from './editor';
 
 declare const Viz: any;
 
 function isVizLoaded() {
-  return typeof Viz !== "undefined";
+  return typeof Viz !== 'undefined';
 }
 
 async function loadViz(): Promise<any> {
-  await Service.lazyLoad("lib/viz-lite.js");
+  await Service.lazyLoad('lib/viz-lite.js');
 }
 
 export interface VizViewProps {
   view: View;
 }
 
-export class VizView extends React.Component<VizViewProps, {
-  isVizLoaded: boolean;
-  content: string;
-}> {
+export class VizView extends React.Component<
+  VizViewProps,
+  {
+    isVizLoaded: boolean;
+    content: string;
+  }
+> {
   constructor(props: VizViewProps) {
     super(props);
     this.state = {
       isVizLoaded: isVizLoaded(),
-      content: this.props.view.file.buffer.getValue(),
+      content: this.props.view.file.buffer.getValue()
     };
   }
   updateThrottleDuration = 500;
@@ -57,15 +60,15 @@ export class VizView extends React.Component<VizViewProps, {
     this.updateTimeout = window.setTimeout(() => {
       this.updateTimeout = 0;
       this.setState({
-        content: this.props.view.file.buffer.getValue(),
+        content: this.props.view.file.buffer.getValue()
       });
     }, this.updateThrottleDuration);
-  }
+  };
   async componentWillMount() {
     if (!this.state.isVizLoaded) {
       await loadViz();
       this.setState({
-        isVizLoaded: isVizLoaded(),
+        isVizLoaded: isVizLoaded()
       });
     }
   }
@@ -89,7 +92,7 @@ export class VizView extends React.Component<VizViewProps, {
     }
     try {
       const svg = Viz(this.state.content);
-      return <div style={{width: "100%", height: "100%", overflow: "scroll"}} dangerouslySetInnerHTML={{__html: svg}}/>;
+      return <div style={{ width: '100%', height: '100%', overflow: 'scroll' }} dangerouslySetInnerHTML={{ __html: svg }} />;
     } catch (e) {
       return <div>GraphViz Error</div>;
     }

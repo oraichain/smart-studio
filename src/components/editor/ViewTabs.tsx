@@ -19,19 +19,19 @@
  * SOFTWARE.
  */
 
-import * as React from "react";
-import { assert } from "../../util";
-import { Tabs, Tab, TabProps } from "./Tabs";
-import { EditorView } from "./Editor";
-import { getIconForFileType, FileType, IStatusProvider } from "../../models";
-import { Markdown, MarkdownView } from ".././Markdown";
-import { Button } from "../shared/Button";
-import { GoBook, GoClippy, GoFile, GoKebabHorizontal, GoEye, GoCode } from "../shared/Icons";
-import { View, ViewType, isViewFileDirty } from "./View";
-import { BinaryView } from "../Binary";
-import { VizView } from "../Viz";
-import { pushStatus, popStatus, logLn } from "../../actions/AppActions";
-import appStore from "../../stores/AppStore";
+import React from 'react';
+import { assert } from '../../util';
+import { Tabs, Tab, TabProps } from './Tabs';
+import { EditorView } from './Editor';
+import { getIconForFileType, FileType, IStatusProvider } from '../../models';
+import { Markdown, MarkdownView } from '.././Markdown';
+import { Button } from '../shared/Button';
+import { GoBook, GoClippy, GoFile, GoKebabHorizontal, GoEye, GoCode } from '../shared/Icons';
+import { View, ViewType, isViewFileDirty } from './View';
+import { BinaryView } from '../Binary';
+import { VizView } from '../Viz';
+import { pushStatus, popStatus, logLn } from '../../actions/AppActions';
+import appStore from '../../stores/AppStore';
 
 export interface ViewTabsProps {
   /**
@@ -127,7 +127,7 @@ export class ViewTabs extends React.Component<ViewTabsProps, ViewTabsState> {
     this.setState({
       isActiveViewFileDirty: isViewFileDirty(this.props.view)
     });
-  }
+  };
 
   renderViewCommands() {
     const { view } = this.props;
@@ -157,10 +157,8 @@ export class ViewTabs extends React.Component<ViewTabsProps, ViewTabsState> {
         <Button
           key="toggle"
           icon={markdown ? <GoCode /> : <GoEye />}
-          title={markdown ? "Edit Markdown" : "Preview Markdown"}
-          onClick={() =>
-            this.props.onChangeViewType(view, markdown ? ViewType.Editor : ViewType.Markdown)
-          }
+          title={markdown ? 'Edit Markdown' : 'Preview Markdown'}
+          onClick={() => this.props.onChangeViewType(view, markdown ? ViewType.Editor : ViewType.Markdown)}
         />
       );
     } else if (view.file.type === FileType.DOT) {
@@ -169,10 +167,8 @@ export class ViewTabs extends React.Component<ViewTabsProps, ViewTabsState> {
         <Button
           key="toggle"
           icon={viz ? <GoCode /> : <GoEye />}
-          title={viz ? "Edit GraphViz DOT File" : "Preview GraphViz DOT File"}
-          onClick={() =>
-            this.props.onChangeViewType(view, viz ? ViewType.Editor : ViewType.Viz)
-          }
+          title={viz ? 'Edit GraphViz DOT File' : 'Preview GraphViz DOT File'}
+          onClick={() => this.props.onChangeViewType(view, viz ? ViewType.Editor : ViewType.Viz)}
         />
       );
     }
@@ -195,43 +191,46 @@ export class ViewTabs extends React.Component<ViewTabsProps, ViewTabsState> {
     } else if (file) {
       viewer = <EditorView view={view} options={{ readOnly: file.isBufferReadOnly }} />;
     } else {
-      return <div className="editor-pane-container empty"/>;
+      return <div className="editor-pane-container empty" />;
     }
-    let className = "editor-pane-container";
-    if (!hasFocus) { className += " blurred"; }
-    return <div className={className} onClick={this.props.onFocus}>
-      <Tabs
-        onDoubleClick={() => {
-          return this.props.onNewFile();
-        }
-      }
-        commands={this.renderViewCommands()}
-      >
-        {views.map(v => {
-          const { file: x } = v;
-          let name = x.name;
-          if (v.type === ViewType.Binary) {
-            name = "Binary " + name;
-          } else if (v.type === ViewType.Markdown || v.type === ViewType.Viz) {
-            name = "Preview " + name;
-          }
-          return <Tab
-            key={x.key}
-            label={name}
-            value={v}
-            icon={getIconForFileType(x.type)}
-            isMarked={x.isDirty}
-            isActive={v === view}
-            isItalic={v === preview}
-            onClick={onClickView}
-            onDoubleClick={onDoubleClickView}
-            onClose={onClose}
-          />;
-        })}
-      </Tabs>
-      <div style={{ height: "calc(100% - 40px)" }}>
-        {viewer}
+    let className = 'editor-pane-container';
+    if (!hasFocus) {
+      className += ' blurred';
+    }
+    return (
+      <div className={className} onClick={this.props.onFocus}>
+        <Tabs
+          onDoubleClick={() => {
+            return this.props.onNewFile();
+          }}
+          commands={this.renderViewCommands()}
+        >
+          {views.map((v) => {
+            const { file: x } = v;
+            let name = x.name;
+            if (v.type === ViewType.Binary) {
+              name = 'Binary ' + name;
+            } else if (v.type === ViewType.Markdown || v.type === ViewType.Viz) {
+              name = 'Preview ' + name;
+            }
+            return (
+              <Tab
+                key={x.key}
+                label={name}
+                value={v}
+                icon={getIconForFileType(x.type)}
+                isMarked={x.isDirty}
+                isActive={v === view}
+                isItalic={v === preview}
+                onClick={onClickView}
+                onDoubleClick={onDoubleClickView}
+                onClose={onClose}
+              />
+            );
+          })}
+        </Tabs>
+        <div style={{ height: 'calc(100% - 40px)' }}>{viewer}</div>
       </div>
-    </div>;
+    );
   }
 }

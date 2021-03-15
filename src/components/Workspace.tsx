@@ -19,7 +19,7 @@
  * SOFTWARE.
  */
 
-import * as React from 'react';
+import React from 'react';
 import { Header } from './Header';
 import { DirectoryTree } from './DirectoryTree';
 import { Project, File, Directory, ModelRef } from '../models';

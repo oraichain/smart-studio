@@ -118,6 +118,35 @@ export class AppService {
       };
     }
 
+    const status = fs.existsSync(filePath) ? 'saved' : 'created';
+
+    try {
+      // save file
+      await fse.outputFile(filePath, data);
+      return {
+        id: name.toString(),
+        message: `File ${name} ${status}`,
+        success: true,
+      };
+    } catch (ex) {
+      return {
+        success: false,
+        message: ex.message,
+      };
+    }
+  }
+
+  async deleteFile(req: Request): Promise<ISaveFiddleResponse> {
+    const { name }: IFiddleFile = req.body;
+    const filePath = path.join(smartContractPackages, name.toString());
+
+    if (filePath.endsWith('Cargo.toml')) {
+      return {
+        success: false,
+        message: `Can not delete Cargo.toml for this package: ${name}`,
+      };
+    }
+
     if (!fs.existsSync(filePath)) {
       return {
         success: false,
@@ -126,11 +155,46 @@ export class AppService {
     }
 
     try {
-      // save file
-      await fse.outputFile(filePath, data);
+      // delete file
+      await fse.remove(filePath);
       return {
         id: name.toString(),
-        message: `Project ${name} created`,
+        message: `File ${name} deleted`,
+        success: true,
+      };
+    } catch (ex) {
+      return {
+        success: false,
+        message: ex.message,
+      };
+    }
+  }
+
+  async renameFile(req: Request): Promise<ISaveFiddleResponse> {
+    const { name, newName } = req.body;
+    const filePath = path.join(smartContractPackages, name.toString());
+
+    if (filePath.endsWith('Cargo.toml')) {
+      return {
+        success: false,
+        message: `Can not rename Cargo.toml for this package: ${name}`,
+      };
+    }
+
+    if (!fs.existsSync(filePath)) {
+      return {
+        success: false,
+        message: `File ${name} does not exist`,
+      };
+    }
+
+    try {
+      // rename file
+      const newFilePath = path.join(smartContractPackages, newName.toString());
+      await fse.rename(filePath, newFilePath);
+      return {
+        id: name.toString(),
+        message: `File ${name} renamed to ${newName}`,
         success: true,
       };
     } catch (ex) {

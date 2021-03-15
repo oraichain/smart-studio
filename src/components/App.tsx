@@ -19,7 +19,7 @@
  * SOFTWARE.
  */
 
-import * as React from 'react';
+import React from 'react';
 import { hot } from 'react-hot-loader/root';
 
 import { Workspace } from './Workspace';
@@ -53,35 +53,14 @@ import { Split, SplitOrientation, SplitInfo } from './Split';
 
 import { layout, assert, resetDOMSelection } from '../util';
 
-import * as Mousetrap from 'mousetrap';
-import { Sandbox } from './Sandbox';
-import { Gulpy } from '../gulpy';
-import {
-  GoDelete,
-  GoPencil,
-  GoGear,
-  GoVerified,
-  GoFileCode,
-  GoQuote,
-  GoFileBinary,
-  GoFile,
-  GoDesktopDownload,
-  GoBook,
-  GoRepoForked,
-  GoRocket,
-  GoBeaker,
-  GoBeakerGear,
-  GoThreeBars,
-  GoGist,
-  GoOpenIssue,
-  GoQuestion
-} from './shared/Icons';
+import Mousetrap from 'mousetrap';
+import { GoDelete, GoDesktopDownload, GoBeaker, GoThreeBars, GoQuestion } from './shared/Icons';
 import { Button } from './shared/Button';
 
 import { NewFileDialog } from './NewFileDialog';
 import { EditFileDialog } from './EditFileDialog';
 import { UploadFileDialog } from './UploadFileDialog';
-import { ToastContainer } from './Toasts';
+import { ToastContainer, ToastKind } from './Toasts';
 import { Spacer, Divider } from './Widgets';
 import { ShareDialog } from './ShareDialog';
 import { NewProjectDialog, Template } from './NewProjectDialog';
@@ -90,7 +69,6 @@ import { Errors } from '../errors';
 import { ControlCenter } from './ControlCenter';
 import Group from '../utils/group';
 import { StatusBar } from './StatusBar';
-import { publishArc, notifyArcAboutFork } from '../actions/ArcActions';
 import { RunTaskExternals } from '../utils/taskRunner';
 
 export interface AppState {
@@ -225,9 +203,17 @@ export class App extends React.Component<AppProps, AppState> {
       this.loadProjectFromFiddle(this.state.fiddle);
     }
   }
+
   private static getWindowDimensions(): string {
     return `${window.innerWidth}x${window.innerHeight}@${window.devicePixelRatio}`;
   }
+
+  private showToast(element: JSX.Element, kind?: ToastKind) {
+    if (this.toastContainer) {
+      this.toastContainer.showToast(element, kind);
+    }
+  }
+
   private async loadProjectFromFiddle(uri: string) {
     const project = new Project(uri);
 
@@ -242,9 +228,7 @@ export class App extends React.Component<AppProps, AppState> {
         logLn(`Load project ${project.name} succeed!`);
       }
     } else {
-      if (this.toastContainer) {
-        this.toastContainer.showToast(<span>Project {uri} was not found.</span>, 'error');
-      }
+      this.showToast(<span>Project {uri} was not found.</span>, 'error');
     }
   }
   bindAppStoreEvents() {
@@ -253,7 +237,7 @@ export class App extends React.Component<AppProps, AppState> {
       runTask('project:load', true, RunTaskExternals.Setup);
     });
     appStore.onDirtyFileUsed.register((file: File) => {
-      this.logLn(`Changes in ${file.getPath()} were ignored, save your changes.`, 'warn');
+      logLn(`Changes in ${file.getPath()} were ignored, save your changes.`, 'warn');
     });
     appStore.onTabsChange.register(() => {
       this.setState({
@@ -301,14 +285,6 @@ export class App extends React.Component<AppProps, AppState> {
     openFile(help, defaultViewTypeForFileType(help.type));
   }
 
-  private publishArc(): Promise<void> {
-    if (this.state.isContentModified) {
-      return this.fork().then(publishArc);
-    } else {
-      return publishArc();
-    }
-  }
-
   registerShortcuts() {
     Mousetrap.bind('command+b', () => {
       build();
@@ -316,24 +292,19 @@ export class App extends React.Component<AppProps, AppState> {
     Mousetrap.bind('command+enter', () => {
       if (this.props.embeddingParams.type !== EmbeddingType.Arc) {
         run();
-      } else {
-        this.publishArc();
       }
     });
     Mousetrap.bind('command+alt+enter', () => {
       if (this.props.embeddingParams.type !== EmbeddingType.Arc) {
         build().then(run);
-      } else {
-        build().then(() => this.publishArc());
       }
     });
   }
-  logLn(message: string, kind: '' | 'info' | 'warn' | 'error' = '') {
-    logLn(message, kind);
-  }
+
   componentWillMount() {
     this.initializeProject();
   }
+
   componentDidMount() {
     layout();
     this.registerShortcuts();
@@ -348,9 +319,8 @@ export class App extends React.Component<AppProps, AppState> {
     );
     if (this.props.embeddingParams.type === EmbeddingType.Arc) {
       window.addEventListener('message', (e) => {
-        if (typeof e.data === 'object' && e.data !== null && e.data.type === 'arc/fork') {
-          this.fork();
-        }
+        // TODO: background message
+        console.log(e);
       });
     }
   }
@@ -359,54 +329,32 @@ export class App extends React.Component<AppProps, AppState> {
     this.setState({ shareDialog: true });
   }
 
-  async update() {
-    saveProject(this.state.fiddle);
-  }
-
-  async fork() {
-    pushStatus('Forking Project');
-    const fiddle = await saveProject('');
-    popStatus();
-    const search = window.location.search;
-    if (this.state.fiddle) {
-      assert(search.indexOf(this.state.fiddle) >= 0);
-      history.replaceState({}, fiddle, search.replace(this.state.fiddle, fiddle));
-    } else {
-      const prefix = search ? search + '&' : '?';
-      history.pushState({}, fiddle, `${prefix}f=${fiddle}`);
-    }
-    this.setState({ fiddle });
-    if (this.props.embeddingParams.type === EmbeddingType.Arc) {
-      notifyArcAboutFork(fiddle);
-    }
-  }
   async gist(fileOrDirectory?: File) {
     pushStatus('Exporting Project');
     const target: File = fileOrDirectory || this.state.project.getModel();
     const gistURI = await Service.exportToGist(target, this.state.fiddle);
     popStatus();
     if (gistURI) {
-      if (this.toastContainer) {
-        this.toastContainer.showToast(
-          <span>
-            "Gist Created!"{' '}
-            <a href={gistURI} target="_blank" className="toast-span">
-              Open in new tab.
-            </a>
-          </span>
-        );
-      }
+      this.showToast(
+        <span>
+          "Gist Created!"{' '}
+          <a href={gistURI} target="_blank" className="toast-span">
+            Open in new tab.
+          </a>
+        </span>
+      );
+
       console.log(`Gist created: ${gistURI}`);
     } else {
       console.log('Failed!');
     }
   }
   async download() {
-    this.logLn('Downloading Project ...');
+    logLn('Downloading Project ...');
     const downloadService = await import('../utils/download');
     const projectModel = this.state.project.getModel();
     await downloadService.downloadProject(projectModel, this.state.fiddle);
-    this.logLn('Project Zip CREATED ');
+    logLn('Project Zip CREATED ');
   }
   /**
    * Remember workspace split.
@@ -449,7 +397,7 @@ export class App extends React.Component<AppProps, AppState> {
           title="Delete Project"
           isDisabled={this.toolbarButtonsAreDisabled()}
           onClick={() => {
-            this.toastContainer.showToast(<span>TODO: delete the project</span>);
+            this.showToast(<span>TODO: delete the project</span>);
           }}
         />,
         <Button
@@ -568,7 +516,7 @@ export class App extends React.Component<AppProps, AppState> {
             }}
             onCreate={async (template: Template, name: string) => {
               if (!name) {
-                this.toastContainer.showToast(<span>Project name is empty!</span>);
+                this.showToast(<span>Project name is empty!</span>);
                 return;
               }
 
@@ -577,7 +525,7 @@ export class App extends React.Component<AppProps, AppState> {
               await Service.loadFilesIntoProject(template.files, newProject, template.baseUrl);
 
               // save project before save into app store
-              const fiddle = await saveProject(name, newProject);
+              const fiddle = await saveProject(newProject);
               if (!fiddle) return;
 
               // open new project and hide dialog
@@ -593,9 +541,13 @@ export class App extends React.Component<AppProps, AppState> {
             onCancel={() => {
               this.setState({ newFileDialogDirectory: null });
             }}
-            onCreate={(file: File) => {
-              // check file to create, success then show
-              addFileTo(file, this.state.newFileDialogDirectory.getModel());
+            onCreate={async (file: File) => {
+              const ret = await Service.saveFile(file);
+              if (ret.success) {
+                addFileTo(file, this.state.newFileDialogDirectory.getModel());
+              } else {
+                this.showToast(<span>${ret.message}</span>, 'error');
+              }
               this.setState({ newFileDialogDirectory: null });
             }}
           />
@@ -607,10 +559,15 @@ export class App extends React.Component<AppProps, AppState> {
             onCancel={() => {
               this.setState({ editFileDialogFile: null });
             }}
-            onChange={(name: string, description) => {
+            onChange={async (name: string, description) => {
               const file = this.state.editFileDialogFile.getModel();
-              // do rename from name to file.name and update
-              updateFileNameAndDescription(file, name, description);
+              const ret = await Service.renameFile(file, name);
+              if (ret.success) {
+                updateFileNameAndDescription(file, name, description);
+              } else {
+                this.showToast(<span>${ret.message}</span>, 'error');
+              }
+              // finally close dialog
               this.setState({ editFileDialogFile: null });
             }}
           />
@@ -631,11 +588,16 @@ export class App extends React.Component<AppProps, AppState> {
             onCancel={() => {
               this.setState({ uploadFileDialogDirectory: null });
             }}
-            onUpload={(files: File[]) => {
-              // this is like save project but with files
-              files.map((file: File) => {
-                addFileTo(file, this.state.uploadFileDialogDirectory.getModel());
-              });
+            onUpload={async (files: File[]) => {
+              const projectModel = this.state.project.getModel();
+              const ret = await Service.saveProject(projectModel, files);
+              if (ret.success) {
+                files.map((file: File) => {
+                  addFileTo(file, this.state.uploadFileDialogDirectory.getModel());
+                });
+              } else {
+                this.showToast(<span>${ret.message}</span>, 'error');
+              }
               this.setState({ uploadFileDialogDirectory: null });
             }}
           />
@@ -648,7 +610,7 @@ export class App extends React.Component<AppProps, AppState> {
               this.setState({ newDirectoryDialog: null });
             }}
             onCreate={(directory: Directory) => {
-              // check folder to create, success then show
+              // if folder empty, then no need to save it, so wait for file save
               addFileTo(directory, this.state.newDirectoryDialog.getModel());
               this.setState({ newDirectoryDialog: null });
             }}
@@ -681,15 +643,12 @@ export class App extends React.Component<AppProps, AppState> {
                   message = `Are you sure you want to delete '${file.name}'?`;
                 }
                 if (confirm(message)) {
-                  // check server delete response, if success then
                   const ret = await Service.deleteFile(file);
                   if (ret.success) {
                     closeTabs(file);
                     deleteFile(file);
                   } else {
-                    if (this.toastContainer) {
-                      this.toastContainer.showToast(<span>${ret.message}</span>, 'error');
-                    }
+                    this.showToast(<span>${ret.message}</span>, 'error');
                   }
                 }
               }}

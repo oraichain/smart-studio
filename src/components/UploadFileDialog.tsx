@@ -19,17 +19,17 @@
  * SOFTWARE.
  */
 
-import * as React from "react";
-import * as ReactModal from "react-modal";
-import appStore from "../stores/AppStore";
-import { Button } from "./shared/Button";
-import { GoFile, GoX, GoCloudUpload, GoFileDirectory } from "./shared/Icons";
-import { File, Directory, ModelRef } from "../models";
-import { UploadInput } from "./Widgets";
-import { DirectoryTree } from "./DirectoryTree";
-import { uploadFilesToDirectory } from "../util";
-import { EditFileDialog } from "./EditFileDialog";
-import { updateFileNameAndDescription, addFileTo } from "../actions/AppActions";
+import React from 'react';
+import ReactModal from 'react-modal';
+import appStore from '../stores/AppStore';
+import { Button } from './shared/Button';
+import { GoFile, GoX, GoCloudUpload, GoFileDirectory } from './shared/Icons';
+import { File, Directory, ModelRef } from '../models';
+import { UploadInput } from './Widgets';
+import { DirectoryTree } from './DirectoryTree';
+import { uploadFilesToDirectory } from '../util';
+import { EditFileDialog } from './EditFileDialog';
+import { updateFileNameAndDescription, addFileTo } from '../actions/AppActions';
 
 export interface UploadFileDialogProps {
   isOpen: boolean;
@@ -48,7 +48,7 @@ export class UploadFileDialog extends React.Component<UploadFileDialogProps, Upl
   uploadInput: UploadInput;
   constructor(props: any) {
     super(props);
-    this.root = ModelRef.getRef(new Directory("root"));
+    this.root = ModelRef.getRef(new Directory('root'));
     this.root.getModel().onDidChangeChildren.register(() => this.onRootChildrenChange());
     this.state = { hasFilesToUpload: false };
   }
@@ -60,103 +60,97 @@ export class UploadFileDialog extends React.Component<UploadFileDialogProps, Upl
   }
   render() {
     const root = this.root.getModel();
-    return <ReactModal
-      isOpen={this.props.isOpen}
-      contentLabel="Upload"
-      className="modal show-file-icons"
-      overlayClassName="overlay"
-      ariaHideApp={false}
-    >
-      {this.state.editFileDialogFile &&
-        <EditFileDialog
-          isOpen={true}
-          file={this.state.editFileDialogFile}
-          onCancel={() => {
-            this.setState({ editFileDialogFile: null });
-          }}
-          onChange={(name: string, description) => {
-            const file = this.state.editFileDialogFile.getModel();
-            updateFileNameAndDescription(file, name, description);
-            this.setState({ editFileDialogFile: null });
-          }}
-        />
-      }
-      <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-        <div className="modal-title-bar">
-          Upload Files & Directories to {this.props.directory.getModel().getPath()}
-        </div>
-        <div className="row">
-          <div className="column">
-            <UploadInput
-              ref={(ref) => this.uploadInput = ref}
-              onChange={(e) => {
-                this.handleUpload(e.target.files);
-              }}
-            />
-          </div>
-          <div className="column" style={{height: "290px"}}>
-            <DirectoryTree
-              onlyUploadActions={true}
-              directory={this.root}
-              onDeleteFile={(file: File) => {
-                file.parent.removeFile(file);
-              }}
-              onEditFile={(file: File) => {
-                this.setState({ editFileDialogFile: ModelRef.getRef(file) });
-              }}
-              onMoveFile={(file: File, directory: Directory) => {
-                addFileTo(file, directory);
-              }}
-            />
-          </div>
-        </div>
-        <div>
-          <Button
-            icon={<GoX />}
-            label="Cancel"
-            title="Cancel"
-            onClick={() => {
-              this.props.onCancel();
+    return (
+      <ReactModal isOpen={this.props.isOpen} contentLabel="Upload" className="modal show-file-icons" overlayClassName="overlay" ariaHideApp={false}>
+        {this.state.editFileDialogFile && (
+          <EditFileDialog
+            isOpen={true}
+            file={this.state.editFileDialogFile}
+            onCancel={() => {
+              this.setState({ editFileDialogFile: null });
+            }}
+            onChange={(name: string, description) => {
+              const file = this.state.editFileDialogFile.getModel();
+              updateFileNameAndDescription(file, name, description);
+              this.setState({ editFileDialogFile: null });
             }}
           />
-          <Button
-            icon={<GoFile />}
-            label="Files"
-            title="Select Files"
-            onClick={() => {
-              this.uploadInput.open("files");
-            }}
-          />
-          <Button
-            icon={<GoFileDirectory />}
-            label="Directory"
-            title="Select Directory"
-            onClick={() => {
-              this.uploadInput.open("directory");
-            }}
-          />
-          <Button
-            icon={<GoCloudUpload />}
-            label="Upload"
-            title="Upload"
-            isDisabled={!this.state.hasFilesToUpload}
-            onClick={() => {
-              return this.props.onUpload && this.props.onUpload(root.children.slice(0));
-            }}
-          />
-          {
-            root.children.length === 1 && root.children[0] instanceof Directory &&
-              <Button
-                icon={<GoCloudUpload />}
-                label={"Upload Root Contents"}
-                title={"Upload contents of " + root.children[0].name}
-                onClick={() => {
-                  return this.props.onUpload && this.props.onUpload((root.children[0] as Directory).children.slice(0));
+        )}
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+          <div className="modal-title-bar">Upload Files & Directories to {this.props.directory.getModel().getPath()}</div>
+          <div className="row">
+            <div className="column">
+              <UploadInput
+                ref={(ref) => (this.uploadInput = ref)}
+                onChange={(e) => {
+                  this.handleUpload(e.target.files);
                 }}
               />
-          }
+            </div>
+            <div className="column" style={{ height: '290px' }}>
+              <DirectoryTree
+                onlyUploadActions={true}
+                directory={this.root}
+                onDeleteFile={(file: File) => {
+                  file.parent.removeFile(file);
+                }}
+                onEditFile={(file: File) => {
+                  this.setState({ editFileDialogFile: ModelRef.getRef(file) });
+                }}
+                onMoveFile={(file: File, directory: Directory) => {
+                  addFileTo(file, directory);
+                }}
+              />
+            </div>
+          </div>
+          <div>
+            <Button
+              icon={<GoX />}
+              label="Cancel"
+              title="Cancel"
+              onClick={() => {
+                this.props.onCancel();
+              }}
+            />
+            <Button
+              icon={<GoFile />}
+              label="Files"
+              title="Select Files"
+              onClick={() => {
+                this.uploadInput.open('files');
+              }}
+            />
+            <Button
+              icon={<GoFileDirectory />}
+              label="Directory"
+              title="Select Directory"
+              onClick={() => {
+                this.uploadInput.open('directory');
+              }}
+            />
+            <Button
+              icon={<GoCloudUpload />}
+              label="Upload"
+              title="Upload"
+              isDisabled={!this.state.hasFilesToUpload}
+              onClick={() => {
+                return this.props.onUpload && this.props.onUpload(root.children.slice(0));
+              }}
+            />
+            {root.children.length === 1 &&
+              root.children[0] instanceof Directory && (
+                <Button
+                  icon={<GoCloudUpload />}
+                  label={'Upload Root Contents'}
+                  title={'Upload contents of ' + root.children[0].name}
+                  onClick={() => {
+                    return this.props.onUpload && this.props.onUpload((root.children[0] as Directory).children.slice(0));
+                  }}
+                />
+              )}
+          </div>
         </div>
-      </div>
-    </ReactModal>;
+      </ReactModal>
+    );
   }
 }

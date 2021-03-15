@@ -71,97 +71,8 @@ function getProjectFilePath(file: File): string {
   return file.getPath(project);
 }
 
-export class ServiceWorker {
-  worker: Worker;
-  workerCallbacks: Array<{ fn: (data: any) => void; ex: (err: Error) => void }> = [];
-  nextId = 0;
-  private getNextId() {
-    return String(this.nextId++);
-  }
-  constructor() {
-    this.worker = new Worker('dist/worker.bundle.js');
-    this.worker.addEventListener('message', (e: { data: IWorkerResponse }) => {
-      if (!e.data.id) {
-        return;
-      }
-      const cb = this.workerCallbacks[e.data.id];
-      if (e.data.success) {
-        cb.fn(e.data.payload);
-      } else {
-        const error = Object.assign(Object.create(Error.prototype), e.data.payload);
-        cb.ex(error);
-      }
-      this.workerCallbacks[e.data.id] = null;
-    });
-  }
-
-  setWorkerCallback(id: string, fn: (e: any) => void, ex?: (e: any) => void) {
-    assert(!this.workerCallbacks[id as any]);
-    this.workerCallbacks[id as any] = { fn, ex };
-  }
-
-  async postMessage(command: WorkerCommand, payload: any): Promise<any> {
-    return new Promise((resolve, reject) => {
-      const id = this.getNextId();
-      this.setWorkerCallback(
-        id,
-        (data: any) => {
-          resolve(data);
-        },
-        (err: Error) => {
-          reject(err);
-        }
-      );
-      this.worker.postMessage(
-        {
-          id,
-          command,
-          payload
-        },
-        undefined
-      );
-    });
-  }
-
-  async optimizeWasmWithBinaryen(data: ArrayBuffer): Promise<ArrayBuffer> {
-    return await this.postMessage(WorkerCommand.OptimizeWasmWithBinaryen, data);
-  }
-
-  async validateWasmWithBinaryen(data: ArrayBuffer): Promise<number> {
-    return await this.postMessage(WorkerCommand.ValidateWasmWithBinaryen, data);
-  }
-
-  async createWasmCallGraphWithBinaryen(data: ArrayBuffer): Promise<string> {
-    return await this.postMessage(WorkerCommand.CreateWasmCallGraphWithBinaryen, data);
-  }
-
-  async convertWasmToAsmWithBinaryen(data: ArrayBuffer): Promise<string> {
-    return await this.postMessage(WorkerCommand.ConvertWasmToAsmWithBinaryen, data);
-  }
-
-  async disassembleWasmWithBinaryen(data: ArrayBuffer): Promise<string> {
-    return await this.postMessage(WorkerCommand.DisassembleWasmWithBinaryen, data);
-  }
-
-  async assembleWatWithBinaryen(data: string): Promise<ArrayBuffer> {
-    return await this.postMessage(WorkerCommand.AssembleWatWithBinaryen, data);
-  }
-
-  async disassembleWasmWithWabt(data: ArrayBuffer): Promise<string> {
-    return await this.postMessage(WorkerCommand.DisassembleWasmWithWabt, data);
-  }
-
-  async assembleWatWithWabt(data: string): Promise<ArrayBuffer> {
-    return await this.postMessage(WorkerCommand.AssembleWatWithWabt, data);
-  }
-
-  async twiggyWasm(data: ArrayBuffer): Promise<string> {
-    return await this.postMessage(WorkerCommand.TwiggyWasm, data);
-  }
-}
-
 export class Service {
-  private static worker = new ServiceWorker();
+  // private static worker = new ServiceWorker();
 
   static getMarkers(response: string): monaco.editor.IMarkerData[] {
     // Parse and annotate errors if compilation fails.
@@ -308,42 +219,6 @@ export class Service {
     return output;
   }
 
-  static async disassembleWasm(buffer: ArrayBuffer, status: IStatusProvider): Promise<string> {
-    gaEvent('disassemble', 'Service', 'wabt');
-    status && status.push('Disassembling with Wabt');
-    const result = await this.worker.disassembleWasmWithWabt(buffer);
-    status && status.pop();
-    return result;
-  }
-
-  static async disassembleWasmWithWabt(file: File, status?: IStatusProvider) {
-    const result = await Service.disassembleWasm(file.getData() as ArrayBuffer, status);
-    const output = file.parent.newFile(file.name + '.wat', FileType.Wat);
-    output.description = 'Disassembled from ' + file.name + ' using Wabt.';
-    output.setData(result);
-  }
-
-  static async assembleWat(wat: string, status?: IStatusProvider): Promise<ArrayBuffer> {
-    gaEvent('assemble', 'Service', 'wabt');
-    status && status.push('Assembling Wat with Wabt');
-    let result = null;
-    try {
-      result = await this.worker.assembleWatWithWabt(wat);
-    } catch (e) {
-      throw e;
-    } finally {
-      status && status.pop();
-    }
-    return result;
-  }
-
-  static async assembleWatWithWabt(file: File, status?: IStatusProvider) {
-    const result = await Service.assembleWat(file.getData() as string, status);
-    const output = file.parent.newFile(file.name + '.wasm', FileType.Wasm);
-    output.description = 'Assembled from ' + file.name + ' using Wabt.';
-    output.setData(result);
-  }
-
   static async createGist(json: object): Promise<string> {
     const url = 'https://api.github.com/gists';
     const response = await fetch(url, {
@@ -405,6 +280,21 @@ export class Service {
     return ret;
   }
 
+  static async renameFile(file: File, name: string): Promise<ISaveFiddleResponse> {
+    const json = {
+      name: file.getPath(),
+      newName: name
+    };
+    const baseURL = await getServiceURL(ServiceTypes.Service);
+    const response = await fetch(`${baseURL}/file`, {
+      method: 'PUT',
+      headers: new Headers({ 'Content-type': 'application/json; charset=utf-8' }),
+      body: JSON.stringify(json)
+    });
+    const ret = await response.json();
+    return ret;
+  }
+
   static parseFiddleURI(): string {
     let uri = window.location.search.substring(1);
     if (uri) {
@@ -445,34 +335,46 @@ export class Service {
     return ret;
   }
 
-  static async saveProject(project: Project, openedFiles: string[][], uri?: string): Promise<ISaveFiddleResponse> {
+  static async saveProject(project: Project, uploadedFiles?: File[]): Promise<ISaveFiddleResponse> {
     const files: IFiddleFile[] = [];
-    project.forEachFile(
-      (f: File) => {
-        let data: string;
-        let type: 'binary' | 'text';
-        if (isBinaryFileType(f.type)) {
-          data = base64EncodeBytes(new Uint8Array(f.data as ArrayBuffer));
-          type = 'binary';
-        } else {
-          data = f.data as string;
-          type = 'text';
-        }
-        const file = {
-          name: f.getPath(project),
-          data,
-          type
-        };
-        files.push(file);
-      },
-      true,
-      true
-    );
+    // if there is no upload files, save current projects, otherwise save new uploadedFiles
+    if (!Array.isArray(uploadedFiles)) {
+      project.forEachFile(
+        (f: File) => {
+          let data: string;
+          let type: 'binary' | 'text';
+          if (isBinaryFileType(f.type)) {
+            data = base64EncodeBytes(new Uint8Array(f.data as ArrayBuffer));
+            type = 'binary';
+          } else {
+            data = f.data as string;
+            type = 'text';
+          }
+          const file = {
+            name: f.getPath(project),
+            data,
+            type
+          };
+          files.push(file);
+        },
+        true,
+        true
+      );
+    } else {
+      // get content from File array
+      for (let file of uploadedFiles) {
+        files.push({
+          name: file.name,
+          data: file.data.toString()
+        });
+      }
+    }
+
     return await this.saveJSON(
       {
         files
       },
-      uri
+      project.name
     );
   }
 
@@ -515,70 +417,6 @@ export class Service {
       };
       // TODO: What about fail?
     });
-  }
-
-  static async optimizeWasmWithBinaryen(file: File, status?: IStatusProvider) {
-    assert(this.worker);
-    gaEvent('optimize', 'Service', 'binaryen');
-    let data = file.getData() as ArrayBuffer;
-    status && status.push('Optimizing with Binaryen');
-    data = await this.worker.optimizeWasmWithBinaryen(data);
-    status && status.pop();
-    file.setData(data);
-    file.buffer.setValue(await Service.disassembleWasm(data, status));
-  }
-
-  static async validateWasmWithBinaryen(file: File, status?: IStatusProvider): Promise<boolean> {
-    gaEvent('validate', 'Service', 'binaryen');
-    const data = file.getData() as ArrayBuffer;
-    status && status.push('Validating with Binaryen');
-    const result = await this.worker.validateWasmWithBinaryen(data);
-    status && status.pop();
-    return !!result;
-  }
-
-  static async getWasmCallGraphWithBinaryen(file: File, status?: IStatusProvider) {
-    gaEvent('call-graph', 'Service', 'binaryen');
-    const data = file.getData() as ArrayBuffer;
-    status && status.push('Creating Call Graph with Binaryen');
-    const result = await this.worker.createWasmCallGraphWithBinaryen(data);
-    status && status.pop();
-    const output = file.parent.newFile(file.name + '.dot', FileType.DOT);
-    output.description = 'Call graph created from ' + file.name + " using Binaryen's print-call-graph pass.";
-    output.setData(result);
-  }
-
-  static async disassembleWasmWithBinaryen(file: File, status?: IStatusProvider) {
-    gaEvent('disassemble', 'Service', 'binaryen');
-    const data = file.getData() as ArrayBuffer;
-    status && status.push('Disassembling with Binaryen');
-    const result = await this.worker.disassembleWasmWithBinaryen(data);
-    status && status.pop();
-    const output = file.parent.newFile(file.name + '.wat', FileType.Wat);
-    output.description = 'Disassembled from ' + file.name + ' using Binaryen.';
-    output.setData(result);
-  }
-
-  static async convertWasmToAsmWithBinaryen(file: File, status?: IStatusProvider) {
-    gaEvent('asm.js', 'Service', 'binaryen');
-    const data = file.getData() as ArrayBuffer;
-    status && status.push('Converting to asm.js with Binaryen');
-    const result = await this.worker.convertWasmToAsmWithBinaryen(data);
-    status && status.pop();
-    const output = file.parent.newFile(file.name + '.asm.js', FileType.JavaScript);
-    output.description = 'Converted from ' + file.name + ' using Binaryen.';
-    output.setData(result);
-  }
-
-  static async assembleWatWithBinaryen(file: File, status?: IStatusProvider) {
-    gaEvent('assemble', 'Service', 'binaryen');
-    const data = file.getData() as string;
-    status && status.push('Assembling with Binaryen');
-    const result = await this.worker.assembleWatWithBinaryen(data);
-    status && status.pop();
-    const output = file.parent.newFile(file.name + '.wasm', FileType.Wasm);
-    output.description = 'Converted from ' + file.name + ' using Binaryen.';
-    output.setData(result);
   }
 
   static downloadLink: HTMLAnchorElement = null;
@@ -751,17 +589,5 @@ export class Service {
     const converter = new showdown.Converter({ tables: true, ghCodeBlocks: true });
     showdown.setFlavor('github');
     return converter.makeHtml(src);
-  }
-
-  static async twiggyWasm(file: File, status: IStatusProvider): Promise<string> {
-    const buffer = file.getData() as ArrayBuffer;
-    gaEvent('disassemble', 'Service', 'twiggy');
-    status && status.push('Analyze with Twiggy');
-    const result = await this.worker.twiggyWasm(buffer);
-    const output = file.parent.newFile(file.name + '.md', FileType.Markdown);
-    output.description = 'Analyzed ' + file.name + ' using Twiggy.';
-    output.setData(result);
-    status && status.pop();
-    return result;
   }
 }

@@ -19,21 +19,23 @@
  * SOFTWARE.
  */
 
-import * as React from "react";
-import { Split, SplitOrientation, SplitInfo } from "./Split";
-import { EditorView, View, Tab, Tabs } from "./editor";
-import { Sandbox } from "./Sandbox";
-import { GoThreeBars, GoFile } from "./shared/Icons";
-import { Button } from "./shared/Button";
-import { File } from "../models";
-import { Problems } from "./Problems";
-import appStore from "../stores/AppStore";
-import { layout } from "../util";
+import React from 'react';
+import { Split, SplitOrientation, SplitInfo } from './Split';
+import { EditorView, View, Tab, Tabs } from './editor';
+import { Sandbox } from './Sandbox';
+import { GoThreeBars, GoFile } from './shared/Icons';
+import { Button } from './shared/Button';
+import { File } from '../models';
+import { Problems } from './Problems';
+import appStore from '../stores/AppStore';
+import { layout } from '../util';
 
-export class ControlCenter extends React.Component<{
-  onToggle?: Function;
-  showSandbox: boolean;
-}, {
+export class ControlCenter extends React.Component<
+  {
+    onToggle?: Function;
+    showSandbox: boolean;
+  },
+  {
     /**
      * Split state.
      */
@@ -42,11 +44,12 @@ export class ControlCenter extends React.Component<{
     /**
      * Visible pane.
      */
-    visible: "output" | "problems";
+    visible: 'output' | 'problems';
 
     problemCount: number;
     outputLineCount: number;
-  }> {
+  }
+> {
   outputView: View;
   refs: { container: HTMLDivElement };
   outputViewEditor: EditorView;
@@ -58,21 +61,18 @@ export class ControlCenter extends React.Component<{
     this.outputView = new View(outputFile);
 
     this.state = {
-      visible: "output",
-      splits: [
-        { min: 128, value: 512 },
-        { min: 128, value: 256 }
-      ],
+      visible: 'output',
+      splits: [{ min: 128, value: 512 }, { min: 128, value: 256 }],
       problemCount: this.getProblemCount(),
       outputLineCount: this.getOutputLineCount()
     };
   }
   onOutputChanged = () => {
     this.updateOutputView();
-  }
+  };
   onDidChangeProblems = () => {
     this.updateOutputView();
-  }
+  };
   componentDidMount() {
     appStore.onOutputChanged.register(this.onOutputChanged);
     appStore.onDidChangeProblems.register(this.onDidChangeProblems);
@@ -101,13 +101,9 @@ export class ControlCenter extends React.Component<{
   }
   createPane() {
     switch (this.state.visible) {
-      case "output":
-        return <EditorView
-          ref={(ref) => this.setOutputViewEditor(ref)}
-          view={this.outputView}
-          options={{renderIndentGuides: false}}
-        />;
-      case "problems":
+      case 'output':
+        return <EditorView ref={(ref) => this.setOutputViewEditor(ref)} view={this.outputView} options={{ renderIndentGuides: false }} />;
+      case 'problems':
         return <Problems />;
       default:
         return null;
@@ -118,61 +114,72 @@ export class ControlCenter extends React.Component<{
   }
   getProblemCount() {
     let problemCount = 0;
-    appStore.getProject().getModel().forEachFile((file: File) => {
-      problemCount += file.problems.length;
-    }, false, true);
+    appStore
+      .getProject()
+      .getModel()
+      .forEachFile(
+        (file: File) => {
+          problemCount += file.problems.length;
+        },
+        false,
+        true
+      );
     return problemCount;
   }
   render() {
-    return <div className="fill">
-      <div className="tabs" style={{ display: "flex" }}>
-        <div>
-          <Button
-            icon={<GoThreeBars />}
-            title="View Console"
-            onClick={() => {
-              return this.props.onToggle && this.props.onToggle();
-            }}
-          />
-        </div>
-        <div>
-          <Tabs>
-            <Tab
-              label={`Output (${this.state.outputLineCount})`}
-              isActive={this.state.visible === "output"}
+    return (
+      <div className="fill">
+        <div className="tabs" style={{ display: 'flex' }}>
+          <div>
+            <Button
+              icon={<GoThreeBars />}
+              title="View Console"
               onClick={() => {
-                this.setState({ visible: "output" });
+                return this.props.onToggle && this.props.onToggle();
               }}
             />
-            <Tab
-              label={`Problems (${this.state.problemCount})`}
-              isActive={this.state.visible === "problems"}
-              onClick={() => {
-                this.setState({ visible: "problems" });
+          </div>
+          <div>
+            <Tabs>
+              <Tab
+                label={`Output (${this.state.outputLineCount})`}
+                isActive={this.state.visible === 'output'}
+                onClick={() => {
+                  this.setState({ visible: 'output' });
+                }}
+              />
+              <Tab
+                label={`Problems (${this.state.problemCount})`}
+                isActive={this.state.visible === 'problems'}
+                onClick={() => {
+                  this.setState({ visible: 'problems' });
+                }}
+              />
+            </Tabs>
+          </div>
+        </div>
+        <div style={{ height: 'calc(100% - 40px)' }}>
+          {this.props.showSandbox ? (
+            <Split
+              name="editor/sandbox"
+              orientation={SplitOrientation.Vertical}
+              defaultSplit={{
+                min: 256
               }}
-            />
-          </Tabs>
+              splits={this.state.splits}
+              onChange={(splits) => {
+                this.setState({ splits });
+                layout();
+              }}
+            >
+              {this.createPane()}
+              <Sandbox />
+            </Split>
+          ) : (
+            this.createPane()
+          )}
         </div>
       </div>
-      <div style={{ height: "calc(100% - 40px)" }}>
-        { this.props.showSandbox ?
-          <Split
-            name="editor/sandbox"
-            orientation={SplitOrientation.Vertical}
-            defaultSplit={{
-              min: 256,
-            }}
-            splits={this.state.splits}
-            onChange={(splits) => {
-              this.setState({ splits });
-              layout();
-            }}
-          >
-            {this.createPane()}
-            <Sandbox />
-          </Split> : this.createPane()
-          }
-      </div>
-    </div>;
+    );
   }
 }

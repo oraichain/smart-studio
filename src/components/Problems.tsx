@@ -19,21 +19,19 @@
  * SOFTWARE.
  */
 
-import * as React from "react";
-import appStore from "../stores/AppStore";
-import { File, Directory, Problem } from "../models";
-import { ITree } from "../monaco-extra";
-import { ProblemTemplate, FileTemplate } from "../utils/Template";
-import { MonacoUtils } from "../monaco-utils";
-import { openFile } from "../actions/AppActions";
-import { ViewType } from "./editor/View";
-import { createController } from "../monaco-controller";
+import React from 'react';
+import appStore from '../stores/AppStore';
+import { File, Directory, Problem } from '../models';
+import { ITree } from '../monaco-extra';
+import { ProblemTemplate, FileTemplate } from '../utils/Template';
+import { MonacoUtils } from '../monaco-utils';
+import { openFile } from '../actions/AppActions';
+import { ViewType } from './editor/View';
+import { createController } from '../monaco-controller';
 
-export interface ProblemsProps {
-}
+export interface ProblemsProps {}
 
-export class Problems extends React.Component<ProblemsProps, {
-}> {
+export class Problems extends React.Component<ProblemsProps, {}> {
   tree: ITree;
   contextViewService: any;
   contextMenuService: any;
@@ -42,7 +40,7 @@ export class Problems extends React.Component<ProblemsProps, {
   constructor(props: ProblemsProps) {
     super(props);
     // tslint:disable-next-line
-    this.contextViewService = new MonacoUtils.ContextViewService(document.documentElement, null, {trace: () => {}});
+    this.contextViewService = new MonacoUtils.ContextViewService(document.documentElement, null, { trace: () => {} });
     this.contextMenuService = new MonacoUtils.ContextMenuService(document.documentElement, null, null, this.contextViewService);
   }
   componentDidMount() {
@@ -66,7 +64,9 @@ export class Problems extends React.Component<ProblemsProps, {
     MonacoUtils.expandTree(this.tree);
   }
   private setContainer(container: HTMLDivElement) {
-    if (container == null) { return; }
+    if (container == null) {
+      return;
+    }
     this.container = container;
   }
   private ensureTree() {
@@ -100,12 +100,16 @@ export class Problems extends React.Component<ProblemsProps, {
          */
         getChildren: function(tree: ITree, element: File | Problem): monaco.Promise<any> {
           if (element instanceof Directory && element.children.length) {
-            const children: File [] = [];
-            element.forEachFile((file: File) => {
-              if (file.problems.length) {
-                children.push(file);
-              }
-            }, false, true);
+            const children: File[] = [];
+            element.forEachFile(
+              (file: File) => {
+                if (file.problems.length) {
+                  children.push(file);
+                }
+              },
+              false,
+              true
+            );
             return monaco.Promise.as(children);
           } else if (element instanceof File) {
             return monaco.Promise.as(element.problems);
@@ -129,12 +133,12 @@ export class Problems extends React.Component<ProblemsProps, {
         },
         getTemplateId(tree: ITree, element: File | Problem): string {
           if (element instanceof File) {
-            return "file";
+            return 'file';
           }
-          return "problem";
+          return 'problem';
         },
         renderTemplate: function(tree: ITree, templateId: string, container: any): any {
-          return templateId === "problem" ? new ProblemTemplate(container) : new FileTemplate(container);
+          return templateId === 'problem' ? new ProblemTemplate(container) : new FileTemplate(container);
         },
         renderElement: function(tree: ITree, element: File | Problem, templateId: string, templateData: any): void {
           templateData.set(element);
@@ -153,6 +157,6 @@ export class Problems extends React.Component<ProblemsProps, {
     openFile(problem.file, ViewType.Editor, true);
   }
   render() {
-    return <div className="fill" ref={(ref) => this.setContainer(ref)}/>;
+    return <div className="fill" ref={(ref) => this.setContainer(ref)} />;
   }
 }

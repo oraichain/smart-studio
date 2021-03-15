@@ -233,18 +233,18 @@ export async function openProject(newProject: Project) {
   }
 }
 
-export async function saveProject(fiddle: string, newProject?: Project): Promise<string> {
+export async function saveProject(newProject?: Project): Promise<string> {
   logLn('Saving Project ...');
 
-  const tabGroups = appStore.getTabGroups();
   const projectModel = newProject || appStore.getProject().getModel();
 
-  const openedFiles = tabGroups.map((group) => {
-    return group.views.map((view) => view.file.getPath());
-  });
+  // const tabGroups = appStore.getTabGroups();
+  // const openedFiles = tabGroups.map((group) => {
+  //   return group.views.map((view) => view.file.getPath());
+  // });
 
   pushStatus('Saving Project');
-  const ret = await Service.saveProject(projectModel, openedFiles, fiddle);
+  const ret = await Service.saveProject(projectModel);
   popStatus();
 
   if (!ret.success) {

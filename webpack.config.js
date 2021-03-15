@@ -5,10 +5,7 @@ const ForkTsCheckerWebpackPlugin = require('fork-ts-checker-webpack-plugin');
 
 module.exports = (env) => {
   const config = {
-    entry: {
-      main: './src/index.tsx',
-      worker: './src/worker.ts'
-    },
+    entry: './src/index.tsx',
     output: {
       filename: '[name].bundle.js',
       chunkFilename: '[name].bundle.js',
@@ -74,10 +71,7 @@ module.exports = (env) => {
     // assume a corresponding global variable exists and use that instead.
     // This is important because it allows us to avoid bundling all of our
     // dependencies, which allows browsers to cache those libraries between builds.
-    externals: {
-      react: 'React',
-      'react-dom': 'ReactDOM'
-    },
+
     plugins: [
       new ForkTsCheckerWebpackPlugin(),
       new MonacoWebpackPlugin(),

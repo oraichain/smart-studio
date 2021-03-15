@@ -19,20 +19,13 @@
  * SOFTWARE.
  */
 
-import * as React from "react";
-import {
-  Component,
-  PureComponent,
-  ReactElement,
-  ReactNode,
-  MouseEvent,
-  WheelEvent,
-} from "react";
-import { clamp } from "../../util";
+import React from 'react';
+import { Component, PureComponent, ReactElement, ReactNode, MouseEvent, WheelEvent } from 'react';
+import { clamp } from '../../util';
 
 export interface TabsProps {
   onDoubleClick?: Function;
-  commands?: JSX.Element | JSX.Element [];
+  commands?: JSX.Element | JSX.Element[];
 }
 
 export interface TabsState {
@@ -42,13 +35,13 @@ export interface TabsState {
 export class Tabs extends Component<TabsProps, TabsState> {
   static defaultProps: TabsProps = {
     // tslint:disable-next-line
-    onDoubleClick: () => {},
+    onDoubleClick: () => {}
   };
 
   container: HTMLDivElement;
 
   state = {
-    scrollLeft: 0,
+    scrollLeft: 0
   };
 
   componentDidUpdate() {
@@ -63,26 +56,23 @@ export class Tabs extends Component<TabsProps, TabsState> {
     scrollLeft = clamp(scrollLeft, 0, this.container.clientWidth);
     this.setState({ scrollLeft });
     e.preventDefault();
-  }
+  };
 
-  onDoubleClick   = (e: MouseEvent<any>)  => { this.props.onDoubleClick(); };
-  setContainerRef = (ref: HTMLDivElement) => { this.container = ref; };
+  onDoubleClick = (e: MouseEvent<any>) => {
+    this.props.onDoubleClick();
+  };
+  setContainerRef = (ref: HTMLDivElement) => {
+    this.container = ref;
+  };
 
   render() {
     const { onDoubleClick, children, commands } = this.props;
     return (
       <div className="tabs-container">
-        <div
-          ref={this.setContainerRef}
-          className="tabs-tab-container"
-          onWheel={this.onWheel}
-          onDoubleClick={this.onDoubleClick}
-        >
+        <div ref={this.setContainerRef} className="tabs-tab-container" onWheel={this.onWheel} onDoubleClick={this.onDoubleClick}>
           {children}
         </div>
-        <div className="tabs-command-container">
-          {commands}
-        </div>
+        <div className="tabs-command-container">{commands}</div>
       </div>
     );
   }
@@ -107,52 +97,45 @@ export class Tab extends PureComponent<TabProps, {}> {
     // tslint:disable-next-line
     onDoubleClick: () => {},
     // tslint:disable-next-line
-    onClose: () => {},
+    onClose: () => {}
   };
 
   onMouseHandle = (e: MouseEvent<HTMLElement>, handler: Function) => {
     e.stopPropagation();
     handler(this.props.value);
-  }
+  };
 
   onClick = (e: MouseEvent<HTMLElement>) => {
     this.onMouseHandle(e, this.props.onClick);
-  }
+  };
 
   onDoubleClick = (e: MouseEvent<HTMLElement>) => {
     this.onMouseHandle(e, this.props.onDoubleClick);
-  }
+  };
 
   onClose = (e: MouseEvent<HTMLElement>) => {
     this.onMouseHandle(e, this.props.onClose);
-  }
+  };
 
   render() {
-    const {
-      label,
-      icon,
-      isActive,
-      isMarked,
-      isItalic,
-    } = this.props;
+    const { label, icon, isActive, isMarked, isItalic } = this.props;
 
-    let className = "tab";
-    if (isActive) { className += " active"; }
-    if (isMarked) { className += " marked"; }
-    if (isItalic) { className += " italic"; }
+    let className = 'tab';
+    if (isActive) {
+      className += ' active';
+    }
+    if (isMarked) {
+      className += ' marked';
+    }
+    if (isItalic) {
+      className += ' italic';
+    }
 
     return (
-      <div
-        className={className}
-        onClick={this.onClick}
-        onDoubleClick={this.onDoubleClick}
-      >
-        <div className={"monaco-icon-label file-icon " + icon} />
+      <div className={className} onClick={this.onClick} onDoubleClick={this.onDoubleClick}>
+        <div className={'monaco-icon-label file-icon ' + icon} />
         <div className="label">{label}</div>
-        <div
-          className="close"
-          onClick={this.onClose}
-        />
+        <div className="close" onClick={this.onClose} />
       </div>
     );
   }

@@ -19,13 +19,13 @@
  * SOFTWARE.
  */
 
-import * as React from "react";
-import { MouseEvent } from "react";
-import { EventDispatcher } from "../models";
-import { assert } from "../util";
-import { assignObject, toCSSPx } from "../utils/splitUtils";
+import React from 'react';
+import { MouseEvent } from 'react';
+import { EventDispatcher } from '../models';
+import { assert } from '../util';
+import { assignObject, toCSSPx } from '../utils/splitUtils';
 
-const Cassowary = require("cassowary");
+const Cassowary = require('cassowary');
 
 interface CassowaryVar {
   value: number;
@@ -40,7 +40,7 @@ export interface SplitInfo {
   min?: number;
   max?: number;
   value?: number;
-  resize?: "fixed" | "stretch";
+  resize?: 'fixed' | 'stretch';
 }
 
 export interface SplitProps {
@@ -52,13 +52,16 @@ export interface SplitProps {
   name?: string; // TODO: Remove, for debugging.
 }
 
-export class Split extends React.Component<SplitProps, {
-  splits: SplitInfo[];
-}> {
+export class Split extends React.Component<
+  SplitProps,
+  {
+    splits: SplitInfo[];
+  }
+> {
   container: HTMLDivElement;
   index: number = -1;
-  static onResizeBegin = new EventDispatcher("Resize Begin");
-  static onResizeEnd = new EventDispatcher("Resize End");
+  static onResizeBegin = new EventDispatcher('Resize Begin');
+  static onResizeEnd = new EventDispatcher('Resize End');
   constructor(props: any) {
     super(props);
     this.state = {
@@ -67,8 +70,8 @@ export class Split extends React.Component<SplitProps, {
   }
 
   componentDidMount() {
-    document.addEventListener("mousemove", this.onResizerMouseMove as any);
-    document.addEventListener("mouseup", this.onResizerMouseUp);
+    document.addEventListener('mousemove', this.onResizerMouseMove as any);
+    document.addEventListener('mouseup', this.onResizerMouseUp);
     const splits = this.canonicalizeSplits(this.props);
     this.setupSolver(splits, this.getContainerSize(this.props.orientation));
     this.querySolver(splits);
@@ -84,15 +87,15 @@ export class Split extends React.Component<SplitProps, {
   }
 
   componentWillUnmount() {
-    document.removeEventListener("mousemove", this.onResizerMouseMove as any);
-    document.removeEventListener("mouseup", this.onResizerMouseUp);
+    document.removeEventListener('mousemove', this.onResizerMouseMove as any);
+    document.removeEventListener('mouseup', this.onResizerMouseUp);
   }
 
   onResizerMouseDown(i: number) {
     this.index = i;
     this.solver.addEditVar(this.vars[this.index + 1], Cassowary.Strength.strong).beginEdit();
     Split.onResizeBegin.dispatch(this);
-    window.document.documentElement.style.pointerEvents = "none";
+    window.document.documentElement.style.pointerEvents = 'none';
   }
 
   /**
@@ -105,10 +108,10 @@ export class Split extends React.Component<SplitProps, {
     this.index = -1;
     Split.onResizeEnd.dispatch(this);
     this.solver.endEdit();
-    window.document.documentElement.style.pointerEvents = "auto";
+    window.document.documentElement.style.pointerEvents = 'auto';
     this.querySolver(this.state.splits);
     return this.props.onChange && this.props.onChange(this.state.splits);
-  }
+  };
 
   onResizerMouseMove = (e: MouseEvent<any>) => {
     if (this.index < 0) {
@@ -125,7 +128,7 @@ export class Split extends React.Component<SplitProps, {
     this.querySolver(splits);
     this.setState({ splits });
     e.preventDefault();
-  }
+  };
 
   querySolver(splits: SplitInfo[]) {
     const vars = this.vars;
@@ -152,7 +155,7 @@ export class Split extends React.Component<SplitProps, {
       }
       splits.push(assignObject(info, {
         min: 32,
-        max: containerSize,
+        max: containerSize
       }) as SplitInfo);
     }
     return splits;
@@ -165,7 +168,7 @@ export class Split extends React.Component<SplitProps, {
    * Initializes a Cassowary solver and the constraints based on split infos and container size.
    */
   private setupSolver(splits: SplitInfo[], containerSize: number) {
-    assert(this.index < 0, "Should not be in a dragging state.");
+    assert(this.index < 0, 'Should not be in a dragging state.');
     const weak = Cassowary.Strength.weak;
     const medium = Cassowary.Strength.medium;
     const strong = Cassowary.Strength.strong;
@@ -186,8 +189,8 @@ export class Split extends React.Component<SplitProps, {
     // f     1               2           3   ...    l
     // |-----|---------------|-----------|----------|
 
-    const vars: CassowaryVar[] = this.vars = [new Cassowary.Variable()];
-    const solver = this.solver = new Cassowary.SimplexSolver();
+    const vars: CassowaryVar[] = (this.vars = [new Cassowary.Variable()]);
+    const solver = (this.solver = new Cassowary.SimplexSolver());
 
     // Create Cassowary variables, these the dragged position as an offset from the origin.
     for (let i = 0; i < splits.length; i++) {
@@ -237,12 +240,12 @@ export class Split extends React.Component<SplitProps, {
 
   render() {
     const { splits } = this.state;
-    let resizerClassName = "resizer";
+    let resizerClassName = 'resizer';
     const isHorizontal = this.props.orientation === SplitOrientation.Horizontal;
     if (isHorizontal) {
-      resizerClassName += " horizontal";
+      resizerClassName += ' horizontal';
     } else {
-      resizerClassName += " vertical";
+      resizerClassName += ' vertical';
     }
     const count = React.Children.count(this.props.children);
     const children: any[] = [];
@@ -253,21 +256,25 @@ export class Split extends React.Component<SplitProps, {
       } else {
         style.flex = 1;
       }
-      children.push(<div key={i} className="split-pane" style={style}>{child}</div>);
+      children.push(
+        <div key={i} className="split-pane" style={style}>
+          {child}
+        </div>
+      );
       if (i < count - 1) {
-        children.push(<div
-          key={"split:" + i}
-          className={resizerClassName}
-          onMouseDown={this.onResizerMouseDown.bind(this, i)}
-        />);
+        children.push(<div key={'split:' + i} className={resizerClassName} onMouseDown={this.onResizerMouseDown.bind(this, i)} />);
       }
     });
-    return <div
-      className="split"
-      ref={(ref) => { this.container = ref; }}
-      style={{ flexDirection: isHorizontal ? "column" : "row" }}
-    >
-      {children}
-    </div>;
+    return (
+      <div
+        className="split"
+        ref={(ref) => {
+          this.container = ref;
+        }}
+        style={{ flexDirection: isHorizontal ? 'column' : 'row' }}
+      >
+        {children}
+      </div>
+    );
   }
 }

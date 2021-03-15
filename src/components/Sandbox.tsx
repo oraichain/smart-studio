@@ -19,7 +19,7 @@
  * SOFTWARE.
  */
 
-import * as React from 'react';
+import React from 'react';
 import { Split } from './Split';
 import { Project, mimeTypeForFileType, SandboxRun } from '../models';
 import { logLn } from '../actions/AppActions';

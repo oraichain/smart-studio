@@ -19,61 +19,73 @@
  * SOFTWARE.
  */
 
-import * as React from "react";
-import { ChangeEventHandler } from "react";
+import React from 'react';
+import { ChangeEventHandler } from 'react';
 
-export class Spacer extends React.Component<{
-  height: number
-}, {}> {
+export class Spacer extends React.Component<
+  {
+    height: number;
+  },
+  {}
+> {
   render() {
     return <div style={{ height: this.props.height }} />;
   }
 }
 
-export class Divider extends React.Component<{
-  height: number
-}, {}> {
+export class Divider extends React.Component<
+  {
+    height: number;
+  },
+  {}
+> {
   render() {
-    return <div
-      className="divider"
-      style={{
-        marginTop: this.props.height / 2,
-        marginBottom: this.props.height / 2
-      }}
-    />;
+    return (
+      <div
+        className="divider"
+        style={{
+          marginTop: this.props.height / 2,
+          marginBottom: this.props.height / 2
+        }}
+      />
+    );
   }
 }
 
-export class TextInputBox extends React.Component<{
-  label: string;
-  value: string;
-  error?: string;
-  onChange?: ChangeEventHandler<any>;
-}, {
-
-  }> {
+export class TextInputBox extends React.Component<
+  {
+    label: string;
+    value: string;
+    error?: string;
+    onChange?: ChangeEventHandler<any>;
+  },
+  {}
+> {
   constructor(props: any) {
     super(props);
   }
   render() {
     const input = <input className="text-input-box" type="text" value={this.props.value} onChange={this.props.onChange} />;
     if (this.props.label) {
-      return <div style={{ display: "flex", flexDirection: "row" }}>
-        <div className="text-input-box-label">{this.props.label}</div>
-        <div style={{ flex: 1 }}>{input}</div>
-        {this.props.error && <div className="text-input-box-error">{this.props.error}</div>}
-      </div>;
+      return (
+        <div style={{ display: 'flex', flexDirection: 'row' }}>
+          <div className="text-input-box-label">{this.props.label}</div>
+          <div style={{ flex: 1 }}>{input}</div>
+          {this.props.error && <div className="text-input-box-error">{this.props.error}</div>}
+        </div>
+      );
     } else {
       return input;
     }
   }
 }
 
-export class UploadInput extends React.Component<{
-  onChange?: ChangeEventHandler<any>;
-}, {
-
-}> {
+export class UploadInput extends React.Component<
+  {
+    onChange?: ChangeEventHandler<any>;
+  },
+  {}
+> {
   inputElement: HTMLInputElement;
   setInputElement(ref: HTMLInputElement) {
     this.inputElement = ref;
@@ -81,60 +93,65 @@ export class UploadInput extends React.Component<{
   constructor(props: any) {
     super(props);
   }
-  open(upload: "files" | "directory") {
-    if (this.inputElement && upload === "directory") {
-      this.inputElement.setAttribute("directory", "true");
-      this.inputElement.setAttribute("webkitdirectory", "true");
-      this.inputElement.setAttribute("allowdirs", "true");
+  open(upload: 'files' | 'directory') {
+    if (this.inputElement && upload === 'directory') {
+      this.inputElement.setAttribute('directory', 'true');
+      this.inputElement.setAttribute('webkitdirectory', 'true');
+      this.inputElement.setAttribute('allowdirs', 'true');
     } else {
-      this.inputElement.removeAttribute("directory");
-      this.inputElement.removeAttribute("webkitdirectory");
-      this.inputElement.removeAttribute("allowdirs");
+      this.inputElement.removeAttribute('directory');
+      this.inputElement.removeAttribute('webkitdirectory');
+      this.inputElement.removeAttribute('allowdirs');
     }
     this.inputElement.click();
   }
   render() {
-    return <input id="file-upload-input" ref={ref => this.setInputElement(ref)} type="file" onChange={this.props.onChange} multiple hidden/>;
+    return <input id="file-upload-input" ref={(ref) => this.setInputElement(ref)} type="file" onChange={this.props.onChange} multiple hidden />;
   }
 }
 
-export class ListItem extends React.Component<{
-  label: string;
-  onClick?: Function;
-  icon?: string;
-  selected?: boolean;
-  value: any;
-  error?: string;
-}, {
-
-  }> {
-
+export class ListItem extends React.Component<
+  {
+    label: string;
+    onClick?: Function;
+    icon?: string;
+    selected?: boolean;
+    value: any;
+    error?: string;
+  },
+  {}
+> {
   render() {
-    let className = "list-item";
+    let className = 'list-item';
     if (this.props.selected) {
-      className += " selected";
+      className += ' selected';
     }
     let content = <div className="label">{this.props.label}</div>;
     if (this.props.error) {
-        content = <div className="list-item-flex">
+      content = (
+        <div className="list-item-flex">
           <div className="label">{this.props.label}</div>
           <div className="error">{this.props.error}</div>
-        </div>;
+        </div>
+      );
     }
-    return <div className={className} onClick={this.props.onClick as any}>
-      <div className={"monaco-icon-label file-icon " + this.props.icon} />
-      {content}
-    </div>;
+    return (
+      <div className={className} onClick={this.props.onClick as any}>
+        <div className={'monaco-icon-label file-icon ' + this.props.icon} />
+        {content}
+      </div>
+    );
   }
 }
 
-export class ListBox extends React.Component<{
-  height: number;
-  value?: any;
-  onSelect?: (value: any) => void;
-}, {
-
-  }> {
+export class ListBox extends React.Component<
+  {
+    height: number;
+    value?: any;
+    onSelect?: (value: any) => void;
+  },
+  {}
+> {
   constructor(props: any) {
     super(props);
   }
@@ -151,13 +168,15 @@ export class ListBox extends React.Component<{
       });
     });
 
-    return <div
-      className="list-box"
-      style={{
-        height: this.props.height
-      }}
-    >
-      {newChildren}
-    </div>;
+    return (
+      <div
+        className="list-box"
+        style={{
+          height: this.props.height
+        }}
+      >
+        {newChildren}
+      </div>
+    );
   }
 }

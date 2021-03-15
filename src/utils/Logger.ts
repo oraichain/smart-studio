@@ -19,8 +19,8 @@
  * SOFTWARE.
  */
 
-import * as Raven from "raven-js";
-import config from "../../config.json";
+import * as Raven from 'raven-js';
+import config from '../../config.json';
 
 export class Logger {
   static init() {
@@ -42,6 +42,6 @@ export class Logger {
     return Raven.lastEventId();
   }
   static isRunningInProduction() {
-    return window.location.hostname === "webassembly.studio";
+    return window.location.hostname === 'webassembly.studio';
   }
 }

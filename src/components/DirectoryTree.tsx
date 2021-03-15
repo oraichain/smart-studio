@@ -19,12 +19,11 @@
  * SOFTWARE.
  */
 
-import * as React from 'react';
+import React from 'react';
 import { Project, File, Directory, FileType, ModelRef, isBinaryFileType, IStatusProvider } from '../models';
 import { Service } from '../service';
 import { ITree, ContextMenuEvent } from '../monaco-extra';
 import { MonacoUtils } from '../monaco-utils';
-import { ViewType } from './editor/View';
 import { openFile, pushStatus, popStatus, logLn } from '../actions/AppActions';
 import { FileTemplate } from '../utils/Template';
 import { createController } from '../monaco-controller';

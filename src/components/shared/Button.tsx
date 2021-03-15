@@ -19,50 +19,49 @@
  * SOFTWARE.
  */
 
-import * as React from "react";
+import React from 'react';
 
-export class Button extends React.Component<{
-  icon?: JSX.Element;
-  label?: string;
-  title?: string;
-  isDisabled?: boolean;
-  onClick?: Function;
-  customClassName?: string;
-  href?: string,
-  target?: string,
-  rel?: string
-}, {}> {
+export class Button extends React.Component<
+  {
+    icon?: JSX.Element;
+    label?: string;
+    title?: string;
+    isDisabled?: boolean;
+    onClick?: Function;
+    customClassName?: string;
+    href?: string;
+    target?: string;
+    rel?: string;
+  },
+  {}
+> {
   render() {
-    let className = "button ";
+    let className = 'button ';
     if (this.props.customClassName) {
       className += this.props.customClassName;
     }
     if (this.props.isDisabled) {
-      className += " disabled";
+      className += ' disabled';
     }
     if (this.props.href && !this.props.isDisabled) {
       return (
-        <a
-          href={this.props.href}
-          target={this.props.target || ""}
-          rel={this.props.rel || ""}
-          className={className}
-          title={this.props.title}
-        >
+        <a href={this.props.href} target={this.props.target || ''} rel={this.props.rel || ''} className={className} title={this.props.title}>
           {this.props.icon} {this.props.label}
         </a>
       );
     }
-    return <div
-      className={className}
-      onClick={() => {
-        if (this.props.onClick && !this.props.isDisabled) {
-          this.props.onClick();
-        }
-      }}
-      title={this.props.title}
-    >
-      {this.props.icon} {this.props.label}
-    </div>;
+    return (
+      <div
+        className={className}
+        onClick={() => {
+          if (this.props.onClick && !this.props.isDisabled) {
+            this.props.onClick();
+          }
+        }}
+        title={this.props.title}
+      >
+        {this.props.icon} {this.props.label}
+      </div>
+    );
   }
 }

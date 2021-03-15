@@ -19,15 +19,15 @@
  * SOFTWARE.
  */
 
-import * as React from "react";
-import * as ReactModal from "react-modal";
-import { Button } from "./shared/Button";
-import { GoX, GoPencil } from "./shared/Icons";
-import appStore from "../stores/AppStore";
-import { File, FileType, Directory, extensionForFileType, nameForFileType, ModelRef } from "../models";
-import { ChangeEvent } from "react";
-import { TextInputBox, Spacer } from "./Widgets";
-import { validateFileName } from "../util";
+import React from 'react';
+import ReactModal from 'react-modal';
+import { Button } from './shared/Button';
+import { GoX, GoPencil } from './shared/Icons';
+import appStore from '../stores/AppStore';
+import { File, FileType, Directory, extensionForFileType, nameForFileType, ModelRef } from '../models';
+import { ChangeEvent } from 'react';
+import { TextInputBox, Spacer } from './Widgets';
+import { validateFileName } from '../util';
 
 export interface EditFileDialogProps {
   isOpen: boolean;
@@ -49,15 +49,15 @@ export class EditFileDialog extends React.Component<EditFileDialogProps, EditFil
     this.state = {
       description,
       name,
-      fileType,
+      fileType
     };
   }
   onChangeName = (event: ChangeEvent<any>) => {
     this.setState({ name: event.target.value });
-  }
+  };
   onChangeDescription = (event: ChangeEvent<any>) => {
     this.setState({ description: event.target.value });
-  }
+  };
   getNameError() {
     const fileNameError: string = validateFileName(this.state.name, this.state.fileType);
     if (fileNameError) {
@@ -70,47 +70,47 @@ export class EditFileDialog extends React.Component<EditFileDialogProps, EditFil
     if (file && this.props.file !== file) {
       return `File '${this.state.name}' already exists`;
     }
-    return "";
+    return '';
   }
   render() {
     const file = this.props.file;
     const fileModel = file.getModel();
-    return <ReactModal
-      isOpen={this.props.isOpen}
-      contentLabel={"Edit " + (fileModel instanceof Directory ? "Directory" : "File")}
-      className="modal"
-      overlayClassName="overlay"
-      ariaHideApp={false}
-    >
-      <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-        <div className="modal-title-bar">
-          {`Edit ${fileModel instanceof Directory ? "Directory" : "File"} ${fileModel.name}`}
+    return (
+      <ReactModal
+        isOpen={this.props.isOpen}
+        contentLabel={'Edit ' + (fileModel instanceof Directory ? 'Directory' : 'File')}
+        className="modal"
+        overlayClassName="overlay"
+        ariaHideApp={false}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+          <div className="modal-title-bar">{`Edit ${fileModel instanceof Directory ? 'Directory' : 'File'} ${fileModel.name}`}</div>
+          <div style={{ flex: 1, padding: '8px' }}>
+            <TextInputBox label="Name:" error={this.getNameError()} value={this.state.name} onChange={this.onChangeName} />
+            <Spacer height={8} />
+            <TextInputBox label="Description:" value={this.state.description} onChange={this.onChangeDescription} />
+          </div>
+          <div>
+            <Button
+              icon={<GoX />}
+              label="Cancel"
+              title="Cancel"
+              onClick={() => {
+                this.props.onCancel();
+              }}
+            />
+            <Button
+              icon={<GoPencil />}
+              label="Edit"
+              title="Edit"
+              isDisabled={!this.state.name || !!this.getNameError()}
+              onClick={() => {
+                return this.props.onChange && this.props.onChange(this.state.name, this.state.description);
+              }}
+            />
+          </div>
         </div>
-        <div style={{ flex: 1, padding: "8px" }}>
-          <TextInputBox label="Name:" error={this.getNameError()} value={this.state.name} onChange={this.onChangeName}/>
-          <Spacer height={8}/>
-          <TextInputBox label="Description:" value={this.state.description} onChange={this.onChangeDescription}/>
-        </div>
-        <div>
-          <Button
-            icon={<GoX />}
-            label="Cancel"
-            title="Cancel"
-            onClick={() => {
-              this.props.onCancel();
-            }}
-          />
-          <Button
-            icon={<GoPencil />}
-            label="Edit"
-            title="Edit"
-            isDisabled={!this.state.name || !!this.getNameError()}
-            onClick={() => {
-              return this.props.onChange && this.props.onChange(this.state.name, this.state.description);
-            }}
-          />
-        </div>
-      </div>
-    </ReactModal>;
+      </ReactModal>
+    );
   }
 }

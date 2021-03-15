@@ -210,15 +210,15 @@ export class File {
       return;
     }
     if (this.bufferType !== this.type) {
-      if (this.bufferType === FileType.Wat && this.type === FileType.Wasm) {
-        try {
-          const data = await Service.assembleWat(this.buffer.getValue(), status);
-          this.resetDirty();
-          this.data = data;
-        } catch (e) {
-          status.logLn(e.message, 'error');
-        }
-      }
+      // if (this.bufferType === FileType.Wat && this.type === FileType.Wasm) {
+      //   try {
+      //     const data = await Service.assembleWat(this.buffer.getValue(), status);
+      //     this.resetDirty();
+      //     this.data = data;
+      //   } catch (e) {
+      //     status.logLn(e.message, 'error');
+      //   }
+      // }
     } else {
       this.data = this.buffer.getValue();
       this.resetDirty();

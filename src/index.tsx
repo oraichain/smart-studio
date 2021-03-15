@@ -19,17 +19,17 @@
  * SOFTWARE.
  */
 
-import * as React from 'react';
-import * as ReactDOM from 'react-dom';
+import React from 'react';
+import ReactDOM from 'react-dom';
 
 import { App, EmbeddingParams, EmbeddingType } from './components/App';
 import { layout } from './util';
 import { MonacoUtils } from './monaco-utils';
-import { BrowserNotSupported } from './components/BrowserNotSupported';
+// import { BrowserNotSupported } from './components/BrowserNotSupported';
 import registerLanguages from './utils/registerLanguages';
 import registerTheme from './utils/registerTheme';
-import { Logger } from './utils/Logger';
-import { ErrorBoundary } from './components/ErrorBoundary';
+// import { Logger } from './utils/Logger';
+// import { ErrorBoundary } from './components/ErrorBoundary';
 
 import '../style/global.css';
 
@@ -89,7 +89,7 @@ export function getEmbeddingParams(parameters: any): EmbeddingParams {
 }
 
 export async function init(environment = 'production') {
-  Logger.init();
+  // Logger.init();
   window.addEventListener('resize', layout, false);
   window.addEventListener('beforeunload', unloadPageHandler, false);
   const parameters = getUrlParameters();
@@ -99,23 +99,15 @@ export async function init(environment = 'production') {
   try {
     await MonacoUtils.initialize();
     await registerTheme();
-    // if (typeof window.WebAssembly.compile !== 'object') {
-    //   ReactDOM.render(<BrowserNotSupported />, document.getElementById('app'));
-    // } else {
-    // we build webassembly on server using rust so no need to check
-    ReactDOM.render(
-      <ErrorBoundary>
-        <App update={update} fiddle={fiddle} embeddingParams={embeddingParams} windowContext={appWindowContext} />
-      </ErrorBoundary>,
-      document.getElementById('app')
-    );
-    // }
+
+    ReactDOM.render(<App update={update} fiddle={fiddle} embeddingParams={embeddingParams} windowContext={appWindowContext} />, document.getElementById('app'));
+
     if (environment !== 'test') {
       await import(/* webpackChunkName: "monaco-languages" */ 'monaco-editor');
     }
     await registerLanguages();
   } catch (e) {
-    Logger.captureException(e);
+    console.error(e);
   }
 }
 

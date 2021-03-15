@@ -1,6 +1,10 @@
-import { Controller, Get, Post, Req } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Req, Put } from '@nestjs/common';
 import { Request } from 'express';
-import { AppService, ILoadFiddleResponse } from './app.service';
+import {
+  AppService,
+  ILoadFiddleResponse,
+  ISaveFiddleResponse,
+} from './app.service';
 
 @Controller()
 export class AppController {
@@ -17,13 +21,23 @@ export class AppController {
   }
 
   @Post('project')
-  async postProject(@Req() request: Request): Promise<any> {
+  async postProject(@Req() request: Request): Promise<ISaveFiddleResponse> {
     return this.appService.postProject(request);
   }
 
   @Post('file')
-  async postFile(@Req() request: Request): Promise<any> {
+  async postFile(@Req() request: Request): Promise<ISaveFiddleResponse> {
     return this.appService.postFile(request);
+  }
+
+  @Put('file')
+  async renameFile(@Req() request: Request): Promise<ISaveFiddleResponse> {
+    return this.appService.renameFile(request);
+  }
+
+  @Delete('file')
+  async deleteFile(@Req() request: Request): Promise<ISaveFiddleResponse> {
+    return this.appService.deleteFile(request);
   }
 
   @Post('build')

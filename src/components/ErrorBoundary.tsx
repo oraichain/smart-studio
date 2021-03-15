@@ -19,8 +19,8 @@
  * SOFTWARE.
  */
 
-import * as React from 'react';
-import * as ReactModal from 'react-modal';
+import React from 'react';
+import ReactModal from 'react-modal';
 import { Logger } from '../utils/Logger';
 import { Button } from './shared/Button';
 import { GoOpenIssue, GoSync } from './shared/Icons';

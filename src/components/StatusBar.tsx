@@ -19,18 +19,21 @@
  * SOFTWARE.
  */
 
-import * as React from "react";
-import appStore from "../stores/AppStore";
+import React from 'react';
+import appStore from '../stores/AppStore';
 
-export class StatusBar extends React.Component<{}, {
-  hasStatus: boolean;
-  status: string;
-}> {
+export class StatusBar extends React.Component<
+  {},
+  {
+    hasStatus: boolean;
+    status: string;
+  }
+> {
   constructor(props: any) {
     super(props);
     this.state = {
       hasStatus: false,
-      status: ""
+      status: ''
     };
   }
   onDidChangeStatus = () => {
@@ -38,7 +41,7 @@ export class StatusBar extends React.Component<{}, {
       hasStatus: appStore.hasStatus(),
       status: appStore.getStatus()
     });
-  }
+  };
   componentDidMount() {
     appStore.onDidChangeStatus.register(this.onDidChangeStatus);
   }
@@ -46,14 +49,14 @@ export class StatusBar extends React.Component<{}, {
     appStore.onDidChangeStatus.unregister(this.onDidChangeStatus);
   }
   render() {
-    let className = "status-bar";
+    let className = 'status-bar';
     if (this.state.hasStatus) {
-      className += " active";
+      className += ' active';
     }
-    return <div className={className}>
-      <div className="status-bar-item">
-        {this.state.status}
+    return (
+      <div className={className}>
+        <div className="status-bar-item">{this.state.status}</div>
       </div>
-    </div>;
+    );
   }
 }

@@ -19,9 +19,9 @@
  * SOFTWARE.
  */
 
-import * as React from 'react';
+import React from 'react';
 import { Service, IFiddleFile } from '../service';
-import * as ReactModal from 'react-modal';
+import ReactModal from 'react-modal';
 import { Button } from './shared/Button';
 import { GoGear, GoFile, GoX, Icon, GoSync, GoFileDirectory, GoCloudUpload, GoVerified, GoCode } from './shared/Icons';
 import { KeyboardEvent, ChangeEvent, ChangeEventHandler } from 'react';
