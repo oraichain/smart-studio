@@ -303,7 +303,23 @@ export interface SandboxRunAction extends AppAction {
 }
 
 export async function runTask(name: string, optional: boolean = false, externals: RunTaskExternals = RunTaskExternals.Default) {
-  console.log('let run at our server instead', name, optional, externals);
+  const project = appStore.getProject().getModel();
+
+  switch (name) {
+    case 'build':
+      const fiddle = await Service.buildProject(project.name);
+      if (!fiddle.success) {
+        logLn(fiddle.message, 'error');
+        return;
+      }
+      // load wasm file to show
+      await Service.loadFilesIntoProject(fiddle.files, project);
+      return;
+    default:
+      console.log('let run at our server instead', name, optional, externals);
+      return;
+  }
+
   // Runs the provided source in our fantasy gulp context
   // const run = async (src: string) => {
   //   const project = appStore.getProject().getModel();

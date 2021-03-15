@@ -4,9 +4,11 @@ import path from 'path';
 import fs from 'fs';
 import fse from 'fs-extra';
 
-import { getFiles, getFileSize } from './app.utils';
+import { getFiles, getFileSize, SmartContractUtils } from './app.utils';
 
 const smartContractFolder = process.env.CONTRACT_FOLDER || '/code';
+const smartContractPackages = path.join(smartContractFolder, 'packages');
+const smartContractUtils = new SmartContractUtils(smartContractFolder);
 
 export interface IFiddleFile {
   name: string;
@@ -36,7 +38,7 @@ export class AppService {
   async getProject(req: Request): Promise<ILoadFiddleResponse> {
     const { name } = req.query;
 
-    const contractPath = path.join(smartContractFolder, name.toString());
+    const contractPath = path.join(smartContractPackages, name.toString());
 
     if (!fs.existsSync(contractPath)) {
       return {
@@ -45,7 +47,7 @@ export class AppService {
       };
     } else {
       try {
-        const paths = await getFiles(contractPath);
+        const paths = getFiles(contractPath);
 
         const files = paths.map((value) => {
           const buffer = fs.readFileSync(value);
@@ -74,7 +76,7 @@ export class AppService {
   async postProject(req: Request): Promise<ISaveFiddleResponse> {
     const { name } = req.query;
     const { files } = req.body;
-    const contractPath = path.join(smartContractFolder, name.toString());
+    const contractPath = path.join(smartContractPackages, name.toString());
 
     if (fs.existsSync(contractPath)) {
       return {
@@ -88,6 +90,9 @@ export class AppService {
       for (let file of files as IFiddleFile[]) {
         await fse.outputFile(path.join(contractPath, file.name), file.data);
       }
+
+      // add Cargo.toml to project of workspace, so make sure there is file in project to init
+      smartContractUtils.initProject(name.toString());
 
       return {
         id: name.toString(),
@@ -104,7 +109,14 @@ export class AppService {
 
   async postFile(req: Request): Promise<ISaveFiddleResponse> {
     const { name, data }: IFiddleFile = req.body;
-    const filePath = path.join(smartContractFolder, name.toString());
+    const filePath = path.join(smartContractPackages, name.toString());
+
+    if (filePath.endsWith('Cargo.toml')) {
+      return {
+        success: false,
+        message: `Can not add Cargo.toml for this package: ${name}`,
+      };
+    }
 
     if (!fs.existsSync(filePath)) {
       return {
@@ -127,5 +139,33 @@ export class AppService {
         message: ex.message,
       };
     }
+  }
+
+  async buildProject(req: Request): Promise<ILoadFiddleResponse> {
+    const { name } = req.body;
+
+    const success = smartContractUtils.buildProject(name);
+
+    if (!success) {
+      return {
+        success: false,
+        message: 'Build failed!',
+      };
+    }
+
+    const contractPath = path.join(smartContractPackages, name);
+    const fullName = path.join('artifacts', `${name}.wasm`);
+    const wasmFilePath = path.join(contractPath, fullName);
+
+    return {
+      files: [
+        {
+          name: fullName,
+          data: getFileSize(fs.statSync(wasmFilePath).size),
+        },
+      ],
+      success: true,
+      message: 'Build succeeded!',
+    };
   }
 }

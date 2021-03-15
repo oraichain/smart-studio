@@ -1,7 +1,7 @@
 {
-  "name": "webassembly-studio",
+  "name": "oraichain-studio",
   "version": "1.0.0",
-  "description": "Learn, Teach, Work and Play in the WebAssembly Studio",
+  "description": "Oraichain Studio helps building smart contracts written in WebAssembly over the air",
   "main": "index.js",
   "scripts": {
     "build": "webpack --mode production && npm run templates",
@@ -121,6 +121,7 @@
     "ts-loader": "^4.5.0",
     "tslint": "^5.11.0",
     "typescript": "^3.1.6",
+    "url-loader": "^4.1.1",
     "wait-until-promise": "^1.0.0",
     "webpack": "^4.26.1",
     "webpack-bundle-analyzer": "^2.13.1",

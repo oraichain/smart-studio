@@ -1,42 +1,30 @@
-# WebAssembly Studio
+# Oraichain Studio
 
-[![Build Status](https://travis-ci.org/wasdk/WebAssemblyStudio.svg?branch=master)](https://travis-ci.org/wasdk/WebAssemblyStudio) [![Coverage Status](https://coveralls.io/repos/github/wasdk/WebAssemblyStudio/badge.svg)](https://coveralls.io/github/wasdk/WebAssemblyStudio) [![Maintainance Status](https://img.shields.io/badge/maintained-seldom-yellowgreen.svg)](https://github.com/wasdk/WebAssemblyStudio/issues/381)
-
-This repository contains the [WebAssembly Studio](https://webassembly.studio) website source code.
-
-# Running your own local copy of the website
-
-To run a local copy, you will need to install node.js and webpack on your computer, then run the following commands:
+To build Oraichain Studio whenever a file changes run:
 
 ```
-npm install
-```
-
-To build WebAssembly Studio whenever a file changes run:
-
-```
-npm run build-watch
+yarn build-watch
 ```
 
 To start a dev web server run:
 
 ```
-npm run dev-server
+yarn start
 ```
 
 Before submitting a pull request run:
 
 ```
-npm test
+yarn test
 ```
 
-### Contributing
+The fiddle server part:
 
-Please get familiar with the [contributing guide](https://github.com/wasdk/WebAssemblyStudio/wiki/Contributing).
-
-Any doubts or questions? You can always find us on slack at http://wasm-studio.slack.com
-
-Need a slack invite? https://wasm-studio-invite.herokuapp.com/
+```bash
+cd server
+docker-compose exec app bash
+yarn start:dev
+```
 
 ### Credits
 

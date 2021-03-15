@@ -133,7 +133,7 @@ export class NewFileDialog extends React.Component<NewFileDialogProps, NewFileDi
             <Button
               icon={<GoX />}
               label="Cancel"
-              title="Create New File"
+              title="Cancel New File"
               onClick={() => {
                 this.props.onCancel();
               }}

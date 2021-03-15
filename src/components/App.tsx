@@ -239,7 +239,7 @@ export class App extends React.Component<AppProps, AppState> {
       loadProject(project);
       if (project.getFile('README.md')) {
         openFiles([['README.md']]);
-        logLn('Load : ' + project.name + ' succeed!');
+        logLn(`Load project ${project.name} succeed!`);
       }
     } else {
       if (this.toastContainer) {
@@ -285,13 +285,13 @@ export class App extends React.Component<AppProps, AppState> {
   //   return false;
   // }
 
-  async loadReleaseNotes() {
-    const response = await fetch('notes/notes.md');
-    const src = await response.text();
-    const notes = new File('Release Notes', FileType.Markdown);
-    notes.setData(src);
-    openFile(notes, defaultViewTypeForFileType(notes.type));
-  }
+  // async loadReleaseNotes() {
+  //   const response = await fetch('notes/notes.md');
+  //   const src = await response.text();
+  //   const notes = new File('Release Notes', FileType.Markdown);
+  //   notes.setData(src);
+  //   openFile(notes, defaultViewTypeForFileType(notes.type));
+  // }
 
   async loadHelp() {
     const response = await fetch('notes/help.md');
@@ -594,6 +594,7 @@ export class App extends React.Component<AppProps, AppState> {
               this.setState({ newFileDialogDirectory: null });
             }}
             onCreate={(file: File) => {
+              // check file to create, success then show
               addFileTo(file, this.state.newFileDialogDirectory.getModel());
               this.setState({ newFileDialogDirectory: null });
             }}
@@ -608,6 +609,7 @@ export class App extends React.Component<AppProps, AppState> {
             }}
             onChange={(name: string, description) => {
               const file = this.state.editFileDialogFile.getModel();
+              // do rename from name to file.name and update
               updateFileNameAndDescription(file, name, description);
               this.setState({ editFileDialogFile: null });
             }}
@@ -630,6 +632,7 @@ export class App extends React.Component<AppProps, AppState> {
               this.setState({ uploadFileDialogDirectory: null });
             }}
             onUpload={(files: File[]) => {
+              // this is like save project but with files
               files.map((file: File) => {
                 addFileTo(file, this.state.uploadFileDialogDirectory.getModel());
               });
@@ -645,6 +648,7 @@ export class App extends React.Component<AppProps, AppState> {
               this.setState({ newDirectoryDialog: null });
             }}
             onCreate={(directory: Directory) => {
+              // check folder to create, success then show
               addFileTo(directory, this.state.newDirectoryDialog.getModel());
               this.setState({ newDirectoryDialog: null });
             }}
@@ -669,7 +673,7 @@ export class App extends React.Component<AppProps, AppState> {
               onEditFile={(file: File) => {
                 this.setState({ editFileDialogFile: ModelRef.getRef(file) });
               }}
-              onDeleteFile={(file: File) => {
+              onDeleteFile={async (file: File) => {
                 let message = '';
                 if (file instanceof Directory) {
                   message = `Are you sure you want to delete '${file.name}' and its contents?`;
@@ -677,8 +681,16 @@ export class App extends React.Component<AppProps, AppState> {
                   message = `Are you sure you want to delete '${file.name}'?`;
                 }
                 if (confirm(message)) {
-                  closeTabs(file);
-                  deleteFile(file);
+                  // check server delete response, if success then
+                  const ret = await Service.deleteFile(file);
+                  if (ret.success) {
+                    closeTabs(file);
+                    deleteFile(file);
+                  } else {
+                    if (this.toastContainer) {
+                      this.toastContainer.showToast(<span>${ret.message}</span>, 'error');
+                    }
+                  }
                 }
               }}
               onClickFile={(file: File) => {

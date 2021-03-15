@@ -35,7 +35,7 @@ module.exports = (env) => {
     module: {
       rules: [
         { test: /\.css$/, use: ['style-loader', 'css-loader'] },
-
+        { test: /\.(png|woff|woff2|eot|ttf|svg)$/, loader: 'url-loader?limit=100000' },
         // All files with a '.ts' or '.tsx' extension will be handled by 'ts-loader'.
         {
           test: /\.(j|t)s(x)?$/,
@@ -54,6 +54,7 @@ module.exports = (env) => {
                 '@babel/preset-react'
               ],
               plugins: [
+                '@babel/plugin-transform-modules-commonjs',
                 // plugin-proposal-decorators is only needed if you're using experimental decorators in TypeScript
                 ['@babel/plugin-proposal-decorators', { legacy: true }],
                 ['@babel/plugin-proposal-class-properties', { loose: true }],

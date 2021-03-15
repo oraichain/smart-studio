@@ -21,14 +21,8 @@
 
 import * as React from 'react';
 import * as ReactDOM from 'react-dom';
-import { Workspace } from './components/Workspace';
-import { EditorView, ViewTabs, Tab, Tabs } from './components/editor';
-import { Header } from './components/Header';
-import { Split } from './components/Split';
-import { Toolbar } from './components/Toolbar';
 
 import { App, EmbeddingParams, EmbeddingType } from './components/App';
-import { Service } from './service';
 import { layout } from './util';
 import { MonacoUtils } from './monaco-utils';
 import { BrowserNotSupported } from './components/BrowserNotSupported';
@@ -37,8 +31,7 @@ import registerTheme from './utils/registerTheme';
 import { Logger } from './utils/Logger';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
-declare var window: any;
-declare var WebAssembly: any;
+import '../style/global.css';
 
 export function forEachUrlParameter(callback: (key: string, value: any) => void) {
   let url = window.location.search.substring(1);
@@ -106,16 +99,17 @@ export async function init(environment = 'production') {
   try {
     await MonacoUtils.initialize();
     await registerTheme();
-    if (typeof WebAssembly !== 'object') {
-      ReactDOM.render(<BrowserNotSupported />, document.getElementById('app'));
-    } else {
-      ReactDOM.render(
-        <ErrorBoundary>
-          <App update={update} fiddle={fiddle} embeddingParams={embeddingParams} windowContext={appWindowContext} />
-        </ErrorBoundary>,
-        document.getElementById('app')
-      );
-    }
+    // if (typeof window.WebAssembly.compile !== 'object') {
+    //   ReactDOM.render(<BrowserNotSupported />, document.getElementById('app'));
+    // } else {
+    // we build webassembly on server using rust so no need to check
+    ReactDOM.render(
+      <ErrorBoundary>
+        <App update={update} fiddle={fiddle} embeddingParams={embeddingParams} windowContext={appWindowContext} />
+      </ErrorBoundary>,
+      document.getElementById('app')
+    );
+    // }
     if (environment !== 'test') {
       await import(/* webpackChunkName: "monaco-languages" */ 'monaco-editor');
     }

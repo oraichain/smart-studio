@@ -1,2 +1,3 @@
 .registry_cache
-smart-contracts/*
+smart-contracts/target
+smart-contracts/packages

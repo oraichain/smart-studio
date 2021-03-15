@@ -1,6 +1,2 @@
 [workspace]
-
-members = [    
-    "cv009"
-]
-
+members = ["packages/*"]

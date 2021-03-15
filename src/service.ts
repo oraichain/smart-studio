@@ -391,6 +391,20 @@ export class Service {
     return ret;
   }
 
+  static async deleteFile(file: File): Promise<ISaveFiddleResponse> {
+    const json: IFiddleFile = {
+      name: file.getPath()
+    };
+    const baseURL = await getServiceURL(ServiceTypes.Service);
+    const response = await fetch(`${baseURL}/file`, {
+      method: 'DELETE',
+      headers: new Headers({ 'Content-type': 'application/json; charset=utf-8' }),
+      body: JSON.stringify(json)
+    });
+    const ret = await response.json();
+    return ret;
+  }
+
   static parseFiddleURI(): string {
     let uri = window.location.search.substring(1);
     if (uri) {
@@ -418,6 +432,17 @@ export class Service {
       json['description'] = json['description'] + `/?f=${uri}`;
     }
     return await this.createGist(json);
+  }
+
+  static async buildProject(name: string): Promise<ILoadFiddleResponse> {
+    const baseURL = await getServiceURL(ServiceTypes.Service);
+    const response = await fetch(`${baseURL}/build`, {
+      method: 'POST',
+      headers: new Headers({ 'Content-type': 'application/json; charset=utf-8' }),
+      body: JSON.stringify({ name })
+    });
+    const ret = await response.json();
+    return ret;
   }
 
   static async saveProject(project: Project, openedFiles: string[][], uri?: string): Promise<ISaveFiddleResponse> {
