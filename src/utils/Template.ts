@@ -19,28 +19,28 @@
  * SOFTWARE.
  */
 
-import { File, FileType, Problem, Directory } from "../models";
+import { File, FileType, Problem, Directory, getIconForFileType } from '../models';
 
 export class Template {
   readonly label: HTMLAnchorElement;
   readonly description: HTMLSpanElement;
   readonly monacoIconLabel: HTMLDivElement;
   constructor(container: HTMLElement) {
-    this.monacoIconLabel = document.createElement("div");
-    this.monacoIconLabel.className = "monaco-icon-label";
-    this.monacoIconLabel.style.display = "flex";
+    this.monacoIconLabel = document.createElement('div');
+    this.monacoIconLabel.className = 'monaco-icon-label';
+    this.monacoIconLabel.style.display = 'flex';
     container.appendChild(this.monacoIconLabel);
 
-    const labelDescriptionContainer = document.createElement("div");
-    labelDescriptionContainer.className = "monaco-icon-label-description-container";
+    const labelDescriptionContainer = document.createElement('div');
+    labelDescriptionContainer.className = 'monaco-icon-label-description-container';
     this.monacoIconLabel.appendChild(labelDescriptionContainer);
 
-    this.label = document.createElement("a");
-    this.label.className = "label-name";
+    this.label = document.createElement('a');
+    this.label.className = 'label-name';
     labelDescriptionContainer.appendChild(this.label);
 
-    this.description = document.createElement("span");
-    this.description.className = "label-description";
+    this.description = document.createElement('span');
+    this.description.className = 'label-description';
     labelDescriptionContainer.appendChild(this.description);
   }
 }
@@ -53,7 +53,7 @@ export class ProblemTemplate extends Template {
     // TODO
   }
   set(problem: Problem) {
-    this.label.classList.toggle(problem.severity + "-dark", true);
+    this.label.classList.toggle(problem.severity + '-dark', true);
     const marker = problem.marker;
     const position = `(${marker.startLineNumber}, ${marker.startColumn})`;
     this.label.innerHTML = marker.message;
@@ -69,37 +69,26 @@ export class FileTemplate extends Template {
     // TODO dispose resources?
   }
   set(file: File) {
-    let icon = "";
-    switch (file.type) {
-      case FileType.C: icon = "c-lang-file-icon"; break;
-      case FileType.Cpp: icon = "cpp-lang-file-icon"; break;
-      case FileType.JavaScript: icon = "javascript-lang-file-icon"; break;
-      case FileType.HTML: icon = "html-lang-file-icon"; break;
-      case FileType.TypeScript: icon = "typescript-lang-file-icon"; break;
-      case FileType.Markdown: icon = "markdown-lang-file-icon"; break;
-      case FileType.JSON: icon = "json-lang-file-icon"; break;
-      case FileType.Wasm: icon = "wasm-lang-file-icon"; break;
-      case FileType.Wat: icon = "wat-lang-file-icon"; break;
-    }
     if (file instanceof Directory) {
-      this.monacoIconLabel.classList.remove("file-icon");
-      this.monacoIconLabel.classList.add("folder-icon");
+      this.monacoIconLabel.classList.remove('file-icon');
+      this.monacoIconLabel.classList.add('folder-icon');
     } else {
-      this.monacoIconLabel.classList.add("file-icon");
-    }
-    if (icon) {
+      // add file icon
+      const icon = getIconForFileType(file.type);
+      this.monacoIconLabel.classList.add('file-icon');
       this.monacoIconLabel.classList.add(icon);
     }
+
     this.label.innerHTML = file.name;
-    this.monacoIconLabel.classList.toggle("dirty", file.isDirty);
-    this.monacoIconLabel.classList.toggle("transient", file.isTransient);
-    let title = "";
+    this.monacoIconLabel.classList.toggle('dirty', file.isDirty);
+    this.monacoIconLabel.classList.toggle('transient', file.isTransient);
+    let title = '';
     if (file.isDirty && file.isTransient) {
-      title =  "File has been modified and is transient.";
+      title = 'File has been modified and is transient.';
     } else if (file.isDirty && !file.isTransient) {
-      title =  "File has been modified.";
+      title = 'File has been modified.';
     } else if (!file.isDirty && file.isTransient) {
-      title =  "File is transient.";
+      title = 'File is transient.';
     }
     this.monacoIconLabel.title = title;
   }

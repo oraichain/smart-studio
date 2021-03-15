@@ -7,8 +7,6 @@ const shell = require('shelljs');
 const distPath = path.resolve(__dirname, process.env.DIST_FOLDER || 'dist');
 
 module.exports = (env, options) => {
-  shell.exec(`yarn templates ${distPath}/templates`);
-
   const config = {
     entry: './src/index.tsx',
     output: {
@@ -109,6 +107,7 @@ module.exports = (env, options) => {
       apply: (compiler) => {
         compiler.hooks.afterEmit.tap('AfterEmitPlugin', (compilation) => {
           // copy file to destination
+          shell.exec(`yarn templates ${distPath}/templates`);
           shell.cp(path.resolve(__dirname, 'index.html'), distPath);
           shell.cp(path.resolve(__dirname, 'config.json'), distPath);
           shell.cp('-r', path.resolve(__dirname, 'style'), distPath);

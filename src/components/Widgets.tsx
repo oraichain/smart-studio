@@ -135,6 +135,7 @@ export class ListItem extends React.Component<
         </div>
       );
     }
+
     return (
       <div className={className} onClick={this.props.onClick as any}>
         <div className={'monaco-icon-label file-icon ' + this.props.icon} />
