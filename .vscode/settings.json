@@ -28,5 +28,6 @@
     "**/CVS": true,
     "**/.DS_Store": true
   },
+  "js/ts.implicitProjectConfig.experimentalDecorators": true,
   "prettier.printWidth": 180
 }
