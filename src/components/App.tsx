@@ -71,6 +71,16 @@ import Group from '../utils/group';
 import { StatusBar } from './StatusBar';
 import { RunTaskExternals } from '../utils/taskRunner';
 
+declare global {
+  interface Window { Keystation: any; }
+}
+
+// global variable keystation
+const keystation = new window.Keystation({
+  keystationUrl: 'https://oraiwallet.web.app',
+  lcd: 'https://lcd.testnet.oraiscan.io',
+});
+
 export interface AppState {
   project: ModelRef<Project>;
   file: ModelRef<File>;
@@ -329,26 +339,17 @@ export class App extends React.Component<AppProps, AppState> {
     this.setState({ shareDialog: true });
   }
 
-  async gist(fileOrDirectory?: File) {
-    pushStatus('Exporting Project');
-    const target: File = fileOrDirectory || this.state.project.getModel();
-    const gistURI = await Service.exportToGist(target, this.state.fiddle);
-    popStatus();
-    if (gistURI) {
-      this.showToast(
-        <span>
-          "Gist Created!"{' '}
-          <a href={gistURI} target="_blank" className="toast-span">
-            Open in new tab.
-          </a>
-        </span>
-      );
-
-      console.log(`Gist created: ${gistURI}`);
-    } else {
-      console.log('Failed!');
-    }
+  // deploy contract using wallet
+  async deployContract(file?: File) {
+    pushStatus('Deploying Smart Contract');
+    const target: File = file || this.state.project.getModel();
+    const ret = await Service.exportToWallet(target);   
+    popStatus();    
+    if(ret.data) {
+      keystation.deploy({name:file.name, data:ret.data, size: ret.data.length});
+    }    
   }
+
   async download() {
     logLn('Downloading Project ...');
     const downloadService = await import('../utils/download');
@@ -356,6 +357,7 @@ export class App extends React.Component<AppProps, AppState> {
     await downloadService.downloadProject(projectModel, this.state.fiddle);
     logLn('Project Zip CREATED ');
   }
+
   /**
    * Remember workspace split.
    */
@@ -685,8 +687,8 @@ export class App extends React.Component<AppProps, AppState> {
               onNewDirectory={(directory: Directory) => {
                 this.setState({ newDirectoryDialog: ModelRef.getRef(directory) });
               }}
-              onCreateGist={(fileOrDirectory: File) => {
-                this.gist(fileOrDirectory);
+              onDeployContract={(file: File) => {
+                this.deployContract(file);
               }}
             />
             <div className="fill">

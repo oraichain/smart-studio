@@ -40,7 +40,7 @@ export interface DirectoryTreeProps {
   onClickFile?: (file: File) => void;
   onDoubleClickFile?: (file: File) => void;
   onUploadFile?: (directory: Directory) => void;
-  onCreateGist?: (fileOrDirectory: File) => void;
+  onDeployContract?: (file: File) => void;
   onlyUploadActions?: boolean;
 }
 
@@ -219,11 +219,11 @@ export class DirectoryTree extends React.Component<
     }
 
     // Create a gist from everything but binary
-    if (!isBinaryFileType(file.type)) {
-      this.props.onCreateGist &&
+    if (isBinaryFileType(file.type)) {
+      this.props.onDeployContract &&
         actions.push(
-          new MonacoUtils.Action('x', 'Create Gist', 'octicon-gist', true, () => {
-            return this.props.onCreateGist(file as Directory);
+          new MonacoUtils.Action('x', 'Deploy Contract', 'octicon-gist', true, () => {
+            return this.props.onDeployContract(file);
           })
         );
     }

@@ -87,17 +87,17 @@ function createMockService() {
   const loadJSON = jest.fn();
   const loadFilesIntoProject = jest.fn();
   const saveProject = jest.fn();
-  const exportToGist = jest.fn();
+  const exportToWallet = jest.fn();
   return {
     loadJSON,
     loadFilesIntoProject,
     saveProject,
-    exportToGist,
+    exportToWallet,
     clear: () => {
       loadJSON.mockClear();
       loadFilesIntoProject.mockClear();
       saveProject.mockClear();
-      exportToGist.mockClear();
+      exportToWallet.mockClear();
     }
   };
 }
@@ -498,13 +498,13 @@ describe('Tests for App', () => {
         const { pushStatus, popStatus, restore } = createActionSpies();
         const showToast = jest.fn();
         App.prototype.toastContainer = { showToast } as any;
-        Service.exportToGist.mockImplementation(() => 'gist-url');
+        Service.exportToWallet.mockImplementation(() => 'gist-url');
         const fiddle = 'fiddle-url';
         const embeddingParams = { type: EmbeddingType.None } as EmbeddingParams;
         const wrapper = setup({ embeddingParams, fiddle });
         await (wrapper.instance() as App).gist();
         expect(pushStatus).toHaveBeenCalledWith('Exporting Project');
-        expect(Service.exportToGist).toHaveBeenCalledWith((wrapper.state() as any).project.getModel(), fiddle);
+        expect(Service.exportToWallet).toHaveBeenCalledWith((wrapper.state() as any).project.getModel(), fiddle);
         expect(popStatus).toHaveBeenCalled();
         expect(shallow(showToast.mock.calls[1][0])).toContainReact(
           <span>
@@ -518,13 +518,13 @@ describe('Tests for App', () => {
         restore();
       });
       it('should export the provided file to a Gist', async () => {
-        Service.exportToGist.mockImplementation(() => 'gist-url');
+        Service.exportToWallet.mockImplementation(() => 'gist-url');
         const file = new File('file', FileType.JavaScript);
         const fiddle = 'fiddle-url';
         const embeddingParams = { type: EmbeddingType.None } as EmbeddingParams;
         const wrapper = setup({ embeddingParams, fiddle });
         await (wrapper.instance() as App).gist(file);
-        expect(Service.exportToGist).toHaveBeenCalledWith(file, fiddle);
+        expect(Service.exportToWallet).toHaveBeenCalledWith(file, fiddle);
       });
     });
     describe('Download', () => {
@@ -1008,15 +1008,15 @@ describe('Tests for App', () => {
       onNewDirectory(directory);
       expect(wrapper).toHaveState({ newDirectoryDialog: ModelRef.getRef(directory) });
     });
-    it('should handle onCreateGist', () => {
+    it('should handle onDeployContract', () => {
       const embeddingParams = { type: EmbeddingType.None } as EmbeddingParams;
       const wrapper = setup({ embeddingParams });
       const gist = jest.spyOn(wrapper.instance() as App, 'gist');
       gist.mockImplementation(() => {});
       const workspace = wrapper.find(Workspace);
-      const onCreateGist = workspace.prop('onCreateGist');
+      const onDeployContract = workspace.prop('onDeployContract');
       const file = new File('file', FileType.JavaScript);
-      onCreateGist(file);
+      onDeployContract(file);
       expect(gist).toHaveBeenCalledWith(file);
       gist.mockRestore();
     });

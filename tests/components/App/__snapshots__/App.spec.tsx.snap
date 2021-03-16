@@ -37,7 +37,7 @@ exports[`Tests for App render should render correctly (arc) 1`] = `
       <Workspace
         file={null}
         onClickFile={[Function]}
-        onCreateGist={[Function]}
+        onDeployContract={[Function]}
         onDeleteFile={[Function]}
         onDoubleClickFile={[Function]}
         onEditFile={[Function]}
@@ -299,7 +299,7 @@ exports[`Tests for App render should render correctly (embedded) 1`] = `
       <Workspace
         file={null}
         onClickFile={[Function]}
-        onCreateGist={[Function]}
+        onDeployContract={[Function]}
         onDeleteFile={[Function]}
         onDoubleClickFile={[Function]}
         onEditFile={[Function]}
@@ -558,7 +558,7 @@ exports[`Tests for App render should render correctly (fiddle) 1`] = `
       <Workspace
         file={null}
         onClickFile={[Function]}
-        onCreateGist={[Function]}
+        onDeployContract={[Function]}
         onDeleteFile={[Function]}
         onDoubleClickFile={[Function]}
         onEditFile={[Function]}
@@ -813,7 +813,7 @@ exports[`Tests for App render should render correctly (update) 1`] = `
       <Workspace
         file={null}
         onClickFile={[Function]}
-        onCreateGist={[Function]}
+        onDeployContract={[Function]}
         onDeleteFile={[Function]}
         onDoubleClickFile={[Function]}
         onEditFile={[Function]}
@@ -959,7 +959,7 @@ exports[`Tests for App render should render correctly (update) 1`] = `
             <Button
               icon={<GoGist />}
               isDisabled={false}
-              key="CreateGist"
+              key="ConnectWallet"
               label="Create Gist"
               onClick={[Function]}
               title="Create GitHub Gist from Project"
@@ -1125,7 +1125,7 @@ exports[`Tests for App render should render correctly 1`] = `
       <Workspace
         file={null}
         onClickFile={[Function]}
-        onCreateGist={[Function]}
+        onDeployContract={[Function]}
         onDeleteFile={[Function]}
         onDoubleClickFile={[Function]}
         onEditFile={[Function]}
@@ -1263,7 +1263,7 @@ exports[`Tests for App render should render correctly 1`] = `
             <Button
               icon={<GoGist />}
               isDisabled={false}
-              key="CreateGist"
+              key="ConnectWallet"
               label="Create Gist"
               onClick={[Function]}
               title="Create GitHub Gist from Project"

@@ -5,6 +5,7 @@ import {
   AppService,
   ILoadFiddleResponse,
   ISaveFiddleResponse,
+  IFiddleFile,
 } from './app.service';
 
 @Controller()
@@ -24,6 +25,12 @@ export class AppController {
   @Post('project')
   async saveProject(@Req() request: Request): Promise<ISaveFiddleResponse> {
     return this.appService.saveProject(request);
+  }
+
+
+  @Get('file')
+  async getFile(@Req() request: Request): Promise<IFiddleFile> {
+    return this.appService.getFile(request);
   }
 
   @Post('file')

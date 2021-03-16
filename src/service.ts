@@ -20,13 +20,12 @@
  */
 import { File, Project, Directory, FileType, Problem, isBinaryFileType, fileTypeFromFileName, IStatusProvider } from './models';
 import { padLeft, padRight, isBranch, toAddress, decodeRestrictedBase64ToBytes, base64EncodeBytes } from './util';
-import { assert } from './util';
-import { gaEvent } from './utils/ga';
 import { WorkerCommand, IWorkerResponse } from './message';
 import { processJSFile, RewriteSourcesContext } from './utils/rewriteSources';
 import { getCurrentRunnerInfo } from './utils/taskRunner';
 import { createCompilerService, Language } from './compilerServices';
 import { getServiceURL, ServiceTypes } from './compilerServices/sendRequest';
+import { file } from 'jszip';
 
 declare var capstone: {
   ARCH_X86: any;
@@ -131,7 +130,7 @@ export class Service {
   }
 
   static async compileFiles(files: File[], from: Language, to: Language, options = ''): Promise<{ [name: string]: string | ArrayBuffer }> {
-    gaEvent('compile', 'Service', `${from}->${to}`);
+    
 
     const service = await createCompilerService(from, to);
 
@@ -217,16 +216,6 @@ export class Service {
       };
     }
     return output;
-  }
-
-  static async createGist(json: object): Promise<string> {
-    const url = 'https://api.github.com/gists';
-    const response = await fetch(url, {
-      method: 'POST',
-      body: JSON.stringify(json),
-      headers: new Headers({ 'Content-type': 'application/json; charset=utf-8' })
-    });
-    return JSON.parse(await response.text()).html_url;
   }
 
   static async loadJSON(uri: string): Promise<ILoadFiddleResponse> {
@@ -316,22 +305,12 @@ export class Service {
     return uri;
   }
 
-  static async exportToGist(content: File, uri?: string): Promise<string> {
-    gaEvent('export', 'Service', 'gist');
-    const files: any = {};
-    function serialize(file: File) {
-      if (file instanceof Directory) {
-        file.mapEachFile((file: File) => serialize(file), true);
-      } else {
-        files[file.name] = { content: file.data };
-      }
-    }
-    serialize(content);
-    const json: any = { description: 'source: https://webassembly.studio', public: true, files };
-    if (uri !== undefined) {
-      json['description'] = json['description'] + `/?f=${uri}`;
-    }
-    return await this.createGist(json);
+  static async exportToWallet(file: File): Promise<IFiddleFile> {                
+    const filePath = file.getPath();
+    const baseURL = await getServiceURL(ServiceTypes.Service);
+    const response = await fetch(`${baseURL}/file?name=${filePath}`);
+    const ret = await response.json();    
+    return ret;
   }
 
   static async buildProject(name: string): Promise<ILoadFiddleResponse> {
@@ -446,7 +425,7 @@ export class Service {
   static clangFormatModule: any = null;
   // Kudos to https://github.com/tbfleming/cib
   static async clangFormat(file: File, status?: IStatusProvider) {
-    gaEvent('format', 'Service', 'clang-format');
+    
     function format() {
       const result = Service.clangFormatModule.ccall('formatCode', 'string', ['string'], [file.buffer.getValue()]);
       file.buffer.setValue(result);
@@ -469,7 +448,7 @@ export class Service {
   }
 
   static async disassembleX86(file: File, status?: IStatusProvider, options = '') {
-    gaEvent('disassemble', 'Service', 'capstone.x86');
+    
     if (typeof capstone === 'undefined') {
       await Service.lazyLoad('lib/capstone.x86.min.js', status);
     }

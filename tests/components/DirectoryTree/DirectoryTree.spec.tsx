@@ -381,21 +381,21 @@ describe('Tests for DirectoryTree', () => {
       });
     });
     describe('Gist', () => {
-      it('should add the gist action if passing the onCreateGist prop', () => {
-        const onCreateGist = jest.fn();
-        const { wrapper, getActions } = setup({ onCreateGist });
+      it('should add the gist action if passing the onDeployContract prop', () => {
+        const onDeployContract = jest.fn();
+        const { wrapper, getActions } = setup({ onDeployContract });
         const file = new File('file', FileType.JavaScript);
         const actions = getActions(file);
         actions.forEach((action) => action.actionCallback());
         expect(actions).toHaveLength(2);
         expect(actions[0]).toMatchObject(Actions.Download);
         expect(actions[1]).toMatchObject(Actions.Gist);
-        expect(onCreateGist).toHaveBeenCalledWith(file);
+        expect(onDeployContract).toHaveBeenCalledWith(file);
         wrapper.unmount();
       });
       it('should never add the gist action for binary file types', () => {
-        const onCreateGist = jest.fn();
-        const { wrapper, getActions } = setup({ onCreateGist });
+        const onDeployContract = jest.fn();
+        const { wrapper, getActions } = setup({ onDeployContract });
         const file = new File('file', FileType.Wasm);
         const actions = getActions(file);
         const gistActions = actions.filter((action) => action.label === 'Create Gist');

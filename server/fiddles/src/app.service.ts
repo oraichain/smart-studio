@@ -39,6 +39,7 @@ export interface ILoadFiddleResponse {
 export class AppService {
   // it run in dist folder
   static readonly clientPath: string = path.join(__dirname);
+
   async getProject(req: Request): Promise<ILoadFiddleResponse> {
     let { name } = req.query;
     name = filterName(name);
@@ -108,6 +109,30 @@ export class AppService {
         success: false,
         message: ex.message,
       };
+    }
+  }
+
+  // this method allow get even binary content of file such as WASM file
+  async getFile(req: Request): Promise<IFiddleFile> {
+    let { name } = req.query;
+    name = filterPath(name);
+    const filePath = path.join(smartContractPackages, name);
+
+    if (!fs.existsSync(filePath)) {
+      return {
+        name
+      };
+    } else {
+      try {        
+        return {
+          name,          
+          data: fs.readFileSync(filePath).toString(),          
+        };
+      } catch (ex) {
+        return {
+          name
+        };
+      }
     }
   }
 

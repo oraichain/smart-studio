@@ -28,8 +28,7 @@ jest.mock("../../src/compilerServices", () => ({
   Language
 }));
 
-const gaEvent = jest.fn();
-jest.mock("../../src/utils/ga", () => ({ gaEvent }));
+
 
 function spyOnWorker(fnName: string, mockImplementation?: () => any) {
   // @ts-ignore
@@ -137,12 +136,7 @@ describe("Tests for Service", () => {
     });
   });
   describe("Service.compileFiles", () => {
-    it("should provide analytics to google (gaEvent)", async () => {
-      gaEvent.mockClear();
-      const files = [new File("file", FileType.C)];
-      await Service.compileFiles(files, Language.C, Language.Wasm);
-      expect(gaEvent).toHaveBeenCalledWith("compile", "Service", "c->wasm");
-    });
+   
     it("should create a compiler service", async () => {
       createCompilerService.mockClear();
       const files = [new File("file", FileType.C)];
@@ -213,101 +207,6 @@ describe("Tests for Service", () => {
       await expect(compilePromise).rejects.toThrowError(expectedErrorMessage);
     });
   });
-  describe("Service.disassembleWasm", () => {
-    it("should provide analytics to google (gaEvent)", async () => {
-      const disassembleWasmWithWabt = spyOnWorker("disassembleWasmWithWabt");
-      gaEvent.mockClear();
-      const buffer = "buffer" as any;
-      await Service.disassembleWasm(buffer, null);
-      expect(gaEvent).toHaveBeenCalledWith("disassemble", "Service", "wabt");
-      disassembleWasmWithWabt.mockRestore();
-    });
-    it("should dissasemble wasm -> wat using Wabt", async () => {
-      const disassembleWasmWithWabt = spyOnWorker("disassembleWasmWithWabt");
-      const buffer = "buffer" as any;
-      const status = { push: jest.fn(), pop: jest.fn() } as any;
-      const result = await Service.disassembleWasm(buffer, status);
-      expect(disassembleWasmWithWabt).toHaveBeenLastCalledWith(buffer);
-      expect(status.push).toHaveBeenCalledWith("Disassembling with Wabt");
-      expect(status.pop).toHaveBeenCalled();
-      disassembleWasmWithWabt.mockRestore();
-    });
-  });
-  describe("Service.disassembleWasmWithWabt", () => {
-    it("should dissasemble wasm -> wat using Wabt", async () => {
-      const disassembleWasm = jest.spyOn(Service, "disassembleWasm");
-      disassembleWasm.mockImplementation(() => "result");
-      const parent = new Directory("parent");
-      const file = parent.newFile("file.wasm", FileType.Wasm);
-      const data = new ArrayBuffer(8);
-      file.setData(data);
-      await Service.disassembleWasmWithWabt(file);
-      const watFile = parent.getFile("file.wasm.wat");
-      expect(disassembleWasm).toHaveBeenCalledWith(data, undefined);
-      expect(watFile.type).toEqual(FileType.Wat);
-      expect(watFile.getData()).toEqual("result");
-      expect(watFile.description).toEqual("Disassembled from file.wasm using Wabt.");
-      disassembleWasm.mockRestore();
-    });
-  });
-  describe("Service.assembleWat", () => {
-    it("should provide analytics to google (gaEvent)", async () => {
-      const assembleWatWithWabt = spyOnWorker("assembleWatWithWabt");
-      gaEvent.mockClear();
-      await Service.assembleWat("wat");
-      expect(gaEvent).toHaveBeenCalledWith("assemble", "Service", "wabt");
-      assembleWatWithWabt.mockRestore();
-    });
-    it("should assemble wat -> wasm using Wabt", async () => {
-      const assembleWatWithWabt = spyOnWorker("assembleWatWithWabt", () => "results");
-      const wat = "wat";
-      const status = { push: jest.fn(), pop: jest.fn() } as any;
-      const result = await Service.assembleWat("wat", status);
-      expect(assembleWatWithWabt).toHaveBeenCalledWith(wat);
-      expect(result).toEqual("results");
-      expect(status.push).toHaveBeenCalledWith("Assembling Wat with Wabt");
-      expect(status.pop).toHaveBeenCalled();
-      assembleWatWithWabt.mockRestore();
-    });
-    it("should handle errors", async () => {
-      const assembleWatWithWabt = spyOnWorker("assembleWatWithWabt", () => { throw new Error("from worker"); });
-      const assemblePromise = Service.assembleWat("wat");
-      await expect(assemblePromise).rejects.toThrowError("from worker");
-      assembleWatWithWabt.mockRestore();
-    });
-  });
-  describe("Service.assembleWatWithWabt", () => {
-    it("should assemble wat -> wasm using Wabt", async () => {
-      const assembleWat = jest.spyOn(Service, "assembleWat");
-      assembleWat.mockImplementation(() => "result");
-      const parent = new Directory("parent");
-      const file = parent.newFile("file.wat", FileType.Wat);
-      const data = "file-data";
-      file.setData(data);
-      await Service.assembleWatWithWabt(file);
-      const watFile = parent.getFile("file.wat.wasm");
-      expect(assembleWat).toHaveBeenCalledWith(data, undefined);
-      expect(watFile.type).toEqual(FileType.Wasm);
-      expect(watFile.getData()).toEqual("result");
-      expect(watFile.description).toEqual("Assembled from file.wat using Wabt.");
-      assembleWat.mockRestore();
-    });
-  });
-  describe("Service.createGist", () => {
-    it("should create a new gist", async () => {
-      const text = jest.fn(() => Promise.resolve(JSON.stringify({ html_url: "gist-url" })));
-      const { restore } = mockFetch({ text });
-      const json = { a: 1, b: 2 };
-      const result = await Service.createGist(json);
-      expect(window.fetch).toHaveBeenCalledWith("https://api.github.com/gists", {
-        method: "POST",
-        body: JSON.stringify(json),
-        headers: { "Content-type": "application/json; charset=utf-8" }
-      });
-      expect(result).toEqual("gist-url");
-      restore();
-    });
-  });
   describe("Service.loadJSON", () => {
     it("should load a fiddle from the provided uri", async () => {
       const json = jest.fn(() => Promise.resolve("response"));
@@ -357,59 +256,52 @@ describe("Tests for Service", () => {
       expect(Service.parseFiddleURI()).toEqual("");
     });
   });
-  describe("Service.exportToGist", () => {
-    it("should provide analytics to google (gaEvent)", async () => {
-      const createGist = jest.spyOn(Service, "createGist");
-      createGist.mockImplementation(() => {});
-      gaEvent.mockClear();
-      const file = new File("file", FileType.JavaScript);
-      await Service.exportToGist(file);
-      expect(gaEvent).toHaveBeenCalledWith("export", "Service", "gist");
-      createGist.mockRestore();
-    });
-    it("should export the provided file to a gist", async () => {
-      const createGist = jest.spyOn(Service, "createGist");
-      createGist.mockImplementation(() => {});
+  
+  describe("Service.connectWallet", () => {
+    it("should export the provided file to a wallet", async () => {
+      const connectWallet = jest.spyOn(Service, "connectWallet");
+      connectWallet.mockImplementation(() => {});
       const file = new File("file.js", FileType.JavaScript);
       file.setData("file-data");
-      await Service.exportToGist(file);
-      expect(createGist).toHaveBeenCalledWith({
+      await Service.exportToWallet(file);
+      expect(connectWallet).toHaveBeenCalledWith({
         description: "source: https://webassembly.studio",
         public: true,
         files: { "file.js": { content: "file-data" }}
       });
-      createGist.mockRestore();
+      connectWallet.mockRestore();
     });
-    it("should export the provided directory to a gist", async () => {
-      const createGist = jest.spyOn(Service, "createGist");
-      createGist.mockImplementation(() => {});
+    it("should export the provided directory to a wallet", async () => {
+      const connectWallet = jest.spyOn(Service, "connectWallet");
+      connectWallet.mockImplementation(() => {});
       const directory = new Directory("src");
       const fileA = directory.newFile("fileA.js", FileType.JavaScript);
       const fileB = directory.newFile("fileB.js", FileType.JavaScript);
       fileA.setData("file-data");
       fileB.isTransient = true;
-      await Service.exportToGist(directory);
-      expect(createGist).toHaveBeenCalledWith({
+      await Service.exportToWallet(directory);
+      expect(connectWallet).toHaveBeenCalledWith({
         description: "source: https://webassembly.studio",
         public: true,
         files: { "fileA.js": { content: "file-data" }}
       });
-      createGist.mockRestore();
+      connectWallet.mockRestore();
     });
     it("should be possible to provide a fiddle url as an optional parameter", async () => {
-      const createGist = jest.spyOn(Service, "createGist");
-      createGist.mockImplementation(() => {});
+      const connectWallet = jest.spyOn(Service, "connectWallet");
+      connectWallet.mockImplementation(() => {});
       const file = new File("file.js", FileType.JavaScript);
       file.setData("file-data");
-      await Service.exportToGist(file, "fiddle-uri");
-      expect(createGist).toHaveBeenCalledWith({
+      await Service.exportToWallet(file, "fiddle-uri");
+      expect(connectWallet).toHaveBeenCalledWith({
         description: "source: https://webassembly.studio/?f=fiddle-uri",
         public: true,
         files: { "file.js": { content: "file-data" }}
       });
-      createGist.mockRestore();
+      connectWallet.mockRestore();
     });
   });
+
   describe("Service.saveProject", () => {
     it("should save the project to a fiddle", async () => {
       const saveJSON = jest.spyOn(Service, "saveJSON");
@@ -495,123 +387,7 @@ describe("Tests for Service", () => {
       expect((scriptElement as any).src).toEqual("uri");
     });
   });
-  describe("Service.optimizeWasmWithBinaryen", () => {
-    it("should run optimizations using Binaryen", async () => {
-      gaEvent.mockClear();
-      const optimizeWasmWithBinaryen = spyOnWorker("optimizeWasmWithBinaryen", () => {
-        return "optimized";
-      });
-      const disassembleWasm = jest.spyOn(Service, "disassembleWasm");
-      disassembleWasm.mockImplementation(() => {});
-      const file = new File("file.wasm", FileType.Wasm);
-      file.setData(new ArrayBuffer(8));
-      const status = { push: jest.fn(), pop: jest.fn() } as any;
-      await Service.optimizeWasmWithBinaryen(file, status);
-      expect(optimizeWasmWithBinaryen).toHaveBeenCalledWith(new ArrayBuffer(8));
-      expect(status.push).toHaveBeenCalledWith("Optimizing with Binaryen");
-      expect(status.pop).toHaveBeenCalled();
-      expect(file.getData()).toEqual("optimized");
-      expect(gaEvent).toHaveBeenCalledWith("optimize", "Service", "binaryen");
-      optimizeWasmWithBinaryen.mockRestore();
-      disassembleWasm.mockRestore();
-    });
-  });
-  describe("Service.validateWasmWithBinaryen", () => {
-    it("should run validation using Binaryen", async () => {
-      gaEvent.mockClear();
-      const validateWasmWithBinaryen = spyOnWorker("validateWasmWithBinaryen", () => true);
-      const file = new File("file.wasm", FileType.Wasm);
-      file.setData(new ArrayBuffer(8));
-      const status = { push: jest.fn(), pop: jest.fn() } as any;
-      const result = await Service.validateWasmWithBinaryen(file, status);
-      expect(validateWasmWithBinaryen).toHaveBeenCalledWith(new ArrayBuffer(8));
-      expect(status.push).toHaveBeenCalledWith("Validating with Binaryen");
-      expect(status.pop).toHaveBeenCalled();
-      expect(gaEvent).toHaveBeenCalledWith("validate", "Service", "binaryen");
-      expect(result).toEqual(true);
-      validateWasmWithBinaryen.mockRestore();
-    });
-  });
-  describe("Service.getWasmCallGraphWithBinaryen", () => {
-    it("should generate a call graph using Binaryen", async () => {
-      gaEvent.mockClear();
-      const createWasmCallGraphWithBinaryen = spyOnWorker("createWasmCallGraphWithBinaryen", () => "graph");
-      const parent = new Directory("src");
-      const file = parent.newFile("file.wasm", FileType.Wasm);
-      file.setData(new ArrayBuffer(8));
-      const status = { push: jest.fn(), pop: jest.fn() } as any;
-      await Service.getWasmCallGraphWithBinaryen(file, status);
-      const dotFile = parent.getFile("file.wasm.dot");
-      expect(createWasmCallGraphWithBinaryen).toHaveBeenCalledWith(new ArrayBuffer(8));
-      expect(status.push).toHaveBeenCalledWith("Creating Call Graph with Binaryen");
-      expect(status.pop).toHaveBeenCalled();
-      expect(gaEvent).toHaveBeenCalledWith("call-graph", "Service", "binaryen");
-      expect(dotFile.type).toEqual(FileType.DOT);
-      expect(dotFile.description).toEqual("Call graph created from file.wasm using Binaryen's print-call-graph pass.");
-      expect(dotFile.getData()).toEqual("graph");
-      createWasmCallGraphWithBinaryen.mockRestore();
-    });
-  });
-  describe("Service.disassembleWasmWithBinaryen", () => {
-    it("should disassemble wasm -> wat using Binaryen", async () => {
-      gaEvent.mockClear();
-      const disassembleWasmWithBinaryen = spyOnWorker("disassembleWasmWithBinaryen", () => "disassembled");
-      const parent = new Directory("src");
-      const file = parent.newFile("file.wasm", FileType.Wasm);
-      file.setData(new ArrayBuffer(8));
-      const status = { push: jest.fn(), pop: jest.fn() } as any;
-      await Service.disassembleWasmWithBinaryen(file, status);
-      const watFile = parent.getFile("file.wasm.wat");
-      expect(disassembleWasmWithBinaryen).toHaveBeenCalledWith(new ArrayBuffer(8));
-      expect(status.push).toHaveBeenCalledWith("Disassembling with Binaryen");
-      expect(status.pop).toHaveBeenCalled();
-      expect(gaEvent).toHaveBeenCalledWith("disassemble", "Service", "binaryen");
-      expect(watFile.type).toEqual(FileType.Wat);
-      expect(watFile.description).toEqual("Disassembled from file.wasm using Binaryen.");
-      expect(watFile.getData()).toEqual("disassembled");
-      disassembleWasmWithBinaryen.mockRestore();
-    });
-  });
-  describe("Service.convertWasmToAsmWithBinaryen", () => {
-    it("should convert wasm -> asm.js using Binaryen", async () => {
-      gaEvent.mockClear();
-      const convertWasmToAsmWithBinaryen = spyOnWorker("convertWasmToAsmWithBinaryen", () => "converted");
-      const parent = new Directory("src");
-      const file = parent.newFile("file.wasm", FileType.Wasm);
-      file.setData(new ArrayBuffer(8));
-      const status = { push: jest.fn(), pop: jest.fn() } as any;
-      await Service.convertWasmToAsmWithBinaryen(file, status);
-      const asmFile = parent.getFile("file.wasm.asm.js");
-      expect(convertWasmToAsmWithBinaryen).toHaveBeenCalledWith(new ArrayBuffer(8));
-      expect(status.push).toHaveBeenCalledWith("Converting to asm.js with Binaryen");
-      expect(status.pop).toHaveBeenCalled();
-      expect(gaEvent).toHaveBeenCalledWith("asm.js", "Service", "binaryen");
-      expect(asmFile.type).toEqual(FileType.JavaScript);
-      expect(asmFile.description).toEqual("Converted from file.wasm using Binaryen.");
-      expect(asmFile.getData()).toEqual("converted");
-      convertWasmToAsmWithBinaryen.mockRestore();
-    });
-  });
-  describe("Service.assembleWatWithBinaryen", () => {
-    it("should assemble wat -> wasm using Binaryen", async () => {
-      gaEvent.mockClear();
-      const assembleWatWithBinaryen = spyOnWorker("assembleWatWithBinaryen", () => "assembled");
-      const parent = new Directory("src");
-      const file = parent.newFile("file.wat", FileType.Wat);
-      file.setData(new ArrayBuffer(8));
-      const status = { push: jest.fn(), pop: jest.fn() } as any;
-      await Service.assembleWatWithBinaryen(file, status);
-      const wasmFile = parent.getFile("file.wat.wasm");
-      expect(assembleWatWithBinaryen).toHaveBeenCalledWith(new ArrayBuffer(8));
-      expect(status.push).toHaveBeenCalledWith("Assembling with Binaryen");
-      expect(status.pop).toHaveBeenCalled();
-      expect(gaEvent).toHaveBeenCalledWith("assemble", "Service", "binaryen");
-      expect(wasmFile.type).toEqual(FileType.Wasm);
-      expect(wasmFile.description).toEqual("Converted from file.wat using Binaryen.");
-      expect(wasmFile.getData()).toEqual("assembled");
-      assembleWatWithBinaryen.mockRestore();
-    });
-  });
+  
   describe("Service.download", () => {
     it("should create a hidden link and download the provided file", () => {
       const link = { click: jest.fn(), style: {} } as any;
@@ -649,23 +425,7 @@ describe("Tests for Service", () => {
     beforeAll(() => {
       (global as any).Module = jest.fn(() => ({ ccall: jest.fn(() => "formated") }));
     });
-    it("should load clang-format.js and format the provided file", async () => {
-      gaEvent.mockClear();
-      const lazyLoad = jest.spyOn(Service, "lazyLoad");
-      lazyLoad.mockImplementation(() => {});
-      const arrayBuffer = jest.fn(() => Promise.resolve("binary"));
-      const { restore } = mockFetch({ arrayBuffer });
-      const file = new File("file.c", FileType.C);
-      const status = { push: jest.fn(), pop: jest.fn() } as any;
-      await Service.clangFormat(file, status);
-      expect(gaEvent).toHaveBeenCalledWith("format", "Service", "clang-format");
-      expect(lazyLoad).toHaveBeenCalledWith("lib/clang-format.js", status);
-      expect(window.fetch).toHaveBeenCalledWith("lib/clang-format.wasm");
-      expect((global as any).Module.mock.calls[0][0].wasmBinary).toEqual("binary");
-      expect(Service.clangFormatModule).toBeDefined();
-      lazyLoad.mockRestore();
-      restore();
-    });
+   
     it("should only load clang-format.js if it hasn't already been loaded", async () => {
       const lazyLoad = jest.spyOn(Service, "lazyLoad");
       lazyLoad.mockImplementation(() => {});
@@ -682,76 +442,9 @@ describe("Tests for Service", () => {
       restore();
     });
   });
-  describe("Service.disassembleX86", () => {
-    it("should disassemble wasm -> x86", async () => {
-      gaEvent.mockClear();
-      createCompilerService.mockClear();
-      compile.mockImplementation((arg) => ({
-        items: {
-          "a.json": {
-            content: {
-              begin: { low: 0, high: 0 },
-              regions: [
-                { name: "wasm-function[0]", entry: 0, index: 0, bytes: "SIPsCGaQSIPECMM=" },
-                { name: "wasm-function[1]", entry: 0, index: 1, bytes: "SIPsCLgqAAAAZpBIg8QIww==" }
-              ]
-            }
-          }
-        }
-      }));
-      const lazyLoad = jest.spyOn(Service, "lazyLoad");
-      lazyLoad.mockImplementation(() => {
-        (global as any).capstone = {
-          Cs: jest.fn(() => ({
-            disasm: jest.fn(() => [
-              { address: 0, bytes: [72, 131, 236, 8], id: 326, mnemonic: "sub", op_str: "rsp, 8", size: 4},
-              { address: 4, bytes: [184, 42, 0, 0, 0], id: 442, mnemonic: "mov", op_str: "eax, 0x2a", size: 5},
-              { address: 9, bytes: [102, 144], id: 487, mnemonic: "nop", op_str: "", size: 2},
-              { address: 11, bytes: [72, 131, 196, 8], id: 8, mnemonic: "add", op_str: "rsp, 8", size: 4},
-              { address: 15, bytes: [195], id: 149, mnemonic: "ret", op_str: "jmp", size: 1},
-            ])
-          })),
-        };
-      });
-      const parent = new Directory("parent");
-      const file = parent.newFile("file.wasm", FileType.Wasm);
-      const status = { push: jest.fn(), pop: jest.fn() } as any;
-      await Service.disassembleX86(file, status);
-      const outputFile = parent.getFile("file.wasm.x86");
-      expect(lazyLoad).toHaveBeenCalledWith("lib/capstone.x86.min.js", status);
-      expect(gaEvent).toHaveBeenLastCalledWith("disassemble", "Service", "capstone.x86");
-      expect(createCompilerService).toHaveBeenCalledWith(Language.Wasm, Language.x86);
-      expect(compile).toHaveBeenCalledWith({ files: { "in.wasm": { content: null }}, options: "" });
-      expect(outputFile.type).toEqual(FileType.x86);
-      expect(trimAll(outputFile.getData() as string)).toEqual(trimAll(`
-        wasm-function[0]:
-          sub rsp, 8                            ; 0x000000 48 83 ec 08
-          mov eax, 0x2a                         ; 0x000004 b8 2a 00 00 00
-          nop                                   ; 0x000009 66 90
-          add rsp, 8                            ; 0x00000b 48 83 c4 08
-          ret jmp                               ; 0x00000f c3
-        wasm-function[1]:
-          sub rsp, 8                            ; 0x000000 48 83 ec 08
-          mov eax, 0x2a                         ; 0x000004 b8 2a 00 00 00
-          nop                                   ; 0x000009 66 90
-          add rsp, 8                            ; 0x00000b 48 83 c4 08
-          ret jmp                               ; 0x00000f c3
-      `));
-      lazyLoad.mockRestore();
-    });
-    it("should not lazy load lib/capstone.x86.min.js if it has already been loaded", async () => {
-      compile.mockImplementation(() => ({
-        items: { "a.json": { content: { regions: [] }}}
-      }));
-      const lazyLoad = jest.spyOn(Service, "lazyLoad");
-      const parent = new Directory("parent");
-      const file = parent.newFile("file.wasm", FileType.Wasm);
-      const status = { push: jest.fn(), pop: jest.fn() } as any;
-      await Service.disassembleX86(file, status);
-      expect(lazyLoad).not.toHaveBeenCalled();
-      lazyLoad.mockRestore();
-    });
-  });
+
+
+  
   describe("Service.openBinaryExplorer", () => {
     it("should open the binary explorer", () => {
       const open = jest.spyOn((window as any), "open");
@@ -869,24 +562,5 @@ describe("Tests for Service", () => {
       lazyLoad.mockRestore();
     });
   });
-  describe("Service.twiggyWasm", () => {
-    it("should analyze the provided file using Twiggy", async () => {
-      gaEvent.mockClear();
-      const twiggyWasm = spyOnWorker("twiggyWasm", () => "analyzed");
-      const parent = new Directory("src");
-      const file = parent.newFile("file.wasm", FileType.Wasm);
-      file.setData(new ArrayBuffer(8));
-      const status = { push: jest.fn(), pop: jest.fn() } as any;
-      await Service.twiggyWasm(file, status);
-      const mdFile = parent.getFile("file.wasm.md");
-      expect(twiggyWasm).toHaveBeenCalledWith(new ArrayBuffer(8));
-      expect(status.push).toHaveBeenCalledWith("Analyze with Twiggy");
-      expect(status.pop).toHaveBeenCalled();
-      expect(gaEvent).toHaveBeenCalledWith("disassemble", "Service", "twiggy");
-      expect(mdFile.type).toEqual(FileType.Markdown);
-      expect(mdFile.description).toEqual("Analyzed file.wasm using Twiggy.");
-      expect(mdFile.getData()).toEqual("analyzed");
-      twiggyWasm.mockRestore();
-    });
-  });
+
 });

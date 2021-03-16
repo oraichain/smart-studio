@@ -7,7 +7,7 @@ import { shallow } from 'enzyme';
 import { Project, FileType } from '../../../src/models';
 import { Workspace } from '../../../src/components/Workspace';
 import { Header } from '../../../src/components/Header';
-import { Split, SplitOrientation } from '../../../src/components/Split';
+import { Split, SplitOrientation, SplitInfo } from '../../../src/components/Split';
 import { DirectoryTree } from '../../../src/components/DirectoryTree';
 import appStore from '../../../src/stores/AppStore';
 
@@ -34,7 +34,7 @@ describe('Tests for Workspace', () => {
     const onMoveFile = jest.fn();
     const onClickFile = jest.fn();
     const onDoubleClickFile = jest.fn();
-    const onCreateGist = jest.fn();
+    const onDeployContract = jest.fn();
     const { wrapper, project, fileA } = setup({
       onNewFile,
       onNewDirectory,
@@ -44,7 +44,7 @@ describe('Tests for Workspace', () => {
       onMoveFile,
       onClickFile,
       onDoubleClickFile,
-      onCreateGist
+      onDeployContract
     });
     const header = wrapper.find(Header);
     const split = wrapper.find(Split);
@@ -62,13 +62,14 @@ describe('Tests for Workspace', () => {
     expect(directoryTree).toHaveProp('onMoveFile', onMoveFile);
     expect(directoryTree).toHaveProp('onClickFile', onClickFile);
     expect(directoryTree).toHaveProp('onDoubleClickFile', onDoubleClickFile);
-    expect(directoryTree).toHaveProp('onCreateGist', onCreateGist);
+    expect(directoryTree).toHaveProp('onDeployContract', onDeployContract);
   });
   it('should update state when split changes', () => {
     const { wrapper } = setup();
     const split = wrapper.find(Split);
     const onChange = split.prop('onChange');
-    const splits = [1, 2, 3];
+    
+    const splits : SplitInfo[] = [{value:1}, {value:2}, {value:3}];
     onChange(splits);
     expect(wrapper).toHaveState({ splits });
   });
