@@ -19,7 +19,7 @@
  * SOFTWARE.
  */
 
-import * as Raven from 'raven-js';
+import Raven from 'raven-js';
 import config from '../../config.json';
 
 export class Logger {

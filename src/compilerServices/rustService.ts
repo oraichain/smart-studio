@@ -22,7 +22,7 @@ import { CompilerService, ServiceInput, ServiceOutput } from "./types";
 
 import { sendRequestJSON, ServiceTypes } from "./sendRequest";
 import { decodeBinary } from "./utils";
-import * as Tar from "tar-js";
+import Tar from "tar-js";
 import { base64EncodeBytes } from "../util";
 
 export class RustService implements CompilerService {
