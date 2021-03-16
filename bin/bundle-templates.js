@@ -24,7 +24,7 @@ const fs = require('fs');
 const fse = require('fs-extra');
 
 const templatesDir = process.argv[2];
-const outputPath = process.argv[3];
+const outputPath = process.argv[3] || templatesDir;
 
 function walk(base, callback) {
   let files = fs.readdirSync(base);
@@ -72,8 +72,11 @@ templates.forEach((file) => {
   output[file] = template;
 });
 
-fse.removeSync(path.resolve(outputPath));
-fse.mkdirpSync(path.resolve(outputPath));
-fse.copySync(path.resolve(templatesDir), path.resolve(outputPath));
+// if different folder then sync it, otherwise just created index.js
+if (outputPath !== templatesDir) {
+  fse.removeSync(path.resolve(outputPath));
+  fse.mkdirpSync(path.resolve(outputPath));
+  fse.copySync(path.resolve(templatesDir), path.resolve(outputPath));
+}
 
 fs.writeFileSync(path.resolve(outputPath, 'index.js'), JSON.stringify(output, null, 2));
