@@ -30,7 +30,9 @@ export default async function registerLanguages() {
     monaco.languages.registerCompletionItemProvider('toml', Toml.CompletionItemProvider);
   });
   monaco.languages.register({
-    id: 'toml'
+    id: 'toml',
+    extensions: ['.toml'],
+    aliases: ['TOML']
   });
 
   // Rust
@@ -40,6 +42,8 @@ export default async function registerLanguages() {
     monaco.languages.registerCompletionItemProvider('rust', Rust.CompletionItemProvider);
   });
   monaco.languages.register({
-    id: 'rust'
+    id: 'rust',
+    extensions: ['.rs', '.rlib'],
+    aliases: ['Rust', 'rust']
   });
 }
