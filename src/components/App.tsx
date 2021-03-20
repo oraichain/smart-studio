@@ -71,16 +71,6 @@ import Group from '../utils/group';
 import { StatusBar } from './StatusBar';
 import { RunTaskExternals } from '../utils/taskRunner';
 
-declare global {
-  interface Window { Keystation: any; }
-}
-
-// global variable keystation
-const keystation = new window.Keystation({
-  keystationUrl: 'https://oraiwallet.web.app',
-  lcd: 'https://lcd.testnet.oraiscan.io',
-});
-
 export interface AppState {
   project: ModelRef<Project>;
   file: ModelRef<File>;
@@ -143,6 +133,7 @@ export interface AppProps {
    * If true, the Update button is visible.
    */
   update: boolean;
+  keystation: any;
   fiddle: string;
   embeddingParams: EmbeddingParams;
   windowContext: AppWindowContext;
@@ -343,11 +334,11 @@ export class App extends React.Component<AppProps, AppState> {
   async deployContract(file?: File) {
     pushStatus('Deploying Smart Contract');
     const target: File = file || this.state.project.getModel();
-    const ret = await Service.exportToWallet(target);   
-    popStatus();    
-    if(ret.data) {
-      keystation.deploy({name:file.name, data:ret.data, size: ret.data.length});
-    }    
+    const ret = await Service.exportToWallet(target);
+    popStatus();
+    if (ret.data) {
+      this.props.keystation.deploy({ name: file.name, data: ret.data, size: ret.data.length });
+    }
   }
 
   async download() {

@@ -34,6 +34,7 @@ export default async function getConfig() {
   if (!config) {
     config = await fetch(configUrl).then((resp) => resp.json());
     if (!config.serviceUrl) {
+      // by default same server
       config.serviceUrl = process.env.SERVICE_URL || location.origin;
     }
   }

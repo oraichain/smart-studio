@@ -85,6 +85,20 @@ export function getEmbeddingParams(parameters: any): EmbeddingParams {
   };
 }
 
+declare global {
+  interface Window {
+    Keystation: any;
+  }
+}
+const keystationUrl = process.env.WALLET_URL;
+const loadKeyStation = (callback: any) => {
+  const script = document.createElement('script');
+  script.src = `${keystationUrl}/lib/keystation.js`;
+  script.async = true;
+  script.onload = callback;
+  document.body.appendChild(script);
+};
+
 export async function init(environment = 'production') {
   // Logger.init();
   window.addEventListener('resize', layout, false);
@@ -97,7 +111,18 @@ export async function init(environment = 'production') {
     await MonacoUtils.initialize();
     await registerTheme();
 
-    ReactDOM.render(<App update={update} fiddle={fiddle} embeddingParams={embeddingParams} windowContext={appWindowContext} />, document.getElementById('app'));
+    loadKeyStation(() => {
+      // global variable keystation
+      const keystation = new window.Keystation({
+        keystationUrl,
+        lcd: process.env.LCD
+      });
+
+      ReactDOM.render(
+        <App keystation={keystation} update={update} fiddle={fiddle} embeddingParams={embeddingParams} windowContext={appWindowContext} />,
+        document.getElementById('app')
+      );
+    });
 
     if (environment !== 'test') {
       await import(/* webpackChunkName: "monaco-languages" */ 'monaco-editor');
