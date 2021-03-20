@@ -13,7 +13,7 @@ DIST_FOLDER=server/fiddles/dist yarn build
 To start a dev web server run:
 
 ```
-SERVICE_URL=//localhost:3000 yarn start
+SERVICE_URL=//localhost:3000 WALLET_URL=//localhost:3001 LCD=https://lcd.testnet.oraiscan.io yarn start
 ```
 
 Before submitting a pull request run:
