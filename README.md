@@ -3,7 +3,7 @@
 To build Oraichain Studio whenever a file changes run:
 
 ```bash
-yarn build
+yarn build-server
 # to build client
 # rebuild template
 yarn templates
