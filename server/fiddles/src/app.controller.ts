@@ -27,7 +27,6 @@ export class AppController {
     return this.appService.saveProject(request);
   }
 
-
   @Get('file')
   async getFile(@Req() request: Request): Promise<IFiddleFile> {
     return this.appService.getFile(request);
@@ -49,7 +48,12 @@ export class AppController {
   }
 
   @Post('build')
-  async buildProject(@Req() request: Request): Promise<any> {
+  async buildProject(@Req() request: Request): Promise<ILoadFiddleResponse> {
     return this.appService.buildProject(request);
+  }
+
+  @Post('test')
+  testProject(@Req() request: Request): string {
+    return this.appService.testProject(request);
   }
 }

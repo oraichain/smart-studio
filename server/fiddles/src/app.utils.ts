@@ -145,4 +145,18 @@ cosmwasm-schema = {version = "0.11.0"}`;
       success: true,
     };
   }
+
+  public testProject(name: string): string {
+    // shell session for each operation in queue will go to contractPath
+    shell.cd(this.contractPath);
+    // buid project
+    let execution = shell.exec(`cargo test -q --lib -p ${name}`);
+
+    // just return success or fail message
+    if (execution.code !== 0) {
+      return execution.stderr.trim();
+    }
+
+    return execution.stdout.trim();
+  }
 }

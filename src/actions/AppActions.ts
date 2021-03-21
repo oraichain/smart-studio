@@ -308,21 +308,24 @@ export async function runTask(name: string, optional: boolean = false, externals
   switch (name) {
     case 'build':
       const fiddle = await Service.buildProject(project.name);
-
       if (!fiddle.success) {
         // raw error log
         logLn(fiddle.message);
-        return;
       } else {
         logLn(`Build project ${project.name} succeeded!`);
       }
 
       // load wasm file to show
       await Service.loadFilesIntoProject(fiddle.files, project);
-      return;
+      break;
+    case 'test':
+      const testMessage = await Service.testProject(project.name);
+      // raw error log
+      logLn(testMessage);
+      break;
     default:
       console.log('let run at our server instead', name, optional, externals);
-      return;
+      break;
   }
 
   // Runs the provided source in our fantasy gulp context
@@ -372,6 +375,12 @@ export async function run() {
 export async function build() {
   pushStatus('Building Project');
   await runTask('build');
+  popStatus();
+}
+
+export async function test() {
+  pushStatus('Running Tests');
+  await runTask('test');
   popStatus();
 }
 

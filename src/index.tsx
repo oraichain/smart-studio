@@ -95,7 +95,19 @@ const loadKeyStation = (callback: any) => {
   const script = document.createElement('script');
   script.src = `${keystationUrl}/lib/keystation.js`;
   script.async = true;
-  script.onload = callback;
+  script.onload = () => {
+    const keystation = new window.Keystation({
+      keystationUrl,
+      lcd: process.env.LCD
+    });
+    callback(keystation);
+  };
+  script.onerror = (error) => {
+    // handle error
+    console.log('Can not load keystation library!');
+    callback(null);
+  };
+
   document.body.appendChild(script);
 };
 
@@ -111,13 +123,7 @@ export async function init(environment = 'production') {
     await MonacoUtils.initialize();
     await registerTheme();
 
-    loadKeyStation(() => {
-      // global variable keystation
-      const keystation = new window.Keystation({
-        keystationUrl,
-        lcd: process.env.LCD
-      });
-
+    loadKeyStation((keystation: any) => {
       ReactDOM.render(
         <App keystation={keystation} update={update} fiddle={fiddle} embeddingParams={embeddingParams} windowContext={appWindowContext} />,
         document.getElementById('app')

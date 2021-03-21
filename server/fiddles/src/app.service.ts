@@ -120,17 +120,17 @@ export class AppService {
 
     if (!fs.existsSync(filePath)) {
       return {
-        name
+        name,
       };
     } else {
-      try {        
+      try {
         return {
-          name,          
-          data: fs.readFileSync(filePath).toString(),          
+          name,
+          data: fs.readFileSync(filePath).toString(),
         };
       } catch (ex) {
         return {
-          name
+          name,
         };
       }
     }
@@ -238,7 +238,7 @@ export class AppService {
     }
   }
 
-  async buildProject(req: Request): Promise<ILoadFiddleResponse> {
+  buildProject(req: Request): ILoadFiddleResponse {
     let { name } = req.body;
     name = filterName(name);
     const ret = smartContractUtils.buildProject(name);
@@ -264,5 +264,13 @@ export class AppService {
       success: true,
       message: 'Build succeeded!',
     };
+  }
+
+  testProject(req: Request): string {
+    let { name } = req.body;
+    name = filterName(name);
+    const message = smartContractUtils.testProject(name);
+
+    return message;
   }
 }

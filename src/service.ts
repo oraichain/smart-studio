@@ -130,8 +130,6 @@ export class Service {
   }
 
   static async compileFiles(files: File[], from: Language, to: Language, options = ''): Promise<{ [name: string]: string | ArrayBuffer }> {
-    
-
     const service = await createCompilerService(from, to);
 
     const fileNameMap: { [name: string]: File } = files.reduce(
@@ -305,11 +303,11 @@ export class Service {
     return uri;
   }
 
-  static async exportToWallet(file: File): Promise<IFiddleFile> {                
+  static async exportToWallet(file: File): Promise<IFiddleFile> {
     const filePath = file.getPath();
     const baseURL = await getServiceURL(ServiceTypes.Service);
     const response = await fetch(`${baseURL}/file?name=${filePath}`);
-    const ret = await response.json();    
+    const ret = await response.json();
     return ret;
   }
 
@@ -322,6 +320,18 @@ export class Service {
     });
     const ret = await response.json();
     return ret;
+  }
+
+  // TODO: wrap with handler post, get and show error
+  static async testProject(name: string): Promise<string> {
+    const baseURL = await getServiceURL(ServiceTypes.Service);
+    const response = await fetch(`${baseURL}/test`, {
+      method: 'POST',
+      headers: new Headers({ 'Content-type': 'application/json; charset=utf-8' }),
+      body: JSON.stringify({ name })
+    });
+    const message = await response.text();
+    return message;
   }
 
   static async saveProject(project: Project, uploadedFiles?: File[]): Promise<ISaveFiddleResponse> {
@@ -425,7 +435,6 @@ export class Service {
   static clangFormatModule: any = null;
   // Kudos to https://github.com/tbfleming/cib
   static async clangFormat(file: File, status?: IStatusProvider) {
-    
     function format() {
       const result = Service.clangFormatModule.ccall('formatCode', 'string', ['string'], [file.buffer.getValue()]);
       file.buffer.setValue(result);
@@ -448,7 +457,6 @@ export class Service {
   }
 
   static async disassembleX86(file: File, status?: IStatusProvider, options = '') {
-    
     if (typeof capstone === 'undefined') {
       await Service.lazyLoad('lib/capstone.x86.min.js', status);
     }

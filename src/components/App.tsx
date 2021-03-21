@@ -27,7 +27,7 @@ import { EditorView, ViewTabs, View, Tab, Tabs } from './editor';
 import { Header } from './Header';
 import { Toolbar } from './Toolbar';
 import { ViewType, defaultViewTypeForFileType } from './editor/View';
-import { build, run, runTask, openFiles, pushStatus, popStatus, openProject } from '../actions/AppActions';
+import { build, test, run, runTask, openFiles, pushStatus, popStatus, openProject } from '../actions/AppActions';
 
 import appStore from '../stores/AppStore';
 import {
@@ -54,7 +54,7 @@ import { Split, SplitOrientation, SplitInfo } from './Split';
 import { layout, assert, resetDOMSelection } from '../util';
 
 import Mousetrap from 'mousetrap';
-import { GoDelete, GoDesktopDownload, GoBeaker, GoThreeBars, GoQuestion } from './shared/Icons';
+import { GoDelete, GoDesktopDownload, GoBeaker, GoThreeBars, GoQuestion, GoVerified, GoCheck } from './shared/Icons';
 import { Button } from './shared/Button';
 
 import { NewFileDialog } from './NewFileDialog';
@@ -336,8 +336,8 @@ export class App extends React.Component<AppProps, AppState> {
     const target: File = file || this.state.project.getModel();
     const ret = await Service.exportToWallet(target);
     popStatus();
-    if (ret.data) {
-      this.props.keystation.deploy({ name: file.name, data: ret.data, size: ret.data.length });
+    if (ret.data) {      
+      this.props.keystation?.deploy({ name: file.name, data: ret.data, size: ret.data.length });
     }
   }
 
@@ -424,6 +424,19 @@ export class App extends React.Component<AppProps, AppState> {
         isDisabled={this.toolbarButtonsAreDisabled()}
         onClick={() => {
           build();
+        }}
+      />
+    );
+
+    toolbarButtons.push(
+      <Button
+        key="Test"
+        icon={<GoCheck />}
+        label="Run Tests"
+        title="Run Tests"
+        isDisabled={this.toolbarButtonsAreDisabled()}
+        onClick={() => {
+          test();
         }}
       />
     );
