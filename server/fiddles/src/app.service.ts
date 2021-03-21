@@ -80,7 +80,8 @@ export class AppService {
 
   async saveProject(req: Request): Promise<ISaveFiddleResponse> {
     let { name } = req.query;
-    name = filterName(name);
+    // project name must be lower case for easy manipulation
+    name = filterName(name).toLowerCase();
     const { files } = req.body;
     const contractPath = path.join(smartContractPackages, name);
 
