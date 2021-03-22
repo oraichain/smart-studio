@@ -1,6 +1,7 @@
 import fs from 'fs';
+import fse from 'fs-extra';
 import path from 'path';
-import TOML, { JsonMap } from '@iarna/toml';
+// import TOML, { JsonMap } from '@iarna/toml';
 import shell from 'shelljs';
 
 export const getFiles = (dir: string, results = []): string[] => {
@@ -11,8 +12,8 @@ export const getFiles = (dir: string, results = []): string[] => {
     if (dirent.isDirectory()) {
       getFiles(res, results);
     } else {
-      // do not push Cargo.toml
-      if (!res.endsWith('Cargo.toml')) results.push(res);
+      // do not push hidden files
+      if (!isHiddenFiles(res)) results.push(res);
     }
   }
   return results;
@@ -43,11 +44,18 @@ export const filterName = (name: any): string => {
   return name.toString().replace(/[^\w]/g, '');
 };
 
-export interface WorkSpace extends JsonMap {
-  workspace?: {
-    members: string[];
-  };
-}
+// export interface WorkSpace extends JsonMap {
+//   workspace?: {
+//     members: string[];
+//   };
+// }
+
+export const isHiddenFiles = (filePath: string): boolean => {
+  if (filePath.endsWith('Cargo.toml') || filePath.endsWith('schema.rs')) {
+    return true;
+  }
+  return false;
+};
 
 export interface IBuildFiddleResponse {
   message: string;
@@ -105,6 +113,32 @@ cosmwasm-schema = {version = "0.11.0"}`;
       path.join(this.contractPath, 'packages', name, 'Cargo.toml'),
       toml,
     );
+
+    const schema = `
+use std::env::current_dir;
+use std::fs::create_dir_all;
+
+use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
+
+use ${name}::msg::{HandleMsg, InitMsg, QueryMsg};
+
+fn main() {
+    let mut out_dir = current_dir().unwrap();
+    out_dir.push("packages/${name}/artifacts/schema");
+    create_dir_all(&out_dir).unwrap();
+    remove_schemas(&out_dir).unwrap();
+
+    export_schema(&schema_for!(InitMsg), &out_dir);
+    export_schema(&schema_for!(HandleMsg), &out_dir);
+    export_schema(&schema_for!(QueryMsg), &out_dir);
+}
+`;
+
+    // write and create folder if not existed
+    fse.outputFileSync(
+      path.join(this.contractPath, 'packages', name, 'examples', 'schema.rs'),
+      schema,
+    );
   }
 
   public removeProject(name: string) {
@@ -133,6 +167,27 @@ cosmwasm-schema = {version = "0.11.0"}`;
     execution = shell.exec(
       `mkdir -p packages/${name}/artifacts && wasm-opt -Os "target/wasm32-unknown-unknown/release/${name}.wasm" -o "packages/${name}/artifacts/${name}.wasm"`,
     );
+    if (execution.code !== 0) {
+      return {
+        message: execution.stderr,
+        success: false,
+      };
+    }
+
+    // return true
+    return {
+      message: execution.stdout,
+      success: true,
+    };
+  }
+
+  public buildSchema(name: string): IBuildFiddleResponse {
+    // shell session for each operation in queue will go to contractPath
+    shell.cd(this.contractPath);
+    // buid project
+    let execution = shell.exec(`cargo run -q --example schema -p ${name}`);
+
+    // just return success or fail message
     if (execution.code !== 0) {
       return {
         message: execution.stderr,

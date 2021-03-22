@@ -25,7 +25,7 @@ import { App } from '../components/App';
 import { Template } from '../components/NewProjectDialog';
 import { View, ViewType } from '../components/editor/View';
 import appStore from '../stores/AppStore';
-import { Service, Language, IFiddleFile } from '../service';
+import { Service, Language, IFiddleFile, ILoadFiddleResponse } from '../service';
 import Group from '../utils/group';
 import { Errors } from '../errors';
 import getConfig from '../config';
@@ -304,16 +304,18 @@ export interface SandboxRunAction extends AppAction {
 
 export async function runTask(name: string, optional: boolean = false, externals: RunTaskExternals = RunTaskExternals.Default) {
   const project = appStore.getProject().getModel();
-
+  let fiddle: ILoadFiddleResponse;
   switch (name) {
     case 'build':
-      const fiddle = await Service.buildProject(project.name);
-      if (!fiddle.success) {
-        // raw error log
-        logLn(fiddle.message);
-      } else {
-        logLn(`Build project ${project.name} succeeded!`);
-      }
+      fiddle = await Service.buildProject(project.name);
+      logLn(fiddle.message);
+
+      // load wasm file to show
+      await Service.loadFilesIntoProject(fiddle.files, project);
+      break;
+    case 'schema':
+      fiddle = await Service.buildSchema(project.name);
+      logLn(fiddle.message);
 
       // load wasm file to show
       await Service.loadFilesIntoProject(fiddle.files, project);
@@ -375,6 +377,12 @@ export async function run() {
 export async function build() {
   pushStatus('Building Project');
   await runTask('build');
+  popStatus();
+}
+
+export async function schema() {
+  pushStatus('Building Schema');
+  await runTask('schema');
   popStatus();
 }
 

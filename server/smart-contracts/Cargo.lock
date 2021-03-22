@@ -71,11 +71,33 @@ dependencies = [
 ]
 
 [[package]]
+name = "cosmwasm-storage"
+version = "0.11.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "23ac01bfd550d1b8d448fb6c164d129fedd4198d9dfdb2e1a0a286bb9b206419"
+dependencies = [
+ "cosmwasm-std",
+ "serde",
+]
+
+[[package]]
 name = "cv002"
 version = "0.1.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
+ "schemars",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
+name = "cv006"
+version = "0.1.0"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cosmwasm-storage",
  "schemars",
  "serde",
  "thiserror",
@@ -105,6 +127,17 @@ dependencies = [
 
 [[package]]
 name = "cv009"
+version = "0.1.0"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "schemars",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
+name = "datasource_eth"
 version = "0.1.0"
 dependencies = [
  "cosmwasm-schema",

@@ -322,6 +322,17 @@ export class Service {
     return ret;
   }
 
+  static async buildSchema(name: string): Promise<ILoadFiddleResponse> {
+    const baseURL = await getServiceURL(ServiceTypes.Service);
+    const response = await fetch(`${baseURL}/schema`, {
+      method: 'POST',
+      headers: new Headers({ 'Content-type': 'application/json; charset=utf-8' }),
+      body: JSON.stringify({ name })
+    });
+    const ret = await response.json();
+    return ret;
+  }
+
   // TODO: wrap with handler post, get and show error
   static async testProject(name: string): Promise<string> {
     const baseURL = await getServiceURL(ServiceTypes.Service);

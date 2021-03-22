@@ -10,6 +10,7 @@ import {
   getFiles,
   getFileSize,
   SmartContractUtils,
+  isHiddenFiles,
 } from './app.utils';
 
 const smartContractFolder = process.env.CONTRACT_FOLDER || '/code';
@@ -97,7 +98,7 @@ export class AppService {
         );
       }
 
-      // add Cargo.toml to project of workspace, so make sure there is file in project to init
+      // add Cargo.toml and schema to project of workspace, so make sure there is file in project to init
       smartContractUtils.initProject(name);
 
       return {
@@ -142,10 +143,10 @@ export class AppService {
     name = filterPath(name);
     const filePath = path.join(smartContractPackages, name);
 
-    if (filePath.endsWith('Cargo.toml')) {
+    if (isHiddenFiles(filePath)) {
       return {
         success: false,
-        message: `Can not add Cargo.toml for this package: ${name}`,
+        message: `Can not add ${filePath} for this package: ${name}`,
       };
     }
 
@@ -172,10 +173,10 @@ export class AppService {
     name = filterPath(name);
     const filePath = path.join(smartContractPackages, name);
 
-    if (filePath.endsWith('Cargo.toml')) {
+    if (isHiddenFiles(filePath)) {
       return {
         success: false,
-        message: `Can not delete Cargo.toml for this package: ${name}`,
+        message: `Can not delete ${filePath} for this package: ${name}`,
       };
     }
 
@@ -208,10 +209,10 @@ export class AppService {
     newName = filterPath(newName);
     const filePath = path.join(smartContractPackages, name);
 
-    if (filePath.endsWith('Cargo.toml')) {
+    if (isHiddenFiles(filePath)) {
       return {
         success: false,
-        message: `Can not rename Cargo.toml for this package: ${name}`,
+        message: `Can not rename ${filePath} for this package: ${name}`,
       };
     }
 
@@ -263,7 +264,38 @@ export class AppService {
         },
       ],
       success: true,
-      message: 'Build succeeded!',
+      message: `Build project ${name} succeeded!`,
+    };
+  }
+
+  buildSchema(req: Request): ILoadFiddleResponse {
+    let { name } = req.body;
+    name = filterName(name);
+    const ret = smartContractUtils.buildSchema(name);
+
+    if (!ret.success) {
+      return {
+        success: false,
+        message: ret.message,
+      };
+    }
+
+    const contractPath = path.join(smartContractPackages, name);
+    const schemaPath = path.join(contractPath, 'artifacts', 'schema');
+    const paths = getFiles(schemaPath);
+
+    const files = paths.map((value) => {
+      const buffer = fs.readFileSync(value);
+      return {
+        name: value.substring(contractPath.length + 1),
+        data: buffer.toString(),
+      };
+    });
+
+    return {
+      files,
+      success: true,
+      message: `Build schema ${name} succeeded!`,
     };
   }
 

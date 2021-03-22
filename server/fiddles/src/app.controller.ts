@@ -48,12 +48,17 @@ export class AppController {
   }
 
   @Post('build')
-  async buildProject(@Req() request: Request): Promise<ILoadFiddleResponse> {
+  buildProject(@Req() request: Request): ILoadFiddleResponse {
     return this.appService.buildProject(request);
   }
 
   @Post('test')
   testProject(@Req() request: Request): string {
     return this.appService.testProject(request);
+  }
+
+  @Post('schema')
+  buildSchema(@Req() request: Request): ILoadFiddleResponse {
+    return this.appService.buildSchema(request);
   }
 }

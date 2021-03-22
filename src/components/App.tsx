@@ -23,11 +23,10 @@ import React from 'react';
 import { hot } from 'react-hot-loader/root';
 
 import { Workspace } from './Workspace';
-import { EditorView, ViewTabs, View, Tab, Tabs } from './editor';
-import { Header } from './Header';
+import { ViewTabs, View } from './editor';
 import { Toolbar } from './Toolbar';
 import { ViewType, defaultViewTypeForFileType } from './editor/View';
-import { build, test, run, runTask, openFiles, pushStatus, popStatus, openProject } from '../actions/AppActions';
+import { schema, build, test, run, runTask, openFiles, pushStatus, popStatus, openProject } from '../actions/AppActions';
 
 import appStore from '../stores/AppStore';
 import {
@@ -36,8 +35,7 @@ import {
   initStore,
   updateFileNameAndDescription,
   deleteFile,
-  splitGroup,
-  openProjectFiles,
+  splitGroup,  
   openFile,
   openView,
   closeView,
@@ -54,7 +52,7 @@ import { Split, SplitOrientation, SplitInfo } from './Split';
 import { layout, assert, resetDOMSelection } from '../util';
 
 import Mousetrap from 'mousetrap';
-import { GoDelete, GoDesktopDownload, GoBeaker, GoThreeBars, GoQuestion, GoVerified, GoCheck } from './shared/Icons';
+import { GoDelete, GoDesktopDownload, GoBeaker, GoThreeBars, GoQuestion, GoVerified, GoCheck, GoBeakerGear, GoKebabHorizontal } from './shared/Icons';
 import { Button } from './shared/Button';
 
 import { NewFileDialog } from './NewFileDialog';
@@ -424,6 +422,19 @@ export class App extends React.Component<AppProps, AppState> {
         isDisabled={this.toolbarButtonsAreDisabled()}
         onClick={() => {
           build();
+        }}
+      />
+    );
+
+    toolbarButtons.push(
+      <Button
+        key="Schema"
+        icon={<GoBeakerGear />}
+        label="Build Schema"
+        title="Build Schema"
+        isDisabled={this.toolbarButtonsAreDisabled()}
+        onClick={() => {
+          schema();
         }}
       />
     );
