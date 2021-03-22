@@ -3,12 +3,11 @@ import { Request } from 'express';
 import path from 'path';
 import fs from 'fs';
 import fse from 'fs-extra';
-
 import {
   filterName,
   filterPath,
   getFiles,
-  getFileSize,
+  // getFileSize,
   SmartContractUtils,
   isHiddenFiles,
 } from './app.utils';
@@ -16,10 +15,9 @@ import {
 const smartContractFolder = process.env.CONTRACT_FOLDER || '/code';
 const smartContractPackages = path.join(smartContractFolder, 'packages');
 const smartContractUtils = new SmartContractUtils(smartContractFolder);
-
 export interface IFiddleFile {
   name: string;
-  data?: string;
+  data?: string | Buffer;
   type?: 'binary' | 'text';
 }
 
@@ -59,9 +57,7 @@ export class AppService {
           const buffer = fs.readFileSync(value);
           return {
             name: value.substring(contractPath.length + 1),
-            data: value.endsWith('.wasm')
-              ? getFileSize(buffer.length)
-              : buffer.toString(),
+            data: value.endsWith('.wasm') ? buffer : buffer.toString(),
           };
         });
         return {
@@ -256,11 +252,12 @@ export class AppService {
     const fullName = path.join('artifacts', `${name}.wasm`);
     const wasmFilePath = path.join(contractPath, fullName);
 
+    // can return wasm as string binary
     return {
       files: [
         {
           name: fullName,
-          data: getFileSize(fs.statSync(wasmFilePath).size),
+          data: fs.readFileSync(wasmFilePath),
         },
       ],
       success: true,

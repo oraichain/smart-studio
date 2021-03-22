@@ -328,15 +328,15 @@ export class App extends React.Component<AppProps, AppState> {
     this.setState({ shareDialog: true });
   }
 
-  // deploy contract using wallet
+  // deploy contract using wallet, it is binary so use buffer
   async deployContract(file?: File) {
-    pushStatus('Deploying Smart Contract');
+    // pushStatus('Deploying Smart Contract');
     const target: File = file || this.state.project.getModel();
-    const ret = await Service.exportToWallet(target);
-    popStatus();
-    if (ret.data) {      
-      this.props.keystation?.deploy({ name: file.name, data: ret.data, size: ret.data.length });
-    }
+    // const ret = await Service.exportToWallet(target);
+    // popStatus();
+    // if (ret.data) {      
+    this.props.keystation?.deploy({ name: target.name, data: Buffer.from(target.getData()) });
+    // }
   }
 
   async download() {

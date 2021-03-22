@@ -19,13 +19,13 @@ export const getFiles = (dir: string, results = []): string[] => {
   return results;
 };
 
-export const getFileSize = (size: number): string => {
-  const fileSize = size.toString();
-  if (fileSize.length < 4) return `${fileSize} bytes`;
-  if (fileSize.length < 7)
-    return `${Math.round(+fileSize / 1024).toFixed(2)} kb`;
-  return `${(Math.round(+fileSize / 1024) / 1000).toFixed(2)} MB`;
-};
+// export const getFileSize = (size: number): string => {
+//   const fileSize = size.toString();
+//   if (fileSize.length < 4) return `${fileSize} bytes`;
+//   if (fileSize.length < 7)
+//     return `${Math.round(+fileSize / 1024).toFixed(2)} kb`;
+//   return `${(Math.round(+fileSize / 1024) / 1000).toFixed(2)} MB`;
+// };
 
 export const filterPath = (name: any): string => {
   const [base, ext] = name.toString().split('.');

@@ -19,7 +19,7 @@
  * SOFTWARE.
  */
 
-import { File, FileType } from "../../models";
+import { File, FileType } from '../../models';
 
 export enum ViewType {
   Editor,
@@ -34,6 +34,8 @@ export function defaultViewTypeForFileType(type: FileType) {
       return ViewType.Markdown;
     case FileType.DOT:
       return ViewType.Viz;
+    case FileType.Wasm:
+      return ViewType.Binary;
     default:
       return ViewType.Editor;
   }

@@ -435,7 +435,10 @@ export class Service {
       Service.downloadLink.style.display = 'none';
       document.body.appendChild(Service.downloadLink);
     }
-    const url = URL.createObjectURL(new Blob([file.getData()], { type: 'application/octet-stream' }));
+
+    const blobPart = isBinaryFileType(file.type) ? Buffer.from(file.getData()) : file.getData();
+    // download binary with buffer otherwise using string
+    const url = URL.createObjectURL(new Blob([blobPart], { type: 'application/octet-stream' }));
     Service.downloadLink.href = url;
     Service.downloadLink.download = file.name;
     if ((Service.downloadLink.href as any) !== document.location) {
