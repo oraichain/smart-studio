@@ -311,14 +311,18 @@ export async function runTask(name: string, optional: boolean = false, externals
       logLn(fiddle.message);
 
       // load wasm file to show
-      await Service.loadFilesIntoProject(fiddle.files, project);
+      if (fiddle.success) {
+        await Service.loadFilesIntoProject(fiddle.files, project);
+      }
       break;
     case 'schema':
       fiddle = await Service.buildSchema(project.name);
       logLn(fiddle.message);
 
-      // load wasm file to show
-      await Service.loadFilesIntoProject(fiddle.files, project);
+      // load schema file to show
+      if (fiddle.success) {
+        await Service.loadFilesIntoProject(fiddle.files, project);
+      }
       break;
     case 'test':
       const testMessage = await Service.testProject(project.name);
