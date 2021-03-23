@@ -8,4 +8,6 @@ services:
     volumes:
       - .registry_cache:/usr/local/cargo/registry:delegated
       - ./smart-contracts:/code
+      # build from cosmwasm-simulate project
+      - ./cosmwasm-simulate:/usr/bin/simulate
       - ./fiddles:/workspace

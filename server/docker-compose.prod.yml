@@ -10,4 +10,5 @@ services:
     volumes:
       - .registry_cache:/usr/local/cargo/registry:delegated
       - ./smart-contracts:/code
+      - ./cosmwasm-simulate:/usr/bin/simulate
       - ./fiddles:/workspace

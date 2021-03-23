@@ -4,13 +4,18 @@ import path from 'path';
 // import TOML, { JsonMap } from '@iarna/toml';
 import shell from 'shelljs';
 
+export const smartContractFolder = process.env.CONTRACT_FOLDER || '/code';
+export const smartContractPackages = path.join(smartContractFolder, 'packages');
+
 export const getFiles = (dir: string, results = []): string[] => {
   const dirents = fs.readdirSync(dir, { withFileTypes: true });
 
   for (const dirent of dirents) {
     const res = path.resolve(dir, dirent.name);
     if (dirent.isDirectory()) {
-      getFiles(res, results);
+      if (dirent.name !== 'target') {
+        getFiles(res, results);
+      }
     } else {
       // do not push hidden files
       if (!isHiddenFiles(res)) results.push(res);

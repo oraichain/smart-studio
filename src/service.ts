@@ -345,6 +345,24 @@ export class Service {
     return message;
   }
 
+  static async createTerminal(name: string, cols: number, rows: number): Promise<string> {
+    const baseURL = await getServiceURL(ServiceTypes.Service);
+    const response = await fetch(`${baseURL}/terminals?cols=${cols}&rows=${rows}&name=${name}`, { method: 'POST' });
+    const processId = await response.text();
+    return processId;
+  }
+
+  static async createTerminalSocket(pid: string): Promise<WebSocket> {
+    const baseURL = await getServiceURL(ServiceTypes.Service);
+    const baseWSURL = baseURL.replace(/^(?:https?)?/, window.location.protocol.replace('http', 'ws'));
+    return new WebSocket(`${baseWSURL}/terminals/${pid}`);
+  }
+
+  static async resizeTerminal(pid: string, cols: number, rows: number): Promise<any> {
+    const baseURL = await getServiceURL(ServiceTypes.Service);
+    await fetch(`${baseURL}/terminals/${pid}/size?cols=${cols}&rows=${rows}`, { method: 'POST' });
+  }
+
   static async saveProject(project: Project, uploadedFiles?: File[]): Promise<ISaveFiddleResponse> {
     const files: IFiddleFile[] = [];
     // if there is no upload files, save current projects, otherwise save new uploadedFiles

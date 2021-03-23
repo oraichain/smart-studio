@@ -81,45 +81,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "cv002"
-version = "0.1.0"
-dependencies = [
- "cosmwasm-schema",
- "cosmwasm-std",
- "schemars",
- "serde",
- "thiserror",
-]
-
-[[package]]
 name = "cv006"
 version = "0.1.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cosmwasm-storage",
- "schemars",
- "serde",
- "thiserror",
-]
-
-[[package]]
-name = "cv007"
-version = "0.1.0"
-dependencies = [
- "cosmwasm-schema",
- "cosmwasm-std",
- "schemars",
- "serde",
- "thiserror",
-]
-
-[[package]]
-name = "cv008"
-version = "0.1.0"
-dependencies = [
- "cosmwasm-schema",
- "cosmwasm-std",
  "schemars",
  "serde",
  "thiserror",

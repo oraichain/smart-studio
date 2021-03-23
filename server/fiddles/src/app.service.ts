@@ -3,17 +3,17 @@ import { Request } from 'express';
 import path from 'path';
 import fs from 'fs';
 import fse from 'fs-extra';
+
 import {
   filterName,
   filterPath,
   getFiles,
-  // getFileSize,
   SmartContractUtils,
   isHiddenFiles,
+  smartContractFolder,
+  smartContractPackages,
 } from './app.utils';
 
-const smartContractFolder = process.env.CONTRACT_FOLDER || '/code';
-const smartContractPackages = path.join(smartContractFolder, 'packages');
 const smartContractUtils = new SmartContractUtils(smartContractFolder);
 export interface IFiddleFile {
   name: string;
