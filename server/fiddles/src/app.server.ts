@@ -9,6 +9,8 @@ import cors from 'cors';
 import { smartContractPackages, filterName } from './app.utils';
 
 const USE_BINARY = os.platform() !== 'win32';
+// after 60s no request then timeout, must re-connect
+const maxIdleTimeout = 60000;
 
 const server = expressWs(express()).app;
 server.use(cors());
@@ -130,8 +132,14 @@ server.ws('/terminals/:pid', function (ws, req) {
       // The WebSocket is not open, ignore
     }
   });
+  const closeSocketFn = () => {
+    ws.terminate();
+  };
+  let timer: NodeJS.Timeout = setTimeout(closeSocketFn, maxIdleTimeout);
   ws.on('message', (msg: any) => {
+    clearTimeout(timer);
     term.write(msg);
+    timer = setTimeout(closeSocketFn, maxIdleTimeout);
   });
   ws.on('close', () => {
     term.kill();

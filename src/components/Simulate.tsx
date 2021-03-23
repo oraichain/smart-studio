@@ -53,6 +53,9 @@ export class Simulate extends React.Component<SimulateProps, {}> {
     const processId = await Service.createTerminal(this.props.projectName, this.xterm.cols,this.xterm.rows);
     if(processId){          
       this.socket = await Service.createTerminalSocket(processId);
+      this.socket.onclose = () => {
+        this.xterm.write('\n\n\x1b[31mSimulate session is terminated due to no actions, please re-active!');
+      }
       const attachAddon = new AttachAddon(this.socket);     
       this.pid = processId;   
       this.xterm.loadAddon(attachAddon);                
