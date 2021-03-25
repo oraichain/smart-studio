@@ -16,7 +16,11 @@
         ],
         "jsx": "react",
         "declaration": true,
-        "removeComments": false
+        "removeComments": false,
+        "baseUrl": "./",
+        "paths": {
+        "@/*": ["./src/*"]
+        }
     },
     "include": [
         "./src/**/*",
