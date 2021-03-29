@@ -24,7 +24,7 @@ import { languageForFileType, IStatusProvider } from '../../models';
 // import { ViewTabs } from './ViewTabs';
 import { View } from './View';
 import { build, run, pushStatus, popStatus, logLn } from '../../actions/AppActions';
-import { modeId } from '../../utils/registerLanguages';
+import { updateModelTokens } from '../../utils/registerLanguages';
 
 declare var window: any;
 
@@ -53,18 +53,8 @@ export class Monaco extends React.Component<MonacoProps, {}> {
     this.editor.revealLine(this.editor.getModel().getLineCount());
   }
 
-  componentDidMount() {
-    const { view } = this.props;
-    if (view) {
-      this.ensureEditor();
-      this.editor.setModel(view.file.buffer);
-
-      // TODO: Weird that we need this to make monaco really think it needs to update the language.
-      monaco.editor.setModelLanguage(this.editor.getModel(), languageForFileType(view.file.type));
-
-      this.editor.restoreViewState(view.state);
-      this.editor.updateOptions({ readOnly: view.file.isBufferReadOnly });
-    }
+  async componentDidMount() {
+    this.componentDidUpdate();
     document.addEventListener('layout', this.onLayout);
   }
 
@@ -89,6 +79,10 @@ export class Monaco extends React.Component<MonacoProps, {}> {
       this.editor.setModel(view.file.buffer);
       this.editor.restoreViewState(view.state);
       this.editor.updateOptions({ readOnly: view.file.isBufferReadOnly });
+      updateModelTokens(view.file.buffer, languageForFileType(view.file.type));
+
+      // TODO: Weird that we need this to make monaco really think it needs to update the language.
+      monaco.editor.setModelLanguage(this.editor.getModel(), languageForFileType(view.file.type));
     }
   }
 
@@ -151,14 +145,12 @@ export class Monaco extends React.Component<MonacoProps, {}> {
     const options = Object.assign(
       {
         value: '',
-        theme: 'vs-dark', // 'fiddle-theme',
-        // minimap: {
-        //   enabled: false
-        // },
+        theme: 'fiddle-theme',
+        minimap: {
+          enabled: false
+        },
         fontWeight: 'bold',
-        renderLineHighlight: 'none',
-        // default language for rust
-        language: modeId
+        renderLineHighlight: 'none'
       },
       this.props.options
     );

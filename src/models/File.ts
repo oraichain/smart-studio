@@ -122,16 +122,7 @@ export class File {
   }
   private async updateBuffer(status?: IStatusProvider) {
     if (this.type === FileType.Wasm) {
-      // const result = await Service.disassembleWasm(this.data as ArrayBuffer, status);
-      // this.buffer.setValue(result);
-      // this.resetDirty();
-      // this.bufferType = FileType.Wat;
-      // this.notifyDidChangeBuffer();
-      // monaco.editor.setModelLanguage(this.buffer, languageForFileType(FileType.Wat));
-      // this.description = "This .wasm file is editable as a .wat file, and is automatically reassembled to .wasm when saved.";
-      // return;
       this.buffer.setValue('');
-      this.description = this.data as string;
       this.isBufferReadOnly = true;
     } else {
       this.buffer.setValue(this.data as string);

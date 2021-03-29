@@ -25,7 +25,7 @@ import ReactDOM from 'react-dom';
 import { App, EmbeddingParams, EmbeddingType } from './components/App';
 import { layout } from './util';
 import { MonacoUtils } from './monaco-utils';
-import registerLanguages from './utils/registerLanguages';
+import registerLanguages, { updateModelTokens } from './utils/registerLanguages';
 import registerTheme from './utils/registerTheme';
 
 import './global.css';
@@ -122,6 +122,7 @@ export async function init(environment = 'production') {
   try {
     await MonacoUtils.initialize();
     await registerTheme();
+    await registerLanguages();
 
     loadKeyStation((keystation: any) => {
       ReactDOM.render(
@@ -129,11 +130,6 @@ export async function init(environment = 'production') {
         document.getElementById('app')
       );
     });
-
-    if (environment !== 'test') {
-      await import(/* webpackChunkName: "monaco-languages" */ 'monaco-editor');
-    }
-    await registerLanguages();
   } catch (e) {
     console.error(e);
   }

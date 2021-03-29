@@ -19,8 +19,8 @@
  * SOFTWARE.
  */
 
- // Utils provided by monaco editor, but exposed only via AMD require().
- // See index.tsx for initialization.
+// Utils provided by monaco editor, but exposed only via AMD require().
+// See index.tsx for initialization.
 
 export class MonacoUtils {
   static Tree: any;
@@ -32,19 +32,19 @@ export class MonacoUtils {
 
   static async initialize() {
     // Dynamic import of monaco-editor (will be globally accessible)
-    await import(/* webpackChunkName: "monaco-editor" */ "monaco-editor");
+    await import(/* webpackChunkName: "monaco-editor" */ 'monaco-editor');
     // @ts-ignore
-    const {Action} = await import(/* webpackChunkName: "monaco-editor" */ "monaco-editor/esm/vs/base/common/actions");
+    const { Action } = await import(/* webpackChunkName: "monaco-editor" */ 'monaco-editor/esm/vs/base/common/actions');
     // @ts-ignore
-    const {ContextSubMenu} = await import(/* webpackChunkName: "monaco-editor" */ "monaco-editor/esm/vs/base/browser/contextmenu");
+    const { ContextSubMenu } = await import(/* webpackChunkName: "monaco-editor" */ 'monaco-editor/esm/vs/base/browser/contextmenu');
     // @ts-ignore
-    const {ContextMenuService} = await import(/* webpackChunkName: "monaco-editor" */ "monaco-editor/esm/vs/platform/contextview/browser/contextMenuService");
+    const { ContextMenuService } = await import(/* webpackChunkName: "monaco-editor" */ 'monaco-editor/esm/vs/platform/contextview/browser/contextMenuService');
     // @ts-ignore
-    const {ContextViewService} = await import(/* webpackChunkName: "monaco-editor" */ "monaco-editor/esm/vs/platform/contextview/browser/contextViewService");
+    const { ContextViewService } = await import(/* webpackChunkName: "monaco-editor" */ 'monaco-editor/esm/vs/platform/contextview/browser/contextViewService');
     // @ts-ignore
-    const {Tree} = await import(/* webpackChunkName: "monaco-editor" */ "monaco-editor/esm/vs/base/parts/tree/browser/treeImpl");
+    const { Tree } = await import(/* webpackChunkName: "monaco-editor" */ 'monaco-editor/esm/vs/base/parts/tree/browser/treeImpl');
     // @ts-ignore
-    const TreeDefaults = await import(/* webpackChunkName: "monaco-editor" */ "monaco-editor/esm/vs/base/parts/tree/browser/treeDefaults");
+    const TreeDefaults = await import(/* webpackChunkName: "monaco-editor" */ 'monaco-editor/esm/vs/base/parts/tree/browser/treeDefaults');
     MonacoUtils.Action = Action;
     MonacoUtils.ContextSubMenu = ContextSubMenu;
     MonacoUtils.ContextMenuService = ContextMenuService;
@@ -60,7 +60,7 @@ export class MonacoUtils {
     let item;
     const nav = model.getNavigator();
 
-    while (item = nav.next()) {
+    while ((item = nav.next())) {
       elements.push(item);
     }
 

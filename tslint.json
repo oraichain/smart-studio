@@ -2,7 +2,7 @@
   "defaultSeverity": "error",
   "extends": ["tslint:recommended", "tslint-react"],
   "linterOptions": {
-    "exclude": ["src/languages/*.ts", "src/monaco-extra.ts", "lib/**/*.ts"]
+    "exclude": ["src/monaco-extra.ts", "lib/**/*.ts"]
   },
   "jsRules": {},
   "rules": {

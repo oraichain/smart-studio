@@ -162,6 +162,7 @@ export class ViewTabs extends React.Component<ViewTabsProps, ViewTabsState> {
         />
       );
     } else if (view.file.type === FileType.DOT) {
+      // support edit graph for better markdown like mermaid
       const viz = view.type === ViewType.Viz;
       commands.unshift(
         <Button

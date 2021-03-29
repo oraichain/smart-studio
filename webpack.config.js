@@ -18,7 +18,7 @@ module.exports = (env, options) => {
     },
 
     // Enable sourcemaps for debugging webpack's output.
-    devtool: 'source-map',
+    devtool: options.mode === 'production' ? false : 'inline-source-map',
 
     devServer: {
       liveReload: false
@@ -84,6 +84,11 @@ module.exports = (env, options) => {
         'process.env.LCD': JSON.stringify(process.env.LCD || 'https://lcd.testnet.oraiscan.io')
       })
     ],
+    performance: {
+      hints: false,
+      maxEntrypointSize: 512000,
+      maxAssetSize: 512000
+    },
     optimization: {
       splitChunks: {
         cacheGroups: {
@@ -91,12 +96,6 @@ module.exports = (env, options) => {
             // Editor bundle
             test: /[\\/]node_modules\/(monaco-editor\/esm\/vs\/(nls\.js|editor|platform|base|basic-languages|language\/(css|html|json|typescript)\/monaco\.contribution\.js)|style-loader\/lib|css-loader\/lib\/css-base\.js)/,
             name: 'monaco-editor',
-            chunks: 'async'
-          },
-          languages: {
-            // Language bundle
-            test: /[\\/]node_modules\/monaco-editor\/esm\/vs\/language\/(css|html|json|typescript)\/(_deps|lib|fillers|languageFeatures\.js|workerManager\.js|tokenization\.js|(tsMode|jsonMode|htmlMode|cssMode)\.js|(tsWorker|jsonWorker|htmlWorker|cssWorker)\.js)/,
-            name: 'monaco-languages',
             chunks: 'async'
           }
         }

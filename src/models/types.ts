@@ -75,7 +75,8 @@ export function languageForFileType(type: FileType): string {
   } else if (type === FileType.C || type === FileType.Cpp) {
     return 'cpp';
   } else if (type === FileType.Rust) {
-    return 'rust';
+    // rust analyzer
+    return 'ra-rust';
   } else if (type === FileType.Wat || type === FileType.Wasm) {
     return 'wat';
   } else if (type === FileType.Log) {

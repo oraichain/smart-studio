@@ -23,7 +23,7 @@ import React from 'react';
 import { hot } from 'react-hot-loader/root';
 
 import { Workspace } from './Workspace';
-import { ViewTabs, View } from './editor';
+import { ViewTabs, View, EditorPanes } from './editor';
 import { Toolbar } from './Toolbar';
 import { ViewType, defaultViewTypeForFileType } from './editor/View';
 import { schema, build, test, run, runTask, openFiles, pushStatus, popStatus, openProject } from '../actions/AppActions';
@@ -221,11 +221,8 @@ export class App extends React.Component<AppProps, AppState> {
     popStatus();
     if (fiddle.success) {
       await Service.loadFilesIntoProject(fiddle.files, project);
-      loadProject(project);
-      if (project.getFile('README.md')) {
-        openFiles([['README.md']]);
-        logLn(`Load project ${project.name} succeed!`);
-      }
+      openProject(project);      
+      logLn(`Load project ${project.name} succeed!`);      
     } else {
       this.showToast(<span>Project {uri} was not found.</span>, 'error');
     }
@@ -468,52 +465,8 @@ export class App extends React.Component<AppProps, AppState> {
     }
     return toolbarButtons;
   }
+
   render() {
-    const self = this;
-
-    const makeEditorPanes = () => {
-      const groups = this.state.tabGroups;
-      const activeGroup = this.state.activeTabGroup;
-
-      if (groups.length === 0) {
-        return <div>No Groups</div>;
-      }
-      return groups.map((group: Group, i: number) => {
-        // tslint:disable-next-line:jsx-key
-        return (
-          <ViewTabs
-            key={`editorPane${i}`}
-            views={group.views.slice(0)}
-            view={group.currentView}
-            preview={group.preview}
-            onSplitViews={() => splitGroup()}
-            hasFocus={activeGroup === group}
-            onFocus={() => {
-              // TODO: Should be taken care of in shouldComponentUpdate instead.
-              focusTabGroup(group);
-            }}
-            onChangeViewType={(view, type) => setViewType(view, type)}
-            onClickView={(view: View) => {
-              if (!(appStore.getActiveTabGroup().currentView === view)) {
-                // Avoids the propagation of content selection between tabs.
-                resetDOMSelection();
-              }
-              focusTabGroup(group);
-              openView(view);
-            }}
-            onDoubleClickView={(view: View) => {
-              focusTabGroup(group);
-              openView(view, false);
-            }}
-            onClose={(view: View) => {
-              focusTabGroup(group);
-              closeView(view);
-            }}
-          />
-        );
-      });
-    };
-
     const editorPanes = (
       <Split
         name="Editors"
@@ -527,7 +480,7 @@ export class App extends React.Component<AppProps, AppState> {
           layout();
         }}
       >
-        {makeEditorPanes()}
+        <EditorPanes groups={this.state.tabGroups} active={this.state.activeTabGroup} />
       </Split>
     );
 
