@@ -2,15 +2,23 @@
   "compilerOptions": {
     "module": "commonjs",
     "declaration": true,
+    "esModuleInterop": true,
     "removeComments": true,
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
-    "allowSyntheticDefaultImports": true,
-    "esModuleInterop": true,
-    "target": "es2017",
+    "resolveJsonModule": true,
+    "importHelpers": true,
+    "isolatedModules": true,
+    "jsx": "react",
+    "moduleResolution": "Node",
+    "target": "ESNext",
     "sourceMap": true,
     "outDir": "./dist",
+    "incremental": true,
+    "allowSyntheticDefaultImports": true,
     "baseUrl": "./",
-    "incremental": true
+    "paths": {
+      "@/*": ["./src/*"]
+    }
   }
 }
