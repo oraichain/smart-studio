@@ -10427,6 +10427,9 @@ warning@^3.0.0:
   dependencies:
     loose-envify "^1.0.0"
 
+"wasm-analyzer@file:./server/analyzer/pkg":
+  version "0.1.0"
+
 watch@~0.18.0:
   version "0.18.0"
   resolved "https://registry.yarnpkg.com/watch/-/watch-0.18.0.tgz#28095476c6df7c90c963138990c0a5423eb4b986"

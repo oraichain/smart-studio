@@ -26,18 +26,8 @@
 // https://github.com/mattgodbolt/compiler-explorer/blob/0a87dcb00abfc5931067a0eaf961b68a1d0a9bac/static/rust-mode.js
 
 type IRichLanguageConfiguration = monaco.languages.LanguageConfiguration;
-type ILanguage = monaco.languages.IMonarchLanguage;
 type IModel = monaco.editor.IModel;
 type IPosition = monaco.IPosition;
-
-let completionItems: monaco.languages.CompletionItem[] = null;
-function getCompletionItems(): monaco.languages.CompletionItem[] {
-  const keyword = monaco.languages.CompletionItemKind.Keyword;
-  if (completionItems) {
-    return completionItems;
-  }
-  return (completionItems = []);
-}
 
 const LanguageConfiguration: IRichLanguageConfiguration = {
   comments: {
@@ -119,11 +109,6 @@ const MonarchDefinitions = <monaco.languages.IMonarchLanguage>{
 export const Toml = {
   LanguageConfiguration,
   MonarchDefinitions,
-  CompletionItemProvider: {
-    provideCompletionItems: (model: IModel, position: IPosition): monaco.languages.CompletionItem[] => {
-      return getCompletionItems();
-    }
-  },
   HoverProvider: {
     provideHover: (model: IModel, position: IPosition): any => {
       return {

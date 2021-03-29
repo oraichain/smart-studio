@@ -21,9 +21,10 @@
 
 import React from 'react';
 import { languageForFileType, IStatusProvider } from '../../models';
-import { ViewTabs } from './ViewTabs';
+// import { ViewTabs } from './ViewTabs';
 import { View } from './View';
 import { build, run, pushStatus, popStatus, logLn } from '../../actions/AppActions';
+import { modeId } from '../../utils/registerLanguages';
 
 declare var window: any;
 
@@ -150,19 +151,22 @@ export class Monaco extends React.Component<MonacoProps, {}> {
     const options = Object.assign(
       {
         value: '',
-        theme: 'fiddle-theme',
-        minimap: {
-          enabled: false
-        },
+        theme: 'vs-dark', // 'fiddle-theme',
+        // minimap: {
+        //   enabled: false
+        // },
         fontWeight: 'bold',
-        renderLineHighlight: 'none'
+        renderLineHighlight: 'none',
+        // default language for rust
+        language: modeId
       },
       this.props.options
     );
+
     if (this.container.lastChild) {
       this.container.removeChild(this.container.lastChild);
     }
-    this.editor = monaco.editor.create(this.container, options as any);
+    this.editor = monaco.editor.create(this.container, options);
     this.editor.onContextMenu((e) => {
       this.resolveMenuPosition(e);
       this.disableEditorScroll(); // This makes it possible to scroll inside the menu
