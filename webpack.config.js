@@ -1,5 +1,6 @@
 const path = require('path');
 const webpack = require('webpack');
+const MonacoWebpackPlugin = require('monaco-editor-webpack-plugin');
 const ForkTsCheckerWebpackPlugin = require('fork-ts-checker-webpack-plugin');
 const shell = require('shelljs');
 
@@ -7,10 +8,7 @@ const distPath = path.resolve(__dirname, process.env.DIST_FOLDER || 'dist');
 
 module.exports = (env, options) => {
   const config = {
-    entry: {
-      main: './src/index.tsx',
-      'editor.worker': 'monaco-editor/esm/vs/editor/editor.worker.js'
-    },
+    entry: './src/index.tsx',
     output: {
       filename: '[name].bundle.js',
       chunkFilename: '[name].bundle.js',
@@ -79,16 +77,18 @@ module.exports = (env, options) => {
 
     plugins: [
       new ForkTsCheckerWebpackPlugin(),
+      new MonacoWebpackPlugin(),
       new webpack.DefinePlugin({
         'process.env.SERVICE_URL': JSON.stringify(process.env.SERVICE_URL),
         'process.env.WALLET_URL': JSON.stringify(process.env.WALLET_URL || 'https://oraiwallet.web.app'),
         'process.env.LCD': JSON.stringify(process.env.LCD || 'https://lcd.testnet.oraiscan.io')
       })
     ],
+    // maximum 20 MB
     performance: {
       hints: false,
-      maxEntrypointSize: 5120000,
-      maxAssetSize: 5120000
+      maxEntrypointSize: 20480000,
+      maxAssetSize: 20480000
     },
     optimization: {
       splitChunks: {
