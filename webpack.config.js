@@ -84,10 +84,11 @@ module.exports = (env, options) => {
         'process.env.LCD': JSON.stringify(process.env.LCD || 'https://lcd.testnet.oraiscan.io')
       })
     ],
+    // maximum 20 MB
     performance: {
       hints: false,
-      maxEntrypointSize: 512000,
-      maxAssetSize: 512000
+      maxEntrypointSize: 20480000,
+      maxAssetSize: 20480000
     },
     optimization: {
       splitChunks: {
