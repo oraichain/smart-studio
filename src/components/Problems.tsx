@@ -40,8 +40,8 @@ export class Problems extends React.Component<ProblemsProps, {}> {
   constructor(props: ProblemsProps) {
     super(props);
     // tslint:disable-next-line
-    this.contextViewService = new MonacoUtils.ContextViewService(document.documentElement, null, { trace: () => {} });
-    this.contextMenuService = new MonacoUtils.ContextMenuService(document.documentElement, null, null, this.contextViewService);
+    this.contextViewService = new MonacoUtils.ContextViewService({ container: document.documentElement, onLayout: () => {} });
+    this.contextMenuService = new MonacoUtils.ContextMenuService(null, null, this.contextViewService);
   }
   componentDidMount() {
     this.ensureTree();
@@ -52,7 +52,7 @@ export class Problems extends React.Component<ProblemsProps, {}> {
       }
     });
     appStore.onDidChangeProblems.register(() => {
-      this.tree.refresh();
+      (this.tree as any).model.refresh();
       MonacoUtils.expandTree(this.tree);
     });
     appStore.onLoadProject.register(() => {
@@ -60,7 +60,7 @@ export class Problems extends React.Component<ProblemsProps, {}> {
     });
   }
   componentWillReceiveProps(props: ProblemsProps) {
-    this.tree.refresh();
+    (this.tree as any).model.refresh();
     MonacoUtils.expandTree(this.tree);
   }
   private setContainer(container: HTMLDivElement) {
@@ -98,7 +98,7 @@ export class Problems extends React.Component<ProblemsProps, {}> {
         /**
          * Returns the element's children as an array in a promise.
          */
-        getChildren: function(tree: ITree, element: File | Problem): monaco.Promise<any> {
+        getChildren: function(tree: ITree, element: File | Problem): Promise<File[] | Problem[]> {
           if (element instanceof Directory && element.children.length) {
             const children: File[] = [];
             element.forEachFile(
@@ -110,21 +110,21 @@ export class Problems extends React.Component<ProblemsProps, {}> {
               false,
               true
             );
-            return monaco.Promise.as(children);
+            return Promise.resolve(children);
           } else if (element instanceof File) {
-            return monaco.Promise.as(element.problems);
+            return Promise.resolve(element.problems);
           }
-          return null;
+          return Promise.resolve(null);
         },
 
         /**
          * Returns the element's parent in a promise.
          */
-        getParent: function(tree: ITree, element: File | Problem): monaco.Promise<any> {
+        getParent: function(tree: ITree, element: File | Problem): File {
           if (element instanceof File) {
-            return monaco.Promise.as(element.getProject());
+            return element.getProject();
           }
-          return monaco.Promise.as(element.file);
+          return element.file;
         }
       },
       renderer: {

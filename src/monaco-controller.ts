@@ -19,8 +19,8 @@
  * SOFTWARE.
  */
 
-import { MonacoUtils } from "./monaco-utils";
-import { ITree, ContextMenuEvent } from "./monaco-extra";
+import { MonacoUtils } from './monaco-utils';
+import { ITree, ContextMenuEvent } from './monaco-extra';
 
 export function getController(target: any, getActionsFn?: Function, resolveMenuHeight?: Boolean) {
   return class Controller extends MonacoUtils.TreeDefaults.DefaultController {
@@ -34,7 +34,7 @@ export function getController(target: any, getActionsFn?: Function, resolveMenuH
       }
       target.contextMenuService.showContextMenu({
         getAnchor: () => anchor,
-        getActions: () => monaco.Promise.as(actions || []),
+        getActions: () => Promise.resolve(actions || []),
         getActionItem: (action: any): any => null,
         onHide: (wasCancelled?: boolean) => {
           if (wasCancelled) {
@@ -50,9 +50,9 @@ export function getController(target: any, getActionsFn?: Function, resolveMenuH
     }
     resolveMenuHeight(event: ContextMenuEvent) {
       // Set the context menus max height to avoid overflow outside window
-      const menu: HTMLElement = document.querySelector(".context-view.monaco-menu-container");
+      const menu: HTMLElement = document.querySelector('.context-view.monaco-menu-container');
       const windowPadding = 10;
-      menu.style.maxHeight = Math.min(window.innerHeight - event._posy - windowPadding, 380) + "px";
+      menu.style.maxHeight = Math.min(window.innerHeight - event._posy - windowPadding, 380) + 'px';
     }
   };
 }

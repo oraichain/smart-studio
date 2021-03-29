@@ -18,42 +18,78 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+// @ts-check
+import 'monaco-editor/esm/vs/editor/browser/controller/coreCommands';
+import 'monaco-editor/esm/vs/editor/browser/widget/codeEditorWidget';
+import 'monaco-editor/esm/vs/editor/browser/widget/diffEditorWidget';
+import 'monaco-editor/esm/vs/editor/browser/widget/diffNavigator';
+import 'monaco-editor/esm/vs/editor/contrib/bracketMatching/bracketMatching';
+import 'monaco-editor/esm/vs/editor/contrib/caretOperations/caretOperations';
+import 'monaco-editor/esm/vs/editor/contrib/caretOperations/transpose';
+import 'monaco-editor/esm/vs/editor/contrib/clipboard/clipboard';
+import 'monaco-editor/esm/vs/editor/contrib/codeAction/codeActionContributions';
+import 'monaco-editor/esm/vs/editor/contrib/codelens/codelensController';
+import 'monaco-editor/esm/vs/editor/contrib/colorPicker/colorDetector';
+import 'monaco-editor/esm/vs/editor/contrib/comment/comment';
+import 'monaco-editor/esm/vs/editor/contrib/contextmenu/contextmenu';
+import 'monaco-editor/esm/vs/editor/contrib/cursorUndo/cursorUndo';
+import 'monaco-editor/esm/vs/editor/contrib/dnd/dnd';
+import 'monaco-editor/esm/vs/editor/contrib/find/findController';
+import 'monaco-editor/esm/vs/editor/contrib/folding/folding';
+import 'monaco-editor/esm/vs/editor/contrib/fontZoom/fontZoom';
+import 'monaco-editor/esm/vs/editor/contrib/format/formatActions';
+import 'monaco-editor/esm/vs/editor/contrib/goToDefinition/goToDefinitionCommands';
+import 'monaco-editor/esm/vs/editor/contrib/goToDefinition/goToDefinitionMouse';
+import 'monaco-editor/esm/vs/editor/contrib/gotoError/gotoError';
+import 'monaco-editor/esm/vs/editor/contrib/hover/hover';
+import 'monaco-editor/esm/vs/editor/contrib/inPlaceReplace/inPlaceReplace';
+import 'monaco-editor/esm/vs/editor/contrib/linesOperations/linesOperations';
+import 'monaco-editor/esm/vs/editor/contrib/links/links';
+import 'monaco-editor/esm/vs/editor/contrib/multicursor/multicursor';
+import 'monaco-editor/esm/vs/editor/contrib/parameterHints/parameterHints';
+import 'monaco-editor/esm/vs/editor/contrib/referenceSearch/referenceSearch';
+import 'monaco-editor/esm/vs/editor/contrib/rename/rename';
+import 'monaco-editor/esm/vs/editor/contrib/smartSelect/smartSelect';
+import 'monaco-editor/esm/vs/editor/contrib/snippet/snippetController2';
+import 'monaco-editor/esm/vs/editor/contrib/suggest/suggestController';
+import 'monaco-editor/esm/vs/editor/contrib/tokenization/tokenization';
+import 'monaco-editor/esm/vs/editor/contrib/toggleTabFocusMode/toggleTabFocusMode';
+import 'monaco-editor/esm/vs/editor/contrib/wordHighlighter/wordHighlighter';
+import 'monaco-editor/esm/vs/editor/contrib/wordOperations/wordOperations';
+import 'monaco-editor/esm/vs/editor/contrib/wordPartOperations/wordPartOperations';
+import 'monaco-editor/esm/vs/editor/standalone/browser/accessibilityHelp/accessibilityHelp';
+import 'monaco-editor/esm/vs/editor/standalone/browser/iPadShowKeyboard/iPadShowKeyboard';
+import 'monaco-editor/esm/vs/editor/standalone/browser/inspectTokens/inspectTokens';
+import 'monaco-editor/esm/vs/editor/standalone/browser/quickOpen/gotoLine';
+import 'monaco-editor/esm/vs/editor/standalone/browser/quickOpen/quickCommand';
+import 'monaco-editor/esm/vs/editor/standalone/browser/quickOpen/quickOutline';
+import 'monaco-editor/esm/vs/editor/standalone/browser/referenceSearch/standaloneReferenceSearch';
+import 'monaco-editor/esm/vs/editor/standalone/browser/toggleHighContrast/toggleHighContrast';
 
-// import { Rust } from '../languages/rust';
 import * as rustConf from 'monaco-editor/esm/vs/basic-languages/rust/rust';
-// import { Toml } from '../languages/toml';
 
 export interface Token {
   tag: string;
   range: monaco.Range;
 }
 
-export const modeId = 'ra-rust'; // not "rust" to circumvent conflict
-
 export default async function registerLanguages() {
-  // // Toml implementation
-  // monaco.languages.onLanguage('toml', () => {
-  //   monaco.languages.setMonarchTokensProvider('toml', Toml.MonarchDefinitions);
-  // });
-  // monaco.languages.register({
-  //   id: 'toml',
-  //   extensions: ['.toml'],
-  //   aliases: ['TOML']
-  // });
+  // Rust implementation for hover only
+  monaco.languages.register({
+    id: 'rust'
+  });
+  monaco.languages.setMonarchTokensProvider('rust', rustConf.language);
 
-  // Rust implementation
+  // Rust analyzer implementation
   monaco.languages.register({
     // language for editor
-    id: modeId
-  });
-
-  monaco.languages.register({
-    id: 'rust',
+    id: 'ra-rust',
     extensions: ['.rs', '.rlib'],
     aliases: ['Rust', 'rust']
   });
+  monaco.languages.setLanguageConfiguration('ra-rust', rustConf.conf);
 
-  monaco.languages.onLanguage(modeId, async () => {
+  monaco.languages.onLanguage('ra-rust', async () => {
     // state of rust analyzer for wasm codes
     const { WorldState } = await import('wasm-analyzer');
 
@@ -64,26 +100,17 @@ export default async function registerLanguages() {
 
     function update() {
       const res = state.update(model.getValue());
-      monaco.editor.setModelMarkers(model, modeId, res.diagnostics);
+      monaco.editor.setModelMarkers(model, 'ra-rust', res.diagnostics);
       allTokens = res.highlights;
     }
     update();
 
     model.onDidChangeContent(update);
 
-    console.log(rustConf);
-
-    // monaco.languages.setLanguageConfiguration(modeId, Rust.LanguageConfiguration);
-    // monaco.languages.setLanguageConfiguration('rust', Rust.LanguageConfiguration);
-    // monaco.languages.setMonarchTokensProvider('rust', Rust.MonarchDefinitions);
-    monaco.languages.setLanguageConfiguration(modeId, rustConf.conf);
-    monaco.languages.setLanguageConfiguration('rust', rustConf.conf);
-    monaco.languages.setMonarchTokensProvider('rust', rustConf.language);
-
-    monaco.languages.registerHoverProvider(modeId, {
-      provideHover: (_, pos) => state.hover(pos.lineNumber, pos.column)
-    });
-    monaco.languages.registerCodeLensProvider(modeId, {
+    // monaco.languages.registerHoverProvider('ra-rust', {
+    //   provideHover: (_, pos) => state.hover(pos.lineNumber, pos.column)
+    // });
+    monaco.languages.registerCodeLensProvider('ra-rust', {
       provideCodeLenses(m) {
         const code_lenses = state.code_lenses();
         const lenses = code_lenses.map(({ range, command }: any) => {
@@ -106,12 +133,10 @@ export default async function registerLanguages() {
           };
         });
 
-        return lenses;
-        // new version return ProviderResult<CodeLensList>
-        // return { lenses, dispose() {} };
+        return { lenses, dispose() {} };
       }
     });
-    monaco.languages.registerReferenceProvider(modeId, {
+    monaco.languages.registerReferenceProvider('ra-rust', {
       provideReferences(m, pos, { includeDeclaration }) {
         const references = state.references(pos.lineNumber, pos.column, includeDeclaration);
         if (references) {
@@ -119,10 +144,13 @@ export default async function registerLanguages() {
         }
       }
     });
-    monaco.languages.registerDocumentHighlightProvider(modeId, {
-      provideDocumentHighlights: (_, pos) => state.references(pos.lineNumber, pos.column, true)
-    });
-    monaco.languages.registerRenameProvider(modeId, {
+    // monaco.languages.registerDocumentHighlightProvider('ra-rust', {
+    //   provideDocumentHighlights: (_, pos) => {
+    //     console.log(state.references(pos.lineNumber, pos.column, true));
+    //     return state.references(pos.lineNumber, pos.column, true);
+    //   }
+    // });
+    monaco.languages.registerRenameProvider('ra-rust', {
       provideRenameEdits: (m, pos, newName) => {
         const edits = state.rename(pos.lineNumber, pos.column, newName);
         if (edits) {
@@ -138,62 +166,58 @@ export default async function registerLanguages() {
       },
       resolveRenameLocation: (_, pos) => state.prepare_rename(pos.lineNumber, pos.column)
     });
-    monaco.languages.registerCompletionItemProvider(modeId, {
+    monaco.languages.registerCompletionItemProvider('ra-rust', {
       triggerCharacters: ['.', ':', '='],
       provideCompletionItems(m, pos) {
         const suggestions = state.completions(pos.lineNumber, pos.column);
-        return suggestions;
-        // new version
-        //   if (suggestions) {
-        //     return { suggestions };
-        //   }
+        if (suggestions) {
+          return { suggestions };
+        }
       }
     });
-    monaco.languages.registerSignatureHelpProvider(modeId, {
+    monaco.languages.registerSignatureHelpProvider('ra-rust', {
       signatureHelpTriggerCharacters: ['(', ','],
       provideSignatureHelp(m, pos) {
         const value = state.signature_help(pos.lineNumber, pos.column);
-        return value;
-        // new version
-        // if (!value) return null;
-        // return {
-        //   value,
-        //   dispose() {}
-        // };
+        if (!value) return null;
+        return {
+          value,
+          dispose() {}
+        };
       }
     });
-    monaco.languages.registerDefinitionProvider(modeId, {
+    monaco.languages.registerDefinitionProvider('ra-rust', {
       provideDefinition(m, pos) {
         const list = state.definition(pos.lineNumber, pos.column);
         if (list) {
-          return list.map((def: monaco.languages.DefinitionLink) => ({ ...def, uri: m.uri }));
+          return list.map((def: monaco.languages.Definition) => ({ ...def, uri: m.uri }));
         }
       }
     });
-    monaco.languages.registerTypeDefinitionProvider(modeId, {
+    monaco.languages.registerTypeDefinitionProvider('ra-rust', {
       provideTypeDefinition(m, pos) {
         const list = state.type_definition(pos.lineNumber, pos.column);
         if (list) {
-          return list.map((def: monaco.languages.DefinitionLink) => ({ ...def, uri: m.uri }));
+          return list.map((def: monaco.languages.Definition) => ({ ...def, uri: m.uri }));
         }
       }
     });
-    monaco.languages.registerImplementationProvider(modeId, {
+    monaco.languages.registerImplementationProvider('ra-rust', {
       provideImplementation(m, pos) {
         const list = state.goto_implementation(pos.lineNumber, pos.column);
         if (list) {
-          return list.map((def: monaco.languages.DefinitionLink) => ({ ...def, uri: m.uri }));
+          return list.map((def: monaco.languages.Definition) => ({ ...def, uri: m.uri }));
         }
       }
     });
-    monaco.languages.registerDocumentSymbolProvider(modeId, {
+    monaco.languages.registerDocumentSymbolProvider('ra-rust', {
       provideDocumentSymbols: () => state.document_symbols()
     });
-    monaco.languages.registerOnTypeFormattingEditProvider(modeId, {
+    monaco.languages.registerOnTypeFormattingEditProvider('ra-rust', {
       autoFormatTriggerCharacters: ['.', '='],
       provideOnTypeFormattingEdits: (_, pos, ch) => state.type_formatting(pos.lineNumber, pos.column, ch)
     });
-    monaco.languages.registerFoldingRangeProvider(modeId, {
+    monaco.languages.registerFoldingRangeProvider('ra-rust', {
       provideFoldingRanges: () => state.folding_ranges()
     });
 
@@ -229,7 +253,7 @@ export default async function registerLanguages() {
       }
     }
 
-    monaco.languages.setTokensProvider(modeId, {
+    monaco.languages.setTokensProvider('ra-rust', {
       getInitialState: () => new TokenState(),
       tokenize(_, st: TokenState) {
         const filteredTokens = allTokens.filter((token) => token.range.startLineNumber === st.line);

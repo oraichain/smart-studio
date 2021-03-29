@@ -14,6 +14,7 @@
 // import { IAction, IActionItem } from 'vs/base/common/actions';
 // import { Color } from 'vs/base/common/color';
 // import { IItemCollapseEvent, IItemExpandEvent } from 'vs/base/parts/tree/browser/treeModel';
+import { Directory } from './models/Directory';
 
 export interface Event<T> {}
 
@@ -65,7 +66,7 @@ export interface ITree {
   /**
    * Sets the input of the tree.
    */
-  setInput(element: any): monaco.Promise<any>;
+  setInput(element: any): Promise<any>;
 
   /**
    * Returns the tree's input.
@@ -87,40 +88,40 @@ export interface ITree {
    */
   domBlur(): void;
 
-  /**
-   * Refreshes an element.
-   * Provide no arguments and it will refresh the input element.
-   */
-  refresh(element?: any, recursive?: boolean): monaco.Promise<any>;
+  // /**
+  //  * Refreshes an element.
+  //  * Provide no arguments and it will refresh the input element.
+  //  */
+  // refresh(element?: any, recursive?: boolean): Promise<any>;
 
   /**
    * Expands an element.
-   * The returned monaco.Promise returns a boolean for whether the element was expanded or not.
+   * The returned Promise returns a boolean for whether the element was expanded or not.
    */
-  expand(element: any): monaco.Promise<any>;
+  expand(element: any): Promise<any>;
 
   /**
    * Collapses an element.
-   * The returned monaco.Promise returns a boolean for whether the element was collapsed or not.
+   * The returned Promise returns a boolean for whether the element was collapsed or not.
    */
-  collapse(element: any, recursive?: boolean): monaco.Promise<any>;
+  collapse(element: any, recursive?: boolean): Promise<any>;
 
   /**
    * Collapses several elements.
    * Collapses all elements at the greatest tree depth that has expanded elements.
-   * The returned monaco.Promise returns a boolean for whether the elements were collapsed or not.
+   * The returned Promise returns a boolean for whether the elements were collapsed or not.
    */
-  collapseDeepestExpandedLevel(): monaco.Promise<any>;
+  collapseDeepestExpandedLevel(): Promise<any>;
 
   /**
    * Toggles an element's expansion state.
    */
-  toggleExpansion(element: any, recursive?: boolean): monaco.Promise<any>;
+  toggleExpansion(element: any, recursive?: boolean): Promise<any>;
 
   /**
    * Toggles several element's expansion state.
    */
-  toggleExpansionAll(elements: any[]): monaco.Promise<any>;
+  toggleExpansionAll(elements: any[]): Promise<any>;
 
   /**
    * Returns whether an element is expanded or not.
@@ -136,7 +137,7 @@ export interface ITree {
    * Reveals an element in the tree. The relativeTop is a value between 0 and 1. The closer to 0 the more the
    * element will scroll up to the top.
    */
-  reveal(element: any, relativeTop?: number): monaco.Promise<any>;
+  reveal(element: any, relativeTop?: number): Promise<any>;
 
   /**
    * Returns the relative top position of any given element, if visible.
@@ -370,14 +371,14 @@ export interface IDataSource {
   hasChildren(tree: ITree, element: any): boolean;
 
   /**
-   * Returns the element's children as an array in a monaco.Promise.
+   * Returns the element's children as an array in a Promise.
    */
-  getChildren(tree: ITree, element: any): monaco.Promise<any>;
+  getChildren(tree: ITree, element: any): Promise<File[]>;
 
   /**
-   * Returns the element's parent in a monaco.Promise.
+   * Returns the element's parent in a Promise.
    */
-  getParent(tree: ITree, element: any): monaco.Promise<any>;
+  getParent(tree: ITree, element: any): Promise<Directory>;
 
   /**
    * Returns whether an element should be expanded when first added to the tree.
@@ -692,9 +693,9 @@ export interface ITreeContext extends ITreeConfiguration {
 // 	hasActions(tree: ITree, element: any): boolean;
 
 // 	/**
-// 	 * Returns a monaco.Promise of an array with the actions of the element that should show up in place right to the element in the tree.
+// 	 * Returns a Promise of an array with the actions of the element that should show up in place right to the element in the tree.
 // 	 */
-// 	getActions(tree: ITree, element: any): monaco.Promise<IAction[]>;
+// 	getActions(tree: ITree, element: any): Promise<IAction[]>;
 
 // 	/**
 // 	 * Returns whether or not the element has secondary actions. These show up once the user has expanded the element's action bar.
@@ -702,9 +703,9 @@ export interface ITreeContext extends ITreeConfiguration {
 // 	hasSecondaryActions(tree: ITree, element: any): boolean;
 
 // 	/**
-// 	 * Returns a monaco.Promise of an array with the secondary actions of the element that should show up once the user has expanded the element's action bar.
+// 	 * Returns a Promise of an array with the secondary actions of the element that should show up once the user has expanded the element's action bar.
 // 	 */
-// 	getSecondaryActions(tree: ITree, element: any): monaco.Promise<IAction[]>;
+// 	getSecondaryActions(tree: ITree, element: any): Promise<IAction[]>;
 
 // 	/**
 // 	 * Returns an action item to render an action.

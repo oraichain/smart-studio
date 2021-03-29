@@ -24,9 +24,6 @@ import { languageForFileType, IStatusProvider } from '../../models';
 // import { ViewTabs } from './ViewTabs';
 import { View } from './View';
 import { build, run, pushStatus, popStatus, logLn } from '../../actions/AppActions';
-import { modeId } from '../../utils/registerLanguages';
-
-declare var window: any;
 
 // Life Cycle
 // https://cdn-images-1.medium.com/max/1600/0*VoYsN6eq7I_wjVV5.png
@@ -152,13 +149,11 @@ export class Monaco extends React.Component<MonacoProps, {}> {
       {
         value: '',
         theme: 'vs-dark', // 'fiddle-theme',
-        // minimap: {
-        //   enabled: false
-        // },
+        minimap: {
+          enabled: false
+        },
         fontWeight: 'bold',
-        renderLineHighlight: 'none',
-        // default language for rust
-        language: modeId
+        renderLineHighlight: 'none'
       },
       this.props.options
     );

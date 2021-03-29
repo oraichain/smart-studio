@@ -30,7 +30,7 @@ describe('Tests for Editor.tsx/EditorView', () => {
   });
   it('should render a status bar if the open file has a description', () => {
     const wrapper = setup('test');
-    expect(wrapper.find('.status-bar-item')).toHaveText('test');
+    expect(wrapper.find('.status-bar-item')).toMatchObject('test');
     expect(wrapper.find('.editor-container').length).toEqual(1);
     wrapper.unmount();
   });

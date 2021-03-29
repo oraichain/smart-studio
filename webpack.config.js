@@ -1,6 +1,5 @@
 const path = require('path');
 const webpack = require('webpack');
-const MonacoWebpackPlugin = require('monaco-editor-webpack-plugin');
 const ForkTsCheckerWebpackPlugin = require('fork-ts-checker-webpack-plugin');
 const shell = require('shelljs');
 
@@ -8,7 +7,10 @@ const distPath = path.resolve(__dirname, process.env.DIST_FOLDER || 'dist');
 
 module.exports = (env, options) => {
   const config = {
-    entry: './src/index.tsx',
+    entry: {
+      main: './src/index.tsx',
+      'editor.worker': 'monaco-editor/esm/vs/editor/editor.worker.js'
+    },
     output: {
       filename: '[name].bundle.js',
       chunkFilename: '[name].bundle.js',
@@ -77,31 +79,12 @@ module.exports = (env, options) => {
 
     plugins: [
       new ForkTsCheckerWebpackPlugin(),
-      new MonacoWebpackPlugin(),
       new webpack.DefinePlugin({
         'process.env.SERVICE_URL': JSON.stringify(process.env.SERVICE_URL),
         'process.env.WALLET_URL': JSON.stringify(process.env.WALLET_URL || 'https://oraiwallet.web.app'),
         'process.env.LCD': JSON.stringify(process.env.LCD || 'https://lcd.testnet.oraiscan.io')
       })
-    ],
-    optimization: {
-      splitChunks: {
-        cacheGroups: {
-          editor: {
-            // Editor bundle
-            test: /[\\/]node_modules\/(monaco-editor\/esm\/vs\/(nls\.js|editor|platform|base|basic-languages|language\/(css|html|json|typescript)\/monaco\.contribution\.js)|style-loader\/lib|css-loader\/lib\/css-base\.js)/,
-            name: 'monaco-editor',
-            chunks: 'async'
-          },
-          languages: {
-            // Language bundle
-            test: /[\\/]node_modules\/monaco-editor\/esm\/vs\/language\/(css|html|json|typescript)\/(_deps|lib|fillers|languageFeatures\.js|workerManager\.js|tokenization\.js|(tsMode|jsonMode|htmlMode|cssMode)\.js|(tsWorker|jsonWorker|htmlWorker|cssWorker)\.js)/,
-            name: 'monaco-languages',
-            chunks: 'async'
-          }
-        }
-      }
-    }
+    ]
   };
 
   if (options.mode === 'production') {

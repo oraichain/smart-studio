@@ -61,8 +61,9 @@ export class DirectoryTree extends React.Component<
   constructor(props: DirectoryTreeProps) {
     super(props);
     // tslint:disable-next-line
-    this.contextViewService = new MonacoUtils.ContextViewService(document.documentElement, null, { trace: () => {} });
-    this.contextMenuService = new MonacoUtils.ContextMenuService(document.documentElement, null, null, this.contextViewService);
+    this.contextViewService = new MonacoUtils.ContextViewService({ container: document.documentElement, onLayout: () => {} });
+    // maybe wrong
+    this.contextMenuService = new MonacoUtils.ContextMenuService(null, null, this.contextViewService);
     this.state = { directory: this.props.directory };
     this.status = {
       push: pushStatus,
@@ -88,7 +89,8 @@ export class DirectoryTree extends React.Component<
       (this.tree as any).model.setInput(props.directory.getModel());
       this.setState({ directory: props.directory });
     } else {
-      this.tree.refresh();
+      console.log(this.state.directory, props.directory);
+      (this.tree as any).model.refresh();
       MonacoUtils.expandTree(this.tree);
     }
   }
@@ -123,15 +125,15 @@ export class DirectoryTree extends React.Component<
         /**
          * Returns the element's children as an array in a promise.
          */
-        getChildren: function(tree: ITree, element: Directory): monaco.Promise<any> {
-          return monaco.Promise.as(element.children);
+        getChildren: function(tree: ITree, element: Directory): Promise<File[]> {
+          return Promise.resolve(element.children);
         },
 
         /**
          * Returns the element's parent in a promise.
          */
-        getParent: function(tree: ITree, element: File): monaco.Promise<any> {
-          return monaco.Promise.as(element.parent);
+        getParent: function(tree: ITree, element: File): Directory {
+          return element.parent;
         }
       },
       renderer: {
@@ -230,52 +232,6 @@ export class DirectoryTree extends React.Component<
 
     // File-type specific separated with a ruler
     if (file.type === FileType.Wasm) {
-      // TODO: deploy with wallet and show size only
-      // actions.push(new MonacoUtils.Action("x", "Validate", "octicon-check ruler", true, async () => {
-      //   const result = await Service.validateWasmWithBinaryen(file, this.status);
-      //   window.alert(result ? "Module is valid" : "Module is not valid");
-      // }));
-      //   actions.push(new MonacoUtils.Action("x", "Optimize", "octicon-gear", true, () => {
-      //     Service.optimizeWasmWithBinaryen(file, this.status);
-      //   }));
-      //   actions.push(new MonacoUtils.Action("x", "Disassemble", "octicon-file-code", true, () => {
-      //     Service.disassembleWasmWithWabt(file, this.status);
-      //   }));
-      //   actions.push(new MonacoUtils.Action("x", "Disassemble w/ Binaryen", "octicon-file-code", true, () => {
-      //     Service.disassembleWasmWithBinaryen(file, this.status);
-      //   }));
-      //   actions.push(new MonacoUtils.Action("x", "To asm.js", "octicon-file-code", true, () => {
-      //     Service.convertWasmToAsmWithBinaryen(file, this.status);
-      //   }));
-      //   actions.push(new MonacoUtils.Action("x", "Generate Call Graph", "octicon-gear", true, () => {
-      //     Service.getWasmCallGraphWithBinaryen(file, this.status);
-      //   }));
-      //   actions.push(new MonacoUtils.Action("x", "To Firefox x86", "octicon-file-binary", true, () => {
-      //     Service.disassembleX86(file, this.status);
-      //   }));
-      //   actions.push(new MonacoUtils.Action("x", "To Firefox x86 Baseline", "octicon-file-binary", true, () => {
-      //     Service.disassembleX86(file, this.status, "--wasm-always-baseline");
-      //   }));
-      //   actions.push(new MonacoUtils.Action("x", "Binary Explorer", "octicon-file-binary", true, () => {
-      //     Service.openBinaryExplorer(file);
-      //   }));
-      //   actions.push(new MonacoUtils.Action("x", "View as Binary", "octicon-file-binary", true, () => {
-      //     openFile(file, ViewType.Binary, false);
-      //   }));
-      //   actions.push(new MonacoUtils.Action("x", "Twiggy", "octicon-file-binary", true, () => {
-      //     Service.twiggyWasm(file, this.status);
-      //   }));
-      // } else if (file.type === FileType.C || file.type === FileType.Cpp) {
-      //   actions.push(new MonacoUtils.Action("x", "Clang-Format", "octicon-quote ruler", true, () => {
-      //     Service.clangFormat(file, this.status);
-      //   }));
-      // } else if (file.type === FileType.Wat) {
-      //   actions.push(new MonacoUtils.Action("x", "Assemble", "octicon-file-binary ruler", true, () => {
-      //     Service.assembleWatWithWabt(file, this.status);
-      //   }));
-      //   actions.push(new MonacoUtils.Action("x", "Assemble w/ Binaryen", "octicon-file-binary", true, () => {
-      //     Service.assembleWatWithBinaryen(file, this.status);
-      //   }));
     }
 
     return actions;
