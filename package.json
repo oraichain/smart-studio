@@ -80,10 +80,10 @@
     "shelljs": "^0.8.4",
     "tar-js": "^0.3.0",
     "tslint-react": "^3.6.0",
+    "wasm-analyzer": "file:./server/analyzer/pkg",
     "xterm": "^4.11.0",
     "xterm-addon-attach": "^0.6.0",
-    "xterm-addon-fit": "^0.5.0",
-    "wasm-analyzer": "file:./server/analyzer/pkg"
+    "xterm-addon-fit": "^0.5.0"
   },
   "devDependencies": {
     "@babel/core": "^7.6.0",
@@ -115,7 +115,6 @@
     "jest": "^22.4.4",
     "jest-enzyme": "^6.1.2",
     "jest-puppeteer": "^3.5.2",
-    "monaco-editor-webpack-plugin": "^1.7.0",
     "puppeteer": "^1.10.0",
     "react-test-renderer": "16.7.0",
     "source-map-loader": "^0.2.4",

@@ -1,6 +1,5 @@
 const path = require('path');
 const webpack = require('webpack');
-const MonacoWebpackPlugin = require('monaco-editor-webpack-plugin');
 const ForkTsCheckerWebpackPlugin = require('fork-ts-checker-webpack-plugin');
 const shell = require('shelljs');
 
@@ -77,7 +76,6 @@ module.exports = (env, options) => {
 
     plugins: [
       new ForkTsCheckerWebpackPlugin(),
-      new MonacoWebpackPlugin(),
       new webpack.DefinePlugin({
         'process.env.SERVICE_URL': JSON.stringify(process.env.SERVICE_URL),
         'process.env.WALLET_URL': JSON.stringify(process.env.WALLET_URL || 'https://oraiwallet.web.app'),
@@ -89,18 +87,6 @@ module.exports = (env, options) => {
       hints: false,
       maxEntrypointSize: 20480000,
       maxAssetSize: 20480000
-    },
-    optimization: {
-      splitChunks: {
-        cacheGroups: {
-          editor: {
-            // Editor bundle
-            test: /[\\/]node_modules\/(monaco-editor\/esm\/vs\/(nls\.js|editor|platform|base|basic-languages|language\/(css|html|json|typescript)\/monaco\.contribution\.js)|style-loader\/lib|css-loader\/lib\/css-base\.js)/,
-            name: 'monaco-editor',
-            chunks: 'async'
-          }
-        }
-      }
     }
   };
 
