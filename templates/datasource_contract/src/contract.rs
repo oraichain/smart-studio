@@ -1,7 +1,7 @@
 use crate::error::ContractError;
 use crate::msg::{HandleMsg, InitMsg, QueryMsg, SpecialQuery};
 use cosmwasm_std::{
-    to_binary, Api, Binary, Env, Extern, HandleResponse, InitResponse, MessageInfo, Querier,
+    Api, Binary, Env, Extern, HandleResponse, InitResponse, MessageInfo, Querier,
     StdResult, Storage,
 };
 
@@ -32,14 +32,14 @@ pub fn query<S: Storage, A: Api, Q: Querier>(
     msg: QueryMsg,
 ) -> StdResult<Binary> {
     match msg {
-        QueryMsg::Get { input } => to_binary(&query_data(deps, input)?),
+        QueryMsg::Get { input } => query_data(deps, input),
     }
 }
 
 fn query_data<S: Storage, A: Api, Q: Querier>(
     deps: &Extern<S, A, Q>,
     input: String,
-) -> StdResult<String> {
+) -> StdResult<Binary> {
     // create specialquery with default empty string
     let req = SpecialQuery::Fetch {
         url: "http://209.97.154.247:5000/cv009".to_string(),
@@ -47,7 +47,6 @@ fn query_data<S: Storage, A: Api, Q: Querier>(
         method: "POST".to_string(),
     }
     .into();
-    let response: Binary = deps.querier.custom_query(&req)?;
-    let data = String::from_utf8(response.to_vec()).unwrap();
+    let data: Binary = deps.querier.custom_query(&req)?;    
     Ok(data)
 }
