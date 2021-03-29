@@ -88,14 +88,8 @@ export function getEmbeddingParams(parameters: any): EmbeddingParams {
 declare global {
   interface Window {
     Keystation: any;
-    MonacoEnvironment: any;
   }
 }
-// set worker env
-window.MonacoEnvironment = {
-  getWorkerUrl: () => './editor.worker.bundle.js'
-};
-
 const keystationUrl = process.env.WALLET_URL;
 const loadKeyStation = (callback: any) => {
   const script = document.createElement('script');
@@ -128,10 +122,6 @@ export async function init(environment = 'production') {
   try {
     await MonacoUtils.initialize();
     await registerTheme();
-
-    if (environment !== 'test') {
-      await import(/* webpackChunkName: "monaco-languages" */ 'monaco-editor');
-    }
     await registerLanguages();
 
     loadKeyStation((keystation: any) => {
@@ -140,53 +130,9 @@ export async function init(environment = 'production') {
         document.getElementById('app')
       );
     });
-
-    // const myEditor = monaco.editor.create(document.getElementById('app'), {
-    //   theme: 'vs-dark',
-    //   value: exampleCode,
-    //   language: 'ra-rust'
-    // });
   } catch (e) {
     console.error(e);
   }
 }
 
 init();
-
-const exampleCode = `use cosmwasm_std::CustomQuery;
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct InitMsg {}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub enum HandleMsg {}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub enum QueryMsg {
-    Get { input: String },
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-/// An implementation of QueryRequest::Custom to show this works and can be extended in the contract
-pub enum SpecialQuery {
-    Fetch {
-        url: String,
-        body: String,
-        method: String,
-    },
-}
-impl CustomQuery for SpecialQuery {}
-`;
-
-// registerLanguages().then(() => {
-//   const myEditor = monaco.editor.create(document.getElementById('app'), {
-//     theme: 'vs-dark',
-//     value: exampleCode,
-//     language: 'ra-rust'
-//   });
-// });

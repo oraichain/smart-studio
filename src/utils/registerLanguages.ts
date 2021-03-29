@@ -52,7 +52,6 @@ import 'monaco-editor/esm/vs/editor/contrib/rename/rename';
 import 'monaco-editor/esm/vs/editor/contrib/smartSelect/smartSelect';
 import 'monaco-editor/esm/vs/editor/contrib/snippet/snippetController2';
 import 'monaco-editor/esm/vs/editor/contrib/suggest/suggestController';
-import 'monaco-editor/esm/vs/editor/contrib/tokenization/tokenization';
 import 'monaco-editor/esm/vs/editor/contrib/toggleTabFocusMode/toggleTabFocusMode';
 import 'monaco-editor/esm/vs/editor/contrib/wordHighlighter/wordHighlighter';
 import 'monaco-editor/esm/vs/editor/contrib/wordOperations/wordOperations';
@@ -67,14 +66,98 @@ import 'monaco-editor/esm/vs/editor/standalone/browser/referenceSearch/standalon
 import 'monaco-editor/esm/vs/editor/standalone/browser/toggleHighContrast/toggleHighContrast';
 
 import * as rustConf from 'monaco-editor/esm/vs/basic-languages/rust/rust';
+import { WorldState } from 'wasm-analyzer';
 
 export interface Token {
   tag: string;
   range: monaco.Range;
 }
 
+let state: WorldState = null;
+
+// default we will update tokens from all open files
+export const updateModelTokens = async (model: monaco.editor.ITextModel, languageId: string) => {
+  let update;
+
+  switch (languageId) {
+    case 'ra-rust':
+      // need to merge
+      update = () => {
+        const res = state.update(model.getValue());
+        monaco.editor.setModelMarkers(model, languageId, res.diagnostics);
+        // TODO: completion from all files
+        let allTokens: Token[] = res.highlights;
+        // console.log(allTokens);
+        monaco.languages.setTokensProvider('ra-rust', {
+          getInitialState: () => new TokenState(),
+          tokenize(_, st: TokenState) {
+            const filteredTokens = allTokens.filter((token) => token.range.startLineNumber === st.line);
+
+            const tokens = filteredTokens.map((token) => ({
+              startIndex: token.range.startColumn - 1,
+              scopes: fixTag(token.tag)
+            }));
+            // add tokens inbetween highlighted ones to remove color artifacts
+            tokens.push(
+              ...filteredTokens.filter((tok, i) => i === tokens.length - 1 || tokens[i + 1].startIndex > tok.range.endColumn - 1).map((token) => ({
+                startIndex: token.range.endColumn - 1,
+                scopes: 'operator'
+              }))
+            );
+            tokens.sort((a, b) => a.startIndex - b.startIndex);
+            return {
+              tokens,
+              endState: new TokenState(st.line + 1)
+            };
+          }
+        });
+      };
+      break;
+    default:
+      break;
+  }
+  if (update && state) {
+    update();
+    model.onDidChangeContent(update);
+  }
+};
+
+class TokenState implements monaco.languages.IState {
+  public line: number;
+  constructor(line = 0) {
+    this.line = line;
+  }
+
+  equals(other: monaco.languages.IState): boolean {
+    return true;
+  }
+
+  clone(): monaco.languages.IState {
+    const res = new TokenState(this.line);
+    res.line += 1;
+    return res;
+  }
+}
+
+const fixTag = (tag: string) => {
+  switch (tag) {
+    case 'builtin':
+      return 'variable.predefined';
+    case 'attribute':
+      return 'key';
+    case 'macro':
+      return 'number.hex';
+    case 'literal':
+      return 'number';
+    default:
+      return tag;
+  }
+};
+
 export default async function registerLanguages() {
-  // Rust implementation for hover only
+  const { WorldState: WorldStateClass } = await import('wasm-analyzer');
+  state = new WorldStateClass();
+
   monaco.languages.register({
     id: 'rust'
   });
@@ -82,34 +165,16 @@ export default async function registerLanguages() {
 
   // Rust analyzer implementation
   monaco.languages.register({
-    // language for editor
-    id: 'ra-rust',
-    extensions: ['.rs', '.rlib'],
-    aliases: ['Rust', 'rust']
+    id: 'ra-rust'
   });
   monaco.languages.setLanguageConfiguration('ra-rust', rustConf.conf);
 
+  monaco.languages.setLanguageConfiguration('ra-rust', rustConf.conf);
+
   monaco.languages.onLanguage('ra-rust', async () => {
-    // state of rust analyzer for wasm codes
-    const { WorldState } = await import('wasm-analyzer');
-
-    const state = new WorldState();
-
-    const [model] = monaco.editor.getModels();
-    let allTokens: Token[] = [];
-
-    function update() {
-      const res = state.update(model.getValue());
-      monaco.editor.setModelMarkers(model, 'ra-rust', res.diagnostics);
-      allTokens = res.highlights;
-    }
-    update();
-
-    model.onDidChangeContent(update);
-
-    // monaco.languages.registerHoverProvider('ra-rust', {
-    //   provideHover: (_, pos) => state.hover(pos.lineNumber, pos.column)
-    // });
+    monaco.languages.registerHoverProvider('ra-rust', {
+      provideHover: (_, pos) => state.hover(pos.lineNumber, pos.column)
+    });
     monaco.languages.registerCodeLensProvider('ra-rust', {
       provideCodeLenses(m) {
         const code_lenses = state.code_lenses();
@@ -133,7 +198,7 @@ export default async function registerLanguages() {
           };
         });
 
-        return { lenses, dispose() {} };
+        return lenses;
       }
     });
     monaco.languages.registerReferenceProvider('ra-rust', {
@@ -144,12 +209,9 @@ export default async function registerLanguages() {
         }
       }
     });
-    // monaco.languages.registerDocumentHighlightProvider('ra-rust', {
-    //   provideDocumentHighlights: (_, pos) => {
-    //     console.log(state.references(pos.lineNumber, pos.column, true));
-    //     return state.references(pos.lineNumber, pos.column, true);
-    //   }
-    // });
+    monaco.languages.registerDocumentHighlightProvider('ra-rust', {
+      provideDocumentHighlights: (_, pos) => state.references(pos.lineNumber, pos.column, true)
+    });
     monaco.languages.registerRenameProvider('ra-rust', {
       provideRenameEdits: (m, pos, newName) => {
         const edits = state.rename(pos.lineNumber, pos.column, newName);
@@ -170,20 +232,14 @@ export default async function registerLanguages() {
       triggerCharacters: ['.', ':', '='],
       provideCompletionItems(m, pos) {
         const suggestions = state.completions(pos.lineNumber, pos.column);
-        if (suggestions) {
-          return { suggestions };
-        }
+        return suggestions;
       }
     });
     monaco.languages.registerSignatureHelpProvider('ra-rust', {
       signatureHelpTriggerCharacters: ['(', ','],
       provideSignatureHelp(m, pos) {
         const value = state.signature_help(pos.lineNumber, pos.column);
-        if (!value) return null;
-        return {
-          value,
-          dispose() {}
-        };
+        return value;
       }
     });
     monaco.languages.registerDefinitionProvider('ra-rust', {
@@ -219,63 +275,6 @@ export default async function registerLanguages() {
     });
     monaco.languages.registerFoldingRangeProvider('ra-rust', {
       provideFoldingRanges: () => state.folding_ranges()
-    });
-
-    class TokenState implements monaco.languages.IState {
-      public line: number;
-      constructor(line = 0) {
-        this.line = line;
-      }
-
-      equals(other: monaco.languages.IState): boolean {
-        return true;
-      }
-
-      clone(): monaco.languages.IState {
-        const res = new TokenState(this.line);
-        res.line += 1;
-        return res;
-      }
-    }
-
-    function fixTag(tag: string) {
-      switch (tag) {
-        case 'builtin':
-          return 'variable.predefined';
-        case 'attribute':
-          return 'key';
-        case 'macro':
-          return 'number.hex';
-        case 'literal':
-          return 'number';
-        default:
-          return tag;
-      }
-    }
-
-    monaco.languages.setTokensProvider('ra-rust', {
-      getInitialState: () => new TokenState(),
-      tokenize(_, st: TokenState) {
-        const filteredTokens = allTokens.filter((token) => token.range.startLineNumber === st.line);
-
-        const tokens = filteredTokens.map((token) => ({
-          startIndex: token.range.startColumn - 1,
-          scopes: fixTag(token.tag)
-        }));
-        // add tokens inbetween highlighted ones to remove color artifacts
-        tokens.push(
-          ...filteredTokens.filter((tok, i) => i === tokens.length - 1 || tokens[i + 1].startIndex > tok.range.endColumn - 1).map((token) => ({
-            startIndex: token.range.endColumn - 1,
-            scopes: 'operator'
-          }))
-        );
-        tokens.sort((a, b) => a.startIndex - b.startIndex);
-
-        return {
-          tokens,
-          endState: new TokenState(st.line + 1)
-        };
-      }
     });
   });
 }

@@ -213,23 +213,14 @@ export interface OpenFilesAction extends AppAction {
 export async function openProjectFiles(template: Template) {
   const newProject = new Project();
   await Service.loadFilesIntoProject(template.files, newProject, template.baseUrl);
-
-  dispatcher.dispatch({
-    type: AppActionType.LOAD_PROJECT,
-    project: newProject
-  } as LoadProjectAction);
-  if (newProject.getFile('README.md')) {
-    openFiles([['README.md']]);
-  }
+  openProject(newProject);
 }
 
-export async function openProject(newProject: Project) {
-  dispatcher.dispatch({
-    type: AppActionType.LOAD_PROJECT,
-    project: newProject
-  } as LoadProjectAction);
-  if (newProject.getFile('README.md')) {
-    openFiles([['README.md']]);
+export function openProject(newProject: Project, defaultPath: string = 'README.md') {
+  loadProject(newProject);
+  let openedFile = newProject.getFile(defaultPath);
+  if (openedFile) {
+    openFiles([[defaultPath]]);
   }
 }
 

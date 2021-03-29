@@ -20,7 +20,7 @@ module.exports = (env, options) => {
     },
 
     // Enable sourcemaps for debugging webpack's output.
-    devtool: 'source-map',
+    devtool: options.mode === 'production' ? false : 'inline-source-map',
 
     devServer: {
       liveReload: false
@@ -84,7 +84,24 @@ module.exports = (env, options) => {
         'process.env.WALLET_URL': JSON.stringify(process.env.WALLET_URL || 'https://oraiwallet.web.app'),
         'process.env.LCD': JSON.stringify(process.env.LCD || 'https://lcd.testnet.oraiscan.io')
       })
-    ]
+    ],
+    performance: {
+      hints: false,
+      maxEntrypointSize: 5120000,
+      maxAssetSize: 5120000
+    },
+    optimization: {
+      splitChunks: {
+        cacheGroups: {
+          editor: {
+            // Editor bundle
+            test: /[\\/]node_modules\/(monaco-editor\/esm\/vs\/(nls\.js|editor|platform|base|basic-languages|language\/(css|html|json|typescript)\/monaco\.contribution\.js)|style-loader\/lib|css-loader\/lib\/css-base\.js)/,
+            name: 'monaco-editor',
+            chunks: 'async'
+          }
+        }
+      }
+    }
   };
 
   if (options.mode === 'production') {
