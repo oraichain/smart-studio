@@ -14,13 +14,12 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: any) {
+    //   id: '1710072',
+    // displayName: 'Vũ Quang Thịnh',
+    // username: 'vuquangthinh',
+    // profileUrl: 'https://github.com/vuquangthinh',
 
-  //   id: '1710072',
-  // displayName: 'Vũ Quang Thịnh',
-  // username: 'vuquangthinh',
-  // profileUrl: 'https://github.com/vuquangthinh',
-
-    return { 
+    return {
       id: payload.sub,
       ...payload.profile,
     };

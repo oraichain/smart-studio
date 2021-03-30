@@ -10,6 +10,7 @@ import {
   getFiles,
   SmartContractUtils,
   isHiddenFiles,
+  getUserPrefix,
   smartContractFolder,
   smartContractPackages,
 } from './app.utils';
@@ -33,14 +34,6 @@ export interface ILoadFiddleResponse {
   success: boolean;
 }
 
-declare global {
-  namespace Express {
-    interface User {
-      id: string;
-    }
-  }
-}
-
 @Injectable()
 export class AppService {
   // it run in dist folder
@@ -50,7 +43,11 @@ export class AppService {
     let { name } = req.query;
     name = filterName(name);
 
-    const contractPath = path.join(smartContractPackages(req), this.getUserPrefix(req) + name);
+    const contractPath = path.join(
+      smartContractPackages,
+      getUserPrefix(req.user),
+      name,
+    );
 
     if (!fs.existsSync(contractPath)) {
       return {
@@ -88,7 +85,11 @@ export class AppService {
     // project name must be lower case for easy manipulation
     name = filterName(name).toLowerCase();
     const { files } = req.body;
-    const contractPath = path.join(smartContractPackages(req), this.getUserPrefix(req) + name);
+    const contractPath = path.join(
+      smartContractPackages,
+      getUserPrefix(req.user),
+      name,
+    );
 
     // TODO: check permission
     const status = fs.existsSync(contractPath) ? 'saved' : 'created';
@@ -119,16 +120,15 @@ export class AppService {
     }
   }
 
-  getUserPrefix(request: Request) {
-    const userPrefix = `github_${request.user ? request.user.id : 'guest'}_`;
-    return userPrefix;
-  }
-
   // this method allow get even binary content of file such as WASM file
   async getFile(req: Request): Promise<IFiddleFile> {
     let { name } = req.query;
     name = filterPath(name);
-    const filePath = path.join(smartContractPackages(req), this.getUserPrefix(req) + name);
+    const filePath = path.join(
+      smartContractPackages,
+      getUserPrefix(req.user),
+      name,
+    );
 
     if (!fs.existsSync(filePath)) {
       return {
@@ -151,7 +151,11 @@ export class AppService {
   async saveFile(req: Request): Promise<ISaveFiddleResponse> {
     let { name, data }: IFiddleFile = req.body;
     name = filterPath(name);
-    const filePath = path.join(smartContractPackages(req), this.getUserPrefix(req) + name);
+    const filePath = path.join(
+      smartContractPackages,
+      getUserPrefix(req.user),
+      name,
+    );
 
     if (isHiddenFiles(filePath)) {
       return {
@@ -181,7 +185,11 @@ export class AppService {
   async deleteFile(req: Request): Promise<ISaveFiddleResponse> {
     let { name } = req.body;
     name = filterPath(name);
-    const filePath = path.join(smartContractPackages(req), this.getUserPrefix(req) + name);
+    const filePath = path.join(
+      smartContractPackages,
+      getUserPrefix(req.user),
+      name,
+    );
 
     if (isHiddenFiles(filePath)) {
       return {
@@ -217,7 +225,11 @@ export class AppService {
     let { name, newName } = req.body;
     name = filterPath(name);
     newName = filterPath(newName);
-    const filePath = path.join(smartContractPackages(req), this.getUserPrefix(req) + name);
+    const filePath = path.join(
+      smartContractPackages,
+      getUserPrefix(req.user),
+      name,
+    );
 
     if (isHiddenFiles(filePath)) {
       return {
@@ -264,7 +276,11 @@ export class AppService {
       };
     }
 
-    const contractPath = path.join(smartContractPackages(req), this.getUserPrefix(req) + name);
+    const contractPath = path.join(
+      smartContractPackages,
+      getUserPrefix(req.user),
+      name,
+    );
     const fullName = path.join('artifacts', `${name}.wasm`);
     const wasmFilePath = path.join(contractPath, fullName);
 
@@ -295,7 +311,11 @@ export class AppService {
       };
     }
 
-    const contractPath = path.join(smartContractPackages(req), this.getUserPrefix(req) + name);
+    const contractPath = path.join(
+      smartContractPackages,
+      getUserPrefix(req.user),
+      name,
+    );
     const schemaPath = path.join(contractPath, 'artifacts', 'schema');
     const paths = getFiles(schemaPath);
 

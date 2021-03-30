@@ -138,15 +138,15 @@ export class File {
       file = file.parent;
     }
   }
-  async getEmitOutput(): Promise<any> {
-    const model = this.buffer;
-    if (this.type !== FileType.TypeScript) {
-      return Promise.resolve('');
-    }
-    const worker = await monaco.languages.typescript.getTypeScriptWorker();
-    const client = await worker(model.uri);
-    return client.getEmitOutput(model.uri.toString());
-  }
+  // async getEmitOutput(): Promise<any> {
+  //   const model = this.buffer;
+  //   if (this.type !== FileType.TypeScript) {
+  //     return Promise.resolve('');
+  //   }
+  //   const worker = await monaco.languages.typescript.getTypeScriptWorker();
+  //   const client = await worker(model.uri);
+  //   return client.getEmitOutput(model.uri.toString());
+  // }
   setData(data: string | ArrayBuffer, status?: IStatusProvider) {
     assert(data != null);
     this.data = data;

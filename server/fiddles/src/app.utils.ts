@@ -1,20 +1,12 @@
 import fs from 'fs';
 import fse from 'fs-extra';
-import { Request } from 'express'
+import { Request } from 'express';
 import path from 'path';
 // import TOML, { JsonMap } from '@iarna/toml';
 import shell from 'shelljs';
 
-declare global {
-  export namespace Express {
-    interface User {
-      id: string;
-    }
-  }
-}
-
-export const smartContractFolder = (req: Request) => path.join(process.env.CONTRACT_FOLDER || '/code');
-export const smartContractPackages = (req: Request) => path.join(smartContractFolder(req), 'packages');
+export const smartContractFolder = process.env.CONTRACT_FOLDER || '/code';
+export const smartContractPackages = path.join(smartContractFolder, 'packages');
 
 export const getFiles = (dir: string, results = []): string[] => {
   const dirents = fs.readdirSync(dir, { withFileTypes: true });
@@ -64,8 +56,6 @@ export const filterName = (name: any): string => {
 //   };
 // }
 
-
-
 export const isHiddenFiles = (filePath: string): boolean => {
   if (filePath.endsWith('Cargo.toml') || filePath.endsWith('schema.rs')) {
     return true;
@@ -78,27 +68,24 @@ export interface IBuildFiddleResponse {
   success: boolean;
 }
 
+export const getUserPrefix = (user?: Express.User) => {
+  return user ? user.username : 'guest';
+};
+
 export class SmartContractUtils {
-  private contractPath: string;
-  // private request: Request;
-
-  private smartContractPackages: string;
-
   private userPrefix: string;
 
   constructor(request: Request) {
-    this.userPrefix = `github_${request.user ? request.user.id : 'guest'}_`;
-    this.contractPath = smartContractFolder(request);
-    this.smartContractPackages = smartContractPackages(request);
+    this.userPrefix = getUserPrefix(request.user);
   }
 
   public initProject(name: string) {
-
-    const outputDir = this.smartContractPackages.substr(this.contractPath.length + 1); // include slash
+    const contractName = `${this.userPrefix}_${name}`;
+    const contractSub = path.join(this.userPrefix, name);
 
     const toml = `[package]
 edition = "2018"
-name = "${this.userPrefix}${name}"
+name = "${contractName}"
 version = "0.1.0"
 
 exclude = [
@@ -137,7 +124,7 @@ thiserror = {version = "1.0.21"}
 cosmwasm-schema = {version = "0.11.0"}`;
 
     fs.writeFileSync(
-      path.join(this.smartContractPackages, this.userPrefix + name, 'Cargo.toml'),
+      path.join(smartContractPackages, contractSub, 'Cargo.toml'),
       toml,
     );
 
@@ -147,11 +134,11 @@ use std::fs::create_dir_all;
 
 use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
 
-use ${this.userPrefix + name}::msg::{HandleMsg, InitMsg, QueryMsg};
+use ${contractName}::msg::{HandleMsg, InitMsg, QueryMsg};
 
 fn main() {
     let mut out_dir = current_dir().unwrap();
-    out_dir.push("${outputDir}/${this.userPrefix}${name}/artifacts/schema");
+    out_dir.push("packages/${contractSub}/artifacts/schema");
     create_dir_all(&out_dir).unwrap();
     remove_schemas(&out_dir).unwrap();
 
@@ -163,7 +150,7 @@ fn main() {
 
     // write and create folder if not existed
     fse.outputFileSync(
-      path.join(this.smartContractPackages, this.userPrefix + name, 'examples', 'schema.rs'),
+      path.join(smartContractPackages, contractSub, 'examples', 'schema.rs'),
       schema,
     );
   }
@@ -173,19 +160,21 @@ fn main() {
   }
 
   public buildProject(name: string): IBuildFiddleResponse {
-    // shell session for each operation in queue will go to contractPath  
-    shell.cd(this.contractPath);
+    // shell session for each operation in queue will go to contractPath
+    shell.cd(smartContractFolder);
+    const contractSub = path.join(this.userPrefix, name);
+    const contractName = `${this.userPrefix}_${name}`;
     // buid project
     let execution = shell.exec(
-      `RUSTFLAGS='-C link-arg=-s' cargo build -q --release --target wasm32-unknown-unknown -p ${this.userPrefix + name}`,
+      `RUSTFLAGS='-C link-arg=-s' cargo build -q --release --target wasm32-unknown-unknown -p ${contractName}`,
     );
 
     if (execution.code !== 0) {
       return {
         // filter leaner message
         message: execution.stderr
-          .replace(/(?:= note|error):.*\n/g, '')
-          .replace(/To learn more.*/, '')
+          // .replace(/(?:= note|error):.*\n/g, '')
+          // .replace(/To learn more.*/, '')
           .trim(),
         success: false,
       };
@@ -193,7 +182,7 @@ fn main() {
 
     // wasm-optimize on all results
     execution = shell.exec(
-      `mkdir -p packages/${this.userPrefix + name}/artifacts && wasm-opt -Os "target/wasm32-unknown-unknown/release/${this.userPrefix + name}.wasm" -o "packages/${this.userPrefix + name}/artifacts/${name}.wasm"`,
+      `mkdir -p packages/${contractSub}/artifacts && wasm-opt -Os "target/wasm32-unknown-unknown/release/${contractName}.wasm" -o "packages/${contractSub}/artifacts/${name}.wasm"`,
     );
     if (execution.code !== 0) {
       return {
@@ -211,9 +200,13 @@ fn main() {
 
   public buildSchema(name: string): IBuildFiddleResponse {
     // shell session for each operation in queue will go to contractPath
-    shell.cd(this.contractPath);
+    shell.cd(smartContractFolder);
+    const contractName = `${this.userPrefix}_${name}`;
+
     // buid project
-    let execution = shell.exec(`cargo run -q --example schema -p ${this.userPrefix + name}`);
+    let execution = shell.exec(
+      `cargo run -q --example schema -p ${contractName}`,
+    );
 
     // just return success or fail message
     if (execution.code !== 0) {
@@ -232,9 +225,10 @@ fn main() {
 
   public testProject(name: string): string {
     // shell session for each operation in queue will go to contractPath
-    shell.cd(this.contractPath);
+    shell.cd(smartContractFolder);
+    const contractName = `${this.userPrefix}_${name}`;
     // buid project
-    let execution = shell.exec(`cargo test -q --lib -p ${this.userPrefix + name}`);
+    let execution = shell.exec(`cargo test -q --lib -p ${contractName}`);
 
     // just return success or fail message
     if (execution.code !== 0) {

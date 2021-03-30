@@ -5,8 +5,9 @@ import fs from 'fs';
 import os from 'os';
 import * as pty from 'node-pty';
 import cors from 'cors';
-
-import { smartContractPackages, filterName } from './app.utils';
+import { JwtService } from '@nestjs/jwt';
+import { jwtConstants } from './auth/jwt.constants';
+import { smartContractPackages, filterName, getUserPrefix } from './app.utils';
 
 const USE_BINARY = os.platform() !== 'win32';
 // after 60s no request then timeout, must re-connect
@@ -21,6 +22,10 @@ export interface ITerminals {
 
 const terminals: ITerminals = {};
 const logs = {};
+
+const jwtService = new JwtService({
+  secret: jwtConstants.secret,
+});
 
 // string message buffering
 function buffer(socket, timeout) {
@@ -57,11 +62,20 @@ function bufferUtf8(socket, timeout) {
 }
 
 server.post('/terminals', (req: Request, res: Response) => {
+  if (!req.headers.authorization) return res.end();
+  const ret = jwtService.verify(req.headers.authorization.split(' ')[1]);
+  if (!ret.profile) return res.end();
+  const user = ret.profile as Express.User;
+
   const env = Object.assign({}, process.env);
   env['COLORTERM'] = 'truecolor';
   const name = filterName(req.query.name.toString());
 
-  const contractPath = path.join(smartContractPackages(req), name);
+  const contractPath = path.join(
+    smartContractPackages,
+    getUserPrefix(user),
+    name,
+  );
   const fullName = path.join('artifacts', `${name}.wasm`);
   const wasmFile = path.join(contractPath, fullName);
 
@@ -100,16 +114,9 @@ server.post('/terminals/:pid/size', (req: Request, res: Response) => {
   if (term) {
     try {
       term.resize(cols, rows);
-    } catch {}
-    console.log(
-      'Resized terminal ' +
-        pid +
-        ' to ' +
-        cols +
-        ' cols and ' +
-        rows +
-        ' rows.',
-    );
+    } finally {
+      console.log(`Resized terminal ${pid} to ${cols} cols and ${rows} rows.`);
+    }
   }
   res.end();
 });

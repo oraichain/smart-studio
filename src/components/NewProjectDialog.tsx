@@ -64,24 +64,17 @@ export class NewProjectDialog extends React.Component<
     const config = await getConfig();
     const templatesPath = config.templates[this.props.templatesName];
     const json = await fetchTemplates(templatesPath);
-
     const base = new URL(templatesPath, location.href);
     const templates: Template[] = Object.entries(json).map(([key, entry]: any[]) => {
-      const name = entry.name || '';
-      const description = entry.description || '';
-      const icon = entry.icon || '';
       return {
-        name,
-        description,
-        icon,
-        files: entry.files,
+        ...entry,
         baseUrl: new URL(key + '/', base)
       };
     });
 
     this.setState({ templates });
-    // this.setTemplate(templates[0]);
-
+    // default template 0
+    if (templates.length) this.setTemplate(templates[0]);
   }
   onChangeName = (event: ChangeEvent<any>) => {
     this.setState({ name: event.target.value });
@@ -125,20 +118,20 @@ export class NewProjectDialog extends React.Component<
               </ListBox>
             </div>
             <div style={{ flex: 1, padding: 4, height: 350 }} className="new-project-dialog-description">
-              { this.state.template ? (
+              {this.state.template ? (
                 <>
                   <TextInputBox label="Name:" error={this.nameError()} value={this.state.name} onChange={this.onChangeName} />
                   <div className="desc">
                     <div className="md" dangerouslySetInnerHTML={{ __html: this.state.description }} />
                   </div>
                 </>
-              ): (
+              ) : (
                 <RecentProjects />
               )}
             </div>
           </div>
 
-          <div className="modal-footer" style={{ justifyContent: 'flex-end'}}>
+          <div className="modal-footer" style={{ justifyContent: 'flex-end' }}>
             {/* <Button
               icon={<GoX />}
               label="Cancel"
@@ -183,9 +176,8 @@ export class NewProjectDialog extends React.Component<
   }
 }
 
-
 class RecentProjects extends React.Component {
   render() {
-    return <div>dffdfgdfg</div>
+    return <div>dffdfgdfg</div>;
   }
 }

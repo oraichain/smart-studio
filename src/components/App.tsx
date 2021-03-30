@@ -232,12 +232,12 @@ export class App extends React.Component<AppProps, AppState> {
   private async loadProjectFromFiddle(uri: string) {
     const project = new Project(uri);
 
-    pushStatus('Downloading Project');
-    const fiddle = await Service.loadJSON(uri);
-    popStatus();
+    pushStatus('Loading Project');
+    const fiddle = await Service.loadJSON(uri);    
     if (fiddle.success) {
       await Service.loadFilesIntoProject(fiddle.files, project);
       openProject(project);      
+      popStatus();
       logLn(`Load project ${project.name} succeed!`);      
     } else {
       this.showToast(<span>Project {uri} was not found.</span>, 'error');
@@ -479,7 +479,7 @@ export class App extends React.Component<AppProps, AppState> {
 
     if (user) {
       toolbarButtons.push(
-        <div className={`toolbar-item user ${this.state.menuOpen === 'profile' ? 'active' : ''}`}>
+        <div key="profile" className={`toolbar-item user ${this.state.menuOpen === 'profile' ? 'active' : ''}`}>
           <Button
             key="Profile"
             icon={
@@ -529,6 +529,7 @@ export class App extends React.Component<AppProps, AppState> {
   }
 
   render() {
+    const minToolbarHeight = this.state.controlCenterSplits[1].min ?? 40;
     const editorPanes = (
       <Split
         name="Editors"
@@ -726,10 +727,10 @@ export class App extends React.Component<AppProps, AppState> {
               }}
             />
             <div className="fill">
-              <div style={{ height: '40px' }}>
+              <div style={{ height: minToolbarHeight }}>
                 <Toolbar>{this.makeToolbarButtons()}</Toolbar>
               </div>
-              <div style={{ height: 'calc(100% - 40px)' }}>
+              <div style={{ height: `calc(100% - ${minToolbarHeight}px)` }}>
                 <Split
                   name="Console"
                   orientation={SplitOrientation.Horizontal}

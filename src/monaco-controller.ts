@@ -19,12 +19,14 @@
  * SOFTWARE.
  */
 
-import { MonacoUtils } from "./monaco-utils";
-import { ITree, ContextMenuEvent } from "./monaco-extra";
+import { MonacoUtils } from './monaco-utils';
+import { ITree, ContextMenuEvent } from './monaco-extra';
 
 export function getController(target: any, getActionsFn?: Function, resolveMenuHeight?: Boolean) {
   return class Controller extends MonacoUtils.TreeDefaults.DefaultController {
     onContextMenu(tree: ITree, file: File, event: ContextMenuEvent): boolean {
+      // default Project and nothing
+      if (file.name === 'Project') return;
       tree.setFocus(file);
       const anchorOffset = { x: -10, y: -3 };
       const anchor = { x: event._posx + anchorOffset.x, y: event._posy + anchorOffset.y };
@@ -50,9 +52,9 @@ export function getController(target: any, getActionsFn?: Function, resolveMenuH
     }
     resolveMenuHeight(event: ContextMenuEvent) {
       // Set the context menus max height to avoid overflow outside window
-      const menu: HTMLElement = document.querySelector(".context-view.monaco-menu-container");
+      const menu: HTMLElement = document.querySelector('.context-view.monaco-menu-container');
       const windowPadding = 10;
-      menu.style.maxHeight = Math.min(window.innerHeight - event._posy - windowPadding, 380) + "px";
+      menu.style.maxHeight = Math.min(window.innerHeight - event._posy - windowPadding, 380) + 'px';
     }
   };
 }

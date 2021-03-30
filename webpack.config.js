@@ -18,7 +18,7 @@ module.exports = (env, options) => {
     },
 
     // Enable sourcemaps for debugging webpack's output.
-    devtool: options.mode === 'production' ? false : 'inline-source-map',
+    devtool: options.mode === 'production' ? false : 'source-map',
 
     devServer: {
       liveReload: false
@@ -110,12 +110,8 @@ module.exports = (env, options) => {
         compiler.hooks.afterEmit.tap('AfterEmitPlugin', (compilation) => {
           // copy file to destination
           shell.exec(`yarn templates ${distPath}/templates`);
-          shell.cp(path.resolve(__dirname, 'index.html'), distPath);
-          shell.cp(path.resolve(__dirname, 'config.json'), distPath);
-          shell.cp('-r', path.resolve(__dirname, 'style'), distPath);
-          shell.cp('-r', path.resolve(__dirname, 'fonts'), distPath);
-          shell.cp('-r', path.resolve(__dirname, 'lib'), distPath);
-          shell.cp('-r', path.resolve(__dirname, 'img'), distPath);
+          shell.cp(['index.html', 'config.json'], distPath);
+          shell.cp('-r', ['notes', 'style', 'fonts', 'lib', 'img'], distPath);
         });
       }
     });
