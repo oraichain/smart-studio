@@ -84,12 +84,9 @@ export class AppService {
     let { name } = req.query;
     // project name must be lower case for easy manipulation
     name = filterName(name).toLowerCase();
+    const userPrefix = getUserPrefix(req.user);
     const { files } = req.body;
-    const contractPath = path.join(
-      smartContractPackages,
-      getUserPrefix(req.user),
-      name,
-    );
+    const contractPath = path.join(smartContractPackages, userPrefix, name);
 
     // TODO: check permission
     const status = fs.existsSync(contractPath) ? 'saved' : 'created';
@@ -104,7 +101,7 @@ export class AppService {
       }
 
       // add Cargo.toml and schema to project of workspace, so make sure there is file in project to init
-      const smartContractUtils = new SmartContractUtils(req);
+      const smartContractUtils = new SmartContractUtils(userPrefix);
       smartContractUtils.initProject(name);
 
       return {
@@ -266,7 +263,9 @@ export class AppService {
     let { name } = req.body;
     name = filterName(name);
 
-    const smartContractUtils = new SmartContractUtils(req);
+    const userPrefix = getUserPrefix(req.user);
+
+    const smartContractUtils = new SmartContractUtils(userPrefix);
     const ret = smartContractUtils.buildProject(name);
 
     if (!ret.success) {
@@ -276,11 +275,7 @@ export class AppService {
       };
     }
 
-    const contractPath = path.join(
-      smartContractPackages,
-      getUserPrefix(req.user),
-      name,
-    );
+    const contractPath = path.join(smartContractPackages, userPrefix, name);
     const fullName = path.join('artifacts', `${name}.wasm`);
     const wasmFilePath = path.join(contractPath, fullName);
 
@@ -300,8 +295,8 @@ export class AppService {
   buildSchema(req: Request): ILoadFiddleResponse {
     let { name } = req.body;
     name = filterName(name);
-
-    const smartContractUtils = new SmartContractUtils(req);
+    const userPrefix = getUserPrefix(req.user);
+    const smartContractUtils = new SmartContractUtils(userPrefix);
     const ret = smartContractUtils.buildSchema(name);
 
     if (!ret.success) {
@@ -311,11 +306,7 @@ export class AppService {
       };
     }
 
-    const contractPath = path.join(
-      smartContractPackages,
-      getUserPrefix(req.user),
-      name,
-    );
+    const contractPath = path.join(smartContractPackages, userPrefix, name);
     const schemaPath = path.join(contractPath, 'artifacts', 'schema');
     const paths = getFiles(schemaPath);
 
@@ -337,8 +328,8 @@ export class AppService {
   testProject(req: Request): string {
     let { name } = req.body;
     name = filterName(name);
-
-    const smartContractUtils = new SmartContractUtils(req);
+    const userPrefix = getUserPrefix(req.user);
+    const smartContractUtils = new SmartContractUtils(userPrefix);
     const message = smartContractUtils.testProject(name);
 
     return message;

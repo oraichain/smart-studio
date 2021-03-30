@@ -75,8 +75,8 @@ export const getUserPrefix = (user?: Express.User) => {
 export class SmartContractUtils {
   private userPrefix: string;
 
-  constructor(request: Request) {
-    this.userPrefix = getUserPrefix(request.user);
+  constructor(userPrefix: string) {
+    this.userPrefix = userPrefix;
   }
 
   public initProject(name: string) {

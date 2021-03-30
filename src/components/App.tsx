@@ -234,10 +234,11 @@ export class App extends React.Component<AppProps, AppState> {
 
     pushStatus('Loading Project');
     const fiddle = await Service.loadJSON(uri);    
+    popStatus();
+
     if (fiddle.success) {
       await Service.loadFilesIntoProject(fiddle.files, project);
-      openProject(project);      
-      popStatus();
+      openProject(project);            
       logLn(`Load project ${project.name} succeed!`);      
     } else {
       this.showToast(<span>Project {uri} was not found.</span>, 'error');
@@ -342,14 +343,9 @@ export class App extends React.Component<AppProps, AppState> {
   }
 
   // deploy contract using wallet, it is binary so use buffer
-  async deployContract(file?: File) {
-    // pushStatus('Deploying Smart Contract');
-    const target: File = file || this.state.project.getModel();
-    // const ret = await Service.exportToWallet(target);
-    // popStatus();
-    // if (ret.data) {      
-    this.props.keystation?.deploy({ name: target.name, data: Buffer.from(target.getData()) });
-    // }
+  async deployContract(file?: File) {    
+    const target: File = file || this.state.project.getModel();    
+    this.props.keystation?.deploy({ name: target.name, data: Buffer.from(target.getData()) });    
   }
 
   async download() {
