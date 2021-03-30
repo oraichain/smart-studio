@@ -12,7 +12,9 @@ DIST_FOLDER=server/fiddles/dist yarn build
 
 To start a dev web server run:
 
-```
+```bash
+# run fiddle server
+GITHUB_CALLBACK_URL=http://localhost:8080 yarn start:dev
 SERVICE_URL=//localhost:3000 WALLET_URL=//localhost:3001 LCD=https://lcd.testnet.oraiscan.io yarn start
 ```
 
