@@ -1,0 +1,1 @@
+{"rustc":12837389265337637431,"features":"[\"default\", \"std\"]","target":4333757125291285824,"profile":4339006351771724982,"path":11080697758594999059,"deps":[],"local":[{"CheckDepInfo":{"dep_info":"wasm32-unknown-unknown/release/.fingerprint/once_cell-b13f42d68aff4d0d/dep-lib-once_cell"}}],"rustflags":[],"metadata":14177539708254521827,"config":0}

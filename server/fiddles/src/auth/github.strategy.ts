@@ -8,7 +8,7 @@ import { GITHUB_CONFIG } from './constants';
 export class GithubStrategy extends PassportStrategy(Strategy) {
   constructor(
     @Inject(GITHUB_CONFIG) config,
-    private authService: AuthService) {
+    ) {
     super(config);
   }
 

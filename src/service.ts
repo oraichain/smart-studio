@@ -20,12 +20,13 @@
  */
 import { File, Project, Directory, FileType, Problem, isBinaryFileType, fileTypeFromFileName, IStatusProvider } from './models';
 import { padLeft, padRight, isBranch, toAddress, decodeRestrictedBase64ToBytes, base64EncodeBytes } from './util';
-import { WorkerCommand, IWorkerResponse } from './message';
 import { processJSFile, RewriteSourcesContext } from './utils/rewriteSources';
 import { getCurrentRunnerInfo } from './utils/taskRunner';
 import { createCompilerService, Language } from './compilerServices';
 import { getServiceURL, ServiceTypes } from './compilerServices/sendRequest';
-import { file } from 'jszip';
+
+import jwtDecode from 'jwt-decode';
+
 
 declare var capstone: {
   ARCH_X86: any;
@@ -219,7 +220,10 @@ export class Service {
   static async loadJSON(uri: string): Promise<ILoadFiddleResponse> {
     const baseURL = await getServiceURL(ServiceTypes.Service);
     const response = await fetch(`${baseURL}/project?name=${uri}`, {
-      headers: new Headers({ 'Content-type': 'application/json; charset=utf-8' })
+      headers: new Headers({ 
+        'Content-type': 'application/json; charset=utf-8',
+        Authorization: `Bearer ${getAccessToken()}`
+      })
     });
     return await response.json();
   }
@@ -230,7 +234,9 @@ export class Service {
       const baseURL = await getServiceURL(ServiceTypes.Service);
       const response = await fetch(`${baseURL}/project?name=${uri}`, {
         method: 'POST',
-        headers: new Headers({ 'Content-type': 'application/json; charset=utf-8' }),
+        headers: new Headers({
+          Authorization: `Bearer ${getAccessToken()}`,
+          'Content-type': 'application/json; charset=utf-8' }),
         body: JSON.stringify(json)
       });
       const ret = await response.json();
@@ -256,7 +262,9 @@ export class Service {
     const baseURL = await getServiceURL(ServiceTypes.Service);
     const response = await fetch(`${baseURL}/file`, {
       method: 'POST',
-      headers: new Headers({ 'Content-type': 'application/json; charset=utf-8' }),
+      headers: new Headers({ 
+        Authorization: `Bearer ${getAccessToken()}`,
+        'Content-type': 'application/json; charset=utf-8' }),
       body: JSON.stringify(json)
     });
     const ret = await response.json();
@@ -270,7 +278,9 @@ export class Service {
     const baseURL = await getServiceURL(ServiceTypes.Service);
     const response = await fetch(`${baseURL}/file`, {
       method: 'DELETE',
-      headers: new Headers({ 'Content-type': 'application/json; charset=utf-8' }),
+      headers: new Headers({ 
+        Authorization: `Bearer ${getAccessToken()}`,
+        'Content-type': 'application/json; charset=utf-8' }),
       body: JSON.stringify(json)
     });
     const ret = await response.json();
@@ -285,7 +295,9 @@ export class Service {
     const baseURL = await getServiceURL(ServiceTypes.Service);
     const response = await fetch(`${baseURL}/file`, {
       method: 'PUT',
-      headers: new Headers({ 'Content-type': 'application/json; charset=utf-8' }),
+      headers: new Headers({
+        Authorization: `Bearer ${getAccessToken()}`,
+        'Content-type': 'application/json; charset=utf-8' }),
       body: JSON.stringify(json)
     });
     const ret = await response.json();
@@ -306,7 +318,11 @@ export class Service {
   static async exportToWallet(file: File): Promise<IFiddleFile> {
     const filePath = file.getPath();
     const baseURL = await getServiceURL(ServiceTypes.Service);
-    const response = await fetch(`${baseURL}/file?name=${filePath}`);
+    const response = await fetch(`${baseURL}/file?name=${filePath}`, {
+      headers: new Headers({
+        Authorization: `Bearer ${getAccessToken()}`
+      })
+    });
     const ret = await response.json();
     return ret;
   }
@@ -315,7 +331,9 @@ export class Service {
     const baseURL = await getServiceURL(ServiceTypes.Service);
     const response = await fetch(`${baseURL}/build`, {
       method: 'POST',
-      headers: new Headers({ 'Content-type': 'application/json; charset=utf-8' }),
+      headers: new Headers({ 
+        Authorization: `Bearer ${getAccessToken()}`,
+        'Content-type': 'application/json; charset=utf-8' }),
       body: JSON.stringify({ name })
     });
     const ret = await response.json();
@@ -326,7 +344,9 @@ export class Service {
     const baseURL = await getServiceURL(ServiceTypes.Service);
     const response = await fetch(`${baseURL}/schema`, {
       method: 'POST',
-      headers: new Headers({ 'Content-type': 'application/json; charset=utf-8' }),
+      headers: new Headers({
+        Authorization: `Bearer ${getAccessToken()}`,
+        'Content-type': 'application/json; charset=utf-8' }),
       body: JSON.stringify({ name })
     });
     const ret = await response.json();
@@ -338,7 +358,9 @@ export class Service {
     const baseURL = await getServiceURL(ServiceTypes.Service);
     const response = await fetch(`${baseURL}/test`, {
       method: 'POST',
-      headers: new Headers({ 'Content-type': 'application/json; charset=utf-8' }),
+      headers: new Headers({
+        Authorization: `Bearer ${getAccessToken()}`,
+        'Content-type': 'application/json; charset=utf-8' }),
       body: JSON.stringify({ name })
     });
     const message = await response.text();
@@ -347,7 +369,11 @@ export class Service {
 
   static async createTerminal(name: string, cols: number, rows: number): Promise<string> {
     const baseURL = await getServiceURL(ServiceTypes.Service);
-    const response = await fetch(`${baseURL}/terminals?cols=${cols}&rows=${rows}&name=${name}`, { method: 'POST' });
+    const response = await fetch(`${baseURL}/terminals?cols=${cols}&rows=${rows}&name=${name}`, {
+      headers: new Headers({
+        Authorization: `Bearer ${getAccessToken()}`,
+      }),
+      method: 'POST' });
     const processId = await response.text();
     return processId;
   }
@@ -360,7 +386,11 @@ export class Service {
 
   static async resizeTerminal(pid: string, cols: number, rows: number): Promise<any> {
     const baseURL = await getServiceURL(ServiceTypes.Service);
-    await fetch(`${baseURL}/terminals/${pid}/size?cols=${cols}&rows=${rows}`, { method: 'POST' });
+    await fetch(`${baseURL}/terminals/${pid}/size?cols=${cols}&rows=${rows}`, {
+      headers: new Headers({
+        Authorization: `Bearer ${getAccessToken()}`,
+      }),
+      method: 'POST' });
   }
 
   static async saveProject(project: Project, uploadedFiles?: File[]): Promise<ISaveFiddleResponse> {
@@ -618,4 +648,30 @@ export class Service {
     showdown.setFlavor('github');
     return converter.makeHtml(src);
   }
+}
+
+
+export const getCurrentUser = () => {
+  try {
+    const access_token = getAccessToken();
+    if (access_token) {
+      const data = jwtDecode(access_token) as any;
+      // jwt decode
+      return data.profile;
+    }
+  } catch (e) {
+
+  }
+
+  return null;
+}
+
+export const getAccessToken = () => {
+  try {
+    const u = JSON.parse(localStorage.getItem('__USER__'));
+    return u.access_token;
+  } catch (e) {
+  }
+
+  return null;
 }
