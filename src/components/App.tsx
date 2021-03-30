@@ -46,7 +46,7 @@ import {
   logLn
 } from '../actions/AppActions';
 import { Project, File, FileType, Directory, ModelRef } from '../models';
-import { Service, Language } from '../service';
+import { Service, Language, getCurrentUser } from '../service';
 import { Split, SplitOrientation, SplitInfo } from './Split';
 
 import { layout, assert, resetDOMSelection } from '../util';
@@ -68,6 +68,7 @@ import { ControlCenter } from './ControlCenter';
 import Group from '../utils/group';
 import { StatusBar } from './StatusBar';
 import { RunTaskExternals } from '../utils/taskRunner';
+import { GithubConnectDialog } from './GithubConnectDialog';
 
 export interface AppState {
   project: ModelRef<Project>;
@@ -94,6 +95,16 @@ export interface AppState {
    * If true, the new project dialog is open.
    */
   newProjectDialog: boolean;
+
+  /**
+   * If true, login dialog is open
+   */
+  isShowConnectDialog: boolean;
+
+  /**
+   * current menu active
+   */
+  menuOpen: string,
 
   /**
    * Primary workspace split state.
@@ -165,6 +176,11 @@ export class App extends React.Component<AppProps, AppState> {
       newFileDialogDirectory: null,
       editFileDialogFile: null,
       newProjectDialog: !props.fiddle,
+
+      isShowConnectDialog: true,
+
+      menuOpen: '',
+
       shareDialog: false,
       workspaceSplits: [
         {
@@ -353,6 +369,16 @@ export class App extends React.Component<AppProps, AppState> {
     return this.state.hasStatus;
   }
 
+  logout() {
+    localStorage.removeItem('__USER__');
+    location.href= '/';
+  }
+
+  goProfile() {
+    const user = getCurrentUser();
+    window.open(user.profileUrl);
+  }
+
   makeToolbarButtons() {
     const toolbarButtons = [
       <Button
@@ -437,17 +463,52 @@ export class App extends React.Component<AppProps, AppState> {
     );
 
     toolbarButtons.push(
-      <Button
-        key="Test"
-        icon={<GoCheck />}
-        label="Run Tests"
-        title="Run Tests"
-        isDisabled={this.toolbarButtonsAreDisabled()}
-        onClick={() => {
-          test();
-        }}
-      />
+        <Button
+          key="Test"
+          icon={<GoCheck />}
+          label="Run Tests"
+          title="Run Tests"
+          isDisabled={this.toolbarButtonsAreDisabled()}
+          onClick={() => {
+            test();
+          }}
+        />
     );
+
+    const user = getCurrentUser();
+
+    if (user) {
+      toolbarButtons.push(
+        <div className={`toolbar-item user ${this.state.menuOpen === 'profile' ? 'active' : ''}`}>
+          <Button
+            key="Profile"
+            icon={
+              <img width={20} style={{
+                verticalAlign: 'middle',
+                borderRadius: '100%',
+              }} src={`https://avatars.githubusercontent.com/u/${user.id}?v=4`} />
+            }
+            label={user.username}
+            title={user.username}
+            onClick={() => {
+              // this.loadHelp();
+              this.setState(s => ({
+                menuOpen: s.menuOpen === 'profile' ? '' : 'profile'
+              }));
+            }}
+          />
+          <div className="toolbar-item-dropdown">
+            <div className="toolbar-item" onClick={this.goProfile}>
+              Profile
+            </div>
+            <div className="toolbar-item" onClick={this.logout}>
+              Logout
+            </div>
+          </div>
+        </div>
+      );
+    }
+    
 
     if (this.props.embeddingParams.type === EmbeddingType.None) {
       toolbarButtons.push(
@@ -463,6 +524,7 @@ export class App extends React.Component<AppProps, AppState> {
         />
       );
     }
+
     return toolbarButtons;
   }
 
@@ -487,7 +549,10 @@ export class App extends React.Component<AppProps, AppState> {
     return (
       <div className="fill">
         <ToastContainer ref={(ref) => (this.toastContainer = ref)} />
-        {this.state.newProjectDialog && (
+
+        <GithubConnectDialog isOpen={this.state.isShowConnectDialog} onClose={() => this.setState({ isShowConnectDialog: false })} />
+
+        {this.state.newProjectDialog && !this.state.isShowConnectDialog && (
           <NewProjectDialog
             isOpen={true}
             templatesName={this.props.embeddingParams.templatesName}
@@ -502,6 +567,7 @@ export class App extends React.Component<AppProps, AppState> {
 
               // create new project and save
               const newProject = new Project(name);
+
               await Service.loadFilesIntoProject(template.files, newProject, template.baseUrl);
 
               // save project before save into app store

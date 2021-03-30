@@ -1,11 +1,20 @@
 import fs from 'fs';
 import fse from 'fs-extra';
+import { Request } from 'express'
 import path from 'path';
 // import TOML, { JsonMap } from '@iarna/toml';
 import shell from 'shelljs';
 
-export const smartContractFolder = process.env.CONTRACT_FOLDER || '/code';
-export const smartContractPackages = path.join(smartContractFolder, 'packages');
+declare global {
+  export namespace Express {
+    interface User {
+      id: string;
+    }
+  }
+}
+
+export const smartContractFolder = (req: Request) => path.join(process.env.CONTRACT_FOLDER || '/code');
+export const smartContractPackages = (req: Request) => path.join(smartContractFolder(req), 'packages');
 
 export const getFiles = (dir: string, results = []): string[] => {
   const dirents = fs.readdirSync(dir, { withFileTypes: true });
@@ -55,6 +64,8 @@ export const filterName = (name: any): string => {
 //   };
 // }
 
+
+
 export const isHiddenFiles = (filePath: string): boolean => {
   if (filePath.endsWith('Cargo.toml') || filePath.endsWith('schema.rs')) {
     return true;
@@ -69,15 +80,25 @@ export interface IBuildFiddleResponse {
 
 export class SmartContractUtils {
   private contractPath: string;
+  // private request: Request;
 
-  constructor(contractPath: string) {
-    this.contractPath = contractPath;
+  private smartContractPackages: string;
+
+  private userPrefix: string;
+
+  constructor(request: Request) {
+    this.userPrefix = `github_${request.user ? request.user.id : 'guest'}_`;
+    this.contractPath = smartContractFolder(request);
+    this.smartContractPackages = smartContractPackages(request);
   }
 
   public initProject(name: string) {
+
+    const outputDir = this.smartContractPackages.substr(this.contractPath.length + 1); // include slash
+
     const toml = `[package]
 edition = "2018"
-name = "${name}"
+name = "${this.userPrefix}${name}"
 version = "0.1.0"
 
 exclude = [
@@ -114,8 +135,9 @@ thiserror = {version = "1.0.21"}
 
 [dev-dependencies]
 cosmwasm-schema = {version = "0.11.0"}`;
+
     fs.writeFileSync(
-      path.join(this.contractPath, 'packages', name, 'Cargo.toml'),
+      path.join(this.smartContractPackages, this.userPrefix + name, 'Cargo.toml'),
       toml,
     );
 
@@ -125,11 +147,11 @@ use std::fs::create_dir_all;
 
 use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
 
-use ${name}::msg::{HandleMsg, InitMsg, QueryMsg};
+use ${this.userPrefix + name}::msg::{HandleMsg, InitMsg, QueryMsg};
 
 fn main() {
     let mut out_dir = current_dir().unwrap();
-    out_dir.push("packages/${name}/artifacts/schema");
+    out_dir.push("${outputDir}/${this.userPrefix}${name}/artifacts/schema");
     create_dir_all(&out_dir).unwrap();
     remove_schemas(&out_dir).unwrap();
 
@@ -141,7 +163,7 @@ fn main() {
 
     // write and create folder if not existed
     fse.outputFileSync(
-      path.join(this.contractPath, 'packages', name, 'examples', 'schema.rs'),
+      path.join(this.smartContractPackages, this.userPrefix + name, 'examples', 'schema.rs'),
       schema,
     );
   }
@@ -151,12 +173,13 @@ fn main() {
   }
 
   public buildProject(name: string): IBuildFiddleResponse {
-    // shell session for each operation in queue will go to contractPath
+    // shell session for each operation in queue will go to contractPath  
     shell.cd(this.contractPath);
     // buid project
     let execution = shell.exec(
-      `RUSTFLAGS='-C link-arg=-s' cargo build -q --release --target wasm32-unknown-unknown -p ${name}`,
+      `RUSTFLAGS='-C link-arg=-s' cargo build -q --release --target wasm32-unknown-unknown -p ${this.userPrefix + name}`,
     );
+
     if (execution.code !== 0) {
       return {
         // filter leaner message
@@ -170,7 +193,7 @@ fn main() {
 
     // wasm-optimize on all results
     execution = shell.exec(
-      `mkdir -p packages/${name}/artifacts && wasm-opt -Os "target/wasm32-unknown-unknown/release/${name}.wasm" -o "packages/${name}/artifacts/${name}.wasm"`,
+      `mkdir -p packages/${this.userPrefix + name}/artifacts && wasm-opt -Os "target/wasm32-unknown-unknown/release/${this.userPrefix + name}.wasm" -o "packages/${this.userPrefix + name}/artifacts/${name}.wasm"`,
     );
     if (execution.code !== 0) {
       return {
@@ -190,7 +213,7 @@ fn main() {
     // shell session for each operation in queue will go to contractPath
     shell.cd(this.contractPath);
     // buid project
-    let execution = shell.exec(`cargo run -q --example schema -p ${name}`);
+    let execution = shell.exec(`cargo run -q --example schema -p ${this.userPrefix + name}`);
 
     // just return success or fail message
     if (execution.code !== 0) {
@@ -211,7 +234,7 @@ fn main() {
     // shell session for each operation in queue will go to contractPath
     shell.cd(this.contractPath);
     // buid project
-    let execution = shell.exec(`cargo test -q --lib -p ${name}`);
+    let execution = shell.exec(`cargo test -q --lib -p ${this.userPrefix + name}`);
 
     // just return success or fail message
     if (execution.code !== 0) {
