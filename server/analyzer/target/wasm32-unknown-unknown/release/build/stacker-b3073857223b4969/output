@@ -1,2 +1,0 @@
-cargo:warning=unsupported platform: wasm32-unknown-unknown
-cargo:rustc-cfg=unsupported
