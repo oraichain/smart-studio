@@ -19,8 +19,8 @@
  * SOFTWARE.
  */
 
-import { EventDispatcher, ModelRef, Project, File, Directory, FileType, SandboxRun } from '../models';
-import { Service } from '../service';
+import { EventDispatcher, ModelRef, Project, File, Directory, FileType } from '../models';
+import { SandboxRun } from '../models/types';
 
 import dispatcher from '../dispatcher';
 import {

@@ -21,8 +21,6 @@
 
 export {
   FileType,
-  SandboxRun,
-  IStatusProvider,
   isBinaryFileType,
   languageForFileType,
   nameForFileType,

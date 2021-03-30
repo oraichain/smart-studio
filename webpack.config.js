@@ -3,6 +3,7 @@ const webpack = require('webpack');
 const MonacoWebpackPlugin = require('monaco-editor-webpack-plugin');
 const ForkTsCheckerWebpackPlugin = require('fork-ts-checker-webpack-plugin');
 const shell = require('shelljs');
+const { ESBuildMinifyPlugin } = require('esbuild-loader');
 
 const distPath = path.resolve(__dirname, process.env.DIST_FOLDER || 'dist');
 
@@ -34,34 +35,54 @@ module.exports = (env, options) => {
 
     module: {
       rules: [
-        { test: /\.css$/, use: ['style-loader', 'css-loader'] },
+        {
+          test: /\.css$/,
+          use: [
+            'style-loader',
+            'css-loader',
+            {
+              loader: 'esbuild-loader',
+              options: {
+                loader: 'css',
+                minify: true
+              }
+            }
+          ]
+        },
         { test: /\.(png|woff|woff2|eot|ttf|svg)$/, loader: 'url-loader?limit=100000' },
         // All files with a '.ts' or '.tsx' extension will be handled by 'ts-loader'.
         {
           test: /\.(j|t)s(x)?$/,
           exclude: /node_modules/,
           use: {
-            loader: 'babel-loader',
-            options: {
-              cacheDirectory: true,
-              babelrc: false,
-              presets: [
-                [
-                  '@babel/preset-env',
-                  { targets: { browsers: 'last 2 versions' } } // or whatever your project requires
-                ],
-                '@babel/preset-typescript',
-                '@babel/preset-react'
-              ],
-              plugins: [
-                '@babel/plugin-transform-modules-commonjs',
-                // plugin-proposal-decorators is only needed if you're using experimental decorators in TypeScript
-                ['@babel/plugin-proposal-decorators', { legacy: true }],
-                ['@babel/plugin-proposal-class-properties', { loose: true }],
-                '@babel/transform-runtime',
-                'react-hot-loader/babel'
-              ]
-            }
+            loader: 'esbuild-loader',
+            options:
+              // use esbuild to speed up React
+              options.mode === 'production'
+                ? {
+                    loader: 'tsx',
+                    tsconfigRaw: require('./tsconfig.json')
+                  }
+                : {
+                    cacheDirectory: true,
+                    babelrc: false,
+                    presets: [
+                      [
+                        '@babel/preset-env',
+                        { targets: { browsers: 'last 2 versions' } } // or whatever your project requires
+                      ],
+                      '@babel/preset-typescript',
+                      '@babel/preset-react'
+                    ],
+                    plugins: [
+                      '@babel/plugin-transform-modules-commonjs',
+                      // plugin-proposal-decorators is only needed if you're using experimental decorators in TypeScript
+                      ['@babel/plugin-proposal-decorators', { legacy: true }],
+                      ['@babel/plugin-proposal-class-properties', { loose: true }],
+                      '@babel/transform-runtime',
+                      'react-hot-loader/babel'
+                    ]
+                  }
           }
         },
 
@@ -100,7 +121,9 @@ module.exports = (env, options) => {
             chunks: 'async'
           }
         }
-      }
+      },
+      minimize: false,
+      minimizer: [new ESBuildMinifyPlugin()]
     }
   };
 

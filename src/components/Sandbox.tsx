@@ -21,7 +21,8 @@
 
 import React from 'react';
 import { Split } from './Split';
-import { Project, mimeTypeForFileType, SandboxRun } from '../models';
+import { Project, mimeTypeForFileType } from '../models';
+import { SandboxRun } from '../models/types';
 import { logLn } from '../actions/AppActions';
 import appStore from '../stores/AppStore';
 

@@ -20,7 +20,8 @@
  */
 
 import React from 'react';
-import { languageForFileType, IStatusProvider } from '../../models';
+import { languageForFileType } from '../../models';
+import { IStatusProvider } from '../../models/types';
 // import { ViewTabs } from './ViewTabs';
 import { View } from './View';
 import { build, run, pushStatus, popStatus, logLn } from '../../actions/AppActions';

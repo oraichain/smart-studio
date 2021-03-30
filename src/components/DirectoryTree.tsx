@@ -20,7 +20,8 @@
  */
 
 import React from 'react';
-import { Project, File, Directory, FileType, ModelRef, isBinaryFileType, IStatusProvider } from '../models';
+import { Project, File, Directory, FileType, ModelRef, isBinaryFileType } from '../models';
+import { IStatusProvider } from '../models/types';
 import { Service } from '../service';
 import { ITree, ContextMenuEvent } from '../monaco-extra';
 import { MonacoUtils } from '../monaco-utils';

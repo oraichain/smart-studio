@@ -6,7 +6,8 @@
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
-    "build": "nest build",
+    "build-slow": "nest build",
+    "build": "swc src -s -d dist",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
     "start:dev": "yarn && nest start --watch",
@@ -42,6 +43,8 @@
     "@nestjs/cli": "^7.5.6",
     "@nestjs/schematics": "^7.2.7",
     "@nestjs/testing": "^7.6.13",
+    "@swc/cli": "^0.1.36",
+    "@swc/core": "^1.2.51",
     "@types/express": "^4.17.11",
     "@types/express-ws": "^3.0.0",
     "@types/fs-extra": "^9.0.8",

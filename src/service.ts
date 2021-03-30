@@ -18,20 +18,12 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-import { File, Project, Directory, FileType, Problem, isBinaryFileType, fileTypeFromFileName, IStatusProvider } from './models';
-import { padLeft, padRight, isBranch, toAddress, decodeRestrictedBase64ToBytes, base64EncodeBytes } from './util';
-import { WorkerCommand, IWorkerResponse } from './message';
+import { File, Project, Directory, FileType, isBinaryFileType, fileTypeFromFileName } from './models';
+import { IStatusProvider } from './models/types';
+import { decodeRestrictedBase64ToBytes, base64EncodeBytes } from './util';
 import { processJSFile, RewriteSourcesContext } from './utils/rewriteSources';
 import { getCurrentRunnerInfo } from './utils/taskRunner';
-import { createCompilerService, Language } from './compilerServices';
 import { getServiceURL, ServiceTypes } from './compilerServices/sendRequest';
-import { file } from 'jszip';
-
-declare var capstone: {
-  ARCH_X86: any;
-  MODE_64: any;
-  Cs: any;
-};
 
 declare var Module: ({}) => any;
 
@@ -64,11 +56,6 @@ export interface ILoadFiddleResponse {
 }
 
 export { Language } from './compilerServices';
-
-function getProjectFilePath(file: File): string {
-  const project = file.getProject();
-  return file.getPath(project);
-}
 
 export class Service {
   // private static worker = new ServiceWorker();
@@ -127,93 +114,6 @@ export class Service {
       }
     }
     return annotations;
-  }
-
-  static async compileFiles(files: File[], from: Language, to: Language, options = ''): Promise<{ [name: string]: string | ArrayBuffer }> {
-    const service = await createCompilerService(from, to);
-
-    const fileNameMap: { [name: string]: File } = files.reduce(
-      (acc: any, f: File) => {
-        acc[getProjectFilePath(f)] = f;
-        return acc;
-      },
-      {} as any
-    );
-
-    const input = {
-      files: files.reduce(
-        (acc: any, f: File) => {
-          acc[getProjectFilePath(f)] = {
-            content: f.getData()
-          };
-          return acc;
-        },
-        {} as any
-      ),
-      options
-    };
-    const result = await service.compile(input);
-
-    for (const file of files) {
-      file.setProblems([]);
-    }
-
-    for (const [name, item] of Object.entries(result.items)) {
-      const { fileRef, console } = item;
-      if (!fileRef || !console) {
-        continue;
-      }
-      const file = fileNameMap[fileRef];
-      if (!file) {
-        continue;
-      }
-      const markers = Service.getMarkers(console);
-      if (markers.length > 0) {
-        monaco.editor.setModelMarkers(file.buffer, 'compiler', markers);
-        file.setProblems(
-          markers.map((marker) => {
-            return Problem.fromMarker(file, marker);
-          })
-        );
-      }
-    }
-
-    if (!result.success) {
-      throw new Error(result.console);
-    }
-
-    const outputFiles: any = {};
-    for (const [name, item] of Object.entries(result.items)) {
-      const { content } = item;
-      if (content) {
-        outputFiles[name] = content;
-      }
-    }
-    return outputFiles;
-  }
-
-  static async compileFile(file: File, from: Language, to: Language, options = ''): Promise<any> {
-    const result = await Service.compileFileWithBindings(file, from, to, options);
-    return result.wasm;
-  }
-
-  static async compileFileWithBindings(file: File, from: Language, to: Language, options = ''): Promise<any> {
-    if (to !== Language.Wasm) {
-      throw new Error(`Only wasm target is supported, but "${to}" was found`);
-    }
-    const result = await Service.compileFiles([file], from, to, options);
-    const expectedOutputFilename = 'a.wasm';
-    let output: any = {
-      wasm: result[expectedOutputFilename]
-    };
-    const expectedWasmBindgenJsFilename = 'wasm_bindgen.js';
-    if (result[expectedWasmBindgenJsFilename]) {
-      output = {
-        ...output,
-        wasmBindgenJs: result[expectedWasmBindgenJsFilename]
-      };
-    }
-    return output;
   }
 
   static async loadJSON(uri: string): Promise<ILoadFiddleResponse> {
@@ -486,70 +386,6 @@ export class Service {
       };
       Service.clangFormatModule = Module(module);
     }
-  }
-
-  static async disassembleX86(file: File, status?: IStatusProvider, options = '') {
-    if (typeof capstone === 'undefined') {
-      await Service.lazyLoad('lib/capstone.x86.min.js', status);
-    }
-    const output = file.parent.newFile(file.name + '.x86', FileType.x86);
-
-    function toBytes(a: any) {
-      return a
-        .map(function(x: any) {
-          return padLeft(Number(x).toString(16), 2, '0');
-        })
-        .join(' ');
-    }
-
-    const service = await createCompilerService(Language.Wasm, Language.x86);
-    const input = {
-      files: {
-        'in.wasm': {
-          content: file.getData()
-        }
-      },
-      options
-    };
-    const result = await service.compile(input);
-    const json: any = result.items['a.json'].content;
-    let s = '';
-    const cs = new capstone.Cs(capstone.ARCH_X86, capstone.MODE_64);
-    const annotations: any[] = [];
-    const assemblyInstructionsByAddress = Object.create(null);
-    for (let i = 0; i < json.regions.length; i++) {
-      const region = json.regions[i];
-      s += region.name + ':\n';
-      const csBuffer = decodeRestrictedBase64ToBytes(region.bytes);
-      const instructions = cs.disasm(csBuffer, region.entry);
-      const basicBlocks: any = {};
-      instructions.forEach(function(instr: any, i: any) {
-        assemblyInstructionsByAddress[instr.address] = instr;
-        if (isBranch(instr)) {
-          const targetAddress = parseInt(instr.op_str, 10);
-          if (!basicBlocks[targetAddress]) {
-            basicBlocks[targetAddress] = [];
-          }
-          basicBlocks[targetAddress].push(instr.address);
-          if (i + 1 < instructions.length) {
-            basicBlocks[instructions[i + 1].address] = [];
-          }
-        }
-      });
-      instructions.forEach(function(instr: any) {
-        if (basicBlocks[instr.address]) {
-          s += ' ' + padRight(toAddress(instr.address) + ':', 39, ' ');
-          if (basicBlocks[instr.address].length > 0) {
-            s += '; ' + toAddress(instr.address) + ' from: [' + basicBlocks[instr.address].map(toAddress).join(', ') + ']';
-          }
-          s += '\n';
-        }
-        s += '  ' + padRight(instr.mnemonic + ' ' + instr.op_str, 38, ' ');
-        s += '; ' + toAddress(instr.address) + ' ' + toBytes(instr.bytes) + '\n';
-      });
-      s += '\n';
-    }
-    output.setData(s);
   }
 
   private static binaryExplorerMessageListener: (e: any) => void;
