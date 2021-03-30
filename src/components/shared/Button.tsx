@@ -32,6 +32,7 @@ export class Button extends React.Component<
     href?: string;
     target?: string;
     rel?: string;
+    fill?: boolean;
   },
   {}
 > {
@@ -45,7 +46,12 @@ export class Button extends React.Component<
     }
     if (this.props.href && !this.props.isDisabled) {
       return (
-        <a href={this.props.href} target={this.props.target || ''} rel={this.props.rel || ''} className={className} title={this.props.title}>
+        <a href={this.props.href} 
+          target={this.props.target || ''} 
+          rel={this.props.rel || ''} className={className} 
+          title={this.props.title}
+          style={this.props.fill ? { width: '100%', textAlign: 'center' } : {} }
+        >
           {this.props.icon} {this.props.label}
         </a>
       );
@@ -59,6 +65,7 @@ export class Button extends React.Component<
           }
         }}
         title={this.props.title}
+        style={this.props.fill ? { width: '100%', textAlign: 'center' } : {} }
       >
         {this.props.icon} {this.props.label}
       </div>

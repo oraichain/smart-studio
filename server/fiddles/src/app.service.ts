@@ -14,7 +14,6 @@ import {
   smartContractPackages,
 } from './app.utils';
 
-const smartContractUtils = new SmartContractUtils(smartContractFolder);
 export interface IFiddleFile {
   name: string;
   data?: string | Buffer;
@@ -34,6 +33,14 @@ export interface ILoadFiddleResponse {
   success: boolean;
 }
 
+declare global {
+  namespace Express {
+    interface User {
+      id: string;
+    }
+  }
+}
+
 @Injectable()
 export class AppService {
   // it run in dist folder
@@ -42,7 +49,8 @@ export class AppService {
   async getProject(req: Request): Promise<ILoadFiddleResponse> {
     let { name } = req.query;
     name = filterName(name);
-    const contractPath = path.join(smartContractPackages, name);
+
+    const contractPath = path.join(smartContractPackages(req), this.getUserPrefix(req) + name);
 
     if (!fs.existsSync(contractPath)) {
       return {
@@ -80,7 +88,7 @@ export class AppService {
     // project name must be lower case for easy manipulation
     name = filterName(name).toLowerCase();
     const { files } = req.body;
-    const contractPath = path.join(smartContractPackages, name);
+    const contractPath = path.join(smartContractPackages(req), this.getUserPrefix(req) + name);
 
     // TODO: check permission
     const status = fs.existsSync(contractPath) ? 'saved' : 'created';
@@ -95,6 +103,7 @@ export class AppService {
       }
 
       // add Cargo.toml and schema to project of workspace, so make sure there is file in project to init
+      const smartContractUtils = new SmartContractUtils(req);
       smartContractUtils.initProject(name);
 
       return {
@@ -110,11 +119,16 @@ export class AppService {
     }
   }
 
+  getUserPrefix(request: Request) {
+    const userPrefix = `github_${request.user ? request.user.id : 'guest'}_`;
+    return userPrefix;
+  }
+
   // this method allow get even binary content of file such as WASM file
   async getFile(req: Request): Promise<IFiddleFile> {
     let { name } = req.query;
     name = filterPath(name);
-    const filePath = path.join(smartContractPackages, name);
+    const filePath = path.join(smartContractPackages(req), this.getUserPrefix(req) + name);
 
     if (!fs.existsSync(filePath)) {
       return {
@@ -137,7 +151,7 @@ export class AppService {
   async saveFile(req: Request): Promise<ISaveFiddleResponse> {
     let { name, data }: IFiddleFile = req.body;
     name = filterPath(name);
-    const filePath = path.join(smartContractPackages, name);
+    const filePath = path.join(smartContractPackages(req), this.getUserPrefix(req) + name);
 
     if (isHiddenFiles(filePath)) {
       return {
@@ -167,7 +181,7 @@ export class AppService {
   async deleteFile(req: Request): Promise<ISaveFiddleResponse> {
     let { name } = req.body;
     name = filterPath(name);
-    const filePath = path.join(smartContractPackages, name);
+    const filePath = path.join(smartContractPackages(req), this.getUserPrefix(req) + name);
 
     if (isHiddenFiles(filePath)) {
       return {
@@ -203,7 +217,7 @@ export class AppService {
     let { name, newName } = req.body;
     name = filterPath(name);
     newName = filterPath(newName);
-    const filePath = path.join(smartContractPackages, name);
+    const filePath = path.join(smartContractPackages(req), this.getUserPrefix(req) + name);
 
     if (isHiddenFiles(filePath)) {
       return {
@@ -239,6 +253,8 @@ export class AppService {
   buildProject(req: Request): ILoadFiddleResponse {
     let { name } = req.body;
     name = filterName(name);
+
+    const smartContractUtils = new SmartContractUtils(req);
     const ret = smartContractUtils.buildProject(name);
 
     if (!ret.success) {
@@ -248,7 +264,7 @@ export class AppService {
       };
     }
 
-    const contractPath = path.join(smartContractPackages, name);
+    const contractPath = path.join(smartContractPackages(req), this.getUserPrefix(req) + name);
     const fullName = path.join('artifacts', `${name}.wasm`);
     const wasmFilePath = path.join(contractPath, fullName);
 
@@ -268,6 +284,8 @@ export class AppService {
   buildSchema(req: Request): ILoadFiddleResponse {
     let { name } = req.body;
     name = filterName(name);
+
+    const smartContractUtils = new SmartContractUtils(req);
     const ret = smartContractUtils.buildSchema(name);
 
     if (!ret.success) {
@@ -277,7 +295,7 @@ export class AppService {
       };
     }
 
-    const contractPath = path.join(smartContractPackages, name);
+    const contractPath = path.join(smartContractPackages(req), this.getUserPrefix(req) + name);
     const schemaPath = path.join(contractPath, 'artifacts', 'schema');
     const paths = getFiles(schemaPath);
 
@@ -299,6 +317,8 @@ export class AppService {
   testProject(req: Request): string {
     let { name } = req.body;
     name = filterName(name);
+
+    const smartContractUtils = new SmartContractUtils(req);
     const message = smartContractUtils.testProject(name);
 
     return message;

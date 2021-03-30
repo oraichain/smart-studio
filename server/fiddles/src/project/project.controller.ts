@@ -1,23 +1,23 @@
 import { Controller, Get, Query, Request } from "@nestjs/common";
-import { GithubService } from "./github.service";
+import { ProjectService } from "./project.service";
 
 
 
-@Controller('github')
-export class GithubController {
+@Controller('projects')
+export class ProjectController {
 
   constructor(
-    private readonly service: GithubService
+    private readonly service: ProjectService
   ) {
 
   }
 
-  @Get('repositories')
+  @Get()
   async list(
     @Query('name') name: string,
     @Request() req,
   ) {
-    const result = await this.service.getRepositories(
+    const result = await this.service.findAll(
       name,
       req.headers.authorization.split(' ')[1]
     );

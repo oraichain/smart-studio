@@ -61,7 +61,7 @@ server.post('/terminals', (req: Request, res: Response) => {
   env['COLORTERM'] = 'truecolor';
   const name = filterName(req.query.name.toString());
 
-  const contractPath = path.join(smartContractPackages, name);
+  const contractPath = path.join(smartContractPackages(req), name);
   const fullName = path.join('artifacts', `${name}.wasm`);
   const wasmFile = path.join(contractPath, fullName);
 

@@ -5,6 +5,7 @@ services:
     entrypoint: tail -f /dev/null
     ports:
       - 3000:3000
+      - 9229:9229
     volumes:
       - .registry_cache:/usr/local/cargo/registry:delegated
       - ./smart-contracts:/code

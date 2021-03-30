@@ -64,23 +64,24 @@ export class NewProjectDialog extends React.Component<
     const config = await getConfig();
     const templatesPath = config.templates[this.props.templatesName];
     const json = await fetchTemplates(templatesPath);
+
     const base = new URL(templatesPath, location.href);
-    const templates: Template[] = [];
-    for (const [key, entry] of Object.entries(json) as any) {
+    const templates: Template[] = Object.entries(json).map(([key, entry]: any[]) => {
       const name = entry.name || '';
       const description = entry.description || '';
       const icon = entry.icon || '';
-      templates.push({
+      return {
         name,
         description,
         icon,
         files: entry.files,
         baseUrl: new URL(key + '/', base)
-      });
-    }
+      };
+    });
 
     this.setState({ templates });
-    this.setTemplate(templates[0]);
+    // this.setTemplate(templates[0]);
+
   }
   onChangeName = (event: ChangeEvent<any>) => {
     this.setState({ name: event.target.value });
@@ -101,38 +102,51 @@ export class NewProjectDialog extends React.Component<
     return (
       <ReactModal isOpen={this.props.isOpen} contentLabel="Create New Project" className="modal show-file-icons newProject" overlayClassName="overlay" ariaHideApp={false}>
         <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-          <div className="modal-title-bar">Create New Project</div>
-          <div style={{ padding: '8px' }}>
-            <TextInputBox label="Name:" error={this.nameError()} value={this.state.name} onChange={this.onChangeName} />
-          </div>
-          <div style={{ display: 'flex' }}>
+          {/* <div className="modal-title-bar">Create or open project</div> */}
+
+          <div style={{ display: 'flex', flex: 1 }}>
             <div style={{ width: 200 }}>
               <ListBox
                 value={this.state.template}
                 height={240}
                 onSelect={(template) => {
-                  this.setTemplate(template);
+                  if (template) {
+                    this.setTemplate(template);
+                  } else {
+                    this.setState({ template: null });
+                  }
                 }}
               >
+                <ListItem key="_recents" value={null} label="Recents" icon="file" />
+
                 {this.state.templates.map((template) => {
                   return <ListItem key={template.name} value={template} label={template.name} icon={template.icon} />;
                 })}
               </ListBox>
             </div>
-            <div style={{ flex: 1 }} className="new-project-dialog-description">
-              <div className="md" dangerouslySetInnerHTML={{ __html: this.state.description }} />
+            <div style={{ flex: 1, padding: 4, height: 350 }} className="new-project-dialog-description">
+              { this.state.template ? (
+                <>
+                  <TextInputBox label="Name:" error={this.nameError()} value={this.state.name} onChange={this.onChangeName} />
+                  <div className="desc">
+                    <div className="md" dangerouslySetInnerHTML={{ __html: this.state.description }} />
+                  </div>
+                </>
+              ): (
+                <RecentProjects />
+              )}
             </div>
           </div>
 
-          <div>
-            <Button
+          <div className="modal-footer" style={{ justifyContent: 'flex-end'}}>
+            {/* <Button
               icon={<GoX />}
               label="Cancel"
               title="Cancel"
               onClick={() => {
                 this.props.onCancel();
               }}
-            />
+            /> */}
             <Button
               icon={<GoFile />}
               label="Create"
@@ -142,7 +156,7 @@ export class NewProjectDialog extends React.Component<
                 return this.props.onCreate && this.props.onCreate(this.state.template, this.state.name);
               }}
             />
-            <Button
+            {/* <Button
               icon={<GoFileDirectory />}
               label="More..."
               title="More..."
@@ -152,19 +166,26 @@ export class NewProjectDialog extends React.Component<
                   window.location.search = `f=${this.state.name}`;
                 }
               }}
-            />
+            /> */}
 
-            <Button
+            {/* <Button
               icon={<GoCloudUpload />}
               label="Upload"
               title="Upload"
               onClick={() => {
                 alert('Upload zip folder of a project');
               }}
-            />
+            /> */}
           </div>
         </div>
       </ReactModal>
     );
+  }
+}
+
+
+class RecentProjects extends React.Component {
+  render() {
+    return <div>dffdfgdfg</div>
   }
 }
