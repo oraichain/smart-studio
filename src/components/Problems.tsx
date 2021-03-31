@@ -21,7 +21,7 @@
 
 import React from 'react';
 import appStore from '../stores/AppStore';
-import { File, Directory, Problem } from '../models';
+import { File, Directory, Problem, Project } from '../models';
 import { ITree } from '../monaco-extra';
 import { ProblemTemplate, FileTemplate } from '../utils/Template';
 import { MonacoUtils } from '../monaco-utils';
@@ -33,34 +33,31 @@ export interface ProblemsProps {}
 
 export class Problems extends React.Component<ProblemsProps, {}> {
   tree: ITree;
-  contextViewService: any;
-  contextMenuService: any;
   container: HTMLDivElement;
 
   constructor(props: ProblemsProps) {
     super(props);
     // tslint:disable-next-line
-    this.contextViewService = new MonacoUtils.ContextViewService(document.documentElement, null, { trace: () => {} });
-    this.contextMenuService = new MonacoUtils.ContextMenuService(document.documentElement, null, null, this.contextViewService);
   }
+
   componentDidMount() {
     this.ensureTree();
-    (this.tree as any).model.setInput(appStore.getProject().getModel());
-    (this.tree as any).model.onDidSelect((e: any) => {
+    this.tree.model.setInput(appStore.getProject().getModel());
+    this.tree.model.onDidSelect((e: any) => {
       if (e.selection.length) {
         this.onSelectProblem(e.selection[0]);
       }
     });
     appStore.onDidChangeProblems.register(() => {
-      this.tree.refresh();
+      this.tree.model.refresh();
       MonacoUtils.expandTree(this.tree);
     });
     appStore.onLoadProject.register(() => {
-      (this.tree as any).model.setInput(appStore.getProject().getModel());
+      this.tree.model.setInput(appStore.getProject().getModel());
     });
   }
   componentWillReceiveProps(props: ProblemsProps) {
-    this.tree.refresh();
+    this.tree.model.refresh();
     MonacoUtils.expandTree(this.tree);
   }
   private setContainer(container: HTMLDivElement) {
@@ -98,7 +95,7 @@ export class Problems extends React.Component<ProblemsProps, {}> {
         /**
          * Returns the element's children as an array in a promise.
          */
-        getChildren: function(tree: ITree, element: File | Problem): monaco.Promise<any> {
+        getChildren: function(tree: ITree, element: File | Problem): Promise<File[] | Problem[]> {
           if (element instanceof Directory && element.children.length) {
             const children: File[] = [];
             element.forEachFile(
@@ -110,21 +107,21 @@ export class Problems extends React.Component<ProblemsProps, {}> {
               false,
               true
             );
-            return monaco.Promise.as(children);
+            return Promise.resolve(children);
           } else if (element instanceof File) {
-            return monaco.Promise.as(element.problems);
+            return Promise.resolve(element.problems);
           }
-          return null;
+          return Promise.resolve(null);
         },
 
         /**
          * Returns the element's parent in a promise.
          */
-        getParent: function(tree: ITree, element: File | Problem): monaco.Promise<any> {
+        getParent: function(tree: ITree, element: File | Problem): Promise<File | Project> {
           if (element instanceof File) {
-            return monaco.Promise.as(element.getProject());
+            return Promise.resolve(element.getProject());
           }
-          return monaco.Promise.as(element.file);
+          return Promise.resolve(element.file);
         }
       },
       renderer: {

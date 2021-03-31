@@ -23,7 +23,7 @@ import React from 'react';
 import { Project, File, Directory, FileType, ModelRef, isBinaryFileType } from '../models';
 import { IStatusProvider } from '../models/types';
 import { Service } from '../service';
-import { ITree, ContextMenuEvent } from '../monaco-extra';
+import { ITree, ContextMenuEvent, ISelectionEvent } from '../monaco-extra';
 import { MonacoUtils } from '../monaco-utils';
 import { openFile, pushStatus, popStatus, logLn } from '../actions/AppActions';
 import { FileTemplate } from '../utils/Template';
@@ -62,8 +62,8 @@ export class DirectoryTree extends React.Component<
   constructor(props: DirectoryTreeProps) {
     super(props);
     // tslint:disable-next-line
-    this.contextViewService = new MonacoUtils.ContextViewService(document.documentElement, null, { trace: () => {} });
-    this.contextMenuService = new MonacoUtils.ContextMenuService(document.documentElement, null, null, this.contextViewService);
+    this.contextViewService = new MonacoUtils.ContextViewService({ container: document.documentElement, onLayout: () => {} });
+    this.contextMenuService = new MonacoUtils.ContextMenuService(null, null, this.contextViewService);
     this.state = { directory: this.props.directory };
     this.status = {
       push: pushStatus,
@@ -73,8 +73,8 @@ export class DirectoryTree extends React.Component<
   }
   componentDidMount() {
     this.ensureTree();
-    (this.tree as any).model.setInput(this.props.directory.getModel());
-    (this.tree as any).model.onDidSelect((e: any) => {
+    this.tree.model.setInput(this.props.directory.getModel());
+    this.tree.model.onDidSelect((e: ISelectionEvent) => {
       if (e.selection.length) {
         this.onClickFile(e.selection[0]);
       }
@@ -86,10 +86,10 @@ export class DirectoryTree extends React.Component<
   }
   componentWillReceiveProps(props: DirectoryTreeProps) {
     if (this.state.directory !== props.directory) {
-      (this.tree as any).model.setInput(props.directory.getModel());
+      this.tree.model.setInput(props.directory.getModel());
       this.setState({ directory: props.directory });
     } else {
-      this.tree.refresh();
+      this.tree.model.refresh();
       MonacoUtils.expandTree(this.tree);
     }
   }
@@ -124,15 +124,15 @@ export class DirectoryTree extends React.Component<
         /**
          * Returns the element's children as an array in a promise.
          */
-        getChildren: function(tree: ITree, element: Directory): monaco.Promise<any> {
-          return monaco.Promise.as(element.children);
+        getChildren: function(tree: ITree, element: Directory): Promise<File[]> {
+          return Promise.resolve(element.children);
         },
 
         /**
          * Returns the element's parent in a promise.
          */
-        getParent: function(tree: ITree, element: File): monaco.Promise<any> {
-          return monaco.Promise.as(element.parent);
+        getParent: function(tree: ITree, element: File): Promise<Directory> {
+          return Promise.resolve(element.parent);
         }
       },
       renderer: {

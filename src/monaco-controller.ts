@@ -21,9 +21,16 @@
 
 import { MonacoUtils } from './monaco-utils';
 import { ITree, ContextMenuEvent } from './monaco-extra';
+import { DefaultController } from 'monaco-editor/esm/vs/base/parts/tree/browser/treeDefaults';
+import { IContextViewService } from 'monaco-editor/esm/vs/platform/contextview/browser/contextView';
+import { DynamicStandaloneServices } from 'monaco-editor/esm/vs/editor/standalone/browser/standaloneServices';
 
 export function getController(target: any, getActionsFn?: Function, resolveMenuHeight?: Boolean) {
-  return class Controller extends MonacoUtils.TreeDefaults.DefaultController {
+  const services = new DynamicStandaloneServices(target.container, {});
+  const contextViewService = services.get(IContextViewService);
+  const contextMenuService = new MonacoUtils.ContextMenuService(null, null, contextViewService);
+
+  return class Controller extends DefaultController {
     onContextMenu(tree: ITree, file: File, event: ContextMenuEvent): boolean {
       // default Project and nothing
       if (file.name === 'Project') return;
@@ -34,9 +41,10 @@ export function getController(target: any, getActionsFn?: Function, resolveMenuH
       if (!actions || !actions.length) {
         return false;
       }
-      target.contextMenuService.showContextMenu({
+
+      contextMenuService.showContextMenu({
         getAnchor: () => anchor,
-        getActions: () => monaco.Promise.as(actions || []),
+        getActions: () => Promise.resolve(actions || []),
         getActionItem: (action: any): any => null,
         onHide: (wasCancelled?: boolean) => {
           if (wasCancelled) {
@@ -53,8 +61,10 @@ export function getController(target: any, getActionsFn?: Function, resolveMenuH
     resolveMenuHeight(event: ContextMenuEvent) {
       // Set the context menus max height to avoid overflow outside window
       const menu: HTMLElement = document.querySelector('.context-view.monaco-menu-container');
-      const windowPadding = 10;
-      menu.style.maxHeight = Math.min(window.innerHeight - event._posy - windowPadding, 380) + 'px';
+      if (menu) {
+        const windowPadding = 10;
+        menu.style.maxHeight = Math.min(window.innerHeight - event._posy - windowPadding, 380) + 'px';
+      }
     }
   };
 }

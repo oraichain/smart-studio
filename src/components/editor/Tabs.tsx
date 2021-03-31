@@ -40,21 +40,13 @@ export class Tabs extends Component<TabsProps, TabsState> {
 
   container: HTMLDivElement;
 
-  state = {
-    scrollLeft: 0
-  };
-
-  componentDidUpdate() {
-    this.container.scrollLeft = this.state.scrollLeft;
-  }
-
   onWheel = (e: WheelEvent<any>) => {
     const delta = clamp(e.deltaY, -16, 16);
-    let { scrollLeft } = this.state;
+    let scrollLeft = this.container.scrollLeft || 0;
     scrollLeft += delta;
     // TODO: Work out the details of scrolling.
     scrollLeft = clamp(scrollLeft, 0, this.container.clientWidth);
-    this.setState({ scrollLeft });
+    this.container.scrollLeft = scrollLeft;
     e.preventDefault();
   };
 

@@ -129,11 +129,6 @@ describe('Tests for index.tsx', () => {
       expect(addEventListener.mock.calls[1][0]).toEqual('beforeunload');
       addEventListener.mockRestore();
     });
-    it('should initialize the MonacoUtils', async () => {
-      MonacoUtils.initialize.mockClear();
-      await index.init('test');
-      expect(MonacoUtils.initialize).toHaveBeenCalled();
-    });
     it('should render <App /> with the correct params (?f=fiddle-uri)', async () => {
       ReactDOM.render.mockClear();
       history.pushState({}, '', 'https://webassembly.studio/?f=fiddle-uri');
@@ -183,14 +178,6 @@ describe('Tests for index.tsx', () => {
       WebAssembly = false;
       await index.init('test');
       expect(ReactDOM.render).toHaveBeenCalledWith(<BrowserNotSupported />, document.getElementById('app'));
-    });
-    it('should catch and log any exceptions thrown from the init function', async () => {
-      const error = new Error('from MonacoUtils');
-      MonacoUtils.initialize.mockImplementation(() => {
-        throw error;
-      });
-      await index.init('test');
-      expect(Logger.captureException).toHaveBeenCalledWith(error);
     });
   });
 });

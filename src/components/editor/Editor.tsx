@@ -22,12 +22,9 @@
 import React from 'react';
 import { languageForFileType } from '../../models';
 import { IStatusProvider } from '../../models/types';
-// import { ViewTabs } from './ViewTabs';
 import { View } from './View';
 import { build, run, pushStatus, popStatus, logLn } from '../../actions/AppActions';
 import { updateModelTokens } from '../../utils/registerLanguages';
-
-declare var window: any;
 
 // Life Cycle
 // https://cdn-images-1.medium.com/max/1600/0*VoYsN6eq7I_wjVV5.png
@@ -171,13 +168,16 @@ export class Monaco extends React.Component<MonacoProps, {}> {
   }
   resolveMenuPosition(e: any) {
     const anchorOffset = { x: -10, y: -3 };
+
     const menu: HTMLElement = this.container.querySelector('.monaco-editor > .monaco-menu-container');
-    const top = parseInt(menu.style.top, 10) + e.event.editorPos.y + anchorOffset.y;
-    const left = parseInt(menu.style.left, 10) + e.event.editorPos.x + anchorOffset.x;
-    const windowPadding = 10;
-    menu.style.top = top + 'px';
-    menu.style.left = left + 'px';
-    menu.style.maxHeight = Math.min(window.innerHeight - top - windowPadding, 380) + 'px';
+    if (menu) {
+      const top = parseInt(menu.style.top, 10) + e.event.editorPos.y + anchorOffset.y;
+      const left = parseInt(menu.style.left, 10) + e.event.editorPos.x + anchorOffset.x;
+      const windowPadding = 10;
+      menu.style.top = top + 'px';
+      menu.style.left = left + 'px';
+      menu.style.maxHeight = Math.min(window.innerHeight - top - windowPadding, 380) + 'px';
+    }
   }
   disableEditorScroll() {
     this.editor.updateOptions({
@@ -219,24 +219,17 @@ export class EditorView extends React.Component<EditorViewProps, {}> {
   }
   render() {
     const file = this.props.view.file;
-    if (file.description) {
-      return (
-        <div className="fill">
+    return (
+      <div className="fill">
+        {file.description && (
           <div className="editor-status-bar">
             <div className="status-bar-item">{file.description}</div>
           </div>
-          <div className="editor-container">
-            <Monaco ref={(ref) => this.setMonaco(ref)} view={this.props.view} options={this.props.options} />
-          </div>
-          ;
-        </div>
-      );
-    } else {
-      return (
-        <div className="fill">
+        )}
+        <div className="editor-container">
           <Monaco ref={(ref) => this.setMonaco(ref)} view={this.props.view} options={this.props.options} />
         </div>
-      );
-    }
+      </div>
+    );
   }
 }

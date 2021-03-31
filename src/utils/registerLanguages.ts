@@ -28,6 +28,7 @@ export interface Token {
 }
 
 let state: WorldState = null;
+let allTokens: Token[] = [];
 
 // default we will update tokens from all open files
 export const updateModelTokens = async (model: monaco.editor.ITextModel, languageId: string) => {
@@ -40,31 +41,9 @@ export const updateModelTokens = async (model: monaco.editor.ITextModel, languag
         const res = state.update(model.getValue());
         monaco.editor.setModelMarkers(model, languageId, res.diagnostics);
         // TODO: completion from all files
-        let allTokens: Token[] = res.highlights;
-        // console.log(allTokens);
-        monaco.languages.setTokensProvider('ra-rust', {
-          getInitialState: () => new TokenState(),
-          tokenize(_, st: TokenState) {
-            const filteredTokens = allTokens.filter((token) => token.range.startLineNumber === st.line);
-
-            const tokens = filteredTokens.map((token) => ({
-              startIndex: token.range.startColumn - 1,
-              scopes: fixTag(token.tag)
-            }));
-            // add tokens inbetween highlighted ones to remove color artifacts
-            tokens.push(
-              ...filteredTokens.filter((tok, i) => i === tokens.length - 1 || tokens[i + 1].startIndex > tok.range.endColumn - 1).map((token) => ({
-                startIndex: token.range.endColumn - 1,
-                scopes: 'operator'
-              }))
-            );
-            tokens.sort((a, b) => a.startIndex - b.startIndex);
-            return {
-              tokens,
-              endState: new TokenState(st.line + 1)
-            };
-          }
-        });
+        if (res.highlights.length) {
+          allTokens = res.highlights;
+        }
       };
       break;
     default:
@@ -75,6 +54,15 @@ export const updateModelTokens = async (model: monaco.editor.ITextModel, languag
     model.onDidChangeContent(update);
   }
 };
+
+class State implements monaco.languages.IState {
+  clone() {
+    return new State();
+  }
+  equals(other: monaco.languages.IState): boolean {
+    return other === this;
+  }
+}
 
 class TokenState implements monaco.languages.IState {
   public line: number;
@@ -151,7 +139,7 @@ export default async function registerLanguages() {
           };
         });
 
-        return lenses;
+        return { lenses, dispose() {} };
       }
     });
     monaco.languages.registerReferenceProvider('ra-rust', {
@@ -185,21 +173,28 @@ export default async function registerLanguages() {
       triggerCharacters: ['.', ':', '='],
       provideCompletionItems(m, pos) {
         const suggestions = state.completions(pos.lineNumber, pos.column);
-        return suggestions;
+        if (suggestions) {
+          return { suggestions };
+        }
       }
     });
     monaco.languages.registerSignatureHelpProvider('ra-rust', {
       signatureHelpTriggerCharacters: ['(', ','],
       provideSignatureHelp(m, pos) {
         const value = state.signature_help(pos.lineNumber, pos.column);
-        return value;
+        if (value) {
+          return {
+            value,
+            dispose() {}
+          };
+        }
       }
     });
     monaco.languages.registerDefinitionProvider('ra-rust', {
       provideDefinition(m, pos) {
         const list = state.definition(pos.lineNumber, pos.column);
         if (list) {
-          return list.map((def: monaco.languages.DefinitionLink) => ({ ...def, uri: m.uri }));
+          return list.map((def: monaco.languages.Definition) => ({ ...def, uri: m.uri }));
         }
       }
     });
@@ -207,7 +202,7 @@ export default async function registerLanguages() {
       provideTypeDefinition(m, pos) {
         const list = state.type_definition(pos.lineNumber, pos.column);
         if (list) {
-          return list.map((def: monaco.languages.DefinitionLink) => ({ ...def, uri: m.uri }));
+          return list.map((def: monaco.languages.Definition) => ({ ...def, uri: m.uri }));
         }
       }
     });
@@ -215,7 +210,7 @@ export default async function registerLanguages() {
       provideImplementation(m, pos) {
         const list = state.goto_implementation(pos.lineNumber, pos.column);
         if (list) {
-          return list.map((def: monaco.languages.DefinitionLink) => ({ ...def, uri: m.uri }));
+          return list.map((def: monaco.languages.Definition) => ({ ...def, uri: m.uri }));
         }
       }
     });
@@ -228,6 +223,31 @@ export default async function registerLanguages() {
     });
     monaco.languages.registerFoldingRangeProvider('ra-rust', {
       provideFoldingRanges: () => state.folding_ranges()
+    });
+
+    monaco.languages.setTokensProvider('ra-rust', {
+      getInitialState: () => new TokenState(),
+      tokenize(_, st: TokenState) {
+        const filteredTokens = allTokens.filter((token) => token.range.startLineNumber === st.line);
+
+        const tokens = filteredTokens.map((token) => ({
+          startIndex: token.range.startColumn - 1,
+          scopes: fixTag(token.tag)
+        }));
+        // add tokens inbetween highlighted ones to remove color artifacts
+        tokens.push(
+          ...filteredTokens.filter((tok, i) => i === tokens.length - 1 || tokens[i + 1].startIndex > tok.range.endColumn - 1).map((token) => ({
+            startIndex: token.range.endColumn - 1,
+            scopes: 'operator'
+          }))
+        );
+        tokens.sort((a, b) => a.startIndex - b.startIndex);
+
+        return {
+          tokens,
+          endState: new TokenState(st.line + 1)
+        };
+      }
     });
   });
 }

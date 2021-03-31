@@ -19,6 +19,7 @@
  * SOFTWARE.
  */
 
+import 'monaco-editor';
 import React from 'react';
 import ReactDOM from 'react-dom';
 
@@ -85,11 +86,6 @@ export function getEmbeddingParams(parameters: any): EmbeddingParams {
   };
 }
 
-declare global {
-  interface Window {
-    Keystation: any;
-  }
-}
 const keystationUrl = process.env.WALLET_URL;
 const loadKeyStation = (callback: any) => {
   const script = document.createElement('script');
@@ -120,7 +116,6 @@ export async function init(environment = 'production') {
   const fiddle = parameters['fiddle'] || parameters['f'];
   const embeddingParams = getEmbeddingParams(parameters);
   try {
-    await MonacoUtils.initialize();
     await registerTheme();
     await registerLanguages();
 
