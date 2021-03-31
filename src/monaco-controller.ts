@@ -19,57 +19,43 @@
  * SOFTWARE.
  */
 
+import { DefaultController } from 'monaco-editor/esm/vs/base/parts/tree/browser/treeDefaults';
 import { MonacoUtils } from './monaco-utils';
 import { ITree, ContextMenuEvent } from './monaco-extra';
-import { DefaultController } from 'monaco-editor/esm/vs/base/parts/tree/browser/treeDefaults';
-import { IContextViewService } from 'monaco-editor/esm/vs/platform/contextview/browser/contextView';
-import { DynamicStandaloneServices } from 'monaco-editor/esm/vs/editor/standalone/browser/standaloneServices';
 
-export function getController(target: any, getActionsFn?: Function, resolveMenuHeight?: Boolean) {
-  const services = new DynamicStandaloneServices(target.container, {});
-  const contextViewService = services.get(IContextViewService);
-  const contextMenuService = new MonacoUtils.ContextMenuService(null, null, contextViewService);
+export class MonacoController extends DefaultController {
+  private getActionsFn?: Function;
 
-  return class Controller extends DefaultController {
-    onContextMenu(tree: ITree, file: File, event: ContextMenuEvent): boolean {
-      // default Project and nothing
-      if (file.name === 'Project') return;
-      tree.setFocus(file);
-      const anchorOffset = { x: -10, y: -3 };
-      const anchor = { x: event._posx + anchorOffset.x, y: event._posy + anchorOffset.y };
-      const actions = getActionsFn && getActionsFn(file, event);
-      if (!actions || !actions.length) {
-        return false;
-      }
+  constructor(getActionsFn?: Function) {
+    super();
+    this.getActionsFn = getActionsFn;
+  }
 
-      contextMenuService.showContextMenu({
-        getAnchor: () => anchor,
-        getActions: () => Promise.resolve(actions || []),
-        getActionItem: (action: any): any => null,
-        onHide: (wasCancelled?: boolean) => {
-          if (wasCancelled) {
-            tree.domFocus();
-          }
+  onContextMenu(tree: ITree, file: File, event: ContextMenuEvent): boolean {
+    // default Project and nothing
+    if (file.name === 'Project') return;
+    tree.setFocus(file);
+    const anchorOffset = { x: -10, y: -3 };
+    const anchor = { x: event._posx + anchorOffset.x, y: event._posy + anchorOffset.y };
+    const actions = this.getActionsFn && this.getActionsFn(file, event);
+
+    if (!actions || !actions.length) {
+      return false;
+    }
+
+    MonacoUtils.ContextMenuserviceInstance.showContextMenu({
+      getAnchor: () => anchor,
+      getActions: () => actions,
+      getActionViewItem: (action: any): any => null,
+      onHide: (wasCancelled?: boolean) => {
+        if (wasCancelled) {
+          tree.domFocus();
         }
-      });
-      super.onContextMenu(tree, file, event);
-      if (resolveMenuHeight) {
-        this.resolveMenuHeight(event);
       }
-      return true;
-    }
-    resolveMenuHeight(event: ContextMenuEvent) {
-      // Set the context menus max height to avoid overflow outside window
-      const menu: HTMLElement = document.querySelector('.context-view.monaco-menu-container');
-      if (menu) {
-        const windowPadding = 10;
-        menu.style.maxHeight = Math.min(window.innerHeight - event._posy - windowPadding, 380) + 'px';
-      }
-    }
-  };
-}
+    });
 
-export function createController(target: any, getActionsFn?: Function, resolveMenuHeight?: Boolean) {
-  const Controller = getController(target, getActionsFn, resolveMenuHeight);
-  return new Controller();
+    super.onContextMenu(tree, file, event);
+
+    return true;
+  }
 }

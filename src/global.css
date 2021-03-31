@@ -957,10 +957,6 @@ a {
   color: var(--grey-600);
 }
 
-.vs-dark .context-view.monaco-menu-container {
-  color: #fff;
-}
-
 .action-label {
   font-family: -apple-system, BlinkMacSystemFont, Segoe WPC, Segoe UI, HelveticaNeue-Light, Ubuntu, Droid Sans, sans-serif;
   font-weight: bold;
@@ -983,12 +979,6 @@ a {
 .monaco-icon-label.dirty.transient::after {
   content: 'M T';
   font-size: 10px;
-}
-
-.context-view.monaco-menu-container {
-  max-height: 380px;
-  overflow: scroll;
-  position: fixed;
 }
 
 /* Menu Item Styles */
@@ -1162,7 +1152,6 @@ a {
   display: block;
   background-color: #484848;
 }
-
 
 .loading-container {
   position: absolute;

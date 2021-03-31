@@ -20,9 +20,13 @@
  */
 import { Action } from 'monaco-editor/esm/vs/base/common/actions';
 import { ContextSubMenu } from 'monaco-editor/esm/vs/base/browser/contextmenu';
-import { ContextViewService } from 'monaco-editor/esm/vs/platform/contextview/browser/contextViewService';
 import { ContextMenuService } from 'monaco-editor/esm/vs/platform/contextview/browser/contextMenuService';
-
+import { DynamicStandaloneServices } from 'monaco-editor/esm/vs/editor/standalone/browser/standaloneServices';
+import { IContextViewService } from 'monaco-editor/esm/vs/platform/contextview/browser/contextView';
+import { ITelemetryService } from 'monaco-editor/esm/vs/platform/telemetry/common/telemetry.js';
+import { IThemeService } from 'monaco-editor/esm/vs/platform/theme/common/themeService.js';
+import { IKeybindingService } from 'monaco-editor/esm/vs/platform/keybinding/common/keybinding.js';
+import { INotificationService } from 'monaco-editor/esm/vs/platform/notification/common/notification.js';
 import { Tree } from 'monaco-editor/esm/vs/base/parts/tree/browser/treeImpl';
 
 import { ITree } from './monaco-extra';
@@ -31,9 +35,34 @@ import { ITree } from './monaco-extra';
 export class MonacoUtils {
   static Tree = Tree;
   static ContextSubMenu = ContextSubMenu;
-  static ContextMenuService = ContextMenuService;
-  static ContextViewService = ContextViewService;
   static Action = Action;
+  static ContextMenuserviceInstance: any;
+  static initialize() {
+    // define theme
+    monaco.editor.defineTheme('fiddle-theme', {
+      base: 'vs-dark',
+      inherit: true,
+      colors: {},
+      rules: [
+        { token: 'custom-info', foreground: 'd4d4d4' },
+        { token: 'custom-warn', foreground: 'ff9900' },
+        { token: 'custom-error', background: '00ff00', foreground: 'ff0000', fontStyle: 'bold' }
+      ]
+    });
+
+    const services = new DynamicStandaloneServices(document.documentElement, {});
+    const telemetryService = services.get(ITelemetryService);
+    const notificationService = services.get(INotificationService);
+    const contextViewService = services.get(IContextViewService);
+    const keybindingService = services.get(IKeybindingService);
+
+    // set fiddle-theme
+    const themeService = services.get(IThemeService);
+    themeService.setTheme('fiddle-theme');
+
+    // create static ContextMenuserviceInstance
+    MonacoUtils.ContextMenuserviceInstance = new ContextMenuService(telemetryService, notificationService, contextViewService, keybindingService, themeService);
+  }
 
   static expandTree(tree: ITree) {
     const model = tree.model;

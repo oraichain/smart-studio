@@ -157,42 +157,10 @@ export class Monaco extends React.Component<MonacoProps, {}> {
       this.container.removeChild(this.container.lastChild);
     }
     this.editor = monaco.editor.create(this.container, options);
-    this.editor.onContextMenu((e) => {
-      this.resolveMenuPosition(e);
-      this.disableEditorScroll(); // This makes it possible to scroll inside the menu
-    });
-    this.editor.onDidFocusEditorWidget(() => this.enableEditorScroll());
-    this.editor.onDidFocusEditorText(() => this.enableEditorScroll());
     this.registerActions();
     console.info('Created a new Monaco editor.');
   }
-  resolveMenuPosition(e: any) {
-    const anchorOffset = { x: -10, y: -3 };
 
-    const menu: HTMLElement = this.container.querySelector('.monaco-editor > .monaco-menu-container');
-    if (menu) {
-      const top = parseInt(menu.style.top, 10) + e.event.editorPos.y + anchorOffset.y;
-      const left = parseInt(menu.style.left, 10) + e.event.editorPos.x + anchorOffset.x;
-      const windowPadding = 10;
-      menu.style.top = top + 'px';
-      menu.style.left = left + 'px';
-      menu.style.maxHeight = Math.min(window.innerHeight - top - windowPadding, 380) + 'px';
-    }
-  }
-  disableEditorScroll() {
-    this.editor.updateOptions({
-      scrollbar: {
-        handleMouseWheel: false
-      }
-    });
-  }
-  enableEditorScroll() {
-    this.editor.updateOptions({
-      scrollbar: {
-        handleMouseWheel: true
-      }
-    });
-  }
   private setContainer(container: HTMLDivElement) {
     if (container == null) {
       return;

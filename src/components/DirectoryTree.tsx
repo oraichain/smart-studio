@@ -27,7 +27,7 @@ import { ITree, ContextMenuEvent, ISelectionEvent } from '../monaco-extra';
 import { MonacoUtils } from '../monaco-utils';
 import { openFile, pushStatus, popStatus, logLn } from '../actions/AppActions';
 import { FileTemplate } from '../utils/Template';
-import { createController } from '../monaco-controller';
+import { MonacoController } from '../monaco-controller';
 import { DragAndDrop } from '../monaco-dnd';
 
 export interface DirectoryTreeProps {
@@ -53,17 +53,13 @@ export class DirectoryTree extends React.Component<
 > {
   status: IStatusProvider;
   tree: ITree;
-  contextViewService: any;
-  contextMenuService: any;
   container: HTMLDivElement;
   lastClickedTime = Date.now();
   lastClickedFile: File | null = null;
 
   constructor(props: DirectoryTreeProps) {
     super(props);
-    // tslint:disable-next-line
-    this.contextViewService = new MonacoUtils.ContextViewService({ container: document.documentElement, onLayout: () => {} });
-    this.contextMenuService = new MonacoUtils.ContextMenuService(null, null, this.contextViewService);
+
     this.state = { directory: this.props.directory };
     this.status = {
       push: pushStatus,
@@ -90,7 +86,6 @@ export class DirectoryTree extends React.Component<
       this.setState({ directory: props.directory });
     } else {
       this.tree.model.refresh();
-      MonacoUtils.expandTree(this.tree);
     }
   }
   private setContainer(container: HTMLDivElement) {
@@ -149,7 +144,7 @@ export class DirectoryTree extends React.Component<
           (templateData as FileTemplate).dispose();
         }
       },
-      controller: createController(this, (file: File, event: ContextMenuEvent) => this.getActions(file, event), true),
+      controller: new MonacoController((file: File, event: ContextMenuEvent) => this.getActions(file, event)),
       dnd: new DragAndDrop(this)
     });
   }

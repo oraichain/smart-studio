@@ -38,7 +38,9 @@ export interface DragMouseEvent {
   browserEvent: DragEvent;
 }
 
-export interface ITree {}
+export interface ITree {
+  container: HTMLElement;
+}
 
 export interface ITreeModel extends ITree {
   /**

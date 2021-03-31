@@ -116,9 +116,8 @@ export async function init(environment = 'production') {
   const fiddle = parameters['fiddle'] || parameters['f'];
   const embeddingParams = getEmbeddingParams(parameters);
   try {
-    await registerTheme();
     await registerLanguages();
-
+    MonacoUtils.initialize();
     loadKeyStation((keystation: any) => {
       ReactDOM.render(
         <App keystation={keystation} update={update} fiddle={fiddle} embeddingParams={embeddingParams} windowContext={appWindowContext} />,

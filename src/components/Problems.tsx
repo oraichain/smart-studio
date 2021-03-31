@@ -27,7 +27,6 @@ import { ProblemTemplate, FileTemplate } from '../utils/Template';
 import { MonacoUtils } from '../monaco-utils';
 import { openFile } from '../actions/AppActions';
 import { ViewType } from './editor/View';
-import { createController } from '../monaco-controller';
 
 export interface ProblemsProps {}
 
@@ -50,7 +49,6 @@ export class Problems extends React.Component<ProblemsProps, {}> {
     });
     appStore.onDidChangeProblems.register(() => {
       this.tree.model.refresh();
-      MonacoUtils.expandTree(this.tree);
     });
     appStore.onLoadProject.register(() => {
       this.tree.model.setInput(appStore.getProject().getModel());
@@ -58,7 +56,6 @@ export class Problems extends React.Component<ProblemsProps, {}> {
   }
   componentWillReceiveProps(props: ProblemsProps) {
     this.tree.model.refresh();
-    MonacoUtils.expandTree(this.tree);
   }
   private setContainer(container: HTMLDivElement) {
     if (container == null) {
@@ -143,8 +140,7 @@ export class Problems extends React.Component<ProblemsProps, {}> {
         disposeTemplate: function(tree: ITree, templateId: string, templateData: any): void {
           templateData.dispose();
         }
-      },
-      controller: createController(this)
+      }
     });
   }
   onSelectProblem(problem: File | Problem) {
