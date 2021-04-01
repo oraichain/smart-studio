@@ -107,7 +107,7 @@ export class UploadFileDialog extends React.Component<UploadFileDialogProps, Upl
               />
             </div>
           </div>
-          <div>
+          <div className="modal-footer">
             <Button
               icon={<GoX />}
               label="Cancel"

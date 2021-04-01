@@ -129,7 +129,7 @@ export class NewFileDialog extends React.Component<NewFileDialogProps, NewFileDi
               onChange={this.onChangeName}
             />
           </div>
-          <div>
+          <div className="modal-footer">
             <Button
               icon={<GoX />}
               label="Cancel"
