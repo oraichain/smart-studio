@@ -562,6 +562,13 @@ export class App extends React.Component<AppProps, AppState> {
                 return;
               }
 
+              // check exist ?
+              const reason = await Service.isProjectValid(name);
+              if (reason) {
+                this.showToast(<span>{reason}</span>);
+                return;
+              }
+
               // create new project and save
               const newProject = new Project(name);
 
@@ -576,6 +583,20 @@ export class App extends React.Component<AppProps, AppState> {
 
               // open new project and hide dialog
               await openProject(newProject);
+              this.setState({ newProjectDialog: false });
+            }}
+            onOpenProject={async file => {
+              // // change url
+              // const fiddle = file.name;
+              // history.replaceState({}, fiddle, `?f=${fiddle}`);
+
+              // const project = new Project(fiddle);
+              // await openProject(project);
+              // this.setState({ newProjectDialog: false });
+
+              const fiddle = file.name;
+              history.replaceState({}, fiddle, `?f=${fiddle}`);
+              await this.loadProjectFromFiddle(fiddle);
               this.setState({ newProjectDialog: false });
             }}
           />

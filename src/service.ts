@@ -179,6 +179,45 @@ export class Service {
     return ret;
   }
 
+  static async getRecents(): Promise<IFiddleFile[]> {
+    const baseURL = await getServiceURL(ServiceTypes.Service);
+    const response = await fetch(`${baseURL}/projects`, {
+      method: 'GET',
+      headers: new Headers({
+        Authorization: `Bearer ${getAccessToken()}`,
+        'Content-type': 'application/json; charset=utf-8'
+      }),
+    });
+    const ret = await response.json();
+    return ret.items;
+  }
+
+  static async isProjectValid(name: string): Promise<string> {
+    const baseURL = await getServiceURL(ServiceTypes.Service);
+
+    const response = await fetch(`${baseURL}/projects/canCreate`, {
+      method: 'POST',
+      headers: new Headers({
+        Authorization: `Bearer ${getAccessToken()}`,
+        'Content-type': 'application/json; charset=utf-8'
+      }),
+      body: JSON.stringify({
+        name
+      })
+    });
+
+    if (response.status < 300) {
+      const data = await response.json();
+      if (data.success) {
+        return null;
+      }
+
+      return data.message;
+    }
+
+    return null;
+  }
+
   static async deleteFile(file: File): Promise<ISaveFiddleResponse> {
     const json: IFiddleFile = {
       name: file.getPath()

@@ -90,7 +90,7 @@ export class EditFileDialog extends React.Component<EditFileDialogProps, EditFil
             <Spacer height={8} />
             <TextInputBox label="Description:" value={this.state.description} onChange={this.onChangeDescription} />
           </div>
-          <div>
+          <div className="modal-footer">
             <Button
               icon={<GoX />}
               label="Cancel"

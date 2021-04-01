@@ -25,7 +25,7 @@
 
 html,
 body {
-  font-family: 'Roboto', sans-serif;
+  font-family: "Roboto", sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -49,7 +49,7 @@ body {
 }
 
 input {
-  font-family: 'Roboto', sans-serif;
+  font-family: "Roboto", sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -99,7 +99,7 @@ a {
 }
 
 .workspaceContainer:after {
-  content: 'v0.1.1';
+  content: "v0.1.1";
   position: fixed;
   width: 80px;
   height: 20px;
@@ -147,7 +147,7 @@ a {
 }
 
 .wasmStudioHeader {
-  font-family: 'Zilla Slab', serif;
+  font-family: "Zilla Slab", serif;
   font-size: 16px;
   width: 100%;
   height: 30px;
@@ -187,7 +187,7 @@ a {
 
 .terminal {
   color: #fff;
-  font-family: 'Roboto Mono', courier-new, courier, monospace;
+  font-family: "Roboto Mono", courier-new, courier, monospace;
   font-size: 12px;
   font-weight: bold;
 }
@@ -601,7 +601,7 @@ a {
   left: 50%;
   transform: translate(-50%, -50%);
   width: 600px;
-  min-height: 360px;
+  max-height: 360px;
   background-color: rgb(48, 48, 48);
   outline: none;
   box-shadow: 1px 1px 4px black;
@@ -618,7 +618,7 @@ a {
 }
 
 .modal-title-bar {
-  font-family: 'Zilla Slab', serif;
+  font-family: "Zilla Slab", serif;
   line-height: 22px;
   color: rgb(255, 255, 255);
   background-color: var(--title);
@@ -633,6 +633,7 @@ a {
 
 .modal-footer {
   display: flex;
+  background: rgba(39, 39, 39, 0.5);
 }
 
 .toast {
@@ -755,8 +756,19 @@ a {
   height: 400px;
 }
 
+.modal.newProject .newProject-sidebar {
+  background: rgba(0, 0, 0, 0.18);
+}
+.modal.newProject .newProject-sidebar .list-item {
+  border-left: solid 3px transparent;
+}
+.modal.newProject .newProject-sidebar .list-item.selected {
+  border-left-color: var(--title);
+}
+
 .new-file-dialog-description {
-  height: 256px;
+  max-height: 256px;
+  width: 100%;
   padding: 8px;
   font-size: 12px;
 }
@@ -773,6 +785,32 @@ a {
   padding: 8px;
   font-size: 12px;
   overflow: auto;
+  line-height: 1.4;
+}
+
+.new-project-dialog-description .desc .md {
+  line-height: 1.35;
+}
+
+.new-project-dialog-description .recent-item {
+  padding: 10px;
+  border-bottom: solid 1px #4a4a4a;
+  cursor: pointer;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  width: 350px;
+  overflow: hidden;
+}
+.new-project-dialog-description .has-selected .recent-item {
+  color: #666;
+}
+.new-project-dialog-description .has-selected .recent-item.selected {
+  color: #fff;
+}
+
+.new-project-dialog-description .recent-item .octicon {
+  margin-right: 10px;
 }
 
 .new-project-dialog-description .desc::-webkit-scrollbar-corner {
@@ -823,7 +861,7 @@ a {
 }
 
 .file-upload-input::before {
-  content: 'Select some files';
+  content: "Select some files";
   color: black;
   display: inline-block;
   background: #333;
@@ -844,7 +882,7 @@ a {
 
 .md {
   line-height: 1.5em;
-  font-family: 'Roboto', sans-serif;
+  font-family: "Roboto", sans-serif;
   font-size: 14px;
 }
 
@@ -869,7 +907,7 @@ a {
 
 .md h1,
 .md h2 {
-  font-family: 'Zilla Slab', serif;
+  font-family: "Zilla Slab", serif;
 }
 
 .md blockquote,
@@ -967,17 +1005,17 @@ a {
 }
 
 .monaco-icon-label.dirty::after {
-  content: 'M';
+  content: "M";
   font-size: 10px;
 }
 
 .monaco-icon-label.transient::after {
-  content: 'T';
+  content: "T";
   font-size: 10px;
 }
 
 .monaco-icon-label.dirty.transient::after {
-  content: 'M T';
+  content: "M T";
   font-size: 10px;
 }
 
@@ -1004,87 +1042,87 @@ a {
 
 .action-label.octicon-file-add::before {
   font-family: octicons;
-  content: '\f05d';
+  content: "\f05d";
 }
 
 .action-label.octicon-cloud-download::before {
   font-family: octicons;
-  content: '\f00b';
+  content: "\f00b";
 }
 
 .action-label.octicon-cloud-upload::before {
   font-family: octicons;
-  content: '\f00c';
+  content: "\f00c";
 }
 
 .action-label.octicon-pencil::before {
   font-family: octicons;
-  content: '\f058';
+  content: "\f058";
 }
 
 .action-label.octicon-x::before {
   font-family: octicons;
-  content: '\f081';
+  content: "\f081";
 }
 
 .action-label.octicon-quote::before {
   font-family: octicons;
-  content: '\f063';
+  content: "\f063";
 }
 
 .action-label.octicon-gear::before {
   font-family: octicons;
-  content: '\f02f';
+  content: "\f02f";
 }
 
 .action-label.octicon-verified::before {
   font-family: octicons;
-  content: '\f02f';
+  content: "\f02f";
 }
 
 .action-label.octicon-file-code::before {
   font-family: octicons;
-  content: '\f010';
+  content: "\f010";
 }
 
 .action-label.octicon-file-binary::before {
   font-family: octicons;
-  content: '\f094';
+  content: "\f094";
 }
 
 .action-label.octicon-check::before {
   font-family: octicons;
-  content: '\f03a';
+  content: "\f03a";
 }
 
 .action-label.octicon-gist::before {
   font-family: octicons;
-  content: '\f00e';
+  content: "\f00e";
 }
 
 .label-name.error-dark::before {
-  content: url('../svg/error-dark.svg');
+  content: url("../svg/error-dark.svg");
   padding-right: 4px;
   position: relative;
   top: 4px;
 }
 
 .label-name.warning-dark::before {
-  content: url('../svg/warning-dark.svg');
+  content: url("../svg/warning-dark.svg");
   padding-right: 4px;
   position: relative;
   top: 4px;
 }
 
 .label-name.info-dark::before {
-  content: url('../svg/info-dark.svg');
+  content: url("../svg/info-dark.svg");
   padding-right: 4px;
   position: relative;
   top: 4px;
 }
 
 .browser-not-supported-description {
-  font-family: 'Roboto', sans-serif;
+  font-family: "Roboto", sans-serif;
   padding: 8px;
   line-height: 1.5em;
   font-size: 18px;
@@ -1164,4 +1202,18 @@ a {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.recents-empty {
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  display: flex;
+  color: #fff;
+  font-size: 12px;
+}
+
+.recents-empty svg {
+  fill: currentColor;
 }
