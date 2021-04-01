@@ -81,7 +81,6 @@
     "shelljs": "^0.8.4",
     "tar-js": "^0.3.0",
     "tslint-react": "^3.6.0",
-    "wasm-analyzer": "file:./server/analyzer/pkg",
     "xterm": "^4.11.0",
     "xterm-addon-attach": "^0.6.0",
     "xterm-addon-fit": "^0.5.0"

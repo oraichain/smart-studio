@@ -20,7 +20,7 @@
  */
 
 import * as rustConf from 'monaco-editor/esm/vs/basic-languages/rust/rust';
-import { WorldState } from 'wasm-analyzer';
+import { WorldState } from '../../lib/analyzer/pkg';
 
 export interface Token {
   tag: string;
@@ -97,7 +97,7 @@ const fixTag = (tag: string) => {
 };
 
 export default async function registerLanguages() {
-  const { WorldState: WorldStateClass } = await import('wasm-analyzer');
+  const { WorldState: WorldStateClass } = await import('../../lib/analyzer/pkg');
   state = new WorldStateClass();
 
   monaco.languages.register({
