@@ -31,6 +31,7 @@
     "@nestjs/websockets": "^7.6.15",
     "axios": "^0.21.1",
     "express-ws": "^4.0.0",
+    "fast-folder-size": "^1.0.3",
     "fs-extra": "^9.1.0",
     "node-pty": "^0.10.0",
     "passport": "^0.4.1",

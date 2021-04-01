@@ -1,3 +1,4 @@
 .registry_cache
 smart-contracts/target
 smart-contracts/packages
+node_modules

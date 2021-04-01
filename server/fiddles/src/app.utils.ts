@@ -182,7 +182,7 @@ fn main() {
 
     // wasm-optimize on all results
     execution = shell.exec(
-      `mkdir -p packages/${contractSub}/artifacts && wasm-opt -Os "target/wasm32-unknown-unknown/release/${contractName}.wasm" -o "packages/${contractSub}/artifacts/${name}.wasm"`,
+      `wasm-opt -Os "target/wasm32-unknown-unknown/release/${contractName}.wasm" -o "packages/${contractSub}/artifacts/${name}.wasm"`,
     );
     if (execution.code !== 0) {
       return {

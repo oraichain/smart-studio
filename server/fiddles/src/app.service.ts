@@ -14,6 +14,10 @@ import {
   smartContractFolder,
   smartContractPackages,
 } from './app.utils';
+import { promisify } from 'util';
+import fastFolderSize from 'fast-folder-size';
+
+const fastFolderSizeAsync = promisify(fastFolderSize);
 
 export interface IFiddleFile {
   name: string;
@@ -38,6 +42,7 @@ export interface ILoadFiddleResponse {
 export class AppService {
   // it run in dist folder
   static readonly clientPath: string = path.join(__dirname);
+  static readonly BUCKET_SIZE: number = 10 * 1024 * 1024; // 1MB
 
   async getProject(req: Request): Promise<ILoadFiddleResponse> {
     let { name } = req.query;
@@ -117,6 +122,18 @@ export class AppService {
     }
   }
 
+  async isOutOfSpace(userDir: string, name: string) {
+    const size = await fastFolderSizeAsync(userDir);
+
+    console.info('size of', userDir, size);
+
+    if (size < AppService.BUCKET_SIZE) {
+      return true;
+    }
+
+    return false;
+  }
+
   // this method allow get even binary content of file such as WASM file
   async getFile(req: Request): Promise<IFiddleFile> {
     let { name } = req.query;
@@ -158,6 +175,18 @@ export class AppService {
       return {
         success: false,
         message: `Can not add ${filePath} for this package: ${name}`,
+      };
+    }
+
+    if (
+      await this.isOutOfSpace(
+        path.join(smartContractPackages, getUserPrefix(req.user)),
+        name,
+      )
+    ) {
+      return {
+        success: false,
+        message: 'Out of space.',
       };
     }
 

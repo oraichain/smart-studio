@@ -16,7 +16,6 @@ import {
   ISaveFiddleResponse,
   IFiddleFile,
 } from './app.service';
-import { AuthGuard } from '@nestjs/passport';
 import { JwtAuthGuard } from './auth/jwt.guard';
 
 @Controller()
@@ -25,8 +24,8 @@ export class AppController {
   constructor(private readonly appService: AppService) {}
 
   @Get()
-  root(@Res() response): void {
-    response.sendFile(path.resolve(AppService.clientPath, 'index.html'));
+  root(): string {
+    return 'Smart Studio Server';
   }
 
   @Get('project')
