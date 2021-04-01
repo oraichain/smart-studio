@@ -1,14 +1,14 @@
 use crate::error::ContractError;
-use crate::msg::{HandleMsg, InitMsg, QueryMsg};
+use crate::msg::{HandleMsg, InitMsg, QueryMsg, SpecialQuery};
 use cosmwasm_std::{
-    to_binary, Api, Binary, Env, Extern, HandleResponse, InitResponse, MessageInfo, Querier,
-    StdResult, Storage,
+    Binary, Env, HandleResponse, InitResponse, MessageInfo,
+    StdResult, Deps, DepsMut
 };
 
 // Note, you can use StdResult in some functions where you do not
 // make use of the custom errors
-pub fn init<S: Storage, A: Api, Q: Querier>(
-    _deps: &mut Extern<S, A, Q>,
+pub fn init(
+    _deps: DepsMut,
     _env: Env,
     _info: MessageInfo,
     _: InitMsg,
@@ -17,8 +17,8 @@ pub fn init<S: Storage, A: Api, Q: Querier>(
 }
 
 // And declare a custom Error variant for the ones where you will want to make use of it
-pub fn handle<S: Storage, A: Api, Q: Querier>(
-    _: &mut Extern<S, A, Q>,
+pub fn handle(
+    _: DepsMut,
     _env: Env,
     _: MessageInfo,
     _: HandleMsg,
@@ -26,20 +26,19 @@ pub fn handle<S: Storage, A: Api, Q: Querier>(
     Ok(HandleResponse::default())
 }
 
-pub fn query<S: Storage, A: Api, Q: Querier>(
-    deps: &Extern<S, A, Q>,
+pub fn query(
+    deps: Deps,
     _env: Env,
     msg: QueryMsg,
 ) -> StdResult<Binary> {
     match msg {
-        QueryMsg::Get { input } => to_binary(&query_data(deps, input)?),
+        QueryMsg::Get { input } => query_data(deps, input),
     }
 }
 
-fn query_data<S: Storage, A: Api, Q: Querier>(
-    deps: &Extern<S, A, Q>,
+fn query_data(
+    deps: Deps,
     input: String,
-) -> StdResult<String> {
-   
+) -> StdResult<Binary> { 
     Ok(String::new())
 }
