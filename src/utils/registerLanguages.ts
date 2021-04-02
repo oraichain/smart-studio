@@ -20,7 +20,7 @@
  */
 
 import * as rustConf from 'monaco-editor/esm/vs/basic-languages/rust/rust';
-import { WorldState } from 'wasm-analyzer';
+import { WorldState } from '../../lib/analyzer/pkg';
 
 export interface Token {
   tag: string;
@@ -28,22 +28,17 @@ export interface Token {
 }
 
 let state: WorldState = null;
-let allTokens: Token[] = [];
 
 // default we will update tokens from all open files
 export const updateModelTokens = async (model: monaco.editor.ITextModel, languageId: string) => {
   let update;
-
   switch (languageId) {
-    case 'ra-rust':
+    case 'rust':
       // need to merge
       update = () => {
         const res = state.update(model.getValue());
         monaco.editor.setModelMarkers(model, languageId, res.diagnostics);
         // TODO: completion from all files
-        if (res.highlights.length) {
-          allTokens = res.highlights;
-        }
       };
       break;
     default:
@@ -55,68 +50,21 @@ export const updateModelTokens = async (model: monaco.editor.ITextModel, languag
   }
 };
 
-class State implements monaco.languages.IState {
-  clone() {
-    return new State();
-  }
-  equals(other: monaco.languages.IState): boolean {
-    return other === this;
-  }
-}
-
-class TokenState implements monaco.languages.IState {
-  public line: number;
-  constructor(line = 0) {
-    this.line = line;
-  }
-
-  equals(other: monaco.languages.IState): boolean {
-    return true;
-  }
-
-  clone(): monaco.languages.IState {
-    const res = new TokenState(this.line);
-    res.line += 1;
-    return res;
-  }
-}
-
-const fixTag = (tag: string) => {
-  switch (tag) {
-    case 'builtin':
-      return 'variable.predefined';
-    case 'attribute':
-      return 'key';
-    case 'macro':
-      return 'number.hex';
-    case 'literal':
-      return 'number';
-    default:
-      return tag;
-  }
-};
-
 export default async function registerLanguages() {
-  const { WorldState: WorldStateClass } = await import('wasm-analyzer');
+  const { WorldState: WorldStateClass } = await import('../../lib/analyzer/pkg');
   state = new WorldStateClass();
 
   monaco.languages.register({
     id: 'rust'
   });
   monaco.languages.setMonarchTokensProvider('rust', rustConf.language);
+  monaco.languages.setLanguageConfiguration('rust', rustConf.conf);
 
-  // Rust analyzer implementation
-  monaco.languages.register({
-    id: 'ra-rust'
-  });
-
-  monaco.languages.setLanguageConfiguration('ra-rust', rustConf.conf);
-
-  monaco.languages.onLanguage('ra-rust', async () => {
-    monaco.languages.registerHoverProvider('ra-rust', {
+  monaco.languages.onLanguage('rust', async () => {
+    monaco.languages.registerHoverProvider('rust', {
       provideHover: (_, pos) => state.hover(pos.lineNumber, pos.column)
     });
-    monaco.languages.registerCodeLensProvider('ra-rust', {
+    monaco.languages.registerCodeLensProvider('rust', {
       provideCodeLenses(m) {
         const code_lenses = state.code_lenses();
         const lenses = code_lenses.map(({ range, command }: any) => {
@@ -142,7 +90,7 @@ export default async function registerLanguages() {
         return { lenses, dispose() {} };
       }
     });
-    monaco.languages.registerReferenceProvider('ra-rust', {
+    monaco.languages.registerReferenceProvider('rust', {
       provideReferences(m, pos, { includeDeclaration }) {
         const references = state.references(pos.lineNumber, pos.column, includeDeclaration);
         if (references) {
@@ -150,10 +98,10 @@ export default async function registerLanguages() {
         }
       }
     });
-    monaco.languages.registerDocumentHighlightProvider('ra-rust', {
+    monaco.languages.registerDocumentHighlightProvider('rust', {
       provideDocumentHighlights: (_, pos) => state.references(pos.lineNumber, pos.column, true)
     });
-    monaco.languages.registerRenameProvider('ra-rust', {
+    monaco.languages.registerRenameProvider('rust', {
       provideRenameEdits: (m, pos, newName) => {
         const edits = state.rename(pos.lineNumber, pos.column, newName);
         if (edits) {
@@ -169,7 +117,7 @@ export default async function registerLanguages() {
       },
       resolveRenameLocation: (_, pos) => state.prepare_rename(pos.lineNumber, pos.column)
     });
-    monaco.languages.registerCompletionItemProvider('ra-rust', {
+    monaco.languages.registerCompletionItemProvider('rust', {
       triggerCharacters: ['.', ':', '='],
       provideCompletionItems(m, pos) {
         const suggestions = state.completions(pos.lineNumber, pos.column);
@@ -178,7 +126,7 @@ export default async function registerLanguages() {
         }
       }
     });
-    monaco.languages.registerSignatureHelpProvider('ra-rust', {
+    monaco.languages.registerSignatureHelpProvider('rust', {
       signatureHelpTriggerCharacters: ['(', ','],
       provideSignatureHelp(m, pos) {
         const value = state.signature_help(pos.lineNumber, pos.column);
@@ -190,7 +138,7 @@ export default async function registerLanguages() {
         }
       }
     });
-    monaco.languages.registerDefinitionProvider('ra-rust', {
+    monaco.languages.registerDefinitionProvider('rust', {
       provideDefinition(m, pos) {
         const list = state.definition(pos.lineNumber, pos.column);
         if (list) {
@@ -198,7 +146,7 @@ export default async function registerLanguages() {
         }
       }
     });
-    monaco.languages.registerTypeDefinitionProvider('ra-rust', {
+    monaco.languages.registerTypeDefinitionProvider('rust', {
       provideTypeDefinition(m, pos) {
         const list = state.type_definition(pos.lineNumber, pos.column);
         if (list) {
@@ -206,7 +154,7 @@ export default async function registerLanguages() {
         }
       }
     });
-    monaco.languages.registerImplementationProvider('ra-rust', {
+    monaco.languages.registerImplementationProvider('rust', {
       provideImplementation(m, pos) {
         const list = state.goto_implementation(pos.lineNumber, pos.column);
         if (list) {
@@ -214,40 +162,15 @@ export default async function registerLanguages() {
         }
       }
     });
-    monaco.languages.registerDocumentSymbolProvider('ra-rust', {
+    monaco.languages.registerDocumentSymbolProvider('rust', {
       provideDocumentSymbols: () => state.document_symbols()
     });
-    monaco.languages.registerOnTypeFormattingEditProvider('ra-rust', {
+    monaco.languages.registerOnTypeFormattingEditProvider('rust', {
       autoFormatTriggerCharacters: ['.', '='],
       provideOnTypeFormattingEdits: (_, pos, ch) => state.type_formatting(pos.lineNumber, pos.column, ch)
     });
-    monaco.languages.registerFoldingRangeProvider('ra-rust', {
+    monaco.languages.registerFoldingRangeProvider('rust', {
       provideFoldingRanges: () => state.folding_ranges()
-    });
-
-    monaco.languages.setTokensProvider('ra-rust', {
-      getInitialState: () => new TokenState(),
-      tokenize(_, st: TokenState) {
-        const filteredTokens = allTokens.filter((token) => token.range.startLineNumber === st.line);
-
-        const tokens = filteredTokens.map((token) => ({
-          startIndex: token.range.startColumn - 1,
-          scopes: fixTag(token.tag)
-        }));
-        // add tokens inbetween highlighted ones to remove color artifacts
-        tokens.push(
-          ...filteredTokens.filter((tok, i) => i === tokens.length - 1 || tokens[i + 1].startIndex > tok.range.endColumn - 1).map((token) => ({
-            startIndex: token.range.endColumn - 1,
-            scopes: 'operator'
-          }))
-        );
-        tokens.sort((a, b) => a.startIndex - b.startIndex);
-
-        return {
-          tokens,
-          endState: new TokenState(st.line + 1)
-        };
-      }
     });
   });
 }

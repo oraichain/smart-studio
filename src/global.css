@@ -124,14 +124,9 @@ a {
   font-size: 14px;
 }
 
-.consoleContainer {
-  width: 100%;
-  height: 100%;
-}
-
 .editor-container {
   width: 100%;
-  height: calc(100% - 22px);
+  height: 100%;
 }
 .editor-status-bar {
   color: var(--title-complement);
@@ -177,12 +172,6 @@ a {
 
 .terminal .xterm-viewport {
   background-color: #24282a;
-}
-
-.consoleContainer {
-  padding: 4px;
-  width: 100%;
-  height: 100%;
 }
 
 .terminal {
