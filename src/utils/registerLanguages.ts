@@ -26,10 +26,10 @@ import { LanguageUpdater } from './languageUpdater';
 const languageUpdater = new LanguageUpdater();
 
 // default we will update tokens from all open files for rust
-export const updateModelTokens = async (model: monaco.editor.ITextModel, languageId: string) => {
+export const updateModelTokens = (model: monaco.editor.ITextModel, languageId: string) => {
   switch (languageId) {
     case 'rust':
-      await languageUpdater.addModel(model, languageId);
+      languageUpdater.addModel(model, languageId);
       break;
     default:
       break;

@@ -56,6 +56,7 @@ export class LanguageUpdater {
       (data: any) => data && !data.contents[0].value.match(/rust\n*{unknown}/),
       (otherModel: monaco.editor.ITextModel, otherPos: monaco.Position) => {
         const otherState = this.states.get(otherModel.uri);
+        if (!otherState) return;
         return otherState.hover(otherPos.lineNumber, otherPos.column);
       }
     );
@@ -63,6 +64,7 @@ export class LanguageUpdater {
 
   provideCodeLenses(model: monaco.editor.ITextModel) {
     const state = this.states.get(model.uri);
+    if (!state) return;
     const code_lenses = state.code_lenses();
     const lenses = code_lenses.map(({ range, command }: any) => {
       const position = {
@@ -89,6 +91,7 @@ export class LanguageUpdater {
 
   provideReferences(model: monaco.editor.ITextModel, pos: monaco.Position, { includeDeclaration }: monaco.languages.ReferenceContext) {
     const state = this.states.get(model.uri);
+    if (!state) return;
     const references = state.references(pos.lineNumber, pos.column, includeDeclaration);
     if (references) {
       return references.map(({ range }: monaco.languages.Location) => ({ uri: model.uri, range }));
@@ -102,6 +105,7 @@ export class LanguageUpdater {
 
   provideRenameEdits(model: monaco.editor.ITextModel, pos: monaco.Position, newName: string) {
     const state = this.states.get(model.uri);
+    if (!state) return;
     const edits = state.rename(pos.lineNumber, pos.column, newName);
     if (edits) {
       return {
@@ -117,11 +121,13 @@ export class LanguageUpdater {
 
   resolveRenameLocation(model: monaco.editor.ITextModel, pos: monaco.Position) {
     const state = this.states.get(model.uri);
+    if (!state) return;
     return state.prepare_rename(pos.lineNumber, pos.column);
   }
 
   provideCompletionItems(model: monaco.editor.ITextModel, pos: monaco.Position) {
     const state = this.states.get(model.uri);
+    if (!state) return;
     const suggestions = state.completions(pos.lineNumber, pos.column);
     console.log(suggestions);
     if (suggestions) {
@@ -131,6 +137,7 @@ export class LanguageUpdater {
 
   provideSignatureHelp(model: monaco.editor.ITextModel, pos: monaco.Position) {
     const state = this.states.get(model.uri);
+    if (!state) return;
     const value = state.signature_help(pos.lineNumber, pos.column);
     if (value) {
       return {
@@ -142,6 +149,7 @@ export class LanguageUpdater {
 
   provideDefinition(model: monaco.editor.ITextModel, pos: monaco.Position) {
     const state = this.states.get(model.uri);
+    if (!state) return;
     const list = state.definition(pos.lineNumber, pos.column);
     if (list) {
       return list.map((def: monaco.languages.Definition) => ({ ...def, uri: model.uri }));
@@ -150,6 +158,7 @@ export class LanguageUpdater {
 
   provideTypeDefinition(model: monaco.editor.ITextModel, pos: monaco.Position) {
     const state = this.states.get(model.uri);
+    if (!state) return;
     const list = state.type_definition(pos.lineNumber, pos.column);
     if (list) {
       return list.map((def: monaco.languages.Definition) => ({ ...def, uri: model.uri }));
@@ -158,6 +167,7 @@ export class LanguageUpdater {
 
   provideImplementation(model: monaco.editor.ITextModel, pos: monaco.Position) {
     const state = this.states.get(model.uri);
+    if (!state) return;
     const list = state.goto_implementation(pos.lineNumber, pos.column);
     if (list) {
       return list.map((def: monaco.languages.Definition) => ({ ...def, uri: model.uri }));
@@ -166,16 +176,19 @@ export class LanguageUpdater {
 
   provideDocumentSymbols(model: monaco.editor.ITextModel) {
     const state = this.states.get(model.uri);
+    if (!state) return;
     return state.document_symbols();
   }
 
   provideOnTypeFormattingEdits(model: monaco.editor.ITextModel, pos: monaco.Position, ch: string) {
     const state = this.states.get(model.uri);
+    if (!state) return;
     return state.type_formatting(pos.lineNumber, pos.column, ch);
   }
 
   provideFoldingRanges(model: monaco.editor.ITextModel) {
     const state = this.states.get(model.uri);
+    if (!state) return;
     return state.folding_ranges();
   }
 }
