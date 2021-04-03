@@ -129,7 +129,6 @@ export class LanguageUpdater {
     const state = this.states.get(model.uri);
     if (!state) return;
     const suggestions = state.completions(pos.lineNumber, pos.column);
-    console.log(suggestions);
     if (suggestions) {
       return { suggestions };
     }
