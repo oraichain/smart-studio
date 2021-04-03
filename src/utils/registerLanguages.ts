@@ -19,158 +19,112 @@
  * SOFTWARE.
  */
 
-import * as rustConf from 'monaco-editor/esm/vs/basic-languages/rust/rust';
+import { language, conf } from 'monaco-editor/esm/vs/basic-languages/rust/rust';
 import { WorldState } from '../../lib/analyzer/pkg';
+import { LanguageUpdater } from './languageUpdater';
 
-export interface Token {
-  tag: string;
-  range: monaco.Range;
-}
+const languageUpdater = new LanguageUpdater();
 
-let state: WorldState = null;
-
-// default we will update tokens from all open files
+// default we will update tokens from all open files for rust
 export const updateModelTokens = async (model: monaco.editor.ITextModel, languageId: string) => {
-  let update;
   switch (languageId) {
     case 'rust':
-      // need to merge
-      update = () => {
-        const res = state.update(model.getValue());
-        monaco.editor.setModelMarkers(model, languageId, res.diagnostics);
-        // TODO: completion from all files
-      };
+      await languageUpdater.addModel(model, languageId);
       break;
     default:
       break;
   }
-  if (update && state) {
-    update();
-    model.onDidChangeContent(update);
-  }
 };
 
 export default async function registerLanguages() {
-  const { WorldState: WorldStateClass } = await import('../../lib/analyzer/pkg');
-  state = new WorldStateClass();
+  // Log
+  monaco.languages.onLanguage('log', () => {
+    monaco.languages.setMonarchTokensProvider('log', {
+      tokenizer: {
+        root: [[/error[:[].*/, 'custom-error'], [/warn[:[].*/, 'custom-warn'], [/notice[:[].*/, 'custom-notice'], [/info[:[].*/, 'custom-info']]
+      }
+    });
+  });
+  monaco.languages.register({
+    id: 'log'
+  });
 
+  // rust languages
   monaco.languages.register({
     id: 'rust'
   });
-  monaco.languages.setMonarchTokensProvider('rust', rustConf.language);
-  monaco.languages.setLanguageConfiguration('rust', rustConf.conf);
+  monaco.languages.setMonarchTokensProvider('rust', language);
+  monaco.languages.setLanguageConfiguration('rust', conf);
 
-  monaco.languages.onLanguage('rust', async () => {
-    monaco.languages.registerHoverProvider('rust', {
-      provideHover: (_, pos) => state.hover(pos.lineNumber, pos.column)
-    });
-    monaco.languages.registerCodeLensProvider('rust', {
-      provideCodeLenses(m) {
-        const code_lenses = state.code_lenses();
-        const lenses = code_lenses.map(({ range, command }: any) => {
-          const position = {
-            column: range.startColumn,
-            lineNumber: range.startLineNumber
-          };
-
-          const references: monaco.languages.Location = command.positions.map((pos: any) => ({
-            range: pos,
-            uri: m.uri
-          }));
-          return {
-            range,
-            command: {
-              id: command.id,
-              title: command.title,
-              arguments: [m.uri, position, references]
-            }
-          };
-        });
-
-        return { lenses, dispose() {} };
-      }
-    });
-    monaco.languages.registerReferenceProvider('rust', {
-      provideReferences(m, pos, { includeDeclaration }) {
-        const references = state.references(pos.lineNumber, pos.column, includeDeclaration);
-        if (references) {
-          return references.map(({ range }: monaco.languages.Location) => ({ uri: m.uri, range }));
-        }
-      }
-    });
-    monaco.languages.registerDocumentHighlightProvider('rust', {
-      provideDocumentHighlights: (_, pos) => state.references(pos.lineNumber, pos.column, true)
-    });
-    monaco.languages.registerRenameProvider('rust', {
-      provideRenameEdits: (m, pos, newName) => {
-        const edits = state.rename(pos.lineNumber, pos.column, newName);
-        if (edits) {
-          return {
-            edits: [
-              {
-                resource: m.uri,
-                edits
-              }
-            ]
-          };
-        }
-      },
-      resolveRenameLocation: (_, pos) => state.prepare_rename(pos.lineNumber, pos.column)
-    });
-    monaco.languages.registerCompletionItemProvider('rust', {
-      triggerCharacters: ['.', ':', '='],
-      provideCompletionItems(m, pos) {
-        const suggestions = state.completions(pos.lineNumber, pos.column);
-        if (suggestions) {
-          return { suggestions };
-        }
-      }
-    });
-    monaco.languages.registerSignatureHelpProvider('rust', {
-      signatureHelpTriggerCharacters: ['(', ','],
-      provideSignatureHelp(m, pos) {
-        const value = state.signature_help(pos.lineNumber, pos.column);
-        if (value) {
-          return {
-            value,
-            dispose() {}
-          };
-        }
-      }
-    });
-    monaco.languages.registerDefinitionProvider('rust', {
-      provideDefinition(m, pos) {
-        const list = state.definition(pos.lineNumber, pos.column);
-        if (list) {
-          return list.map((def: monaco.languages.Definition) => ({ ...def, uri: m.uri }));
-        }
-      }
-    });
-    monaco.languages.registerTypeDefinitionProvider('rust', {
-      provideTypeDefinition(m, pos) {
-        const list = state.type_definition(pos.lineNumber, pos.column);
-        if (list) {
-          return list.map((def: monaco.languages.Definition) => ({ ...def, uri: m.uri }));
-        }
-      }
-    });
-    monaco.languages.registerImplementationProvider('rust', {
-      provideImplementation(m, pos) {
-        const list = state.goto_implementation(pos.lineNumber, pos.column);
-        if (list) {
-          return list.map((def: monaco.languages.Definition) => ({ ...def, uri: m.uri }));
-        }
-      }
-    });
-    monaco.languages.registerDocumentSymbolProvider('rust', {
-      provideDocumentSymbols: () => state.document_symbols()
-    });
-    monaco.languages.registerOnTypeFormattingEditProvider('rust', {
-      autoFormatTriggerCharacters: ['.', '='],
-      provideOnTypeFormattingEdits: (_, pos, ch) => state.type_formatting(pos.lineNumber, pos.column, ch)
-    });
-    monaco.languages.registerFoldingRangeProvider('rust', {
-      provideFoldingRanges: () => state.folding_ranges()
-    });
+  monaco.languages.registerHoverProvider('rust', {
+    provideHover(model, pos) {
+      return languageUpdater.provideHover(model, pos);
+    }
+  });
+  monaco.languages.registerCodeLensProvider('rust', {
+    provideCodeLenses(model) {
+      return languageUpdater.provideCodeLenses(model);
+    }
+  });
+  monaco.languages.registerReferenceProvider('rust', {
+    provideReferences(model, pos, context) {
+      return languageUpdater.provideReferences(model, pos, context);
+    }
+  });
+  monaco.languages.registerDocumentHighlightProvider('rust', {
+    provideDocumentHighlights(model, pos) {
+      return languageUpdater.provideDocumentHighlights(model, pos);
+    }
+  });
+  monaco.languages.registerRenameProvider('rust', {
+    provideRenameEdits: (model, pos, newName) => {
+      return languageUpdater.provideRenameEdits(model, pos, newName);
+    },
+    resolveRenameLocation(model, pos) {
+      return languageUpdater.resolveRenameLocation(model, pos);
+    }
+  });
+  monaco.languages.registerCompletionItemProvider('rust', {
+    triggerCharacters: ['.', ':', '='],
+    provideCompletionItems(model, pos) {
+      return languageUpdater.provideCompletionItems(model, pos);
+    }
+  });
+  monaco.languages.registerSignatureHelpProvider('rust', {
+    signatureHelpTriggerCharacters: ['(', ','],
+    provideSignatureHelp(model, pos) {
+      return languageUpdater.provideSignatureHelp(model, pos);
+    }
+  });
+  monaco.languages.registerDefinitionProvider('rust', {
+    provideDefinition(model, pos) {
+      return languageUpdater.provideDefinition(model, pos);
+    }
+  });
+  monaco.languages.registerTypeDefinitionProvider('rust', {
+    provideTypeDefinition(model, pos) {
+      return languageUpdater.provideTypeDefinition(model, pos);
+    }
+  });
+  monaco.languages.registerImplementationProvider('rust', {
+    provideImplementation(model, pos) {
+      return languageUpdater.provideImplementation(model, pos);
+    }
+  });
+  monaco.languages.registerDocumentSymbolProvider('rust', {
+    provideDocumentSymbols(model) {
+      return languageUpdater.provideDocumentSymbols(model);
+    }
+  });
+  monaco.languages.registerOnTypeFormattingEditProvider('rust', {
+    autoFormatTriggerCharacters: ['.', '='],
+    provideOnTypeFormattingEdits(model, pos, ch) {
+      return languageUpdater.provideOnTypeFormattingEdits(model, pos, ch);
+    }
+  });
+  monaco.languages.registerFoldingRangeProvider('rust', {
+    provideFoldingRanges(model) {
+      return languageUpdater.provideFoldingRanges(model);
+    }
   });
 }

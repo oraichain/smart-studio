@@ -30,6 +30,8 @@ import { INotificationService } from 'monaco-editor/esm/vs/platform/notification
 import { Tree } from 'monaco-editor/esm/vs/base/parts/tree/browser/treeImpl';
 
 import { ITree } from './monaco-extra';
+import registerTheme from './utils/registerTheme';
+import registerLanguages from './utils/registerLanguages';
 // Utils provided by monaco editor, but exposed only via AMD require().
 // See index.tsx for initialization.
 export class MonacoUtils {
@@ -39,17 +41,12 @@ export class MonacoUtils {
   static ContextMenuserviceInstance: any;
   static initialize() {
     // define theme
-    monaco.editor.defineTheme('fiddle-theme', {
-      base: 'vs-dark',
-      inherit: true,
-      colors: {},
-      rules: [
-        { token: 'custom-info', foreground: 'd4d4d4' },
-        { token: 'custom-warn', foreground: 'ff9900' },
-        { token: 'custom-error', background: '00ff00', foreground: 'ff0000', fontStyle: 'bold' }
-      ]
-    });
+    registerTheme();
 
+    // languages
+    registerLanguages();
+
+    // define services
     const services = new DynamicStandaloneServices(document.documentElement, {});
     const telemetryService = services.get(ITelemetryService);
     const notificationService = services.get(INotificationService);

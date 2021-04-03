@@ -26,8 +26,6 @@ import ReactDOM from 'react-dom';
 import { App, EmbeddingParams, EmbeddingType } from './components/App';
 import { layout } from './util';
 import { MonacoUtils } from './monaco-utils';
-import registerLanguages, { updateModelTokens } from './utils/registerLanguages';
-import registerTheme from './utils/registerTheme';
 
 import './global.css';
 
@@ -116,7 +114,6 @@ export async function init(environment = 'production') {
   const fiddle = parameters['fiddle'] || parameters['f'];
   const embeddingParams = getEmbeddingParams(parameters);
   try {
-    await registerLanguages();
     MonacoUtils.initialize();
     loadKeyStation((keystation: any) => {
       ReactDOM.render(

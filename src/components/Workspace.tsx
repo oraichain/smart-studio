@@ -65,7 +65,7 @@ export class Workspace extends React.Component<WorkspaceProps, WorkSpaceState> {
     appStore.onDidChangeChildren.unregister(this.refreshTree);
   }
   refreshTree = () => {
-    (this.directoryTree.tree as any).model.refresh();
+    this.directoryTree.tree.model.refresh();
   };
   render() {
     const project = this.props.project;

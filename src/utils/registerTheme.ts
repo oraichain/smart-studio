@@ -19,4 +19,15 @@
  * SOFTWARE.
  */
 
-export default function registerTheme() {}
+export default function registerTheme() {
+  monaco.editor.defineTheme('fiddle-theme', {
+    base: 'vs-dark',
+    inherit: true,
+    colors: {},
+    rules: [
+      { token: 'custom-info', foreground: 'd4d4d4' },
+      { token: 'custom-warn', foreground: 'ff9900' },
+      { token: 'custom-error', background: '00ff00', foreground: 'ff0000', fontStyle: 'bold' }
+    ]
+  });
+}

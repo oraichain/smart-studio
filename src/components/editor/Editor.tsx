@@ -70,14 +70,15 @@ export class Monaco extends React.Component<MonacoProps, {}> {
     return true;
   }
 
-  componentDidUpdate() {
+  async componentDidUpdate() {
     const { view } = this.props;
     if (view) {
       this.ensureEditor();
       this.editor.setModel(view.file.buffer);
       this.editor.restoreViewState(view.state);
       this.editor.updateOptions({ readOnly: view.file.isBufferReadOnly });
-      updateModelTokens(view.file.buffer, languageForFileType(view.file.type));
+
+      await updateModelTokens(view.file.buffer, languageForFileType(view.file.type));
 
       // TODO: Weird that we need this to make monaco really think it needs to update the language.
       monaco.editor.setModelLanguage(this.editor.getModel(), languageForFileType(view.file.type));
