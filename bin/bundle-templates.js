@@ -76,7 +76,7 @@ templates.forEach((file) => {
 if (outputPath !== templatesDir) {
   shell.rm('-rf', path.resolve(outputPath));
   shell.mkdir('-p', path.resolve(outputPath));
-  shell.cp('-r', path.resolve(templatesDir), path.resolve(outputPath));
+  shell.cp('-r', path.resolve(templatesDir, '*'), path.resolve(outputPath)); // copy files from templates to output
 }
 
 fs.writeFileSync(path.resolve(outputPath, 'index.js'), JSON.stringify(output, null, 2));
