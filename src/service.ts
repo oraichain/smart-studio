@@ -18,13 +18,13 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-import { File, Project, Directory, FileType, isBinaryFileType, fileTypeFromFileName } from './models';
-import { IStatusProvider } from './models/types';
-import { decodeRestrictedBase64ToBytes, base64EncodeBytes } from './util';
-import { processJSFile, RewriteSourcesContext } from './utils/rewriteSources';
-import { getCurrentRunnerInfo } from './utils/taskRunner';
-import { getServiceURL, ServiceTypes } from './compilerServices/sendRequest';
-import jwtDecode from 'jwt-decode';
+import { File, Project, Directory, FileType, isBinaryFileType, fileTypeFromFileName } from "./models";
+import { IStatusProvider } from "./models/types";
+import { decodeRestrictedBase64ToBytes, base64EncodeBytes } from "./util";
+import { processJSFile, RewriteSourcesContext } from "./utils/rewriteSources";
+import { getCurrentRunnerInfo } from "./utils/taskRunner";
+import { getServiceURL, ServiceTypes } from "./compilerServices/sendRequest";
+import jwtDecode from "jwt-decode";
 
 declare var capstone: {
   ARCH_X86: any;
@@ -42,7 +42,7 @@ declare var showdown: {
 export interface IFiddleFile {
   name: string;
   data?: string;
-  type?: 'binary' | 'text';
+  type?: "binary" | "text";
 }
 
 export interface ISaveFiddleResponse {
@@ -62,7 +62,7 @@ export interface ILoadFiddleResponse {
   success: boolean;
 }
 
-export { Language } from './compilerServices';
+export { Language } from "./compilerServices";
 
 export class Service {
   // private static worker = new ServiceWorker();
@@ -70,7 +70,7 @@ export class Service {
   static getMarkers(response: string): monaco.editor.IMarkerData[] {
     // Parse and annotate errors if compilation fails.
     const annotations: monaco.editor.IMarkerData[] = [];
-    if (response.indexOf('(module') !== 0) {
+    if (response.indexOf("(module") !== 0) {
       const re1 = /^.*?:(\d+?):(\d+?):\s(.*)$/gm;
       let m: any;
       // Single position.
@@ -82,9 +82,9 @@ export class Service {
         const startColumn = parseInt(m[2], 10);
         const message = m[3];
         let severity = monaco.MarkerSeverity.Info;
-        if (message.indexOf('error') >= 0) {
+        if (message.indexOf("error") >= 0) {
           severity = monaco.MarkerSeverity.Error;
-        } else if (message.indexOf('warning') >= 0) {
+        } else if (message.indexOf("warning") >= 0) {
           severity = monaco.MarkerSeverity.Warning;
         }
         annotations.push({
@@ -93,7 +93,7 @@ export class Service {
           startLineNumber: startLineNumber,
           startColumn: startColumn,
           endLineNumber: startLineNumber,
-          endColumn: startColumn
+          endColumn: startColumn,
         });
       }
       // Range. This is generated via the -diagnostics-print-source-range-info
@@ -105,9 +105,9 @@ export class Service {
         }
         const message = m[5];
         let severity = monaco.MarkerSeverity.Info;
-        if (message.indexOf('error') >= 0) {
+        if (message.indexOf("error") >= 0) {
           severity = monaco.MarkerSeverity.Error;
-        } else if (message.indexOf('warning') >= 0) {
+        } else if (message.indexOf("warning") >= 0) {
           severity = monaco.MarkerSeverity.Warning;
         }
         annotations.push({
@@ -116,7 +116,7 @@ export class Service {
           startLineNumber: parseInt(m[1], 10),
           startColumn: parseInt(m[2], 10),
           endLineNumber: parseInt(m[3], 10),
-          endColumn: parseInt(m[4], 10)
+          endColumn: parseInt(m[4], 10),
         });
       }
     }
@@ -127,9 +127,9 @@ export class Service {
     const baseURL = await getServiceURL(ServiceTypes.Service);
     const response = await fetch(`${baseURL}/project?name=${uri}`, {
       headers: new Headers({
-        'Content-type': 'application/json; charset=utf-8',
-        Authorization: `Bearer ${getAccessToken()}`
-      })
+        "Content-type": "application/json; charset=utf-8",
+        Authorization: `Bearer ${getAccessToken()}`,
+      }),
     });
     return await response.json();
   }
@@ -139,12 +139,12 @@ export class Service {
     if (update) {
       const baseURL = await getServiceURL(ServiceTypes.Service);
       const response = await fetch(`${baseURL}/project?name=${uri}`, {
-        method: 'POST',
+        method: "POST",
         headers: new Headers({
           Authorization: `Bearer ${getAccessToken()}`,
-          'Content-type': 'application/json; charset=utf-8'
+          "Content-type": "application/json; charset=utf-8",
         }),
-        body: JSON.stringify(json)
+        body: JSON.stringify(json),
       });
       const ret = await response.json();
       return ret;
@@ -158,22 +158,22 @@ export class Service {
       return {
         id: file.name,
         success: true,
-        message: `File ${file.name} created`
+        message: `File ${file.name} created`,
       };
     }
 
     const json: IFiddleFile = {
       name: file.getPath(),
-      data: fileData.toString()
+      data: fileData.toString(),
     };
     const baseURL = await getServiceURL(ServiceTypes.Service);
     const response = await fetch(`${baseURL}/file`, {
-      method: 'POST',
+      method: "POST",
       headers: new Headers({
         Authorization: `Bearer ${getAccessToken()}`,
-        'Content-type': 'application/json; charset=utf-8'
+        "Content-type": "application/json; charset=utf-8",
       }),
-      body: JSON.stringify(json)
+      body: JSON.stringify(json),
     });
     const ret = await response.json();
     return ret;
@@ -182,10 +182,10 @@ export class Service {
   static async getRecents(): Promise<IFiddleFile[]> {
     const baseURL = await getServiceURL(ServiceTypes.Service);
     const response = await fetch(`${baseURL}/projects`, {
-      method: 'GET',
+      method: "GET",
       headers: new Headers({
         Authorization: `Bearer ${getAccessToken()}`,
-        'Content-type': 'application/json; charset=utf-8'
+        "Content-type": "application/json; charset=utf-8",
       }),
     });
     const ret = await response.json();
@@ -196,14 +196,14 @@ export class Service {
     const baseURL = await getServiceURL(ServiceTypes.Service);
 
     const response = await fetch(`${baseURL}/projects/canCreate`, {
-      method: 'POST',
+      method: "POST",
       headers: new Headers({
         Authorization: `Bearer ${getAccessToken()}`,
-        'Content-type': 'application/json; charset=utf-8'
+        "Content-type": "application/json; charset=utf-8",
       }),
       body: JSON.stringify({
-        name
-      })
+        name,
+      }),
     });
 
     if (response.status < 300) {
@@ -220,16 +220,16 @@ export class Service {
 
   static async deleteFile(file: File): Promise<ISaveFiddleResponse> {
     const json: IFiddleFile = {
-      name: file.getPath()
+      name: file.getPath(),
     };
     const baseURL = await getServiceURL(ServiceTypes.Service);
     const response = await fetch(`${baseURL}/file`, {
-      method: 'DELETE',
+      method: "DELETE",
       headers: new Headers({
         Authorization: `Bearer ${getAccessToken()}`,
-        'Content-type': 'application/json; charset=utf-8'
+        "Content-type": "application/json; charset=utf-8",
       }),
-      body: JSON.stringify(json)
+      body: JSON.stringify(json),
     });
     const ret = await response.json();
     return ret;
@@ -238,16 +238,16 @@ export class Service {
   static async renameFile(file: File, name: string): Promise<ISaveFiddleResponse> {
     const json = {
       name: file.getPath(),
-      newName: name
+      newName: name,
     };
     const baseURL = await getServiceURL(ServiceTypes.Service);
     const response = await fetch(`${baseURL}/file`, {
-      method: 'PUT',
+      method: "PUT",
       headers: new Headers({
         Authorization: `Bearer ${getAccessToken()}`,
-        'Content-type': 'application/json; charset=utf-8'
+        "Content-type": "application/json; charset=utf-8",
       }),
-      body: JSON.stringify(json)
+      body: JSON.stringify(json),
     });
     const ret = await response.json();
     return ret;
@@ -256,7 +256,7 @@ export class Service {
   static parseFiddleURI(): string {
     let uri = window.location.search.substring(1);
     if (uri) {
-      const i = uri.indexOf('/');
+      const i = uri.indexOf("/");
       if (i > 0) {
         uri = uri.substring(0, i);
       }
@@ -269,8 +269,8 @@ export class Service {
     const baseURL = await getServiceURL(ServiceTypes.Service);
     const response = await fetch(`${baseURL}/file?name=${filePath}`, {
       headers: new Headers({
-        Authorization: `Bearer ${getAccessToken()}`
-      })
+        Authorization: `Bearer ${getAccessToken()}`,
+      }),
     });
     const ret = await response.json();
     return ret;
@@ -279,12 +279,12 @@ export class Service {
   static async buildProject(name: string): Promise<ILoadFiddleResponse> {
     const baseURL = await getServiceURL(ServiceTypes.Service);
     const response = await fetch(`${baseURL}/build`, {
-      method: 'POST',
+      method: "POST",
       headers: new Headers({
         Authorization: `Bearer ${getAccessToken()}`,
-        'Content-type': 'application/json; charset=utf-8'
+        "Content-type": "application/json; charset=utf-8",
       }),
-      body: JSON.stringify({ name })
+      body: JSON.stringify({ name }),
     });
     const ret = await response.json();
     return ret;
@@ -293,12 +293,12 @@ export class Service {
   static async buildSchema(name: string): Promise<ILoadFiddleResponse> {
     const baseURL = await getServiceURL(ServiceTypes.Service);
     const response = await fetch(`${baseURL}/schema`, {
-      method: 'POST',
+      method: "POST",
       headers: new Headers({
         Authorization: `Bearer ${getAccessToken()}`,
-        'Content-type': 'application/json; charset=utf-8'
+        "Content-type": "application/json; charset=utf-8",
       }),
-      body: JSON.stringify({ name })
+      body: JSON.stringify({ name }),
     });
     const ret = await response.json();
     return ret;
@@ -308,12 +308,12 @@ export class Service {
   static async testProject(name: string): Promise<string> {
     const baseURL = await getServiceURL(ServiceTypes.Service);
     const response = await fetch(`${baseURL}/test`, {
-      method: 'POST',
+      method: "POST",
       headers: new Headers({
         Authorization: `Bearer ${getAccessToken()}`,
-        'Content-type': 'application/json; charset=utf-8'
+        "Content-type": "application/json; charset=utf-8",
       }),
-      body: JSON.stringify({ name })
+      body: JSON.stringify({ name }),
     });
     const message = await response.text();
     return message;
@@ -323,9 +323,9 @@ export class Service {
     const baseURL = await getServiceURL(ServiceTypes.Service);
     const response = await fetch(`${baseURL}/terminals?cols=${cols}&rows=${rows}&name=${name}`, {
       headers: new Headers({
-        Authorization: `Bearer ${getAccessToken()}`
+        Authorization: `Bearer ${getAccessToken()}`,
       }),
-      method: 'POST'
+      method: "POST",
     });
     const processId = await response.text();
     return processId;
@@ -333,7 +333,7 @@ export class Service {
 
   static async createTerminalSocket(pid: string): Promise<WebSocket> {
     const baseURL = await getServiceURL(ServiceTypes.Service);
-    const baseWSURL = baseURL.replace(/^(?:https?:)?/, window.location.protocol.replace('http', 'ws'));
+    const baseWSURL = baseURL.replace(/^(?:https?:)?/, window.location.protocol.replace("http", "ws"));
     return new WebSocket(`${baseWSURL}/terminals/${pid}`);
   }
 
@@ -341,9 +341,9 @@ export class Service {
     const baseURL = await getServiceURL(ServiceTypes.Service);
     await fetch(`${baseURL}/terminals/${pid}/size?cols=${cols}&rows=${rows}`, {
       headers: new Headers({
-        Authorization: `Bearer ${getAccessToken()}`
+        Authorization: `Bearer ${getAccessToken()}`,
       }),
-      method: 'POST'
+      method: "POST",
     });
   }
 
@@ -352,18 +352,18 @@ export class Service {
     // if there is no upload files, save current projects, otherwise save new uploadedFiles
     const processFile = (f: File) => {
       let data: string;
-      let type: 'binary' | 'text';
+      let type: "binary" | "text";
       if (isBinaryFileType(f.type)) {
         data = base64EncodeBytes(new Uint8Array(f.data as ArrayBuffer));
-        type = 'binary';
+        type = "binary";
       } else {
         data = f.data as string;
-        type = 'text';
+        type = "text";
       }
       const file = {
         name: f.getPath(project),
         data,
-        type
+        type,
       };
       files.push(file);
     };
@@ -383,7 +383,7 @@ export class Service {
 
     return await this.saveJSON(
       {
-        files
+        files,
       },
       project.name
     );
@@ -395,14 +395,14 @@ export class Service {
       const file = project.newFile(f.name, type, false);
       let data: string | ArrayBuffer;
       if (f.data) {
-        if (f.type === 'binary') {
+        if (f.type === "binary") {
           data = decodeRestrictedBase64ToBytes(f.data).buffer as ArrayBuffer;
         } else {
           data = f.data;
         }
       } else {
         const request = await fetch(new URL(f.name, base).toString());
-        if (f.type === 'binary') {
+        if (f.type === "binary") {
           data = await request.arrayBuffer();
         } else {
           data = await request.text();
@@ -414,11 +414,11 @@ export class Service {
 
   static lazyLoad(uri: string, status?: IStatusProvider): Promise<any> {
     return new Promise((resolve, reject) => {
-      status && status.push('Loading ' + uri);
+      status && status.push("Loading " + uri);
       const self = this;
       const d = window.document;
       const b = d.body;
-      const e = d.createElement('script');
+      const e = d.createElement("script");
       e.async = true;
       e.src = uri;
       b.appendChild(e);
@@ -433,14 +433,14 @@ export class Service {
   static downloadLink: HTMLAnchorElement = null;
   static download(file: File) {
     if (!Service.downloadLink) {
-      Service.downloadLink = document.createElement('a');
-      Service.downloadLink.style.display = 'none';
+      Service.downloadLink = document.createElement("a");
+      Service.downloadLink.style.display = "none";
       document.body.appendChild(Service.downloadLink);
     }
 
     const blobPart = isBinaryFileType(file.type) ? Buffer.from(file.getData()) : file.getData();
     // download binary with buffer otherwise using string
-    const url = URL.createObjectURL(new Blob([blobPart], { type: 'application/octet-stream' }));
+    const url = URL.createObjectURL(new Blob([blobPart], { type: "application/octet-stream" }));
     Service.downloadLink.href = url;
     Service.downloadLink.download = file.name;
     if ((Service.downloadLink.href as any) !== document.location) {
@@ -452,21 +452,21 @@ export class Service {
   // Kudos to https://github.com/tbfleming/cib
   static async clangFormat(file: File, status?: IStatusProvider) {
     function format() {
-      const result = Service.clangFormatModule.ccall('formatCode', 'string', ['string'], [file.buffer.getValue()]);
+      const result = Service.clangFormatModule.ccall("formatCode", "string", ["string"], [file.buffer.getValue()]);
       file.buffer.setValue(result);
     }
 
     if (Service.clangFormatModule) {
       format();
     } else {
-      await Service.lazyLoad('lib/clang-format.js', status);
-      const response = await fetch('lib/clang-format.wasm');
+      await Service.lazyLoad("lib/clang-format.js", status);
+      const response = await fetch("lib/clang-format.wasm");
       const wasmBinary = await response.arrayBuffer();
       const module: any = {
         postRun() {
           format();
         },
-        wasmBinary
+        wasmBinary,
       };
       Service.clangFormatModule = Module(module);
     }
@@ -476,29 +476,29 @@ export class Service {
 
   static openBinaryExplorer(file: File) {
     window.open(
-      '//wasdk.github.io/wasmcodeexplorer/?api=postmessage',
-      '',
-      'toolbar=no,ocation=no,directories=no,status=no,menubar=no,location=no,scrollbars=yes,resizable=yes,width=1024,height=568'
+      "//wasdk.github.io/wasmcodeexplorer/?api=postmessage",
+      "",
+      "toolbar=no,ocation=no,directories=no,status=no,menubar=no,location=no,scrollbars=yes,resizable=yes,width=1024,height=568"
     );
     if (Service.binaryExplorerMessageListener) {
-      window.removeEventListener('message', Service.binaryExplorerMessageListener, false);
+      window.removeEventListener("message", Service.binaryExplorerMessageListener, false);
     }
     Service.binaryExplorerMessageListener = (e: any) => {
-      if (e.data.type === 'wasmexplorer-ready') {
-        window.removeEventListener('message', Service.binaryExplorerMessageListener, false);
+      if (e.data.type === "wasmexplorer-ready") {
+        window.removeEventListener("message", Service.binaryExplorerMessageListener, false);
         Service.binaryExplorerMessageListener = null;
         const dataToSend = new Uint8Array((file.data as any).slice(0));
         e.source.postMessage(
           {
-            type: 'wasmexplorer-load',
-            data: dataToSend
+            type: "wasmexplorer-load",
+            data: dataToSend,
           },
-          '*',
+          "*",
           [dataToSend.buffer]
         );
       }
     };
-    window.addEventListener('message', Service.binaryExplorerMessageListener, false);
+    window.addEventListener("message", Service.binaryExplorerMessageListener, false);
   }
 
   static async import(path: string): Promise<any> {
@@ -512,9 +512,9 @@ export class Service {
 
     const url = processJSFile(context, path);
     // Create script tag to load ES module.
-    const script = global.document.createElement('script');
-    script.setAttribute('type', 'module');
-    script.setAttribute('async', 'async');
+    const script = global.document.createElement("script");
+    script.setAttribute("type", "module");
+    script.setAttribute("async", "async");
     const id = `__import__${Math.random()
       .toString(36)
       .substr(2)}`;
@@ -531,11 +531,11 @@ export class Service {
   }
 
   static async compileMarkdownToHtml(src: string): Promise<string> {
-    if (typeof showdown === 'undefined') {
-      await Service.lazyLoad('lib/showdown.min.js');
+    if (typeof showdown === "undefined") {
+      await Service.lazyLoad("lib/showdown.min.js");
     }
     const converter = new showdown.Converter({ tables: true, ghCodeBlocks: true });
-    showdown.setFlavor('github');
+    showdown.setFlavor("github");
     return converter.makeHtml(src);
   }
 }
@@ -550,14 +550,26 @@ export const getCurrentUser = () => {
     }
   } catch (e) {}
 
+  // force logout
+  // localStorage.removeItem("__USER__");
+  // location.pathname = "/";
   return null;
 };
 
 export const getAccessToken = () => {
   try {
-    const u = JSON.parse(localStorage.getItem('__USER__'));
-    return u.access_token;
+    const u = JSON.parse(localStorage.getItem("__USER__"));
+    jwtDecode(u.access_token, { header: true });
+    const data = jwtDecode(u.access_token) as any;
+    
+    if (data.exp > Date.now() / 1000) {
+      return u.access_token;
+    }
   } catch (e) {}
 
+  localStorage.removeItem("__USER__");
+  if (location.pathname !== '/') {
+    location.pathname = "/";
+  }
   return null;
 };
