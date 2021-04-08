@@ -334,7 +334,7 @@ export class Service {
   static async createTerminalSocket(pid: string): Promise<WebSocket> {
     const baseURL = await getServiceURL(ServiceTypes.Service);
     const baseWSURL = baseURL.replace(/^(?:https?:)?/, window.location.protocol.replace("http", "ws"));
-    return new WebSocket(`${baseWSURL}/terminals/${pid}`);
+    return new WebSocket(`${baseWSURL}/terminals/${pid}?token=${getAccessToken()}`);
   }
 
   static async resizeTerminal(pid: string, cols: number, rows: number): Promise<any> {
