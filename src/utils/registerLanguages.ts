@@ -20,16 +20,19 @@
  */
 
 import { language, conf } from 'monaco-editor/esm/vs/basic-languages/rust/rust';
-import { WorldState } from '../../lib/analyzer/pkg';
 import { LanguageUpdater } from './languageUpdater';
+import { File, languageForFileType } from '../models';
 
 const languageUpdater = new LanguageUpdater();
 
 // default we will update tokens from all open files for rust
-export const updateModelTokens = (model: monaco.editor.ITextModel, languageId: string) => {
+export const updateModelTokens = (file: File) => {
+  const { buffer, type } = file;
+  const languageId = languageForFileType(type);
+
   switch (languageId) {
     case 'rust':
-      languageUpdater.addModel(model, languageId);
+      languageUpdater.addModel(buffer, languageId);
       break;
     default:
       break;

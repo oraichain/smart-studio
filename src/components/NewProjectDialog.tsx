@@ -19,15 +19,15 @@
  * SOFTWARE.
  */
 
-import React from "react";
-import { Service, IFiddleFile } from "../service";
-import ReactModal from "react-modal";
-import { Button } from "./shared/Button";
-import { GoGear, GoFile, GoX, Icon, GoSync, GoFileDirectory, GoCloudUpload, GoVerified, GoCode, GoFileCode } from "./shared/Icons";
-import { KeyboardEvent, ChangeEvent, ChangeEventHandler } from "react";
-import { ListBox, ListItem, TextInputBox } from "./Widgets";
-import fetchTemplates from "../utils/fetchTemplates";
-import getConfig from "../config";
+import React from 'react';
+import { Service, IFiddleFile } from '../service';
+import ReactModal from 'react-modal';
+import { Button } from './shared/Button';
+import { GoGear, GoFile, GoX, Icon, GoSync, GoFileDirectory, GoCloudUpload, GoVerified, GoCode, GoFileCode } from './shared/Icons';
+import { KeyboardEvent, ChangeEvent, ChangeEventHandler } from 'react';
+import { ListBox, ListItem, TextInputBox } from './Widgets';
+import fetchTemplates from '../utils/fetchTemplates';
+import getConfig from '../config';
 
 export interface Template {
   name: string;
@@ -57,10 +57,10 @@ export class NewProjectDialog extends React.Component<
     super(props);
     this.state = {
       template: null,
-      description: "",
-      name: "",
+      description: '',
+      name: '',
       templates: [],
-      recentSelect: null,
+      recentSelect: null
     };
   }
   async componentDidMount() {
@@ -71,7 +71,7 @@ export class NewProjectDialog extends React.Component<
     const templates: Template[] = Object.entries(json).map(([key, entry]: any[]) => {
       return {
         ...entry,
-        baseUrl: new URL(key + "/", base),
+        baseUrl: new URL(key + '/', base)
       };
     });
 
@@ -85,12 +85,12 @@ export class NewProjectDialog extends React.Component<
     this.setState((s) => {
       if (s.recentSelect && s.recentSelect.name === recentSelect.name) {
         return {
-          recentSelect: null,
+          recentSelect: null
         };
       }
 
       return {
-        recentSelect,
+        recentSelect
       };
     });
   };
@@ -101,10 +101,10 @@ export class NewProjectDialog extends React.Component<
   nameError() {
     if (this.state.name) {
       if (!/^[a-z0-9\.\-\_]+$/i.test(this.state.name)) {
-        return "Illegal characters in directory name.";
+        return 'Illegal characters in directory name.';
       }
     }
-    return "";
+    return '';
   }
   async setTemplate(template: Template) {
     const description = await Service.compileMarkdownToHtml(template.description);
@@ -113,10 +113,10 @@ export class NewProjectDialog extends React.Component<
   render() {
     return (
       <ReactModal isOpen={this.props.isOpen} contentLabel="Create New Project" className="modal show-file-icons newProject" overlayClassName="overlay" ariaHideApp={false}>
-        <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
           {/* <div className="modal-title-bar">Create or open project</div> */}
 
-          <div style={{ flex: 1, display: "flex" }}>
+          <div style={{ flex: 1, display: 'flex' }}>
             <div className="newProject-sidebar" style={{ width: 200 }}>
               <ListBox
                 value={this.state.template}
@@ -150,7 +150,7 @@ export class NewProjectDialog extends React.Component<
             </div>
           </div>
 
-          <div className="modal-footer" style={{ justifyContent: "flex-end" }}>
+          <div className="modal-footer" style={{ justifyContent: 'flex-end' }}>
             {/* <Button
               icon={<GoX />}
               label="Cancel"
@@ -224,7 +224,7 @@ class RecentProjects extends React.Component<
 > {
   state: RecentProjectsState = {
     loading: true,
-    items: [],
+    items: []
   };
 
   async componentDidMount() {
@@ -233,7 +233,7 @@ class RecentProjects extends React.Component<
 
     this.setState({
       loading: false,
-      items,
+      items
     });
   }
 
@@ -271,13 +271,13 @@ class RecentProjects extends React.Component<
       <div
         style={{
           padding: 10,
-          boxSizing: "border-box",
-          overflow: "auto",
+          boxSizing: 'border-box',
+          overflow: 'auto'
         }}
-        className={this.props.value ? "has-selected" : ""}
+        className={this.props.value ? 'has-selected' : ''}
       >
         {this.state.items.map((s) => (
-          <div className={`recent-item ${this.props.value && s.name === this.props.value.name ? "selected" : ""}`} onClick={() => this.props.onSelect(s)}>
+          <div key={s.name} className={`recent-item ${this.props.value && s.name === this.props.value.name ? 'selected' : ''}`} onClick={() => this.props.onSelect(s)}>
             <GoFileDirectory /> {s.name}
           </div>
         ))}
