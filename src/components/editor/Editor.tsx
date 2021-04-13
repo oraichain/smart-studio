@@ -24,7 +24,7 @@ import { languageForFileType } from '../../models';
 import { IStatusProvider } from '../../models/types';
 import { View } from './View';
 import { build, run, pushStatus, popStatus, logLn } from '../../actions/AppActions';
-import { updateModelTokens } from '../../utils/registerLanguages';
+import { Service } from '../../service';
 
 // Life Cycle
 // https://cdn-images-1.medium.com/max/1600/0*VoYsN6eq7I_wjVV5.png
@@ -78,7 +78,7 @@ export class Monaco extends React.Component<MonacoProps, {}> {
       this.editor.restoreViewState(view.state);
       this.editor.updateOptions({ readOnly: view.file.isBufferReadOnly });
 
-      updateModelTokens(view.file);
+      Service.LanguageUpdater.addFile(view.file);
 
       // TODO: Weird that we need this to make monaco really think it needs to update the language.
       monaco.editor.setModelLanguage(this.editor.getModel(), languageForFileType(view.file.type));

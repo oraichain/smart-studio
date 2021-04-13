@@ -24,8 +24,10 @@ import { decodeRestrictedBase64ToBytes, base64EncodeBytes } from './util';
 import { processJSFile, RewriteSourcesContext } from './utils/rewriteSources';
 import { getCurrentRunnerInfo } from './utils/taskRunner';
 import { getServiceURL, ServiceTypes } from './compilerServices/sendRequest';
+import { Language } from './compilerServices/types';
 import jwtDecode from 'jwt-decode';
-import { updateModelTokens } from './utils/registerLanguages';
+import { LanguageUpdater } from './utils/languageUpdater';
+import rustLibs from './languages/rust';
 
 declare var capstone: {
   ARCH_X86: any;
@@ -67,6 +69,11 @@ export { Language } from './compilerServices';
 
 export class Service {
   // private static worker = new ServiceWorker();
+  private static languageUpdater = new LanguageUpdater(rustLibs, FileType.Rust);
+
+  static get LanguageUpdater() {
+    return Service.languageUpdater;
+  }
 
   static getMarkers(response: string): monaco.editor.IMarkerData[] {
     // Parse and annotate errors if compilation fails.
@@ -411,7 +418,7 @@ export class Service {
       }
       file.setData(data);
       // update when load Projects
-      updateModelTokens(file);
+      Service.languageUpdater.addFile(file);
     }
   }
 

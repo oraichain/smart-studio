@@ -1,16 +1,24 @@
+import { extensionForFileType, File, FileType, languageForFileType, nameForFileType } from '../models';
 import { WorldState } from '../../lib/analyzer/pkg';
 
 export class LanguageUpdater {
   private states: Map<monaco.Uri, WorldState> = new Map();
+  private languageId: string;
+  constructor(lib: string, fileType: FileType) {
+    this.languageId = nameForFileType(fileType);
+    const uri = monaco.Uri.file('/libs.' + extensionForFileType(fileType));
+    const textModel = monaco.editor.createModel(lib, this.languageId, uri);
+    this.addModel(textModel);
+  }
 
-  async addModel(model: monaco.editor.ITextModel, languageId: string) {
+  private async addModel(model: monaco.editor.ITextModel) {
     const { WorldState: WorldStateClass } = await import('../../lib/analyzer/pkg');
     let uri = model.uri;
     if (this.states.has(uri)) return;
     const state = new WorldStateClass();
     const update = () => {
       const res = state.update(model.getValue());
-      monaco.editor.setModelMarkers(model, languageId, res.diagnostics);
+      monaco.editor.setModelMarkers(model, this.languageId, res.diagnostics);
     };
     update();
     model.onDidChangeContent(update);
@@ -46,6 +54,14 @@ export class LanguageUpdater {
       }
     }
     return data;
+  }
+
+  addFile(file: File) {
+    const { buffer, type } = file;
+    const languageId = languageForFileType(type);
+    if (languageId === this.languageId) {
+      return this.addModel(buffer);
+    }
   }
 
   provideHover(model: monaco.editor.ITextModel, pos: monaco.Position) {
