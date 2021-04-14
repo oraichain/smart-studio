@@ -27,6 +27,7 @@ export enum Language {
   Cretonne = 'cton',
   x86 = 'x86',
   Json = 'json',
+  Log = 'log',
   JavaScript = 'javascript',
   TypeScript = 'typescript',
   Toml = 'toml',

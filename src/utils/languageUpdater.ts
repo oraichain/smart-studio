@@ -1,16 +1,24 @@
+import { extensionForFileType, File, FileType, languageForFileType } from '../models';
 import { WorldState } from '../../lib/analyzer/pkg';
 
 export class LanguageUpdater {
   private states: Map<monaco.Uri, WorldState> = new Map();
+  private languageId: string;
+  constructor(lib: string, fileType: FileType) {
+    this.languageId = languageForFileType(fileType);
+    const uri = monaco.Uri.file('/libs.' + extensionForFileType(fileType));
+    const textModel = monaco.editor.createModel(lib, this.languageId, uri);
+    this.addModel(textModel);
+  }
 
-  async addModel(model: monaco.editor.ITextModel, languageId: string) {
+  private async addModel(model: monaco.editor.ITextModel) {
     const { WorldState: WorldStateClass } = await import('../../lib/analyzer/pkg');
     let uri = model.uri;
     if (this.states.has(uri)) return;
     const state = new WorldStateClass();
     const update = () => {
       const res = state.update(model.getValue());
-      monaco.editor.setModelMarkers(model, languageId, res.diagnostics);
+      monaco.editor.setModelMarkers(model, this.languageId, res.diagnostics);
     };
     update();
     model.onDidChangeContent(update);
@@ -21,13 +29,16 @@ export class LanguageUpdater {
     model: monaco.editor.ITextModel,
     pos: monaco.Position,
     check: (data: any) => boolean,
-    process: (otherModel: monaco.editor.ITextModel, otherPos: monaco.Position) => any
+    process: (otherModel: monaco.editor.ITextModel, otherPos: monaco.Position, isOther: boolean) => any
   ): any {
-    let data = process(model, pos);
+    let data = process(model, pos, false);
     // process other
     if (!check(data)) {
       // try other states
       const word = model.getWordAtPosition(pos);
+
+      // empty word
+      if (!word) return data;
 
       for (let uri of this.states.keys()) {
         if (uri.path !== model.uri.path) {
@@ -40,12 +51,20 @@ export class LanguageUpdater {
           const index = otherModel.getValue().lastIndexOf(word.word);
           if (index === -1) continue;
           const otherPos = otherModel.getPositionAt(index + 1);
-          data = process(otherModel, otherPos);
+          data = process(otherModel, otherPos, true);
           if (data) break;
         }
       }
     }
     return data;
+  }
+
+  addFile(file: File) {
+    const { buffer, type } = file;
+    const languageId = languageForFileType(type);
+    if (languageId === this.languageId) {
+      return this.addModel(buffer);
+    }
   }
 
   provideHover(model: monaco.editor.ITextModel, pos: monaco.Position) {
@@ -54,10 +73,16 @@ export class LanguageUpdater {
       model,
       pos,
       (data: any) => data && !data.contents[0].value.match(/rust\n*{unknown}/),
-      (otherModel: monaco.editor.ITextModel, otherPos: monaco.Position) => {
+      (otherModel: monaco.editor.ITextModel, otherPos: monaco.Position, isOther: boolean) => {
         const otherState = this.states.get(otherModel.uri);
         if (!otherState) return;
-        return otherState.hover(otherPos.lineNumber, otherPos.column);
+        const data = otherState.hover(otherPos.lineNumber, otherPos.column);
+        // hack to remove hightlight text with other files
+        if (isOther && data) {
+          data.range.startLineNumber = data.range.endLineNumber = 999999;
+        }
+
+        return data;
       }
     );
   }
@@ -100,6 +125,7 @@ export class LanguageUpdater {
 
   provideDocumentHighlights(model: monaco.editor.ITextModel, pos: monaco.Position) {
     const state = this.states.get(model.uri);
+    if (!state) return;
     return state.references(pos.lineNumber, pos.column, true);
   }
 
