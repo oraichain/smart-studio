@@ -1,4 +1,4 @@
-/* Copyright 2018 Mozilla Foundation
+/** Copyright 2018 Mozilla Foundation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -20,17 +20,14 @@
  */
 
 import dispatcher from '../dispatcher';
-import { File, Directory, Project, Problem } from '../models';
-import { App } from '../components/App';
+import { File, Directory, Project } from '../models';
 import { Template } from '../components/NewProjectDialog';
 import { View, ViewType } from '../components/editor/View';
 import appStore from '../stores/AppStore';
-import { Service, Language, IFiddleFile, ILoadFiddleResponse } from '../service';
+import { Service, ILoadFiddleResponse } from '../service';
 import Group from '../utils/group';
-import { Errors } from '../errors';
-import getConfig from '../config';
 import { rewriteHTML, RewriteSourcesContext } from '../utils/rewriteSources';
-import { runTask as runGulpTask, RunTaskExternals } from '../utils/taskRunner';
+import { RunTaskExternals } from '../utils/taskRunner';
 
 export enum AppActionType {
   ADD_FILE_TO = 'ADD_FILE_TO',
