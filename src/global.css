@@ -199,11 +199,11 @@ a {
   font-size: 14px;
   line-height: 24px;
 
-  padding-left: 20px!important;
+  /* padding-left: 20px!important; */
 }
-.monaco-tree-row.has-children {
+/* .monaco-tree-row.has-children {
   padding-left: 24px!important;
-}
+} */
 
 .directory-entry {
   font-family: -apple-system, BlinkMacSystemFont, Segoe WPC, Segoe UI, HelveticaNeue-Light, Ubuntu, Droid Sans, sans-serif;
