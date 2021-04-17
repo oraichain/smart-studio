@@ -198,6 +198,11 @@ a {
 .monaco-tree-row {
   font-size: 14px;
   line-height: 24px;
+
+  padding-left: 20px!important;
+}
+.monaco-tree-row.has-children {
+  padding-left: 24px!important;
 }
 
 .directory-entry {

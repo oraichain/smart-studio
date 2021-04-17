@@ -151,6 +151,11 @@ export class DirectoryTree extends React.Component<
   getActions(file: File, event: ContextMenuEvent) {
     const actions: any[] = [];
 
+    // ignore create file outside src
+    if (!file.parent) {
+      return actions;
+    }
+
     // Upload options (Limited to delete & edit)
     if (this.props.onlyUploadActions) {
       if (!file.parent) {
