@@ -71,12 +71,12 @@ export class Monaco extends React.Component<MonacoProps, {}> {
   }
 
   componentDidUpdate() {
-    const { view } = this.props;
+    const { view, options } = this.props;
     if (view) {
       this.ensureEditor();
       this.editor.setModel(view.file.buffer);
       this.editor.restoreViewState(view.state);
-      this.editor.updateOptions({ readOnly: view.file.isBufferReadOnly });
+      this.editor.updateOptions({ readOnly: view.file.isBufferReadOnly ||options.readOnly });
 
       Service.LanguageUpdater.addFile(view.file);
 
