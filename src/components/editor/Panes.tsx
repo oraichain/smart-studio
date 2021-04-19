@@ -25,7 +25,6 @@ export const EditorPanes = ({ groups, active }: EditorPanesProps) => {
             views={group.views.slice(0)}
             view={group.currentView}
             preview={group.preview}
-            onSplitViews={() => splitGroup()}
             hasFocus={active === group}
             onFocus={() => {
               // TODO: Should be taken care of in shouldComponentUpdate instead.
