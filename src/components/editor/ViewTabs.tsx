@@ -85,7 +85,7 @@ export class ViewTabs extends React.Component<ViewTabsProps, ViewTabsState> {
     // tslint:disable-next-line
     onChangeViewType: (view: View, type: ViewType) => {},
     // tslint:disable-next-line
-    onNewFile: () => {},
+    onNewFile: () => {}
   };
 
   status: IStatusProvider;

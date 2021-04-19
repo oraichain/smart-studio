@@ -98,10 +98,13 @@ module.exports = (env, options) => {
     config.plugins.push({
       apply: (compiler) => {
         compiler.hooks.afterEmit.tap('AfterEmitPlugin', (compilation) => {
+          const pkgDist = path.join(distPath, 'lib/analyzer');
           // copy file to destination
           shell.exec(`yarn templates ${distPath}/templates`);
           shell.cp(['index.html', 'config.json'], distPath);
-          shell.cp('-r', ['notes', 'style', 'fonts', 'lib', 'img'], distPath);
+          shell.mkdir('-p', pkgDist);
+          shell.cp('-r', 'lib/analyzer/pkg', pkgDist);
+          shell.cp('-r', ['notes', 'assets'], distPath);
         });
       }
     });
