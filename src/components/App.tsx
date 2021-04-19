@@ -412,8 +412,9 @@ export class App extends React.Component<AppProps, AppState> {
             if (confirm(message)) {
               const projectModel = this.state.project.getModel();
               const ret = await Service.deleteFile(projectModel);
+
               if (ret.success) {
-                location.search = '';
+                window.location.replace('/');
               } else {
                 this.showToast(<span>${ret.message}</span>, 'error');
               }
