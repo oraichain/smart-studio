@@ -59,6 +59,8 @@ export class ControlCenter extends React.Component<
   constructor(props: any) {
     super(props);
     const outputFile = appStore.getOutput().getModel();
+    // disable editing with log
+    outputFile.isBufferReadOnly = true;
     this.outputView = new View(outputFile);
 
     this.state = {
