@@ -72,10 +72,6 @@ export interface ViewTabsProps {
    */
   onFocus?: () => void;
   hasFocus?: boolean;
-  /**
-   * Called when view tabs are split.
-   */
-  onSplitViews?: () => void;
 }
 
 export interface ViewTabsState {
@@ -90,8 +86,6 @@ export class ViewTabs extends React.Component<ViewTabsProps, ViewTabsState> {
     onChangeViewType: (view: View, type: ViewType) => {},
     // tslint:disable-next-line
     onNewFile: () => {},
-    // tslint:disable-next-line
-    onSplitViews: () => {}
   };
 
   status: IStatusProvider;
@@ -133,14 +127,6 @@ export class ViewTabs extends React.Component<ViewTabsProps, ViewTabsState> {
   renderViewCommands() {
     const { view } = this.props;
     const commands = [
-      <Button
-        key="split"
-        icon={<GoBook />}
-        title="Split Editor"
-        onClick={() => {
-          return this.props.onSplitViews();
-        }}
-      />,
       <Button
         key="save"
         icon={<GoClippy />}
