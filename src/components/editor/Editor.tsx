@@ -76,7 +76,7 @@ export class Monaco extends React.Component<MonacoProps, {}> {
       this.ensureEditor();
       this.editor.setModel(view.file.buffer);
       this.editor.restoreViewState(view.state);
-      this.editor.updateOptions({ readOnly: view.file.isBufferReadOnly ||options.readOnly });
+      this.editor.updateOptions({ readOnly: view.file.isBufferReadOnly || options.readOnly });
 
       Service.LanguageUpdater.addFile(view.file);
 
