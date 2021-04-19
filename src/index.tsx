@@ -19,7 +19,6 @@
  * SOFTWARE.
  */
 
-import 'monaco-editor';
 import React from 'react';
 import ReactDOM from 'react-dom';
 
@@ -27,7 +26,7 @@ import { App, EmbeddingParams, EmbeddingType } from './components/App';
 import { layout } from './util';
 import { MonacoUtils } from './monaco-utils';
 
-import './global.css';
+import '../assets/global.css';
 
 export function forEachUrlParameter(callback: (key: string, value: any) => void) {
   let url = window.location.search.substring(1);

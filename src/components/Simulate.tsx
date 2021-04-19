@@ -3,7 +3,6 @@ import { Terminal } from 'xterm';
 import { AttachAddon } from 'xterm-addon-attach';
 import {FitAddon} from 'xterm-addon-fit'
 import { Service } from '../service';
-import '../../style/xterm.css';
 
 export interface SimulateProps {
   projectName: string

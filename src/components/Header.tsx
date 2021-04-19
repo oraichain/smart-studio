@@ -25,7 +25,7 @@ export class Header extends React.Component<{}, {}> {
   render() {
     return (
       <div className="wasmStudioHeader">
-        <img className="waHeaderText" src="/img/full-logo-light.png" alt="Oraichain Studio" />
+        <img className="waHeaderText" src="/assets/img/full-logo-light.png" alt="Oraichain Studio" />
       </div>
     );
   }

@@ -19,16 +19,9 @@
  * SOFTWARE.
  */
 
-import {
-  IDragAndDrop,
-  ITree,
-  IDragAndDropData,
-  DragMouseEvent,
-  IDragOverReaction,
-  DragOverBubble
-} from "./monaco-extra";
-import { File, Directory } from "./models";
-import { uploadFilesToDirectory, isUploadAllowedForMimeType } from "./util";
+import { IDragAndDrop, ITree, IDragAndDropData, DragMouseEvent, IDragOverReaction, DragOverBubble } from './monaco-extra';
+import { File, Directory } from './models';
+import { uploadFilesToDirectory, isUploadAllowedForMimeType } from './util';
 
 export class DragAndDrop implements IDragAndDrop {
   private target: any;
@@ -69,10 +62,10 @@ export class DragAndDrop implements IDragAndDrop {
       const items = Array.from(originalEvent.browserEvent.dataTransfer.items);
       // In Firefox, tree elements get data transfer items with the "text/uri-list" type. This is a
       // workaround to ignore that behavior.
-      const hasItemsUriListType = items.some(item => item.type === "text/uri-list");
+      const hasItemsUriListType = items.some((item) => item.type === 'text/uri-list');
       if (items.length && !hasItemsUriListType) {
         return {
-          accept: items.every(item => isUploadAllowedForMimeType(item.type)),
+          accept: items.every((item) => isUploadAllowedForMimeType(item.type)),
           bubble: DragOverBubble.BUBBLE_DOWN,
           autoExpand: true
         };
@@ -81,9 +74,7 @@ export class DragAndDrop implements IDragAndDrop {
     // Regular drag
     const file: File = data.elements[0];
     return {
-      accept: targetElement instanceof Directory &&
-              targetElement !== file &&
-              !targetElement.isDescendantOf(file),
+      accept: targetElement instanceof Directory && targetElement !== file && !targetElement.isDescendantOf(file),
       bubble: DragOverBubble.BUBBLE_DOWN,
       autoExpand: true
     };

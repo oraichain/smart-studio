@@ -1,3 +1,4 @@
+import * as monaco from 'monaco-editor';
 import { extensionForFileType, File, FileType, languageForFileType } from '../models';
 import { WorldState } from '../../lib/analyzer/pkg';
 

@@ -731,7 +731,9 @@ export class App extends React.Component<AppProps, AppState> {
                 openFile(file, defaultViewTypeForFileType(file.type), false);
               }}
               onMoveFile={(file: File, directory: Directory) => {
-                addFileTo(file, directory);
+                // TODO://
+                // addFileTo(file, directory);
+                console.log('TODO://', file, directory);                
               }}
               onUploadFile={(directory: Directory) => {
                 this.setState({ uploadFileDialogDirectory: ModelRef.getRef(directory) });

@@ -1,6 +1,11 @@
-@import url(../fonts/octicons.css);
-@import url(../fonts/roboto.css);
-@import url(../fonts/zilla.css);
+@import url(fonts/octicons.css);
+@import url(fonts/roboto.css);
+@import url(fonts/zilla.css);
+@import url(vscode-icons.css);
+@import url(style/theme.css);
+@import url(style/markdown.css);
+@import url(style/split-pane.css);
+@import url(style/xterm.css);
 
 :root {
   --grey-50: #fafafa;
@@ -198,12 +203,7 @@ a {
 .monaco-tree-row {
   font-size: 14px;
   line-height: 24px;
-
-  /* padding-left: 20px!important; */
 }
-/* .monaco-tree-row.has-children {
-  padding-left: 24px!important;
-} */
 
 .directory-entry {
   font-family: -apple-system, BlinkMacSystemFont, Segoe WPC, Segoe UI, HelveticaNeue-Light, Ubuntu, Droid Sans, sans-serif;
@@ -1098,21 +1098,21 @@ a {
 }
 
 .label-name.error-dark::before {
-  content: url('../svg/error-dark.svg');
+  content: url('./svg/error-dark.svg');
   padding-right: 4px;
   position: relative;
   top: 4px;
 }
 
 .label-name.warning-dark::before {
-  content: url('../svg/warning-dark.svg');
+  content: url('./svg/warning-dark.svg');
   padding-right: 4px;
   position: relative;
   top: 4px;
 }
 
 .label-name.info-dark::before {
-  content: url('../svg/info-dark.svg');
+  content: url('./svg/info-dark.svg');
   padding-right: 4px;
   position: relative;
   top: 4px;
