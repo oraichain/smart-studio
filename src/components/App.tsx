@@ -415,7 +415,7 @@ export class App extends React.Component<AppProps, AppState> {
               if (ret.success) {
                 location.search = '';
               } else {
-                this.showToast(<span>${ret.message}</span>, 'error');
+                this.showToast(<span>{ret.message}</span>, 'error');
               }
             }
           }}
@@ -613,7 +613,7 @@ export class App extends React.Component<AppProps, AppState> {
               if (ret.success) {
                 addFileTo(file, this.state.newFileDialogDirectory.getModel());
               } else {
-                this.showToast(<span>${ret.message}</span>, 'error');
+                this.showToast(<span>{ret.message}</span>, 'error');
               }
               this.setState({ newFileDialogDirectory: null });
             }}
@@ -632,7 +632,7 @@ export class App extends React.Component<AppProps, AppState> {
               if (ret.success) {
                 updateFileNameAndDescription(file, name, description);
               } else {
-                this.showToast(<span>${ret.message}</span>, 'error');
+                this.showToast(<span>{ret.message}</span>, 'error');
               }
               // finally close dialog
               this.setState({ editFileDialogFile: null });
@@ -663,7 +663,7 @@ export class App extends React.Component<AppProps, AppState> {
                   addFileTo(file, this.state.uploadFileDialogDirectory.getModel());
                 });
               } else {
-                this.showToast(<span>${ret.message}</span>, 'error');
+                this.showToast(<span>{ret.message}</span>, 'error');
               }
               this.setState({ uploadFileDialogDirectory: null });
             }}
@@ -715,7 +715,7 @@ export class App extends React.Component<AppProps, AppState> {
                     closeTabs(file);
                     deleteFile(file);
                   } else {
-                    this.showToast(<span>${ret.message}</span>, 'error');
+                    this.showToast(<span>{ret.message}</span>, 'error');
                   }
                 }
               }}
