@@ -66,20 +66,19 @@ export class GithubConnectDialog extends React.PureComponent<GithubConnectDialog
         contentLabel="Connect to github"
         className="modal show-file-icons connectGithub"
         overlayClassName="overlay" ariaHideApp={false}>
-          <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', height: '100%' }}>
-            <div className="modal-title-bar">Connect to github</div>
-
+          <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', height: '500%' }}>
+            <div className="modal-title-bar" style={{fontSize:40,height:42,paddingTop:15,textAlign:'center'}}> Oraichain Studio</div>
             {loading && <Loading /> }
             <div className="modal-content" style={{ background: '#fff', textAlign: 'center' }}>
-              <img src="https://orai.io/images/OraiBanner.svg" height="320" style={{ margin: 20 }} />
+              <img src="/assets/img/orai-studio.png" height="160" style={{ margin: 20 }} />
             </div>
-  
+
             <div className="modal-footer">
               <Button
                 fill
                 icon={<Github />}
-                label="Connect"
-                title="Connect"
+                label="Connect to github"
+                title="Connect to github"
                 onClick={this.handleConnectGithub}
               />
             </div>
