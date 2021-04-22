@@ -59,8 +59,11 @@ export class Simulate extends React.Component<SimulateProps, {}> {
       const attachAddon = new AttachAddon(this.socket);     
       this.pid = pid;   
 
-      const baseURL = await getServiceURL(ServiceTypes.Service);      
-      this.xterm.write(`🚀  Rest Server is start at \x1b[32m\x1b[1m${window.location.protocol}${baseURL}/terminals/${pid}/wasm\x1b[0m\n\n\r`);
+      let baseURL = await getServiceURL(ServiceTypes.Service);      
+      if (!baseURL.startsWith('http')){
+        baseURL = window.location.protocol + baseURL;
+      }
+      this.xterm.write(`🚀  Rest Server is start at \x1b[32m\x1b[1m${baseURL}/terminals/${pid}/wasm\x1b[0m\n\n\r`);
       this.xterm.loadAddon(attachAddon);                
     } else {
       this.xterm.write(`\x1b[31mWasm file is not built`);
