@@ -24,18 +24,12 @@ import { decodeRestrictedBase64ToBytes, base64EncodeBytes } from './util';
 import { processJSFile, RewriteSourcesContext } from './utils/rewriteSources';
 import { getCurrentRunnerInfo } from './utils/taskRunner';
 import { getServiceURL, ServiceTypes } from './compilerServices/sendRequest';
-import { Language } from './compilerServices/types';
 import jwtDecode from 'jwt-decode';
 import { LanguageUpdater } from './utils/languageUpdater';
 import rustLibs from './languages/rust';
 
-declare var capstone: {
-  ARCH_X86: any;
-  MODE_64: any;
-  Cs: any;
-};
 
-declare var Module: ({}) => any;
+declare var Module: ({ }) => any;
 
 declare var showdown: {
   Converter: any;
@@ -335,8 +329,8 @@ export class Service {
       }),
       method: 'POST'
     });
-    const processId = await response.text();
-    return processId;
+    const pid = await response.text();
+    return pid;
   }
 
   static async createTerminalSocket(pid: string): Promise<WebSocket> {
@@ -432,7 +426,7 @@ export class Service {
       e.async = true;
       e.src = uri;
       b.appendChild(e);
-      e.onload = function() {
+      e.onload = function () {
         status && status.pop();
         resolve(this);
       };
@@ -558,7 +552,7 @@ export const getCurrentUser = () => {
       // jwt decode
       return data.profile;
     }
-  } catch (e) {}
+  } catch (e) { }
 
   // force logout
   // localStorage.removeItem("__USER__");
@@ -575,7 +569,7 @@ export const getAccessToken = () => {
     if (data.exp > Date.now() / 1000) {
       return u.access_token;
     }
-  } catch (e) {}
+  } catch (e) { }
 
   localStorage.removeItem('__USER__');
   if (location.pathname !== '/') {

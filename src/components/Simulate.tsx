@@ -3,6 +3,7 @@ import { Terminal } from 'xterm';
 import { AttachAddon } from 'xterm-addon-attach';
 import {FitAddon} from 'xterm-addon-fit'
 import { Service } from '../service';
+import { getServiceURL, ServiceTypes } from '../compilerServices/sendRequest';
 
 export interface SimulateProps {
   projectName: string
@@ -49,17 +50,20 @@ export class Simulate extends React.Component<SimulateProps, {}> {
         Service.resizeTerminal(this.pid, cols, rows);        
     });
 
-    const processId = await Service.createTerminal(this.props.projectName, this.xterm.cols,this.xterm.rows);
-    if(processId){          
-      this.socket = await Service.createTerminalSocket(processId);
+    const pid = await Service.createTerminal(this.props.projectName, this.xterm.cols,this.xterm.rows);
+    if(pid){          
+      this.socket = await Service.createTerminalSocket(pid);
       this.socket.onclose = () => {
         this.xterm.write('\n\n\x1b[31mSimulate session is terminated due to no actions, please re-active!');
       }
       const attachAddon = new AttachAddon(this.socket);     
-      this.pid = processId;   
+      this.pid = pid;   
+
+      const baseURL = await getServiceURL(ServiceTypes.Service);      
+      this.xterm.write(`🚀  Rest Server is start at \x1b[32m\x1b[1m${window.location.protocol}${baseURL}/terminals/${pid}/wasm\x1b[0m\n\n\r`);
       this.xterm.loadAddon(attachAddon);                
     } else {
-      this.xterm.write(`Wasm file is not built`);
+      this.xterm.write(`\x1b[31mWasm file is not built`);
     }      
     
   }
