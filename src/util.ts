@@ -155,7 +155,7 @@ export function decodeRestrictedBase64ToBytes(encoded: string) {
   const padding = encoded.charAt(len - 2) === '=' ? 2 : encoded.charAt(len - 1) === '=' ? 1 : 0;
   const decoded = new Uint8Array((encoded.length >> 2) * 3 - padding);
 
-  for (let i = 0, j = 0; i < encoded.length; ) {
+  for (let i = 0, j = 0; i < encoded.length;) {
     ch = encoded.charCodeAt(i++);
     code = base64DecodeMap[ch - base64DecodeMapOffset];
     ch = encoded.charCodeAt(i++);
@@ -309,13 +309,16 @@ export function validateFileName(name: string, sourceType: FileType): string {
     return 'Illegal characters in file name';
   }
 
-  const sourceTypeExtension = '.' + extensionForFileType(sourceType);
-  if (sourceTypeExtension === name) {
-    return "File name can't be empty";
-  }
+  // check extension
+  if (sourceType !== FileType.Directory) {
+    const sourceTypeExtension = '.' + extensionForFileType(sourceType);
+    if (sourceTypeExtension === name) {
+      return "File name can't be empty";
+    }
 
-  if (!name.endsWith(sourceTypeExtension)) {
-    return `${nameForFileType(sourceType)} file extension is missing or incorrect`;
+    if (!name.endsWith(sourceTypeExtension)) {
+      return `${nameForFileType(sourceType)} file extension is missing or incorrect`;
+    }
   }
 
   return '';
