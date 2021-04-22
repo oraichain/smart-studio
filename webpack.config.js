@@ -82,7 +82,7 @@ module.exports = (env, options) => {
       }),
       new webpack.DefinePlugin({
         'process.env.SERVICE_URL': JSON.stringify(process.env.SERVICE_URL),
-        'process.env.WALLET_URL': JSON.stringify(process.env.WALLET_URL || 'https://oraiwallet.web.app'),
+        'process.env.WALLET_URL': JSON.stringify(process.env.WALLET_URL || 'https://app.oraiwallet.io'),
         'process.env.LCD': JSON.stringify(process.env.LCD || 'https://lcd.testnet.oraiscan.io')
       })
     ],
