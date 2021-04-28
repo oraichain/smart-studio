@@ -555,7 +555,9 @@ export class App extends React.Component<AppProps, AppState> {
             isOpen={true}
             templatesName={this.props.embeddingParams.templatesName}
             onCancel={() => {
-              this.setState({ newProjectDialog: null });
+              if (! this.state.fiddle) {
+                this.setState({ newProjectDialog: null });
+              }
             }}
             onCreate={async (template: Template, name: string) => {
               if (!name) {
@@ -697,6 +699,9 @@ export class App extends React.Component<AppProps, AppState> {
             <Workspace
               project={this.state.project}
               file={this.state.file}
+              onChangeProject={() => {
+                this.setState({ newProjectDialog: true });
+              }}
               onNewFile={(directory: Directory) => {
                 this.setState({ newFileDialogDirectory: ModelRef.getRef(directory) });
               }}

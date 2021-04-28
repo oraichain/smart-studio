@@ -127,6 +127,7 @@ a {
   padding: 5px 22px;
   font-weight: bold;
   font-size: 14px;
+  cursor: pointer;
 }
 
 .editor-container {
@@ -611,7 +612,7 @@ a {
   right: 0;
   bottom: 0;
   background-color: rgba(0, 0, 0, 0.75);
-  z-index: 2;
+  z-index: 100;
 }
 
 .modal-title-bar {

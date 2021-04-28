@@ -19,8 +19,9 @@
  * SOFTWARE.
  */
 
-import React from 'react';
+import React, { Component } from 'react';
 import ReactDOM from 'react-dom';
+import history from 'history/browser';
 
 import { App, EmbeddingParams, EmbeddingType } from './components/App';
 import { layout } from './util';
@@ -29,7 +30,7 @@ import { MonacoUtils } from './monaco-utils';
 import '../assets/global.css';
 
 export function forEachUrlParameter(callback: (key: string, value: any) => void) {
-  let url = window.location.search.substring(1);
+  let url = history.location.search.substring(1);
   url = url.replace(/\/$/, ''); // Replace / at the end that gets inserted by browsers.
   url.split('&').forEach(function(s: any) {
     const t = s.split('=');
@@ -104,19 +105,53 @@ const loadKeyStation = (callback: any) => {
   document.body.appendChild(script);
 };
 
+class AppWatchRouter extends Component<any, any> {
+
+  unlisten: any = null;
+
+  constructor(props: any) {
+    super(props);
+    const parameters = getUrlParameters();
+    this.state = {
+      parameters,
+        fiddle: parameters['fiddle'] || parameters['f'],
+        update: parameters['update'] === true ? true : !!parseInt(parameters['update'], 10)
+    }
+  }
+
+  componentDidMount() {
+    this.unlisten = history.listen(() => {
+      const parameters = getUrlParameters();
+      this.setState({
+        parameters,
+        fiddle: parameters['fiddle'] || parameters['f'],
+        update: parameters['update'] === true ? true : !!parseInt(parameters['update'], 10)
+      });
+    });
+  }
+
+  componentWillUnmount() {
+    this.unlisten();
+  }
+
+  render() {
+    const { keystation } = this.props;
+    const { parameters, fiddle, update } = this.state;
+    const embeddingParams = getEmbeddingParams(parameters);
+    return <App keystation={keystation} update={update} fiddle={fiddle} embeddingParams={embeddingParams} windowContext={appWindowContext} />;
+  }
+}
+
 export async function init(environment = 'production') {
   // Logger.init();
   window.addEventListener('resize', layout, false);
   window.addEventListener('beforeunload', unloadPageHandler, false);
-  const parameters = getUrlParameters();
-  const update = parameters['update'] === true ? true : !!parseInt(parameters['update'], 10);
-  const fiddle = parameters['fiddle'] || parameters['f'];
-  const embeddingParams = getEmbeddingParams(parameters);
+
   try {
     MonacoUtils.initialize();
     loadKeyStation((keystation: any) => {
       ReactDOM.render(
-        <App keystation={keystation} update={update} fiddle={fiddle} embeddingParams={embeddingParams} windowContext={appWindowContext} />,
+        <AppWatchRouter keystation={keystation} windowContext={appWindowContext} />,
         document.getElementById('app')
       );
     });
