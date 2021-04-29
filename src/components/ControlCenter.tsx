@@ -76,6 +76,7 @@ export class ControlCenter extends React.Component<
   onDidChangeProblems = () => {
     this.updateOutputView();
   };
+
   componentDidMount() {
     appStore.onOutputChanged.register(this.onOutputChanged);
     appStore.onDidChangeProblems.register(this.onDidChangeProblems);
