@@ -1,7 +1,7 @@
 import React from 'react';
 import { Terminal } from 'xterm';
 import { AttachAddon } from 'xterm-addon-attach';
-import {FitAddon} from 'xterm-addon-fit'
+import { FitAddon } from 'xterm-addon-fit'
 import { Service } from '../service';
 import { getServiceURL, ServiceTypes } from '../compilerServices/sendRequest';
 
@@ -36,39 +36,39 @@ export class Simulate extends React.Component<SimulateProps, {}> {
     const fitAddon = new FitAddon();
     this.xterm.loadAddon(fitAddon);
     // auto fit
-    this.timer = window.setInterval(()=>{
-        fitAddon.fit();
-    }, 1000);    
+    this.timer = window.setInterval(() => {
+      fitAddon.fit();
+    }, 1000);
     this.xterm.open(this.container);
 
     this.xterm.onResize((size: { cols: number, rows: number }) => {
-        if (!this.pid) {
-            return;
-        }
-        const cols = size.cols;
-        const rows = size.rows;
-        Service.resizeTerminal(this.pid, cols, rows);        
+      if (!this.pid) {
+        return;
+      }
+      const cols = size.cols;
+      const rows = size.rows;
+      Service.resizeTerminal(this.pid, cols, rows);
     });
 
-    const pid = await Service.createTerminal(this.props.projectName, this.xterm.cols,this.xterm.rows);
-    if(pid){          
+    const pid = await Service.createTerminal(this.props.projectName, this.xterm.cols, this.xterm.rows);
+    if (pid) {
       this.socket = await Service.createTerminalSocket(pid);
       this.socket.onclose = () => {
         this.xterm.write('\n\n\x1b[31mSimulate session is terminated due to no actions, please re-active!');
       }
-      const attachAddon = new AttachAddon(this.socket);     
-      this.pid = pid;   
+      const attachAddon = new AttachAddon(this.socket);
+      this.pid = pid;
 
-      let baseURL = await getServiceURL(ServiceTypes.Service);      
-      if (!baseURL.startsWith('http')){
+      let baseURL = await getServiceURL(ServiceTypes.Service);
+      if (!baseURL.startsWith('http')) {
         baseURL = window.location.protocol + baseURL;
       }
-      this.xterm.write(`🚀  Rest Server is start at \x1b[32m\x1b[1m${baseURL}/terminals/${pid}/wasm\x1b[0m\n\n\r`);
-      this.xterm.loadAddon(attachAddon);                
+      this.xterm.write(`🚀  Rest Server is started at \x1b[32m\x1b[1m${baseURL}/terminals/${pid}/wasm\x1b[0m\n\n\r`);
+      this.xterm.loadAddon(attachAddon);
     } else {
       this.xterm.write(`\x1b[31mWasm file is not built`);
-    }      
-    
+    }
+
   }
 
   render() {
