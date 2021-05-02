@@ -29,7 +29,7 @@ export class Simulate extends React.Component<SimulateProps, {}> {
     window.clearInterval(this.timer);
   }
 
-
+  isForceClose = false;
   async componentDidMount() {
     // Attach the socket to term    
     this.xterm = new Terminal();
@@ -54,7 +54,9 @@ export class Simulate extends React.Component<SimulateProps, {}> {
     if (pid) {
       this.socket = await Service.createTerminalSocket(pid);
       this.socket.onclose = () => {
-        this.xterm.write('\n\n\x1b[31mSimulate session is terminated due to no actions, please re-active!');
+        if (! this.isForceClose) {
+          this.xterm.write('\n\n\x1b[31mSimulate session is terminated due to no actions, please re-active!');
+        }
       }
       const attachAddon = new AttachAddon(this.socket);
       this.pid = pid;
@@ -69,6 +71,22 @@ export class Simulate extends React.Component<SimulateProps, {}> {
       this.xterm.write(`\x1b[31mWasm file is not built`);
     }
 
+  }
+
+  shouldComponentUpdate(nextProps: any, nextState: any) {
+    if (this.props.projectName === nextProps.projectName) {
+      return false;
+    }
+
+    return true;
+  }
+
+  async componentDidUpdate() {
+    // reload terminal
+    this.isForceClose = true;
+    await this.componentWillUnmount();
+    await this.componentDidMount();
+    this.isForceClose = false;
   }
 
   render() {

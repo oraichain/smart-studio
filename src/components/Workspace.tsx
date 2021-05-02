@@ -42,6 +42,7 @@ export interface WorkspaceProps {
   onDoubleClickFile?: (file: File) => void;
   onUploadFile?: (directory: Directory) => void;
   onDeployContract: (file: File) => void;
+  onChangeProject: () => void;
 }
 
 export interface WorkSpaceState {
@@ -82,7 +83,7 @@ export class Workspace extends React.Component<WorkspaceProps, WorkSpaceState> {
               this.setState({ splits: splits });
             }}
           >
-            <div className="workspaceProjectName">{project.obj.name}</div>
+            <div className="workspaceProjectName" onClick={this.props.onChangeProject}>{project.obj.name}</div>
             <DirectoryTree
               ref={(ref) => (this.directoryTree = ref)}
               directory={project}
