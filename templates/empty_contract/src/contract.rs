@@ -1,8 +1,8 @@
 use crate::error::ContractError;
-use crate::msg::{HandleMsg, InitMsg, QueryMsg, SpecialQuery};
+use crate::msg::{HandleMsg, InitMsg, QueryMsg};
 use cosmwasm_std::{
     Binary, Env, HandleResponse, InitResponse, MessageInfo,
-    StdResult, Deps, DepsMut
+    StdResult, Deps, DepsMut, to_binary
 };
 
 // Note, you can use StdResult in some functions where you do not
@@ -32,13 +32,13 @@ pub fn query(
     msg: QueryMsg,
 ) -> StdResult<Binary> {
     match msg {
-        QueryMsg::Get { input } => query_data(deps, input),
+        QueryMsg::Get { input } => to_binary(&query_data(deps, input)?),
     }
 }
 
 fn query_data(
     deps: Deps,
     input: String,
-) -> StdResult<Binary> { 
+) -> StdResult<String> { 
     Ok(String::new())
 }
