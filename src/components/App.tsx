@@ -22,48 +22,33 @@
 import React from 'react';
 import { hot } from 'react-hot-loader/root';
 
-import { Workspace } from './Workspace';
-import { ViewTabs, View, EditorPanes } from './editor';
+// import { Workspace } from './Workspace';
+import { EditorPanes } from './editor';
 import { Toolbar } from './Toolbar';
-import { ViewType, defaultViewTypeForFileType } from './editor/View';
+import { defaultViewTypeForFileType } from './editor/View';
 import { schema, build, test, run, runTask, openFiles, pushStatus, popStatus, openProject } from '../actions/AppActions';
 
 import appStore from '../stores/AppStore';
-import {
-  addFileTo,
-  loadProject,
-  initStore,
-  updateFileNameAndDescription,
-  deleteFile,
-  splitGroup,
-  openFile,
-  openView,
-  closeView,
-  closeTabs,
-  saveProject,
-  focusTabGroup,
-  setViewType,
-  logLn
-} from '../actions/AppActions';
+import { addFileTo, initStore, updateFileNameAndDescription, openFile, saveProject, logLn } from '../actions/AppActions';
 import { Project, File, FileType, Directory, ModelRef } from '../models';
-import { Service, Language, getCurrentUser } from '../service';
+import { Service, getCurrentUser } from '../service';
 import { Split, SplitOrientation, SplitInfo } from './Split';
 
 import { layout, assert, resetDOMSelection } from '../util';
 
 import Mousetrap from 'mousetrap';
-import { GoDelete, GoDesktopDownload, GoBeaker, GoThreeBars, GoQuestion, GoVerified, GoCheck, GoBeakerGear, GoKebabHorizontal } from './shared/Icons';
+import { GoDelete, GoDesktopDownload, GoBeaker, OraiLogo, GoQuestion, GoVerified, GoCheck, GoBeakerGear, GoKebabHorizontal } from './shared/Icons';
 import { Button } from './shared/Button';
 
 import { NewFileDialog } from './NewFileDialog';
 import { EditFileDialog } from './EditFileDialog';
-import { UploadFileDialog } from './UploadFileDialog';
+// import { UploadFileDialog } from './UploadFileDialog';
 import { ToastContainer, ToastKind } from './Toasts';
-import { Spacer, Divider } from './Widgets';
+// import { Spacer, Divider } from './Widgets';
 import { ShareDialog } from './ShareDialog';
 import { NewProjectDialog, Template } from './NewProjectDialog';
 import { NewDirectoryDialog } from './NewDirectoryDialog';
-import { Errors } from '../errors';
+// import { Errors } from '../errors';
 import { ControlCenter } from './ControlCenter';
 import Group from '../utils/group';
 import { StatusBar } from './StatusBar';
@@ -378,21 +363,21 @@ export class App extends React.Component<AppProps, AppState> {
     const toolbarButtons = [
       <Button
         key="ViewWorkspace"
-        icon={<GoThreeBars />}
+        icon={<OraiLogo />}
         title="View Project Workspace"
         onClick={() => {
-          const workspaceSplits = this.state.workspaceSplits;
-          const first = workspaceSplits[0];
-          const second = workspaceSplits[1];
-          if (this.workspaceSplit) {
-            Object.assign(first, this.workspaceSplit);
-            this.workspaceSplit = null;
-            delete second.value;
-          } else {
-            this.workspaceSplit = Object.assign({}, first);
-            first.max = first.min = 0;
-          }
-          this.setState({ workspaceSplits });
+          // const workspaceSplits = this.state.workspaceSplits;
+          // const first = workspaceSplits[0];
+          // const second = workspaceSplits[1];
+          // if (this.workspaceSplit) {
+          //   Object.assign(first, this.workspaceSplit);
+          //   this.workspaceSplit = null;
+          //   delete second.value;
+          // } else {
+          //   this.workspaceSplit = Object.assign({}, first);
+          //   first.max = first.min = 0;
+          // }
+          // this.setState({ workspaceSplits });
         }}
       />
     ];
@@ -654,7 +639,7 @@ export class App extends React.Component<AppProps, AppState> {
             }}
           />
         )}
-        {this.state.uploadFileDialogDirectory && (
+        {/* {this.state.uploadFileDialogDirectory && (
           <UploadFileDialog
             isOpen={true}
             directory={this.state.uploadFileDialogDirectory}
@@ -674,7 +659,7 @@ export class App extends React.Component<AppProps, AppState> {
               this.setState({ uploadFileDialogDirectory: null });
             }}
           />
-        )}
+        )} */}
         {this.state.newDirectoryDialog && (
           <NewDirectoryDialog
             isOpen={true}
@@ -699,7 +684,7 @@ export class App extends React.Component<AppProps, AppState> {
               layout();
             }}
           >
-            <Workspace
+            {/* <Workspace
               project={this.state.project}
               file={this.state.file}
               onChangeProject={() => {
@@ -753,7 +738,7 @@ export class App extends React.Component<AppProps, AppState> {
               onDeployContract={(file: File) => {
                 this.deployContract(file);
               }}
-            />
+            /> */}
             <div className="fill">
               <div style={{ height: minToolbarHeight }}>
                 <Toolbar>{this.makeToolbarButtons()}</Toolbar>

@@ -19,30 +19,32 @@
  * SOFTWARE.
  */
 
-import { File, Project, Directory } from "../models";
-import JSZip from "jszip";
+import { File, Project, Directory } from '../models';
+import JSZip from 'jszip';
 
 export async function downloadProject(project: Project, uri?: string) {
-  const zipFile: JSZip = new JSZip();
-  let zipName: string = "Project.zip";
+  const zipFile = new JSZip();
+  let zipName: string = 'Project.zip';
   if (uri !== undefined) {
     zipName = `${uri}.zip`;
   }
-  const queue: Array<{filePrefix: string; file: File}> = [];
-  project.mapEachFile((f: File) => queue.push({filePrefix: "", file: f}));
+  const queue: Array<{ filePrefix: string; file: File }> = [];
+  project.mapEachFile((f: File) => queue.push({ filePrefix: '', file: f }));
   while (queue.length > 0) {
-    const {filePrefix, file} = queue.shift();
+    const { filePrefix, file } = queue.shift();
     const fileName = filePrefix + file.name;
     if (file instanceof Directory) {
-      file.mapEachFile(f => queue.push({filePrefix: fileName + "/", file: f}));
+      file.mapEachFile((f) => queue.push({ filePrefix: fileName + '/', file: f }));
       zipFile.folder(fileName);
       continue;
     }
-    zipFile.file(fileName, file.data);
+
+    // @ts-ignore
+    zipFile.file(fileName, file.data.data || file.data);
   }
-  await zipFile.generateAsync({type: "blob", mimeType: "application/zip"}).then((blob: Blob) => {
+  await zipFile.generateAsync({ type: 'blob', mimeType: 'application/zip' }).then((blob: Blob) => {
     // Creating <a> to programmatically click for downloading zip via blob's URL
-    const link = document.createElement("a");
+    const link = document.createElement('a');
     link.download = zipName;
     link.href = URL.createObjectURL(blob);
     // A fix for making link clickable in Firefox

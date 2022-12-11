@@ -213,11 +213,11 @@ export async function openProjectFiles(template: Template) {
   openProject(newProject);
 }
 
-export function openProject(newProject: Project, defaultPath: string = 'README.md') {
+export function openProject(newProject: Project, defaultPath: string = 'src/lib.rs') {
   loadProject(newProject);
   let openedFile = newProject.getFile(defaultPath);
   if (openedFile) {
-    openFiles([[defaultPath]]);
+    openFiles([['README.md', defaultPath]]);
   }
 }
 
@@ -307,10 +307,10 @@ export async function runTask(name: string, optional: boolean = false, externals
       fiddle = await Service.buildSchema(project.name);
       logLn(fiddle.message);
 
-      // load schema file to show
-      if (fiddle.success) {
-        await Service.loadFilesIntoProject(fiddle.files, project);
-      }
+      // // load schema file to show
+      // if (fiddle.success) {
+      //   await Service.loadFilesIntoProject(fiddle.files, project);
+      // }
       break;
     case 'test':
       const testMessage = await Service.testProject(project.name);

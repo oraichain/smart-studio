@@ -87,9 +87,7 @@ export class Tab extends PureComponent<TabProps, {}> {
     // tslint:disable-next-line
     onClick: () => {},
     // tslint:disable-next-line
-    onDoubleClick: () => {},
-    // tslint:disable-next-line
-    onClose: () => {}
+    onDoubleClick: () => {}
   };
 
   onMouseHandle = (e: MouseEvent<HTMLElement>, handler: Function) => {
@@ -110,7 +108,7 @@ export class Tab extends PureComponent<TabProps, {}> {
   };
 
   render() {
-    const { label, icon, isActive, isMarked, isItalic } = this.props;
+    const { label, icon, isActive, isMarked, isItalic, onClose } = this.props;
 
     let className = 'tab';
     if (isActive) {
@@ -127,7 +125,7 @@ export class Tab extends PureComponent<TabProps, {}> {
       <div className={className} onClick={this.onClick} onDoubleClick={this.onDoubleClick}>
         <div className={'monaco-icon-label file-icon ' + icon} />
         <div className="label">{label}</div>
-        <div className="close" onClick={this.onClose} />
+        {onClose ? <div className="close" onClick={this.onClose} /> : <div style={{ width: 15 }} />}
       </div>
     );
   }

@@ -1,8 +1,9 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{
-    entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult,
+    entry_point, to_binary, Addr, Binary, CanonicalAddr, Deps, DepsMut, Env, MessageInfo, Response,
+    StdResult, Storage,
 };
-use cosmwasm_storage::{singleton, singleton_read, Bucket, ReadonlyBucket};
+use cosmwasm_storage::{singleton, singleton_read};
 
 #[cw_serde]
 pub struct InstantiateMsg {}
@@ -39,10 +40,11 @@ static KEY_CONFIG: &[u8] = b"config";
 
 // Note, you can use StdResult in some functions where you do not
 // make use of the custom errors
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
-    _deps: DepsMut,
+    deps: DepsMut,
     _env: Env,
-    _info: MessageInfo,
+    info: MessageInfo,
     _: InstantiateMsg,
 ) -> StdResult<Response> {
     store_config(
@@ -55,7 +57,7 @@ pub fn instantiate(
 
 // And declare a custom Error variant for the ones where you will want to make use of it
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn execute(_: DepsMut, _env: Env, _: MessageInfo, _: ExecuteMsg) -> Result<Response> {
+pub fn execute(_: DepsMut, _env: Env, _: MessageInfo, _: ExecuteMsg) -> StdResult<Response> {
     Ok(Response::default())
 }
 
@@ -71,4 +73,17 @@ pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
     let resp = ConfigResponse { owner: deps.api.addr_humanize(&state.owner)? };
 
     Ok(resp)
+}
+
+#[test]
+fn test_init() {
+    use crate::{instantiate, InstantiateMsg};
+    use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
+    let mut deps = mock_dependencies();
+    // instantiate an empty contract
+    let instantiate_msg = InstantiateMsg {};
+    let info = mock_info(&String::from("anyone"), &[]);
+    let res = instantiate(deps.as_mut(), mock_env(), info, instantiate_msg).unwrap();
+    println!("res {:?}", res);
+    assert_eq!(0, res.messages.len());
 }

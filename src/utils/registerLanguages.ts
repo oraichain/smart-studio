@@ -19,10 +19,10 @@
  * SOFTWARE.
  */
 
-import { language, conf } from 'monaco-editor/esm/vs/basic-languages/rust/rust';
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
 import { Service } from '../service';
 import { Language } from '../compilerServices/types';
+import { language, conf } from './rust-grammar';
 
 export default async function registerLanguages() {
   // Log
@@ -41,6 +41,7 @@ export default async function registerLanguages() {
   monaco.languages.register({
     id: Language.Rust
   });
+
   monaco.languages.setMonarchTokensProvider(Language.Rust, language);
   monaco.languages.setLanguageConfiguration(Language.Rust, conf);
 

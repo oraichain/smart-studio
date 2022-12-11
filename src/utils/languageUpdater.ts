@@ -1,5 +1,5 @@
 import * as monaco from 'monaco-editor';
-import { extensionForFileType, File, FileType, languageForFileType } from '../models';
+import { File, FileType, languageForFileType } from '../models';
 import { WorldState } from '../../crates/ra-wasm/pkg';
 import { createRA } from './creat-ra';
 import rust_std from '../rust/std.rs';

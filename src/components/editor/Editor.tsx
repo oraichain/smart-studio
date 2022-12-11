@@ -101,7 +101,7 @@ export class Monaco extends React.Component<MonacoProps, {}> {
     this.editor.addAction({
       id: 'save',
       label: 'Save',
-      keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.KEY_S],
+      keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS],
       precondition: null,
       keybindingContext: null,
       run: function() {
@@ -114,7 +114,7 @@ export class Monaco extends React.Component<MonacoProps, {}> {
     });
 
     this.editor.addCommand(
-      monaco.KeyMod.CtrlCmd | monaco.KeyCode.KEY_B,
+      monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyB,
       function() {
         build();
       },

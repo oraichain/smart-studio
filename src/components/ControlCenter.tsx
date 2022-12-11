@@ -26,8 +26,6 @@ import { Sandbox } from './Sandbox';
 import { GoThreeBars, GoFile } from './shared/Icons';
 import { Button } from './shared/Button';
 import { File } from '../models';
-import { Problems } from './Problems';
-import { Simulate } from './Simulate';
 import appStore from '../stores/AppStore';
 import { layout } from '../util';
 
@@ -45,7 +43,7 @@ export class ControlCenter extends React.Component<
     /**
      * Visible pane.
      */
-    visible: 'output' | 'problems' | 'simulate';
+    visible: 'output' | 'problems';
 
     problemCount: number;
     outputLineCount: number;
@@ -116,10 +114,7 @@ export class ControlCenter extends React.Component<
             }}
           />
         );
-      case 'problems':
-        return <Problems />;
-      case 'simulate':
-        return <Simulate projectName={projectName} />;
+
       default:
         return null;
     }
@@ -168,14 +163,6 @@ export class ControlCenter extends React.Component<
                 isActive={this.state.visible === 'problems'}
                 onClick={() => {
                   this.setState({ visible: 'problems' });
-                }}
-              />
-              <Tab
-                label={`Simulate`}
-                isActive={this.state.visible === 'simulate'}
-                icon="asm-ext-file-icon ext-file-icon"
-                onClick={() => {
-                  this.setState({ visible: 'simulate' });
                 }}
               />
             </Tabs>

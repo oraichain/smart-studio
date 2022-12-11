@@ -22,7 +22,6 @@
 import React, { Component } from 'react';
 import ReactDOM from 'react-dom';
 import history from 'history/browser';
-
 import { App, EmbeddingParams, EmbeddingType } from './components/App';
 import { layout } from './util';
 import { MonacoUtils } from './monaco-utils';
