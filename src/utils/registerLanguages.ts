@@ -20,6 +20,7 @@
  */
 
 import { language, conf } from 'monaco-editor/esm/vs/basic-languages/rust/rust';
+import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
 import { Service } from '../service';
 import { Language } from '../compilerServices/types';
 

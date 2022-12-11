@@ -1,28 +1,55 @@
 import * as monaco from 'monaco-editor';
 import { extensionForFileType, File, FileType, languageForFileType } from '../models';
-import { WorldState } from '../../lib/analyzer/pkg';
+import { WorldState } from '../../crates/ra-wasm/pkg';
+import { createRA } from './creat-ra';
+import rust_std from '../rust/std.rs';
+import rust_core from '../rust/core.rs';
+import rust_alloc from '../rust/alloc.rs';
+import rust_cosmwasm_derive from '../rust/cosmwasm-derive.rs';
+import rust_cosmwasm_schema_derive from '../rust/cosmwasm-schema-derive.rs';
+import rust_cosmwasm_schema from '../rust/cosmwasm-schema.rs';
+import rust_cosmwasm_std from '../rust/cosmwasm-std.rs';
+import rust_cosmwasm_crypto from '../rust/cosmwasm-crypto.rs';
+import rust_cosmwasm_storage from '../rust/cosmwasm-storage.rs';
+
+window.MonacoEnvironment = {
+  getWorkerUrl: () => './editor.worker.bundle.js'
+};
 
 export class LanguageUpdater {
   private states: Map<monaco.Uri, WorldState> = new Map();
   private languageId: string;
-  constructor(lib: string, fileType: FileType) {
+  constructor(fileType: FileType) {
     this.languageId = languageForFileType(fileType);
-    const uri = monaco.Uri.file('/libs.' + extensionForFileType(fileType));
-    const textModel = monaco.editor.createModel(lib, this.languageId, uri);
-    this.addModel(textModel);
   }
 
   private async addModel(model: monaco.editor.ITextModel) {
-    const { WorldState: WorldStateClass } = await import('../../lib/analyzer/pkg');
+    // const { WorldState: WorldStateClass } = await import('../../lib/analyzer/pkg');
     let uri = model.uri;
     if (this.states.has(uri)) return;
-    const state = new WorldStateClass();
-    const update = () => {
-      const res = state.update(model.getValue());
+
+    const state = (await createRA()) as WorldState;
+
+    await state.init(
+      model.getValue(),
+      rust_std,
+      rust_core,
+      rust_alloc,
+      rust_cosmwasm_derive,
+      rust_cosmwasm_schema_derive,
+      rust_cosmwasm_schema,
+      rust_cosmwasm_std,
+      rust_cosmwasm_crypto,
+      rust_cosmwasm_storage
+    );
+
+    const update = async () => {
+      const res = await state.update(model.getValue());
       monaco.editor.setModelMarkers(model, this.languageId, res.diagnostics);
     };
-    update();
+    await update();
     model.onDidChangeContent(update);
+
     this.states.set(uri, state);
   }
 
@@ -69,15 +96,14 @@ export class LanguageUpdater {
   }
 
   provideHover(model: monaco.editor.ITextModel, pos: monaco.Position) {
-    // process hover
     return this.provideByFunction(
       model,
       pos,
-      (data: any) => data && !data.contents[0].value.match(/rust\n*{unknown}/),
-      (otherModel: monaco.editor.ITextModel, otherPos: monaco.Position, isOther: boolean) => {
+      (data: any) => data && Array.isArray(data.contents) && !data.contents[0].value.match(/rust\n*{unknown}/),
+      async (otherModel: monaco.editor.ITextModel, otherPos: monaco.Position, isOther: boolean) => {
         const otherState = this.states.get(otherModel.uri);
         if (!otherState) return;
-        const data = otherState.hover(otherPos.lineNumber, otherPos.column);
+        const data = await otherState.hover(otherPos.lineNumber, otherPos.column);
         // hack to remove hightlight text with other files
         if (isOther && data) {
           data.range.startLineNumber = data.range.endLineNumber = 999999;
@@ -88,17 +114,17 @@ export class LanguageUpdater {
     );
   }
 
-  provideCodeLenses(model: monaco.editor.ITextModel) {
+  async provideCodeLenses(model: monaco.editor.ITextModel) {
     const state = this.states.get(model.uri);
     if (!state) return;
-    const code_lenses = state.code_lenses();
+    const code_lenses = await state.code_lenses();
     const lenses = code_lenses.map(({ range, command }: any) => {
       const position = {
         column: range.startColumn,
         lineNumber: range.startLineNumber
       };
 
-      const references: monaco.languages.Location = command.positions.map((pos: any) => ({
+      const references = command.positions.map((pos: any) => ({
         range: pos,
         uri: model.uri
       }));
@@ -115,56 +141,55 @@ export class LanguageUpdater {
     return { lenses, dispose() {} };
   }
 
-  provideReferences(model: monaco.editor.ITextModel, pos: monaco.Position, { includeDeclaration }: monaco.languages.ReferenceContext) {
+  async provideReferences(model: monaco.editor.ITextModel, pos: monaco.Position, { includeDeclaration }: any) {
     const state = this.states.get(model.uri);
     if (!state) return;
-    const references = state.references(pos.lineNumber, pos.column, includeDeclaration);
+    const references = await state.references(pos.lineNumber, pos.column, includeDeclaration);
     if (references) {
-      return references.map(({ range }: monaco.languages.Location) => ({ uri: model.uri, range }));
+      return references.map(({ range }: any) => ({ uri: model.uri, range }));
     }
   }
 
-  provideDocumentHighlights(model: monaco.editor.ITextModel, pos: monaco.Position) {
+  async provideDocumentHighlights(model: monaco.editor.ITextModel, pos: monaco.Position) {
     const state = this.states.get(model.uri);
     if (!state) return;
-    return state.references(pos.lineNumber, pos.column, true);
+    const references = state.references(pos.lineNumber, pos.column, true);
+    return references;
   }
 
-  provideRenameEdits(model: monaco.editor.ITextModel, pos: monaco.Position, newName: string) {
+  async provideRenameEdits(model: monaco.editor.ITextModel, pos: monaco.Position, newName: string) {
     const state = this.states.get(model.uri);
     if (!state) return;
-    const edits = state.rename(pos.lineNumber, pos.column, newName);
+    const edits = await state.rename(pos.lineNumber, pos.column, newName);
     if (edits) {
       return {
-        edits: [
-          {
-            resource: model.uri,
-            edits
-          }
-        ]
+        edits: edits.map((edit: any) => ({
+          resource: model.uri,
+          edit
+        }))
       };
     }
   }
 
-  resolveRenameLocation(model: monaco.editor.ITextModel, pos: monaco.Position) {
+  async resolveRenameLocation(model: monaco.editor.ITextModel, pos: monaco.Position) {
     const state = this.states.get(model.uri);
     if (!state) return;
-    return state.prepare_rename(pos.lineNumber, pos.column);
+    return await state.prepare_rename(pos.lineNumber, pos.column);
   }
 
-  provideCompletionItems(model: monaco.editor.ITextModel, pos: monaco.Position) {
+  async provideCompletionItems(model: monaco.editor.ITextModel, pos: monaco.Position) {
     const state = this.states.get(model.uri);
     if (!state) return;
-    const suggestions = state.completions(pos.lineNumber, pos.column);
+    const suggestions = await state.completions(pos.lineNumber, pos.column);
     if (suggestions) {
       return { suggestions };
     }
   }
 
-  provideSignatureHelp(model: monaco.editor.ITextModel, pos: monaco.Position) {
+  async provideSignatureHelp(model: monaco.editor.ITextModel, pos: monaco.Position) {
     const state = this.states.get(model.uri);
     if (!state) return;
-    const value = state.signature_help(pos.lineNumber, pos.column);
+    const value = await state.signature_help(pos.lineNumber, pos.column);
     if (value) {
       return {
         value,
@@ -173,48 +198,48 @@ export class LanguageUpdater {
     }
   }
 
-  provideDefinition(model: monaco.editor.ITextModel, pos: monaco.Position) {
+  async provideDefinition(model: monaco.editor.ITextModel, pos: monaco.Position) {
     const state = this.states.get(model.uri);
     if (!state) return;
-    const list = state.definition(pos.lineNumber, pos.column);
+    const list = await state.definition(pos.lineNumber, pos.column);
     if (list) {
-      return list.map((def: monaco.languages.Definition) => ({ ...def, uri: model.uri }));
+      return list.map((def: any) => ({ ...def, uri: model.uri }));
     }
   }
 
-  provideTypeDefinition(model: monaco.editor.ITextModel, pos: monaco.Position) {
+  async provideTypeDefinition(model: monaco.editor.ITextModel, pos: monaco.Position) {
     const state = this.states.get(model.uri);
     if (!state) return;
-    const list = state.type_definition(pos.lineNumber, pos.column);
+    const list = await state.type_definition(pos.lineNumber, pos.column);
     if (list) {
-      return list.map((def: monaco.languages.Definition) => ({ ...def, uri: model.uri }));
+      return list.map((def: any) => ({ ...def, uri: model.uri }));
     }
   }
 
-  provideImplementation(model: monaco.editor.ITextModel, pos: monaco.Position) {
+  async provideImplementation(model: monaco.editor.ITextModel, pos: monaco.Position) {
     const state = this.states.get(model.uri);
     if (!state) return;
-    const list = state.goto_implementation(pos.lineNumber, pos.column);
+    const list = await state.goto_implementation(pos.lineNumber, pos.column);
     if (list) {
-      return list.map((def: monaco.languages.Definition) => ({ ...def, uri: model.uri }));
+      return list.map((def: any) => ({ ...def, uri: model.uri }));
     }
   }
 
-  provideDocumentSymbols(model: monaco.editor.ITextModel) {
+  async provideDocumentSymbols(model: monaco.editor.ITextModel) {
     const state = this.states.get(model.uri);
     if (!state) return;
-    return state.document_symbols();
+    return await state.document_symbols();
   }
 
-  provideOnTypeFormattingEdits(model: monaco.editor.ITextModel, pos: monaco.Position, ch: string) {
+  async provideOnTypeFormattingEdits(model: monaco.editor.ITextModel, pos: monaco.Position, ch: string) {
     const state = this.states.get(model.uri);
     if (!state) return;
-    return state.type_formatting(pos.lineNumber, pos.column, ch);
+    return await state.type_formatting(pos.lineNumber, pos.column, ch);
   }
 
-  provideFoldingRanges(model: monaco.editor.ITextModel) {
+  async provideFoldingRanges(model: monaco.editor.ITextModel) {
     const state = this.states.get(model.uri);
     if (!state) return;
-    return state.folding_ranges();
+    return await state.folding_ranges();
   }
 }

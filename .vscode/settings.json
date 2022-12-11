@@ -31,4 +31,5 @@
   },
   "js/ts.implicitProjectConfig.experimentalDecorators": true,
   "prettier.printWidth": 180,
+  "typescript.tsdk": "node_modules/typescript/lib",
 }

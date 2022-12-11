@@ -35,7 +35,7 @@ import {
   initStore,
   updateFileNameAndDescription,
   deleteFile,
-  splitGroup,  
+  splitGroup,
   openFile,
   openView,
   closeView,
@@ -104,7 +104,7 @@ export interface AppState {
   /**
    * current menu active
    */
-  menuOpen: string,
+  menuOpen: string;
 
   /**
    * Primary workspace split state.
@@ -142,7 +142,6 @@ export interface AppProps {
    * If true, the Update button is visible.
    */
   update: boolean;
-  keystation: any;
   fiddle: string;
   embeddingParams: EmbeddingParams;
   windowContext: AppWindowContext;
@@ -233,13 +232,13 @@ export class App extends React.Component<AppProps, AppState> {
     const project = new Project(uri);
 
     pushStatus('Loading Project');
-    const fiddle = await Service.loadJSON(uri);    
+    const fiddle = await Service.loadJSON(uri);
     popStatus();
 
     if (fiddle.success) {
       await Service.loadFilesIntoProject(fiddle.files, project);
-      openProject(project);            
-      logLn(`Load project ${project.name} succeed!`);      
+      openProject(project);
+      logLn(`Load project ${project.name} succeed!`);
     } else {
       this.showToast(<span>Project {uri} was not found.</span>, 'error');
     }
@@ -343,9 +342,9 @@ export class App extends React.Component<AppProps, AppState> {
   }
 
   // deploy contract using wallet, it is binary so use buffer
-  async deployContract(file?: File) {    
-    const target: File = file || this.state.project.getModel();    
-    this.props.keystation?.deploy({ name: target.name, data: Buffer.from(target.getData()) });    
+  async deployContract(file?: File) {
+    const target: File = file || this.state.project.getModel();
+    console.log('run deploy with keplr');
   }
 
   async download() {
@@ -367,7 +366,7 @@ export class App extends React.Component<AppProps, AppState> {
 
   logout() {
     localStorage.removeItem('__USER__');
-    location.href= '/';
+    location.href = '/';
   }
 
   goProfile() {
@@ -460,16 +459,16 @@ export class App extends React.Component<AppProps, AppState> {
     );
 
     toolbarButtons.push(
-        <Button
-          key="Test"
-          icon={<GoCheck />}
-          label="Run Tests"
-          title="Run Tests"
-          isDisabled={this.toolbarButtonsAreDisabled()}
-          onClick={() => {
-            test();
-          }}
-        />
+      <Button
+        key="Test"
+        icon={<GoCheck />}
+        label="Run Tests"
+        title="Run Tests"
+        isDisabled={this.toolbarButtonsAreDisabled()}
+        onClick={() => {
+          test();
+        }}
+      />
     );
 
     const user = getCurrentUser();
@@ -480,16 +479,20 @@ export class App extends React.Component<AppProps, AppState> {
           <Button
             key="Profile"
             icon={
-              <img width={20} style={{
-                verticalAlign: 'middle',
-                borderRadius: '100%',
-              }} src={`https://avatars.githubusercontent.com/u/${user.id}?v=4`} />
+              <img
+                width={20}
+                style={{
+                  verticalAlign: 'middle',
+                  borderRadius: '100%'
+                }}
+                src={`https://avatars.githubusercontent.com/u/${user.id}?v=4`}
+              />
             }
             label={user.username}
             title={user.username}
             onClick={() => {
               // this.loadHelp();
-              this.setState(s => ({
+              this.setState((s) => ({
                 menuOpen: s.menuOpen === 'profile' ? '' : 'profile'
               }));
             }}
@@ -505,7 +508,6 @@ export class App extends React.Component<AppProps, AppState> {
         </div>
       );
     }
-    
 
     if (this.props.embeddingParams.type === EmbeddingType.None) {
       toolbarButtons.push(
@@ -526,7 +528,7 @@ export class App extends React.Component<AppProps, AppState> {
   }
 
   render() {
-    const minToolbarHeight = this.state.controlCenterSplits[1].min ?? 40;
+    const minToolbarHeight = this.state.controlCenterSplits[1].min || 40;
     const editorPanes = (
       <Split
         name="Editors"
@@ -550,60 +552,61 @@ export class App extends React.Component<AppProps, AppState> {
 
         <GithubConnectDialog isOpen={this.state.isShowConnectDialog} onClose={() => this.setState({ isShowConnectDialog: false })} />
 
-        {this.state.newProjectDialog && !this.state.isShowConnectDialog && (
-          <NewProjectDialog
-            isOpen={true}
-            templatesName={this.props.embeddingParams.templatesName}
-            onCancel={() => {
-              if (! this.state.fiddle) {
-                this.setState({ newProjectDialog: null });
-              }
-            }}
-            onCreate={async (template: Template, name: string) => {
-              if (!name) {
-                this.showToast(<span>Project name is empty!</span>);
-                return;
-              }
+        {this.state.newProjectDialog &&
+          !this.state.isShowConnectDialog && (
+            <NewProjectDialog
+              isOpen={true}
+              templatesName={this.props.embeddingParams.templatesName}
+              onCancel={() => {
+                if (!this.state.fiddle) {
+                  this.setState({ newProjectDialog: null });
+                }
+              }}
+              onCreate={async (template: Template, name: string) => {
+                if (!name) {
+                  this.showToast(<span>Project name is empty!</span>);
+                  return;
+                }
 
-              // check exist ?
-              const reason = await Service.isProjectValid(name);
-              if (reason) {
-                this.showToast(<span>{reason}</span>);
-                return;
-              }
+                // check exist ?
+                const reason = await Service.isProjectValid(name);
+                if (reason) {
+                  this.showToast(<span>{reason}</span>);
+                  return;
+                }
 
-              // create new project and save
-              const newProject = new Project(name);
+                // create new project and save
+                const newProject = new Project(name);
 
-              await Service.loadFilesIntoProject(template.files, newProject, template.baseUrl);
+                await Service.loadFilesIntoProject(template.files, newProject, template.baseUrl);
 
-              // save project before save into app store
-              const fiddle = await saveProject(newProject);
-              if (!fiddle) return;
+                // save project before save into app store
+                const fiddle = await saveProject(newProject);
+                if (!fiddle) return;
 
-              // change url
-              history.replaceState({}, fiddle, `?f=${fiddle}`);
+                // change url
+                history.replaceState({}, fiddle, `?f=${fiddle}`);
 
-              // open new project and hide dialog
-              await openProject(newProject);
-              this.setState({ newProjectDialog: false });
-            }}
-            onOpenProject={async file => {
-              // // change url
-              // const fiddle = file.name;
-              // history.replaceState({}, fiddle, `?f=${fiddle}`);
+                // open new project and hide dialog
+                await openProject(newProject);
+                this.setState({ newProjectDialog: false });
+              }}
+              onOpenProject={async (file) => {
+                // // change url
+                // const fiddle = file.name;
+                // history.replaceState({}, fiddle, `?f=${fiddle}`);
 
-              // const project = new Project(fiddle);
-              // await openProject(project);
-              // this.setState({ newProjectDialog: false });
+                // const project = new Project(fiddle);
+                // await openProject(project);
+                // this.setState({ newProjectDialog: false });
 
-              const fiddle = file.name;
-              history.replaceState({}, fiddle, `?f=${fiddle}`);
-              await this.loadProjectFromFiddle(fiddle);
-              this.setState({ newProjectDialog: false });
-            }}
-          />
-        )}
+                const fiddle = file.name;
+                history.replaceState({}, fiddle, `?f=${fiddle}`);
+                await this.loadProjectFromFiddle(fiddle);
+                this.setState({ newProjectDialog: false });
+              }}
+            />
+          )}
         {this.state.newFileDialogDirectory && (
           <NewFileDialog
             isOpen={true}
@@ -739,7 +742,7 @@ export class App extends React.Component<AppProps, AppState> {
               onMoveFile={(file: File, directory: Directory) => {
                 // TODO://
                 // addFileTo(file, directory);
-                console.log('TODO://', file, directory);                
+                console.log('TODO://', file, directory);
               }}
               onUploadFile={(directory: Directory) => {
                 this.setState({ uploadFileDialogDirectory: ModelRef.getRef(directory) });

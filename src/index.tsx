@@ -84,29 +84,7 @@ export function getEmbeddingParams(parameters: any): EmbeddingParams {
   };
 }
 
-const keystationUrl = process.env.WALLET_URL;
-const loadKeyStation = (callback: any) => {
-  const script = document.createElement('script');
-  script.src = `${keystationUrl}/lib/keystation.js`;
-  script.async = true;
-  script.onload = () => {
-    const keystation = new window.Keystation({
-      keystationUrl,
-      lcd: process.env.LCD
-    });
-    callback(keystation);
-  };
-  script.onerror = (error) => {
-    // handle error
-    console.log('Can not load keystation library!');
-    callback(null);
-  };
-
-  document.body.appendChild(script);
-};
-
 class AppWatchRouter extends Component<any, any> {
-
   unlisten: any = null;
 
   constructor(props: any) {
@@ -114,9 +92,9 @@ class AppWatchRouter extends Component<any, any> {
     const parameters = getUrlParameters();
     this.state = {
       parameters,
-        fiddle: parameters['fiddle'] || parameters['f'],
-        update: parameters['update'] === true ? true : !!parseInt(parameters['update'], 10)
-    }
+      fiddle: parameters['fiddle'] || parameters['f'],
+      update: parameters['update'] === true ? true : !!parseInt(parameters['update'], 10)
+    };
   }
 
   componentDidMount() {
@@ -135,10 +113,9 @@ class AppWatchRouter extends Component<any, any> {
   }
 
   render() {
-    const { keystation } = this.props;
     const { parameters, fiddle, update } = this.state;
     const embeddingParams = getEmbeddingParams(parameters);
-    return <App keystation={keystation} update={update} fiddle={fiddle} embeddingParams={embeddingParams} windowContext={appWindowContext} />;
+    return <App update={update} fiddle={fiddle} embeddingParams={embeddingParams} windowContext={appWindowContext} />;
   }
 }
 
@@ -147,17 +124,8 @@ export async function init(environment = 'production') {
   window.addEventListener('resize', layout, false);
   window.addEventListener('beforeunload', unloadPageHandler, false);
 
-  try {
-    MonacoUtils.initialize();
-    loadKeyStation((keystation: any) => {
-      ReactDOM.render(
-        <AppWatchRouter keystation={keystation} windowContext={appWindowContext} />,
-        document.getElementById('app')
-      );
-    });
-  } catch (e) {
-    console.error(e);
-  }
+  MonacoUtils.initialize();
+  ReactDOM.render(<AppWatchRouter windowContext={appWindowContext} />, document.getElementById('app'));
 }
 
 init();

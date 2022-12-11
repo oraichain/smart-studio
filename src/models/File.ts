@@ -19,6 +19,7 @@
  * SOFTWARE.
  */
 
+import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
 import { assert, getNextKey } from '../util';
 import { Service } from '../service';
 import { FileType, IStatusProvider, isBinaryFileType, languageForFileType } from './types';

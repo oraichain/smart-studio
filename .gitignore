@@ -8,3 +8,5 @@ stats
 .DS_Store
 yarn-error.log
 server
+
+target

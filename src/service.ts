@@ -18,6 +18,8 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+
+import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
 import { File, Project, Directory, FileType, isBinaryFileType, fileTypeFromFileName } from './models';
 import { IStatusProvider } from './models/types';
 import { decodeRestrictedBase64ToBytes, base64EncodeBytes } from './util';
@@ -26,10 +28,8 @@ import { getCurrentRunnerInfo } from './utils/taskRunner';
 import { getServiceURL, ServiceTypes } from './compilerServices/sendRequest';
 import jwtDecode from 'jwt-decode';
 import { LanguageUpdater } from './utils/languageUpdater';
-import rustLibs from './languages/rust';
 
-
-declare var Module: ({ }) => any;
+declare var Module: ({}) => any;
 
 declare var showdown: {
   Converter: any;
@@ -63,7 +63,7 @@ export { Language } from './compilerServices';
 
 export class Service {
   // private static worker = new ServiceWorker();
-  private static languageUpdater = new LanguageUpdater(rustLibs, FileType.Rust);
+  private static languageUpdater = new LanguageUpdater(FileType.Rust);
 
   static get LanguageUpdater() {
     return Service.languageUpdater;
@@ -426,7 +426,7 @@ export class Service {
       e.async = true;
       e.src = uri;
       b.appendChild(e);
-      e.onload = function () {
+      e.onload = function() {
         status && status.pop();
         resolve(this);
       };
@@ -552,7 +552,7 @@ export const getCurrentUser = () => {
       // jwt decode
       return data.profile;
     }
-  } catch (e) { }
+  } catch (e) {}
 
   // force logout
   // localStorage.removeItem("__USER__");
@@ -569,7 +569,7 @@ export const getAccessToken = () => {
     if (data.exp > Date.now() / 1000) {
       return u.access_token;
     }
-  } catch (e) { }
+  } catch (e) {}
 
   localStorage.removeItem('__USER__');
   if (location.pathname !== '/') {

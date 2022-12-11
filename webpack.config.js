@@ -1,14 +1,13 @@
 const path = require('path');
 const webpack = require('webpack');
 const ForkTsCheckerWebpackPlugin = require('fork-ts-checker-webpack-plugin');
-const MonacoWebpackPlugin = require('monaco-editor-webpack-plugin');
 const shell = require('shelljs');
 
 const distPath = path.resolve(__dirname, process.env.DIST_FOLDER || 'dist');
 
 module.exports = (env, options) => {
   const config = {
-    entry: './src/index.tsx',
+    entry: { main: './src/index.tsx', 'editor.worker': 'monaco-editor/esm/vs/editor/editor.worker.js' },
     output: {
       filename: '[name].bundle.js',
       chunkFilename: '[name].bundle.js',
@@ -18,10 +17,23 @@ module.exports = (env, options) => {
     },
 
     // Enable sourcemaps for debugging webpack's output.
-    devtool: options.mode === 'production' ? false : 'source-map',
+    devtool: options.mode === 'production' ? false : 'eval-source-map',
 
     devServer: {
-      liveReload: false
+      historyApiFallback: true,
+      liveReload: false,
+      static: path.resolve(__dirname),
+      port: process.env.PORT || 8080,
+      headers: {
+        'Cross-Origin-Opener-Policy': 'same-origin',
+        'Cross-Origin-Embedder-Policy': 'require-corp'
+      },
+      client: {
+        overlay: {
+          errors: true,
+          warnings: false
+        }
+      }
     },
 
     resolve: {
@@ -29,13 +41,32 @@ module.exports = (env, options) => {
         'react-dom': '@hot-loader/react-dom'
       },
       // Add '.ts' and '.tsx' as resolvable extensions.
-      extensions: ['.ts', '.tsx', '.js', '.json']
+      extensions: ['.ts', '.tsx', '.js', '.json', '.wasm'],
+      fallback: {
+        fs: false,
+        tls: false,
+        net: false,
+        os: false,
+        url: false,
+        path: false,
+        assert: false,
+        http: false,
+        crypto: false,
+        buffer: require.resolve('buffer/'),
+        stream: require.resolve('stream-browserify'),
+        https: require.resolve('https-browserify')
+      }
     },
+    stats: 'errors-only',
 
     module: {
       rules: [
+        {
+          test: /\.rs$/,
+          use: ['raw-loader']
+        },
         { test: /\.css$/, use: ['style-loader', 'css-loader'] },
-        { test: /\.(png|woff|woff2|eot|ttf|svg)$/, loader: 'url-loader?limit=100000' },
+        { test: /\.(png|woff|woff2|eot|ttf|svg)$/, use: ['file-loader'] },
         // All files with a '.ts' or '.tsx' extension will be handled by 'ts-loader'.
         {
           test: /\.(j|t)s(x)?$/,
@@ -77,15 +108,17 @@ module.exports = (env, options) => {
 
     plugins: [
       new ForkTsCheckerWebpackPlugin(),
-      new MonacoWebpackPlugin({
-        languages: ['rust', 'json']
+      new webpack.EnvironmentPlugin({
+        SERVICE_URL: false,
+        LCD: 'https://testnet.lcd.orai.io'
       }),
-      new webpack.DefinePlugin({
-        'process.env.SERVICE_URL': JSON.stringify(process.env.SERVICE_URL),
-        'process.env.WALLET_URL': JSON.stringify(process.env.WALLET_URL || 'https://app.oraiwallet.io'),
-        'process.env.LCD': JSON.stringify(process.env.LCD || 'https://testnet-lcd.orai.io')
+      new webpack.ProvidePlugin({
+        process: 'process/browser'
       })
     ],
+    experiments: {
+      asyncWebAssembly: true
+    },
     // maximum 20 MB
     performance: {
       hints: false,

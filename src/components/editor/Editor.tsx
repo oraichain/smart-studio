@@ -20,6 +20,7 @@
  */
 
 import React from 'react';
+import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
 import { languageForFileType } from '../../models';
 import { IStatusProvider } from '../../models/types';
 import { View } from './View';

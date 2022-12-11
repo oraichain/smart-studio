@@ -3,33 +3,21 @@
 To build Oraichain Studio whenever a file changes run:
 
 ```bash
-yarn build-server
+# build rust
+wasm-pack build crates/ra-wasm --target web
+OUTPUT_PATH=src/rust COSMWASM_PATH=../cosmwasm cargo run -p rust-pack
+
 # to build client
 # rebuild template
 yarn templates
 DIST_FOLDER=server/fiddles/dist yarn build
-```
-
-To start a dev web server run:
-
-```bash
-# run fiddle server
-GITHUB_CALLBACK_URL=http://localhost:8080 yarn start:dev
-SERVICE_URL=//localhost:3000 WALLET_URL=//localhost:3001 LCD=https://testnet-lcd.orai.io yarn start
+SERVICE_URL=http://localhost:3000 yarn start
 ```
 
 Before submitting a pull request run:
 
 ```
 yarn test
-```
-
-The fiddle server part:
-
-```bash
-cd server
-docker-compose exec app bash
-yarn start:dev
 ```
 
 ### Credits

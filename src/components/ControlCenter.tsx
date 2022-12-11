@@ -19,17 +19,17 @@
  * SOFTWARE.
  */
 
-import React from "react";
-import { Split, SplitOrientation, SplitInfo } from "./Split";
-import { EditorView, View, Tab, Tabs } from "./editor";
-import { Sandbox } from "./Sandbox";
-import { GoThreeBars, GoFile } from "./shared/Icons";
-import { Button } from "./shared/Button";
-import { File } from "../models";
-import { Problems } from "./Problems";
-import { Simulate } from "./Simulate";
-import appStore from "../stores/AppStore";
-import { layout } from "../util";
+import React from 'react';
+import { Split, SplitOrientation, SplitInfo } from './Split';
+import { EditorView, View, Tab, Tabs } from './editor';
+import { Sandbox } from './Sandbox';
+import { GoThreeBars, GoFile } from './shared/Icons';
+import { Button } from './shared/Button';
+import { File } from '../models';
+import { Problems } from './Problems';
+import { Simulate } from './Simulate';
+import appStore from '../stores/AppStore';
+import { layout } from '../util';
 
 export class ControlCenter extends React.Component<
   {
@@ -45,7 +45,7 @@ export class ControlCenter extends React.Component<
     /**
      * Visible pane.
      */
-    visible: "output" | "problems" | "simulate";
+    visible: 'output' | 'problems' | 'simulate';
 
     problemCount: number;
     outputLineCount: number;
@@ -64,10 +64,10 @@ export class ControlCenter extends React.Component<
     this.outputView = new View(outputFile);
 
     this.state = {
-      visible: "output",
+      visible: 'output',
       splits: [{ min: 128, value: 512 }, { min: 128, value: 256 }],
       problemCount: this.getProblemCount(),
-      outputLineCount: this.getOutputLineCount(),
+      outputLineCount: this.getOutputLineCount()
     };
   }
   onOutputChanged = () => {
@@ -94,7 +94,7 @@ export class ControlCenter extends React.Component<
         this.updateOutputViewTimeout = null;
         this.setState({
           problemCount: this.getProblemCount(),
-          outputLineCount: this.getOutputLineCount(),
+          outputLineCount: this.getOutputLineCount()
         });
       });
     }
@@ -106,20 +106,19 @@ export class ControlCenter extends React.Component<
   createPane() {
     const projectName = appStore.getProject().getModel().name;
     switch (this.state.visible) {
-      case "output":
+      case 'output':
         return (
           <EditorView
             ref={(ref) => this.setOutputViewEditor(ref)}
             view={this.outputView}
             options={{
-              readOnly: true,
-              renderIndentGuides: false,
+              readOnly: true
             }}
           />
         );
-      case "problems":
+      case 'problems':
         return <Problems />;
-      case "simulate":
+      case 'simulate':
         return <Simulate projectName={projectName} />;
       default:
         return null;
@@ -145,7 +144,7 @@ export class ControlCenter extends React.Component<
   render() {
     return (
       <div className="fill">
-        <div className="tabs" style={{ display: "flex" }}>
+        <div className="tabs" style={{ display: 'flex' }}>
           <div>
             <Button
               icon={<GoThreeBars />}
@@ -159,36 +158,36 @@ export class ControlCenter extends React.Component<
             <Tabs>
               <Tab
                 label={`Output (${this.state.outputLineCount})`}
-                isActive={this.state.visible === "output"}
+                isActive={this.state.visible === 'output'}
                 onClick={() => {
-                  this.setState({ visible: "output" });
+                  this.setState({ visible: 'output' });
                 }}
               />
               <Tab
                 label={`Problems (${this.state.problemCount})`}
-                isActive={this.state.visible === "problems"}
+                isActive={this.state.visible === 'problems'}
                 onClick={() => {
-                  this.setState({ visible: "problems" });
+                  this.setState({ visible: 'problems' });
                 }}
               />
               <Tab
                 label={`Simulate`}
-                isActive={this.state.visible === "simulate"}
+                isActive={this.state.visible === 'simulate'}
                 icon="asm-ext-file-icon ext-file-icon"
                 onClick={() => {
-                  this.setState({ visible: "simulate" });
+                  this.setState({ visible: 'simulate' });
                 }}
               />
             </Tabs>
           </div>
         </div>
-        <div style={{ height: "calc(100% - 40px)" }}>
+        <div style={{ height: 'calc(100% - 40px)' }}>
           {this.props.showSandbox ? (
             <Split
               name="editor/sandbox"
               orientation={SplitOrientation.Vertical}
               defaultSplit={{
-                min: 256,
+                min: 256
               }}
               splits={this.state.splits}
               onChange={(splits) => {

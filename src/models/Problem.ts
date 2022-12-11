@@ -19,31 +19,27 @@
  * SOFTWARE.
  */
 
-import { getNextKey } from "../util";
-import { File } from "./File";
+import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
+
+import { getNextKey } from '../util';
+import { File } from './File';
 
 export function monacoSeverityToString(severity: monaco.MarkerSeverity) {
   switch (severity) {
-    case monaco.MarkerSeverity.Info: return "info";
-    case monaco.MarkerSeverity.Warning: return "warning";
-    case monaco.MarkerSeverity.Error: return "error";
+    case monaco.MarkerSeverity.Info:
+      return 'info';
+    case monaco.MarkerSeverity.Warning:
+      return 'warning';
+    case monaco.MarkerSeverity.Error:
+      return 'error';
   }
 }
 
 export class Problem {
   readonly key = String(getNextKey());
-  constructor(
-    public file: File,
-    public description: string,
-    public severity: "error" | "warning" | "info" | "ignore",
-    public marker?: monaco.editor.IMarkerData) {
-  }
+  constructor(public file: File, public description: string, public severity: 'error' | 'warning' | 'info' | 'ignore', public marker?: monaco.editor.IMarkerData) {}
 
   static fromMarker(file: File, marker: monaco.editor.IMarkerData) {
-    return new Problem(
-      file,
-      `${marker.message} (${marker.startLineNumber}, ${marker.startColumn})`,
-      monacoSeverityToString(marker.severity),
-      marker);
+    return new Problem(file, `${marker.message} (${marker.startLineNumber}, ${marker.startColumn})`, monacoSeverityToString(marker.severity), marker);
   }
 }
