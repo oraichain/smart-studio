@@ -6,8 +6,8 @@ use std::sync::Arc;
 use cfg::CfgOptions;
 use ide::{
     Analysis, AnalysisHost, Change, CompletionConfig, CrateGraph, CrateId, DiagnosticsConfig,
-    Edition, FileId, FilePosition, HoverConfig, HoverDocFormat, Indel, InlayHintsConfig, InlayKind,
-    SourceRoot, TextSize,
+    Edition, FileId, FilePosition, FileRange, HoverConfig, HoverDocFormat, Indel, InlayHintsConfig,
+    InlayKind, SourceRoot, TextRange, TextSize,
 };
 use ide_db::{
     base_db::{CrateName, Dependency, Env, FileSet, VfsPath},
@@ -137,9 +137,9 @@ pub fn from_single_file(
     crate_graph.add_dep(std_crate, alloc_dep.clone()).unwrap();
     crate_graph.add_dep(alloc_crate, core_dep.clone()).unwrap();
     crate_graph.add_dep(cosmwasm_std_crate, core_dep.clone()).unwrap();
-    crate_graph.add_dep(cosmwasm_schema_crate, cosmwasm_schema_derive_dep.clone()).unwrap();
     crate_graph.add_dep(cosmwasm_std_crate, cosmwasm_derive_dep.clone()).unwrap();
     crate_graph.add_dep(cosmwasm_storage_crate, cosmwasm_std_dep.clone()).unwrap();
+    crate_graph.add_dep(cosmwasm_schema_crate, cosmwasm_schema_derive_dep.clone()).unwrap();
 
     crate_graph.add_dep(contract_crate, core_dep).unwrap();
     crate_graph.add_dep(contract_crate, alloc_dep).unwrap();
@@ -328,7 +328,13 @@ impl WorldState {
         log::warn!("hover");
         let line_index = self.analysis().file_line_index(self.file_id).unwrap();
 
-        let range = file_range(line_number, column, line_number, column, &line_index, self.file_id);
+        let FilePosition { file_id, offset } =
+            file_position(line_number, column, &line_index, self.file_id);
+        let range = FileRange {
+            file_id,
+            range: TextRange::new(TextSize::from(offset), TextSize::from(offset)),
+        };
+
         let info = match self
             .analysis()
             .hover(
@@ -618,23 +624,4 @@ fn file_position(
     let line_col = ide::LineCol { line: line_number - 1, col: column - 1 };
     let offset = line_index.offset(line_col);
     ide::FilePosition { file_id, offset }
-}
-
-fn file_range(
-    start_line_number: u32,
-    start_column: u32,
-    end_line_number: u32,
-    end_column: u32,
-    line_index: &ide::LineIndex,
-    file_id: ide::FileId,
-) -> ide::FileRange {
-    let start_line_col = ide::LineCol { line: start_line_number - 1, col: start_column - 1 };
-    let end_line_col = ide::LineCol { line: end_line_number - 1, col: end_column - 1 };
-    ide::FileRange {
-        file_id,
-        range: ide::TextRange::new(
-            line_index.offset(start_line_col),
-            line_index.offset(end_line_col),
-        ),
-    }
 }

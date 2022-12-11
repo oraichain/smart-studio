@@ -79,6 +79,12 @@ export default async function registerLanguages() {
       return Service.LanguageUpdater.provideCompletionItems(model, pos);
     }
   });
+  monaco.languages.registerInlayHintsProvider(Language.Rust, {
+    provideInlayHints(model, range, token) {
+      return Service.LanguageUpdater.provideInlayHints(model, range, token);
+    }
+  });
+
   monaco.languages.registerSignatureHelpProvider(Language.Rust, {
     signatureHelpTriggerCharacters: ['(', ','],
     provideSignatureHelp(model, pos) {

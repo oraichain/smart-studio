@@ -53,40 +53,6 @@ export class LanguageUpdater {
     this.states.set(uri, state);
   }
 
-  private provideByFunction(
-    model: monaco.editor.ITextModel,
-    pos: monaco.Position,
-    check: (data: any) => boolean,
-    process: (otherModel: monaco.editor.ITextModel, otherPos: monaco.Position, isOther: boolean) => any
-  ): any {
-    let data = process(model, pos, false);
-    // process other
-    if (!check(data)) {
-      // try other states
-      const word = model.getWordAtPosition(pos);
-
-      // empty word
-      if (!word) return data;
-
-      for (let uri of this.states.keys()) {
-        if (uri.path !== model.uri.path) {
-          const otherModel = monaco.editor.getModel(uri);
-          // need to sync, model may be deleted
-          if (!otherModel) {
-            this.states.delete(uri);
-            continue;
-          }
-          const index = otherModel.getValue().lastIndexOf(word.word);
-          if (index === -1) continue;
-          const otherPos = otherModel.getPositionAt(index + 1);
-          data = process(otherModel, otherPos, true);
-          if (data) break;
-        }
-      }
-    }
-    return data;
-  }
-
   addFile(file: File) {
     const { buffer, type } = file;
     const languageId = languageForFileType(type);
@@ -95,30 +61,17 @@ export class LanguageUpdater {
     }
   }
 
-  provideHover(model: monaco.editor.ITextModel, pos: monaco.Position) {
-    return this.provideByFunction(
-      model,
-      pos,
-      (data: any) => data && Array.isArray(data.contents) && !data.contents[0].value.match(/rust\n*{unknown}/),
-      async (otherModel: monaco.editor.ITextModel, otherPos: monaco.Position, isOther: boolean) => {
-        const otherState = this.states.get(otherModel.uri);
-        if (!otherState) return;
-        const data = await otherState.hover(otherPos.lineNumber, otherPos.column);
-        // hack to remove hightlight text with other files
-        if (isOther && data) {
-          data.range.startLineNumber = data.range.endLineNumber = 999999;
-        }
-
-        return data;
-      }
-    );
+  async provideHover(model: monaco.editor.ITextModel, pos: monaco.Position) {
+    const state = this.states.get(model.uri);
+    const hoverData = await state.hover(pos.lineNumber, pos.column);
+    return hoverData;
   }
 
   async provideCodeLenses(model: monaco.editor.ITextModel) {
     const state = this.states.get(model.uri);
     if (!state) return;
-    const code_lenses = await state.code_lenses();
-    const lenses = code_lenses.map(({ range, command }: any) => {
+    const codeLenses = await state.code_lenses();
+    const lenses = codeLenses.map(({ range, command }: any) => {
       const position = {
         column: range.startColumn,
         lineNumber: range.startLineNumber
@@ -184,6 +137,13 @@ export class LanguageUpdater {
     if (suggestions) {
       return { suggestions };
     }
+  }
+
+  async provideInlayHints(model: monaco.editor.ITextModel, range: monaco.Range, token: monaco.CancellationToken) {
+    const state = this.states.get(model.uri);
+    if (!state) return;
+    const inlayHints = await state.inlay_hints();
+    return inlayHints;
   }
 
   async provideSignatureHelp(model: monaco.editor.ITextModel, pos: monaco.Position) {

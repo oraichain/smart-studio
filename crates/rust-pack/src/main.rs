@@ -5,10 +5,6 @@ use std::fs::read_to_string;
 use std::path::Path;
 use std::process::Command;
 
-use remove_function::remove_function_body;
-
-mod remove_function;
-
 struct Mod<'a> {
     pub_prefix: &'a str,
     explicit_path: Option<&'a str>,
@@ -209,7 +205,7 @@ fn main() {
             println!("output_path {}", output_path);
             let mut output = String::default();
             put_module_in_string(&mut output, path, 0, 4000).unwrap();
-            // output = remove_function_body(&output);
+            // remove function body and test to load faster
             fs::write(output_path, output.clone()).unwrap();
         }
     }
