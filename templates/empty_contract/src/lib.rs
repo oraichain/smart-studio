@@ -1,7 +1,7 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{
-    entry_point, from_binary, to_binary, Addr, Binary, CanonicalAddr, Deps, DepsMut, Env,
-    MessageInfo, Response, StdResult, Storage,
+    entry_point, to_binary, Addr, Binary, CanonicalAddr, Deps, DepsMut, Env, MessageInfo, Response,
+    StdResult, Storage,
 };
 use cosmwasm_storage::{singleton, singleton_read};
 
@@ -85,6 +85,6 @@ fn test_init() {
     assert_eq!(0, res.messages.len());
     let query_msg = QueryMsg::Config {};
     let res: ConfigResponse =
-        from_binary(&query(deps.as_ref(), mock_env(), query_msg).unwrap()).unwrap();
+        cosmwasm_std::from_binary(&query(deps.as_ref(), mock_env(), query_msg).unwrap()).unwrap();
     assert_eq!(res.owner, "anyone");
 }
