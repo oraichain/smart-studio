@@ -28,8 +28,6 @@ import { getCurrentRunnerInfo } from './utils/taskRunner';
 import { getServiceURL, ServiceTypes } from './compilerServices/sendRequest';
 import jwtDecode from 'jwt-decode';
 import { LanguageUpdater } from './utils/languageUpdater';
-import { openFile } from './actions/AppActions';
-import { ViewType } from './components/editor/View';
 
 declare var Module: ({}) => any;
 
@@ -305,6 +303,7 @@ export class Service {
       body: JSON.stringify({ name })
     });
     const ret = await response.json();
+
     return ret;
   }
 

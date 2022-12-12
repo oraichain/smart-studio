@@ -306,11 +306,6 @@ export async function runTask(name: string, optional: boolean = false, externals
     case 'schema':
       fiddle = await Service.buildSchema(project.name);
       logLn(fiddle.message);
-
-      // // load schema file to show
-      // if (fiddle.success) {
-      //   await Service.loadFilesIntoProject(fiddle.files, project);
-      // }
       break;
     case 'test':
       const testMessage = await Service.testProject(project.name);
