@@ -281,7 +281,7 @@ export class OraiLogo extends React.PureComponent {
   render() {
     return (
       <svg className="octicon" width="16" height="16" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <g clip-path="url(#clip0_612_3569)">
+        <g clipPath="url(#clip0_612_3569)">
           <path
             d="M41.4149 42.7043L44.5836 52.0632H37.4355L40.7885 42.7043H41.4149ZM58.5114 57.0743H53.2793V58.9166H66.1754V57.0743H61.0169V42.3359H66.1754V40.4936H53.2793V42.3359H58.5114V57.0743ZM34.9668 58.9166L36.7354 53.9792H45.2468L46.9049 58.9166H49.6315L42.9992 40.4936H39.2409L32.4981 58.9166H34.9668ZM76.4554 76.4553H23.5446V23.5444H76.4554V76.4553Z"
             fill="white"

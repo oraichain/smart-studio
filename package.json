@@ -18,7 +18,6 @@
     "tslint": "tslint -p ./tsconfig.json; tslint -p ./tsconfig.test.json",
     "templates": "node ./bin/bundle-templates.js templates",
     "mutate": "./node_modules/.bin/stryker run",
-    "analyse": "mkdir -p ./stats && webpack --profile --json > ./stats/stats.json && webpack-bundle-analyzer ./stats/stats.json ./dist -r stats/index.html",
     "e2e": "jest --maxWorkers=2 -c jest.e2e.config.json"
   },
   "jest": {
@@ -132,7 +131,6 @@
     "typescript": "^3.1.6",
     "wait-until-promise": "^1.0.0",
     "webpack": "^5.73.0",
-    "webpack-bundle-analyzer": "^2.13.1",
     "webpack-cli": "^5.0.1",
     "webpack-dev-server": "^4.11.1"
   }

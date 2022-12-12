@@ -7,7 +7,11 @@ const distPath = path.resolve(__dirname, process.env.DIST_FOLDER || 'dist');
 
 module.exports = (env, options) => {
   const config = {
-    entry: { main: './src/index.tsx', 'editor.worker': 'monaco-editor/esm/vs/editor/editor.worker.js' },
+    entry: {
+      main: './src/index.tsx',
+      'editor.worker': 'monaco-editor/esm/vs/editor/editor.worker.js',
+      'json.worker': 'monaco-editor/esm/vs/language/json/json.worker'
+    },
     output: {
       filename: '[name].bundle.js',
       chunkFilename: '[name].bundle.js',
@@ -25,6 +29,7 @@ module.exports = (env, options) => {
       static: path.resolve(__dirname),
       port: process.env.PORT || 8080,
       headers: {
+        'Cross-Origin-Resource-Policy': 'cross-origin',
         'Cross-Origin-Opener-Policy': 'same-origin',
         'Cross-Origin-Embedder-Policy': 'require-corp'
       },
@@ -131,12 +136,10 @@ module.exports = (env, options) => {
     config.plugins.push({
       apply: (compiler) => {
         compiler.hooks.afterEmit.tap('AfterEmitPlugin', (compilation) => {
-          const pkgDist = path.join(distPath, 'lib/analyzer');
           // copy file to destination
           shell.exec(`yarn templates ${distPath}/templates`);
           shell.cp(['index.html', 'config.json'], distPath);
-          shell.mkdir('-p', pkgDist);
-          shell.cp('-r', 'lib/analyzer/pkg', pkgDist);
+          shell.cp('-r', 'lib', distPath);
           shell.cp('-r', ['notes', 'assets'], distPath);
         });
       }

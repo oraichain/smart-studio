@@ -470,6 +470,7 @@ export class App extends React.Component<AppProps, AppState> {
                   verticalAlign: 'middle',
                   borderRadius: '100%'
                 }}
+                crossOrigin="anonymous"
                 src={`https://avatars.githubusercontent.com/u/${user.id}?v=4`}
               />
             }

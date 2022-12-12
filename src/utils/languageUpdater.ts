@@ -13,7 +13,12 @@ import rust_cosmwasm_crypto from '../rust/cosmwasm-crypto.rs';
 import rust_cosmwasm_storage from '../rust/cosmwasm-storage.rs';
 
 window.MonacoEnvironment = {
-  getWorkerUrl: () => './editor.worker.bundle.js'
+  getWorkerUrl: (moduleId, label) => {
+    if (label === 'json') {
+      return './json.worker.bundle.js';
+    }
+    return './editor.worker.bundle.js';
+  }
 };
 
 export class LanguageUpdater {
@@ -24,7 +29,6 @@ export class LanguageUpdater {
   }
 
   private async addModel(model: monaco.editor.ITextModel) {
-    // const { WorldState: WorldStateClass } = await import('../../lib/analyzer/pkg');
     let uri = model.uri;
     if (this.states.has(uri)) return;
 
@@ -63,6 +67,7 @@ export class LanguageUpdater {
 
   async provideHover(model: monaco.editor.ITextModel, pos: monaco.Position) {
     const state = this.states.get(model.uri);
+    if (!state) return;
     const hoverData = await state.hover(pos.lineNumber, pos.column);
     return hoverData;
   }
@@ -143,7 +148,22 @@ export class LanguageUpdater {
     const state = this.states.get(model.uri);
     if (!state) return;
     const inlayHints = await state.inlay_hints();
-    return inlayHints;
+    if (!inlayHints) return;
+
+    return {
+      hints: inlayHints.map(({ label, hint_type, range }: any) => {
+        return {
+          label,
+          kind: hint_type,
+          paddingRight: 10,
+          position: {
+            column: range.startColumn,
+            lineNumber: range.startLineNumber
+          }
+        };
+      }),
+      dispose() {}
+    };
   }
 
   async provideSignatureHelp(model: monaco.editor.ITextModel, pos: monaco.Position) {
