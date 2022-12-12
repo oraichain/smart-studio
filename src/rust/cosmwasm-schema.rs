@@ -1,33 +1,15 @@
 mod casing {
-pub fn to_snake_case(name: &str) -> String {
-    let mut out = String::new();
-    for (index, ch) in name.char_indices() {
-        if index != 0 && ch.is_uppercase() {
-            out.push('_');
-        }
-        out.push(ch.to_ascii_lowercase());
-    }
-    out
-}
+pub fn to_snake_case(name: &str) -> String {}
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn to_snake_case_leaves_snake_case_untouched() {
-        assert_eq!(to_snake_case(""), "");
-        assert_eq!(to_snake_case("a"), "a");
-        assert_eq!(to_snake_case("abc"), "abc");
-        assert_eq!(to_snake_case("a_bc"), "a_bc");
-    }
+    fn to_snake_case_leaves_snake_case_untouched() {}
 
     #[test]
-    fn to_snake_case_works_for_camel_case() {
-        assert_eq!(to_snake_case("Foobar"), "foobar");
-        assert_eq!(to_snake_case("FooBar"), "foo_bar");
-        assert_eq!(to_snake_case("ABC"), "a_b_c");
-    }
+    fn to_snake_case_works_for_camel_case() {}
 }
 }
 mod export {
@@ -41,36 +23,15 @@ use schemars::schema::RootSchema;
 use crate::casing::to_snake_case;
 
 // Exports a schema, auto-generating filename based on the metadata title of the generated schema.
-pub fn export_schema(schema: &RootSchema, out_dir: &Path) {
-    let title = schema
-        .schema
-        .metadata
-        .as_ref()
-        .map(|b| b.title.clone().unwrap_or_else(|| "untitled".to_string()))
-        .unwrap_or_else(|| "unknown".to_string());
-    write_schema(schema, out_dir, &title);
-}
+pub fn export_schema(schema: &RootSchema, out_dir: &Path) {}
 
 // use this if you want to override the auto-detected name of the object.
 // very useful when creating an alias for a type-alias.
-pub fn export_schema_with_title(schema: &RootSchema, out_dir: &Path, title: &str) {
-    let mut schema = schema.clone();
-    // set the title explicitly on the schema's metadata
-    if let Some(metadata) = &mut schema.schema.metadata {
-        metadata.title = Some(title.to_string());
-    }
-    write_schema(&schema, out_dir, title);
-}
+pub fn export_schema_with_title(schema: &RootSchema, out_dir: &Path, title: &str) {}
 
 /// Writes schema to file. Overwrites existing file.
 /// Panics on any error writing out the schema.
-fn write_schema(schema: &RootSchema, out_dir: &Path, title: &str) {
-    // first, we set the title as we wish
-    let path = out_dir.join(format!("{}.json", to_snake_case(title)));
-    let json = serde_json::to_string_pretty(schema).unwrap();
-    write(&path, json + "\n").unwrap();
-    println!("Created {}", path.to_str().unwrap());
-}
+fn write_schema(schema: &RootSchema, out_dir: &Path, title: &str) {}
 }
 mod idl {
 //! The Cosmwasm IDL (Interface Description Language)
@@ -100,45 +61,7 @@ pub struct Api {
 }
 
 impl Api {
-    pub fn render(self) -> JsonApi {
-        let mut json_api = JsonApi {
-            contract_name: self.contract_name,
-            contract_version: self.contract_version,
-            idl_version: IDL_VERSION.to_string(),
-            instantiate: self.instantiate,
-            execute: self.execute,
-            query: self.query,
-            migrate: self.migrate,
-            sudo: self.sudo,
-            responses: self.responses,
-        };
-
-        if let Some(metadata) = &mut json_api.instantiate.schema.metadata {
-            metadata.title = Some("InstantiateMsg".to_string());
-        }
-        if let Some(execute) = &mut json_api.execute {
-            if let Some(metadata) = &mut execute.schema.metadata {
-                metadata.title = Some("ExecuteMsg".to_string());
-            }
-        }
-        if let Some(query) = &mut json_api.query {
-            if let Some(metadata) = &mut query.schema.metadata {
-                metadata.title = Some("QueryMsg".to_string());
-            }
-        }
-        if let Some(migrate) = &mut json_api.migrate {
-            if let Some(metadata) = &mut migrate.schema.metadata {
-                metadata.title = Some("MigrateMsg".to_string());
-            }
-        }
-        if let Some(sudo) = &mut json_api.sudo {
-            if let Some(metadata) = &mut sudo.schema.metadata {
-                metadata.title = Some("SudoMsg".to_string());
-            }
-        }
-
-        json_api
-    }
+    pub fn render(self) -> JsonApi {}
 }
 
 /// A JSON representation of a contract's API.
@@ -156,55 +79,11 @@ pub struct JsonApi {
 }
 
 impl JsonApi {
-    pub fn to_string(&self) -> Result<String, EncodeError> {
-        serde_json::to_string_pretty(&self).map_err(Into::into)
-    }
+    pub fn to_string(&self) -> Result<String, EncodeError> {}
 
-    pub fn to_schema_files(&self) -> Result<Vec<(String, String)>, EncodeError> {
-        let mut result = vec![(
-            "instantiate.json".to_string(),
-            serde_json::to_string_pretty(&self.instantiate)?,
-        )];
+    pub fn to_schema_files(&self) -> Result<Vec<(String, String)>, EncodeError> {}
 
-        if let Some(execute) = &self.execute {
-            result.push((
-                "execute.json".to_string(),
-                serde_json::to_string_pretty(&execute)?,
-            ));
-        }
-        if let Some(query) = &self.execute {
-            result.push((
-                "query.json".to_string(),
-                serde_json::to_string_pretty(&query)?,
-            ));
-        }
-        if let Some(migrate) = &self.execute {
-            result.push((
-                "migrate.json".to_string(),
-                serde_json::to_string_pretty(&migrate)?,
-            ));
-        }
-        if let Some(sudo) = &self.execute {
-            result.push((
-                "sudo.json".to_string(),
-                serde_json::to_string_pretty(&sudo)?,
-            ));
-        }
-        if let Some(responses) = &self.responses {
-            for (name, response) in responses {
-                result.push((
-                    format!("response_to_{}.json", name),
-                    serde_json::to_string_pretty(&response)?,
-                ));
-            }
-        }
-
-        Ok(result)
-    }
-
-    pub fn to_writer(&self, writer: impl std::io::Write) -> Result<(), EncodeError> {
-        serde_json::to_writer_pretty(writer, self).map_err(Into::into)
-    }
+    pub fn to_writer(&self, writer: impl std::io::Write) -> Result<(), EncodeError> {}
 }
 
 #[derive(Error, Debug)]
@@ -218,9 +97,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn version_is_semver() {
-        semver::Version::parse(IDL_VERSION).unwrap();
-    }
+    fn version_is_semver() {}
 }
 }
 mod query_response {
@@ -289,11 +166,7 @@ pub use cosmwasm_schema_derive::QueryResponses;
 /// # }
 /// ```
 pub trait QueryResponses: JsonSchema {
-    fn response_schemas() -> Result<BTreeMap<String, RootSchema>, IntegrityError> {
-        let response_schemas = Self::response_schemas_impl();
-
-        Ok(response_schemas)
-    }
+    fn response_schemas() -> Result<BTreeMap<String, RootSchema>, IntegrityError> {}
 
     fn response_schemas_impl() -> BTreeMap<String, RootSchema>;
 }
@@ -302,17 +175,7 @@ pub trait QueryResponses: JsonSchema {
 /// Used internally in the implementation of [`QueryResponses`] when using `#[query_responses(nested)]`
 pub fn combine_subqueries<const N: usize, T>(
     subqueries: [BTreeMap<String, RootSchema>; N],
-) -> BTreeMap<String, RootSchema> {
-    let sub_count = subqueries.iter().flatten().count();
-    let map: BTreeMap<_, _> = subqueries.into_iter().flatten().collect();
-    if map.len() != sub_count {
-        panic!(
-            "name collision in subqueries for {}",
-            std::any::type_name::<T>()
-        )
-    }
-    map
-}
+) -> BTreeMap<String, RootSchema> {}
 
 #[derive(Debug, Error, PartialEq, Eq)]
 pub enum IntegrityError {
@@ -347,31 +210,11 @@ mod tests {
     }
 
     impl QueryResponses for GoodMsg {
-        fn response_schemas_impl() -> BTreeMap<String, RootSchema> {
-            BTreeMap::from([
-                ("balance_for".to_string(), schema_for!(u128)),
-                ("account_id_for".to_string(), schema_for!(u128)),
-                ("supply".to_string(), schema_for!(u128)),
-                ("liquidity".to_string(), schema_for!(u128)),
-                ("account_count".to_string(), schema_for!(u128)),
-            ])
-        }
+        fn response_schemas_impl() -> BTreeMap<String, RootSchema> {}
     }
 
     #[test]
-    fn good_msg_works() {
-        let response_schemas = GoodMsg::response_schemas().unwrap();
-        assert_eq!(
-            response_schemas,
-            BTreeMap::from([
-                ("balance_for".to_string(), schema_for!(u128)),
-                ("account_id_for".to_string(), schema_for!(u128)),
-                ("supply".to_string(), schema_for!(u128)),
-                ("liquidity".to_string(), schema_for!(u128)),
-                ("account_count".to_string(), schema_for!(u128))
-            ])
-        );
-    }
+    fn good_msg_works() {}
 
     #[derive(Debug, JsonSchema)]
     #[serde(rename_all = "snake_case")]
@@ -379,16 +222,11 @@ mod tests {
     pub enum EmptyMsg {}
 
     impl QueryResponses for EmptyMsg {
-        fn response_schemas_impl() -> BTreeMap<String, RootSchema> {
-            BTreeMap::from([])
-        }
+        fn response_schemas_impl() -> BTreeMap<String, RootSchema> {}
     }
 
     #[test]
-    fn empty_msg_works() {
-        let response_schemas = EmptyMsg::response_schemas().unwrap();
-        assert_eq!(response_schemas, BTreeMap::from([]));
-    }
+    fn empty_msg_works() {}
 
     #[derive(Debug, JsonSchema)]
     #[serde(rename_all = "kebab-case")]
@@ -398,9 +236,7 @@ mod tests {
     }
 
     impl QueryResponses for BadMsg {
-        fn response_schemas_impl() -> BTreeMap<String, RootSchema> {
-            BTreeMap::from([("balance_for".to_string(), schema_for!(u128))])
-        }
+        fn response_schemas_impl() -> BTreeMap<String, RootSchema> {}
     }
 
     #[derive(Debug, JsonSchema)]
@@ -420,71 +256,23 @@ mod tests {
     }
 
     impl QueryResponses for UntaggedMsg {
-        fn response_schemas_impl() -> BTreeMap<String, RootSchema> {
-            BTreeMap::from([
-                ("balance_for".to_string(), schema_for!(u128)),
-                ("account_id_for".to_string(), schema_for!(u128)),
-                ("supply".to_string(), schema_for!(u128)),
-                ("liquidity".to_string(), schema_for!(u128)),
-                ("account_count".to_string(), schema_for!(u128)),
-                ("extension".to_string(), schema_for!(())),
-            ])
-        }
+        fn response_schemas_impl() -> BTreeMap<String, RootSchema> {}
     }
 
     #[test]
-    fn untagged_msg_works() {
-        let response_schemas = UntaggedMsg::response_schemas().unwrap();
-        assert_eq!(
-            response_schemas,
-            BTreeMap::from([
-                ("balance_for".to_string(), schema_for!(u128)),
-                ("account_id_for".to_string(), schema_for!(u128)),
-                ("supply".to_string(), schema_for!(u128)),
-                ("liquidity".to_string(), schema_for!(u128)),
-                ("account_count".to_string(), schema_for!(u128)),
-                ("extension".to_string(), schema_for!(())),
-            ])
-        );
-    }
+    fn untagged_msg_works() {}
 }
 }
 mod remove {
 use std::{fs, io, path};
 
-fn is_regular_file(path: &path::Path) -> Result<bool, io::Error> {
-    Ok(path.symlink_metadata()?.is_file())
-}
+fn is_regular_file(path: &path::Path) -> Result<bool, io::Error> {}
 
-fn is_hidden(path: &path::Path) -> bool {
-    match path.file_name() {
-        Some(name) => name.to_os_string().to_string_lossy().starts_with('.'),
-        None => false, // a path without filename is no .*
-    }
-}
+fn is_hidden(path: &path::Path) -> bool {}
 
-fn is_json(path: &path::Path) -> bool {
-    match path.file_name() {
-        Some(name) => name.to_os_string().to_string_lossy().ends_with(".json"),
-        None => false, // a path without filename is no *.json
-    }
-}
+fn is_json(path: &path::Path) -> bool {}
 
-pub fn remove_schemas(schemas_dir: &path::Path) -> Result<(), io::Error> {
-    let file_paths = fs::read_dir(schemas_dir)?
-        .filter_map(Result::ok) // skip read errors on entries
-        .map(|entry| entry.path())
-        .filter(|path| is_regular_file(path).unwrap_or(false)) // skip directories and symlinks
-        .filter(|path| !is_hidden(path)) // skip hidden
-        .filter(|path| is_json(path)) // skip non JSON
-        ;
-
-    for file_path in file_paths {
-        println!("Removing {:?} …", file_path);
-        fs::remove_file(file_path)?;
-    }
-    Ok(())
-}
+pub fn remove_schemas(schemas_dir: &path::Path) -> Result<(), io::Error> {}
 
 #[cfg(test)]
 mod tests {
@@ -493,61 +281,10 @@ mod tests {
     use std::path::Path;
 
     #[test]
-    fn is_hidden_works() {
-        assert!(!is_hidden(Path::new("/foo")));
-        assert!(!is_hidden(Path::new("/foo/bar")));
-        assert!(!is_hidden(Path::new("/foo/bar.txt")));
-        assert!(!is_hidden(Path::new("~foo")));
-        assert!(!is_hidden(Path::new("foo")));
-
-        assert!(is_hidden(Path::new("/.foo")));
-        assert!(is_hidden(Path::new("/foo/.bar")));
-        assert!(is_hidden(Path::new("/foo/.bar.txt")));
-        assert!(is_hidden(Path::new(".foo")));
-
-        // no filename
-        assert!(!is_hidden(Path::new("/")));
-        assert!(!is_hidden(Path::new("")));
-
-        // invalid UTF-8
-        #[cfg(any(unix, target_os = "redox"))]
-        {
-            use std::os::unix::ffi::OsStrExt;
-            let non_hidden = OsStr::from_bytes(&[0x66, 0x6f, 0x80, 0x6f]); // fo�o
-            assert!(!is_hidden(Path::new(non_hidden)));
-            let hidden = OsStr::from_bytes(&[0x2e, 0x66, 0x6f, 0x80, 0x6f]); // .fo�o
-            assert!(is_hidden(Path::new(hidden)));
-        }
-    }
+    fn is_hidden_works() {}
 
     #[test]
-    fn is_json_works() {
-        assert!(!is_json(Path::new("/foo")));
-        assert!(!is_json(Path::new("/foo/bar")));
-        assert!(!is_json(Path::new("/foo/bar.txt")));
-        assert!(!is_json(Path::new("~foo")));
-        assert!(!is_json(Path::new("foo")));
-        assert!(!is_json(Path::new("foo.json5")));
-
-        assert!(is_json(Path::new("/.json")));
-        assert!(is_json(Path::new("/foo/.bar.json")));
-        assert!(is_json(Path::new("/foo/bar.json")));
-        assert!(is_json(Path::new("foo.json")));
-
-        // no filename
-        assert!(!is_json(Path::new("/")));
-        assert!(!is_json(Path::new("")));
-
-        // invalid UTF-8
-        #[cfg(any(unix, target_os = "redox"))]
-        {
-            use std::os::unix::ffi::OsStrExt;
-            let non_hidden = OsStr::from_bytes(&[0x66, 0x6f, 0x80, 0x6f]); // fo�o
-            assert!(!is_json(Path::new(non_hidden)));
-            let hidden = OsStr::from_bytes(&[0x66, 0x6f, 0x80, 0x6f, 0x2e, 0x6a, 0x73, 0x6f, 0x6e]); // fo�o.json
-            assert!(is_json(Path::new(hidden)));
-        }
-    }
+    fn is_json_works() {}
 }
 }
 mod schema_for {

@@ -23,19 +23,7 @@ pub const EDDSA_PUBKEY_LEN: usize = 32;
 /// format:
 /// - signature: raw ED25519 signature (64 bytes).
 /// - public key: raw ED25519 public key (32 bytes).
-pub fn ed25519_verify(message: &[u8], signature: &[u8], public_key: &[u8]) -> CryptoResult<bool> {
-    // Validation
-    let signature = read_signature(signature)?;
-    let pubkey = read_pubkey(public_key)?;
-
-    // Verification
-    match VerificationKey::try_from(pubkey)
-        .and_then(|vk| vk.verify(&Signature::from(signature), message))
-    {
-        Ok(()) => Ok(true),
-        Err(_) => Ok(false),
-    }
-}
+pub fn ed25519_verify(message: &[u8], signature: &[u8], public_key: &[u8]) -> CryptoResult<bool> {}
 
 /// Performs batch Ed25519 signature verification.
 ///
@@ -71,76 +59,25 @@ pub fn ed25519_batch_verify(
     messages: &[&[u8]],
     signatures: &[&[u8]],
     public_keys: &[&[u8]],
-) -> CryptoResult<bool> {
-    // Structural checks
-    let messages_len = messages.len();
-    let signatures_len = signatures.len();
-    let public_keys_len = public_keys.len();
-
-    let mut messages = messages.to_vec();
-    let mut public_keys = public_keys.to_vec();
-    if messages_len == signatures_len && messages_len == public_keys_len { // We're good to go
-    } else if messages_len == 1 && signatures_len == public_keys_len {
-        // Replicate message, for multisig
-        messages = messages.repeat(signatures_len);
-    } else if public_keys_len == 1 && messages_len == signatures_len {
-        // Replicate pubkey
-        public_keys = public_keys.repeat(messages_len);
-    } else {
-        return Err(CryptoError::batch_err(
-            "Mismatched / erroneous number of messages / signatures / public keys",
-        ));
-    }
-    debug_assert_eq!(messages.len(), signatures_len);
-    debug_assert_eq!(messages.len(), public_keys.len());
-
-    let mut batch = batch::Verifier::new();
-
-    for ((&message, &signature), &public_key) in messages
-        .iter()
-        .zip(signatures.iter())
-        .zip(public_keys.iter())
-    {
-        // Validation
-        let signature = read_signature(signature)?;
-        let pubkey = read_pubkey(public_key)?;
-
-        // Enqueing
-        batch.queue((pubkey.into(), signature.into(), message));
-    }
-
-    // Batch verification
-    match batch.verify(OsRng) {
-        Ok(()) => Ok(true),
-        Err(_) => Ok(false),
-    }
-}
+) -> CryptoResult<bool> {}
 
 /// Error raised when signature is not 64 bytes long
 struct InvalidEd25519SignatureFormat;
 
 impl From<InvalidEd25519SignatureFormat> for CryptoError {
-    fn from(_original: InvalidEd25519SignatureFormat) -> Self {
-        CryptoError::invalid_signature_format()
-    }
+    fn from(_original: InvalidEd25519SignatureFormat) -> Self {}
 }
 
-fn read_signature(data: &[u8]) -> Result<[u8; 64], InvalidEd25519SignatureFormat> {
-    data.try_into().map_err(|_| InvalidEd25519SignatureFormat)
-}
+fn read_signature(data: &[u8]) -> Result<[u8; 64], InvalidEd25519SignatureFormat> {}
 
 /// Error raised when pubkey is not 32 bytes long
 struct InvalidEd25519PubkeyFormat;
 
 impl From<InvalidEd25519PubkeyFormat> for CryptoError {
-    fn from(_original: InvalidEd25519PubkeyFormat) -> Self {
-        CryptoError::invalid_pubkey_format()
-    }
+    fn from(_original: InvalidEd25519PubkeyFormat) -> Self {}
 }
 
-fn read_pubkey(data: &[u8]) -> Result<[u8; 32], InvalidEd25519PubkeyFormat> {
-    data.try_into().map_err(|_| InvalidEd25519PubkeyFormat)
-}
+fn read_pubkey(data: &[u8]) -> Result<[u8; 32], InvalidEd25519PubkeyFormat> {}
 
 #[cfg(test)]
 mod tests {
@@ -174,413 +111,38 @@ mod tests {
         signature: String,
     }
 
-    fn read_cosmos_sigs() -> Vec<Encoded> {
-        use std::fs::File;
-        use std::io::BufReader;
-
-        // Open the file in read-only mode with buffer.
-        let file = File::open(COSMOS_ED25519_TESTS_JSON).unwrap();
-        let reader = BufReader::new(file);
-
-        serde_json::from_reader(reader).unwrap()
-    }
+    fn read_cosmos_sigs() -> Vec<Encoded> {}
 
     #[test]
-    fn test_ed25519_verify() {
-        let message = MSG.as_bytes();
-        // Signing
-        let secret_key = SigningKey::new(OsRng);
-        let signature = secret_key.sign(message);
-
-        let public_key = VerificationKey::from(&secret_key);
-
-        // Serialization. Types can be converted to raw byte arrays with From/Into
-        let signature_bytes: [u8; 64] = signature.into();
-        let public_key_bytes: [u8; 32] = public_key.into();
-
-        // Verification
-        assert!(ed25519_verify(message, &signature_bytes, &public_key_bytes).unwrap());
-
-        // Wrong message fails
-        let bad_message = [message, b"\0"].concat();
-        assert!(!ed25519_verify(&bad_message, &signature_bytes, &public_key_bytes).unwrap());
-
-        // Other pubkey fails
-        let other_secret_key = SigningKey::new(OsRng);
-        let other_public_key = VerificationKey::from(&other_secret_key);
-        let other_public_key_bytes: [u8; 32] = other_public_key.into();
-        assert!(!ed25519_verify(message, &signature_bytes, &other_public_key_bytes).unwrap());
-    }
+    fn test_ed25519_verify() {}
 
     #[test]
-    fn test_cosmos_ed25519_verify() {
-        let secret_key = SigningKey::try_from(
-            hex::decode(COSMOS_ED25519_PRIVATE_KEY_HEX)
-                .unwrap()
-                .as_slice(),
-        )
-        .unwrap();
-        let public_key = VerificationKey::try_from(
-            hex::decode(COSMOS_ED25519_PUBLIC_KEY_HEX)
-                .unwrap()
-                .as_slice(),
-        )
-        .unwrap();
-        let signature = secret_key.sign(COSMOS_ED25519_MSG.as_bytes());
-
-        let signature_bytes: [u8; 64] = signature.into();
-        let public_key_bytes: [u8; 32] = public_key.into();
-
-        assert_eq!(
-            signature_bytes,
-            hex::decode(COSMOS_ED25519_SIGNATURE_HEX)
-                .unwrap()
-                .as_slice()
-        );
-
-        assert!(ed25519_verify(
-            COSMOS_ED25519_MSG.as_bytes(),
-            &signature_bytes,
-            &public_key_bytes
-        )
-        .unwrap());
-    }
+    fn test_cosmos_ed25519_verify() {}
 
     #[test]
-    fn test_cosmos_extra_ed25519_verify() {
-        let codes = read_cosmos_sigs();
-
-        for (i, encoded) in (1..).zip(codes) {
-            let message = hex::decode(&encoded.message).unwrap();
-
-            let signature = hex::decode(&encoded.signature).unwrap();
-
-            let public_key = hex::decode(&encoded.public_key).unwrap();
-
-            // ed25519_verify() works
-            assert!(
-                ed25519_verify(&message, &signature, &public_key).unwrap(),
-                "verify() failed (test case {})",
-                i
-            );
-        }
-    }
+    fn test_cosmos_extra_ed25519_verify() {}
 
     #[test]
-    fn test_cosmos_ed25519_batch_verify() {
-        let codes = read_cosmos_sigs();
-
-        let mut messages: Vec<Vec<u8>> = vec![];
-        let mut signatures: Vec<Vec<u8>> = vec![];
-        let mut public_keys: Vec<Vec<u8>> = vec![];
-
-        for encoded in codes {
-            let message = hex::decode(&encoded.message).unwrap();
-            messages.push(message);
-
-            let signature = hex::decode(&encoded.signature).unwrap();
-            signatures.push(signature);
-
-            let public_key = hex::decode(&encoded.public_key).unwrap();
-            public_keys.push(public_key);
-        }
-
-        let messages: Vec<&[u8]> = messages.iter().map(|m| m.as_slice()).collect();
-        let signatures: Vec<&[u8]> = signatures.iter().map(|m| m.as_slice()).collect();
-        let public_keys: Vec<&[u8]> = public_keys.iter().map(|m| m.as_slice()).collect();
-
-        // ed25519_batch_verify() works
-        assert!(ed25519_batch_verify(&messages, &signatures, &public_keys).unwrap());
-    }
+    fn test_cosmos_ed25519_batch_verify() {}
 
     // structural tests
     #[test]
-    fn test_cosmos_ed25519_batch_verify_empty_works() {
-        let messages: Vec<&[u8]> = vec![];
-        let signatures: Vec<&[u8]> = vec![];
-        let public_keys: Vec<&[u8]> = vec![];
-
-        // ed25519_batch_verify() works for empty msgs / sigs / pubkeys
-        assert!(ed25519_batch_verify(&messages, &signatures, &public_keys).unwrap());
-    }
+    fn test_cosmos_ed25519_batch_verify_empty_works() {}
 
     #[test]
-    fn test_cosmos_ed25519_batch_verify_wrong_number_of_items_errors() {
-        let codes = read_cosmos_sigs();
-
-        let mut messages: Vec<Vec<u8>> = vec![];
-        let mut signatures: Vec<Vec<u8>> = vec![];
-        let mut public_keys: Vec<Vec<u8>> = vec![];
-
-        for encoded in codes {
-            let message = hex::decode(&encoded.message).unwrap();
-            messages.push(message);
-
-            let signature = hex::decode(&encoded.signature).unwrap();
-            signatures.push(signature);
-
-            let public_key = hex::decode(&encoded.public_key).unwrap();
-            public_keys.push(public_key);
-        }
-
-        let mut messages: Vec<&[u8]> = messages.iter().map(|m| m.as_slice()).collect();
-        let mut signatures: Vec<&[u8]> = signatures.iter().map(|m| m.as_slice()).collect();
-        let mut public_keys: Vec<&[u8]> = public_keys.iter().map(|m| m.as_slice()).collect();
-
-        // Check the whole set passes
-        assert!(ed25519_batch_verify(&messages, &signatures, &public_keys).unwrap());
-
-        // Remove one message
-        let msg = messages.pop().unwrap();
-
-        let res = ed25519_batch_verify(&messages, &signatures, &public_keys);
-        match res.unwrap_err() {
-            CryptoError::BatchErr { msg, .. } => assert_eq!(
-                msg,
-                "Mismatched / erroneous number of messages / signatures / public keys"
-            ),
-            _ => panic!("Wrong error message"),
-        }
-
-        // Restore messages
-        messages.push(msg);
-
-        // Remove one signature
-        let sig = signatures.pop().unwrap();
-
-        let res = ed25519_batch_verify(&messages, &signatures, &public_keys);
-        match res.unwrap_err() {
-            CryptoError::BatchErr { msg, .. } => assert_eq!(
-                msg,
-                "Mismatched / erroneous number of messages / signatures / public keys"
-            ),
-            _ => panic!("Wrong error message"),
-        }
-
-        // Restore signatures
-        signatures.push(sig);
-
-        // Remove one public key
-        let pubkey = public_keys.pop().unwrap();
-
-        let res = ed25519_batch_verify(&messages, &signatures, &public_keys);
-        match res.unwrap_err() {
-            CryptoError::BatchErr { msg, .. } => assert_eq!(
-                msg,
-                "Mismatched / erroneous number of messages / signatures / public keys"
-            ),
-            _ => panic!("Wrong error message"),
-        }
-
-        // Restore public keys
-        public_keys.push(pubkey);
-
-        // Add one message
-        messages.push(messages[0]);
-
-        let res = ed25519_batch_verify(&messages, &signatures, &public_keys);
-        match res.unwrap_err() {
-            CryptoError::BatchErr { msg, .. } => assert_eq!(
-                msg,
-                "Mismatched / erroneous number of messages / signatures / public keys"
-            ),
-            _ => panic!("Wrong error message"),
-        }
-
-        // Restore messages
-        messages.pop();
-
-        // Add one signature
-        signatures.push(signatures[0]);
-        let res = ed25519_batch_verify(&messages, &signatures, &public_keys);
-        match res.unwrap_err() {
-            CryptoError::BatchErr { msg, .. } => assert_eq!(
-                msg,
-                "Mismatched / erroneous number of messages / signatures / public keys"
-            ),
-            _ => panic!("Wrong error message"),
-        }
-
-        // Restore signatures
-        signatures.pop();
-
-        // Add one public keys
-        public_keys.push(public_keys[0]);
-        let res = ed25519_batch_verify(&messages, &signatures, &public_keys);
-        match res.unwrap_err() {
-            CryptoError::BatchErr { msg, .. } => assert_eq!(
-                msg,
-                "Mismatched / erroneous number of messages / signatures / public keys"
-            ),
-            _ => panic!("Wrong error message"),
-        }
-    }
+    fn test_cosmos_ed25519_batch_verify_wrong_number_of_items_errors() {}
 
     #[test]
-    fn test_cosmos_ed25519_batch_verify_one_msg_different_number_of_sigs_pubkeys_errors() {
-        let codes = read_cosmos_sigs();
-
-        let mut messages: Vec<Vec<u8>> = vec![];
-        let mut signatures: Vec<Vec<u8>> = vec![];
-        let mut public_keys: Vec<Vec<u8>> = vec![];
-
-        for encoded in codes {
-            let message = hex::decode(&encoded.message).unwrap();
-            messages.push(message);
-
-            let signature = hex::decode(&encoded.signature).unwrap();
-            signatures.push(signature);
-
-            let public_key = hex::decode(&encoded.public_key).unwrap();
-            public_keys.push(public_key);
-        }
-
-        let mut messages: Vec<&[u8]> = messages.iter().map(|m| m.as_slice()).collect();
-        let mut signatures: Vec<&[u8]> = signatures.iter().map(|m| m.as_slice()).collect();
-        let mut public_keys: Vec<&[u8]> = public_keys.iter().map(|m| m.as_slice()).collect();
-
-        // Check the whole set passes
-        assert!(ed25519_batch_verify(&messages, &signatures, &public_keys).unwrap());
-
-        // Just one message
-        messages.truncate(1);
-
-        // Check (in passing) this fails verification
-        assert!(!ed25519_batch_verify(&messages, &signatures, &public_keys).unwrap());
-
-        // Remove one sig
-        let sig = signatures.pop().unwrap();
-
-        let res = ed25519_batch_verify(&messages, &signatures, &public_keys);
-        match res.unwrap_err() {
-            CryptoError::BatchErr { msg, .. } => assert_eq!(
-                msg,
-                "Mismatched / erroneous number of messages / signatures / public keys"
-            ),
-            _ => panic!("Wrong error message"),
-        }
-
-        // Restore signatures
-        signatures.push(sig);
-
-        // Remove one public key
-        let pubkey = public_keys.pop().unwrap();
-
-        let res = ed25519_batch_verify(&messages, &signatures, &public_keys);
-        match res.unwrap_err() {
-            CryptoError::BatchErr { msg, .. } => assert_eq!(
-                msg,
-                "Mismatched / erroneous number of messages / signatures / public keys"
-            ),
-            _ => panic!("Wrong error message"),
-        }
-
-        // Restore public keys
-        public_keys.push(pubkey);
-    }
+    fn test_cosmos_ed25519_batch_verify_one_msg_different_number_of_sigs_pubkeys_errors() {}
 
     #[test]
-    fn test_cosmos_ed25519_batch_verify_one_pubkey_different_number_of_msgs_sigs_errors() {
-        let codes = read_cosmos_sigs();
-
-        let mut messages: Vec<Vec<u8>> = vec![];
-        let mut signatures: Vec<Vec<u8>> = vec![];
-        let mut public_keys: Vec<Vec<u8>> = vec![];
-
-        for encoded in codes {
-            let message = hex::decode(&encoded.message).unwrap();
-            messages.push(message);
-
-            let signature = hex::decode(&encoded.signature).unwrap();
-            signatures.push(signature);
-
-            let public_key = hex::decode(&encoded.public_key).unwrap();
-            public_keys.push(public_key);
-        }
-
-        let mut messages: Vec<&[u8]> = messages.iter().map(|m| m.as_slice()).collect();
-        let mut signatures: Vec<&[u8]> = signatures.iter().map(|m| m.as_slice()).collect();
-        let mut public_keys: Vec<&[u8]> = public_keys.iter().map(|m| m.as_slice()).collect();
-
-        // Check the whole set passes
-        assert!(ed25519_batch_verify(&messages, &signatures, &public_keys).unwrap());
-
-        // Just one public key
-        public_keys.truncate(1);
-
-        // Check (in passing) this fails verification
-        assert!(!ed25519_batch_verify(&messages, &signatures, &public_keys).unwrap());
-
-        // Remove one sig
-        let sig = signatures.pop().unwrap();
-
-        let res = ed25519_batch_verify(&messages, &signatures, &public_keys);
-        match res.unwrap_err() {
-            CryptoError::BatchErr { msg, .. } => assert_eq!(
-                msg,
-                "Mismatched / erroneous number of messages / signatures / public keys"
-            ),
-            _ => panic!("Wrong error message"),
-        }
-
-        // Restore signatures
-        signatures.push(sig);
-
-        // Remove one msg
-        let msg = messages.pop().unwrap();
-
-        let res = ed25519_batch_verify(&messages, &signatures, &public_keys);
-        match res.unwrap_err() {
-            CryptoError::BatchErr { msg, .. } => assert_eq!(
-                msg,
-                "Mismatched / erroneous number of messages / signatures / public keys"
-            ),
-            _ => panic!("Wrong error message"),
-        }
-
-        // Restore messages
-        messages.push(msg);
-    }
+    fn test_cosmos_ed25519_batch_verify_one_pubkey_different_number_of_msgs_sigs_errors() {}
 
     #[test]
-    fn test_cosmos_ed25519_batch_verify_one_msg_zero_sigs_pubkeys_works() {
-        let codes = read_cosmos_sigs();
-
-        let mut messages: Vec<Vec<u8>> = vec![];
-        // Zero sigs / pubkeys
-        let signatures: Vec<&[u8]> = vec![];
-        let public_keys: Vec<&[u8]> = vec![];
-
-        // Just one message
-        for encoded in codes[..1].iter() {
-            let message = hex::decode(&encoded.message).unwrap();
-            messages.push(message);
-        }
-        let messages: Vec<&[u8]> = messages.iter().map(|m| m.as_slice()).collect();
-
-        // ed25519_batch_verify() works for empty sigs / pubkeys
-        assert!(ed25519_batch_verify(&messages, &signatures, &public_keys).unwrap());
-    }
+    fn test_cosmos_ed25519_batch_verify_one_msg_zero_sigs_pubkeys_works() {}
 
     #[test]
-    fn test_cosmos_ed25519_batch_verify_one_pubkey_zero_msgs_sigs_works() {
-        let codes = read_cosmos_sigs();
-
-        // Zero msgs / sigs
-        let messages: Vec<&[u8]> = vec![];
-        let signatures: Vec<&[u8]> = vec![];
-        let mut public_keys: Vec<Vec<u8>> = vec![];
-
-        // Just one public key
-        for encoded in codes[..1].iter() {
-            let public_key = hex::decode(&encoded.public_key).unwrap();
-            public_keys.push(public_key);
-        }
-        let public_keys: Vec<&[u8]> = public_keys.iter().map(|m| m.as_slice()).collect();
-
-        // ed25519_batch_verify() works for empty msgs / sigs
-        assert!(ed25519_batch_verify(&messages, &signatures, &public_keys).unwrap());
-    }
+    fn test_cosmos_ed25519_batch_verify_one_pubkey_zero_msgs_sigs_works() {}
 }
 }
 mod errors {
@@ -628,62 +190,21 @@ pub enum CryptoError {
 }
 
 impl CryptoError {
-    pub fn batch_err(msg: impl Into<String>) -> Self {
-        CryptoError::BatchErr {
-            msg: msg.into(),
-            #[cfg(feature = "backtraces")]
-            backtrace: Backtrace::capture(),
-        }
-    }
+    pub fn batch_err(msg: impl Into<String>) -> Self {}
 
-    pub fn generic_err(msg: impl Into<String>) -> Self {
-        CryptoError::GenericErr {
-            msg: msg.into(),
-            #[cfg(feature = "backtraces")]
-            backtrace: Backtrace::capture(),
-        }
-    }
+    pub fn generic_err(msg: impl Into<String>) -> Self {}
 
-    pub fn invalid_hash_format() -> Self {
-        CryptoError::InvalidHashFormat {
-            #[cfg(feature = "backtraces")]
-            backtrace: Backtrace::capture(),
-        }
-    }
+    pub fn invalid_hash_format() -> Self {}
 
-    pub fn invalid_pubkey_format() -> Self {
-        CryptoError::InvalidPubkeyFormat {
-            #[cfg(feature = "backtraces")]
-            backtrace: Backtrace::capture(),
-        }
-    }
+    pub fn invalid_pubkey_format() -> Self {}
 
-    pub fn invalid_signature_format() -> Self {
-        CryptoError::InvalidSignatureFormat {
-            #[cfg(feature = "backtraces")]
-            backtrace: Backtrace::capture(),
-        }
-    }
+    pub fn invalid_signature_format() -> Self {}
 
-    pub fn invalid_recovery_param() -> Self {
-        CryptoError::InvalidRecoveryParam {
-            #[cfg(feature = "backtraces")]
-            backtrace: Backtrace::capture(),
-        }
-    }
+    pub fn invalid_recovery_param() -> Self {}
 
     /// Numeric error code that can easily be passed over the
     /// contract VM boundary.
-    pub fn code(&self) -> u32 {
-        match self {
-            CryptoError::InvalidHashFormat { .. } => 3,
-            CryptoError::InvalidSignatureFormat { .. } => 4,
-            CryptoError::InvalidPubkeyFormat { .. } => 5,
-            CryptoError::InvalidRecoveryParam { .. } => 6,
-            CryptoError::BatchErr { .. } => 7,
-            CryptoError::GenericErr { .. } => 10,
-        }
-    }
+    pub fn code(&self) -> u32 {}
 }
 
 #[cfg(test)]
@@ -692,53 +213,19 @@ mod tests {
 
     // constructors
     #[test]
-    fn batch_err_works() {
-        let error = CryptoError::batch_err("something went wrong in a batch way");
-        match error {
-            CryptoError::BatchErr { msg, .. } => {
-                assert_eq!(msg, "something went wrong in a batch way")
-            }
-            _ => panic!("wrong error type!"),
-        }
-    }
+    fn batch_err_works() {}
 
     #[test]
-    fn generic_err_works() {
-        let error = CryptoError::generic_err("something went wrong in a general way");
-        match error {
-            CryptoError::GenericErr { msg, .. } => {
-                assert_eq!(msg, "something went wrong in a general way")
-            }
-            _ => panic!("wrong error type!"),
-        }
-    }
+    fn generic_err_works() {}
 
     #[test]
-    fn invalid_hash_format_works() {
-        let error = CryptoError::invalid_hash_format();
-        match error {
-            CryptoError::InvalidHashFormat { .. } => {}
-            _ => panic!("wrong error type!"),
-        }
-    }
+    fn invalid_hash_format_works() {}
 
     #[test]
-    fn invalid_signature_format_works() {
-        let error = CryptoError::invalid_signature_format();
-        match error {
-            CryptoError::InvalidSignatureFormat { .. } => {}
-            _ => panic!("wrong error type!"),
-        }
-    }
+    fn invalid_signature_format_works() {}
 
     #[test]
-    fn invalid_pubkey_format_works() {
-        let error = CryptoError::invalid_pubkey_format();
-        match error {
-            CryptoError::InvalidPubkeyFormat { .. } => {}
-            _ => panic!("wrong error type!"),
-        }
-    }
+    fn invalid_pubkey_format_works() {}
 }
 }
 mod identity_digest {
@@ -758,10 +245,7 @@ pub struct Identity256 {
 }
 
 impl Update for Identity256 {
-    fn update(&mut self, hash: &[u8]) {
-        assert_eq!(hash.as_ref().len(), 32);
-        self.array = *GenericArray::from_slice(hash);
-    }
+    fn update(&mut self, hash: &[u8]) {}
 }
 
 impl OutputSizeUser for Identity256 {
@@ -769,17 +253,13 @@ impl OutputSizeUser for Identity256 {
 }
 
 impl FixedOutput for Identity256 {
-    fn finalize_into(self, out: &mut Output<Self>) {
-        *out = self.array;
-    }
+    fn finalize_into(self, out: &mut Output<Self>) {}
 }
 
 impl HashMarker for Identity256 {}
 
 impl Reset for Identity256 {
-    fn reset(&mut self) {
-        *self = Self::default();
-    }
+    fn reset(&mut self) {}
 }
 }
 mod secp256k1 {
@@ -824,29 +304,7 @@ pub fn secp256k1_verify(
     message_hash: &[u8],
     signature: &[u8],
     public_key: &[u8],
-) -> CryptoResult<bool> {
-    let message_hash = read_hash(message_hash)?;
-    let signature = read_signature(signature)?;
-    check_pubkey(public_key)?;
-
-    // Already hashed, just build Digest container
-    let message_digest = Identity256::new().chain(message_hash);
-
-    let mut signature =
-        Signature::from_bytes(&signature).map_err(|e| CryptoError::generic_err(e.to_string()))?;
-    // Non low-S signatures require normalization
-    if let Some(normalized) = signature.normalize_s() {
-        signature = normalized;
-    }
-
-    let public_key = VerifyingKey::from_sec1_bytes(public_key)
-        .map_err(|e| CryptoError::generic_err(e.to_string()))?;
-
-    match public_key.verify_digest(message_digest, &signature) {
-        Ok(()) => Ok(true),
-        Err(_) => Ok(false),
-    }
-}
+) -> CryptoResult<bool> {}
 
 /// Recovers a public key from a message hash and a signature.
 ///
@@ -863,53 +321,25 @@ pub fn secp256k1_recover_pubkey(
     message_hash: &[u8],
     signature: &[u8],
     recovery_param: u8,
-) -> Result<Vec<u8>, CryptoError> {
-    let message_hash = read_hash(message_hash)?;
-    let signature = read_signature(signature)?;
-
-    let id =
-        recoverable::Id::new(recovery_param).map_err(|_| CryptoError::invalid_recovery_param())?;
-
-    // Compose extended signature
-    let signature =
-        Signature::from_bytes(&signature).map_err(|e| CryptoError::generic_err(e.to_string()))?;
-    let extended_signature = recoverable::Signature::new(&signature, id)
-        .map_err(|e| CryptoError::generic_err(e.to_string()))?;
-
-    // Recover
-    let message_digest = Identity256::new().chain(message_hash);
-    let pubkey = extended_signature
-        .recover_verifying_key_from_digest(message_digest)
-        .map_err(|e| CryptoError::generic_err(e.to_string()))?;
-    let encoded: Vec<u8> = pubkey.to_encoded_point(false).as_bytes().into();
-    Ok(encoded)
-}
+) -> Result<Vec<u8>, CryptoError> {}
 
 /// Error raised when hash is not 32 bytes long
 struct InvalidSecp256k1HashFormat;
 
 impl From<InvalidSecp256k1HashFormat> for CryptoError {
-    fn from(_original: InvalidSecp256k1HashFormat) -> Self {
-        CryptoError::invalid_hash_format()
-    }
+    fn from(_original: InvalidSecp256k1HashFormat) -> Self {}
 }
 
-fn read_hash(data: &[u8]) -> Result<[u8; 32], InvalidSecp256k1HashFormat> {
-    data.try_into().map_err(|_| InvalidSecp256k1HashFormat)
-}
+fn read_hash(data: &[u8]) -> Result<[u8; 32], InvalidSecp256k1HashFormat> {}
 
 /// Error raised when signature is not 64 bytes long (32 bytes r, 32 bytes s)
 struct InvalidSecp256k1SignatureFormat;
 
 impl From<InvalidSecp256k1SignatureFormat> for CryptoError {
-    fn from(_original: InvalidSecp256k1SignatureFormat) -> Self {
-        CryptoError::invalid_signature_format()
-    }
+    fn from(_original: InvalidSecp256k1SignatureFormat) -> Self {}
 }
 
-fn read_signature(data: &[u8]) -> Result<[u8; 64], InvalidSecp256k1SignatureFormat> {
-    data.try_into().map_err(|_| InvalidSecp256k1SignatureFormat)
-}
+fn read_signature(data: &[u8]) -> Result<[u8; 64], InvalidSecp256k1SignatureFormat> {}
 
 /// Error raised when public key is not in one of the two supported formats:
 /// 1. Uncompressed: 65 bytes starting with 0x04
@@ -917,23 +347,10 @@ fn read_signature(data: &[u8]) -> Result<[u8; 64], InvalidSecp256k1SignatureForm
 struct InvalidSecp256k1PubkeyFormat;
 
 impl From<InvalidSecp256k1PubkeyFormat> for CryptoError {
-    fn from(_original: InvalidSecp256k1PubkeyFormat) -> Self {
-        CryptoError::invalid_pubkey_format()
-    }
+    fn from(_original: InvalidSecp256k1PubkeyFormat) -> Self {}
 }
 
-fn check_pubkey(data: &[u8]) -> Result<(), InvalidSecp256k1PubkeyFormat> {
-    let ok = match data.first() {
-        Some(0x02) | Some(0x03) => data.len() == ECDSA_COMPRESSED_PUBKEY_LEN,
-        Some(0x04) => data.len() == ECDSA_UNCOMPRESSED_PUBKEY_LEN,
-        _ => false,
-    };
-    if ok {
-        Ok(())
-    } else {
-        Err(InvalidSecp256k1PubkeyFormat)
-    }
-}
+fn check_pubkey(data: &[u8]) -> Result<(), InvalidSecp256k1PubkeyFormat> {}
 
 #[cfg(test)]
 mod tests {
@@ -967,204 +384,19 @@ mod tests {
     const COSMOS_SECP256K1_TESTS_JSON: &str = "./testdata/secp256k1_tests.json";
 
     #[test]
-    fn test_secp256k1_verify() {
-        // Explicit / external hashing
-        let message_digest = Sha256::new().chain(MSG);
-        let message_hash = message_digest.clone().finalize();
-
-        // Signing
-        let secret_key = SigningKey::random(&mut OsRng); // Serialize with `::to_bytes()`
-
-        // Note: the signature type must be annotated or otherwise inferrable as
-        // `Signer` has many impls of the `Signer` trait (for both regular and
-        // recoverable signature types).
-        let signature: Signature = secret_key.sign_digest(message_digest);
-
-        let public_key = VerifyingKey::from(&secret_key); // Serialize with `::to_encoded_point()`
-
-        // Verification (uncompressed public key)
-        assert!(secp256k1_verify(
-            &message_hash,
-            signature.as_bytes(),
-            public_key.to_encoded_point(false).as_bytes()
-        )
-        .unwrap());
-
-        // Verification (compressed public key)
-        assert!(secp256k1_verify(
-            &message_hash,
-            signature.as_bytes(),
-            public_key.to_encoded_point(true).as_bytes()
-        )
-        .unwrap());
-
-        // Wrong message fails
-        let bad_message_hash = Sha256::new().chain(MSG).chain("\0").finalize();
-        assert!(!secp256k1_verify(
-            &bad_message_hash,
-            signature.as_bytes(),
-            public_key.to_encoded_point(false).as_bytes()
-        )
-        .unwrap());
-
-        // Other pubkey fails
-        let other_secret_key = SigningKey::random(&mut OsRng);
-        let other_public_key = VerifyingKey::from(&other_secret_key);
-        assert!(!secp256k1_verify(
-            &message_hash,
-            signature.as_bytes(),
-            other_public_key.to_encoded_point(false).as_bytes()
-        )
-        .unwrap());
-    }
+    fn test_secp256k1_verify() {}
 
     #[test]
-    fn test_cosmos_secp256k1_verify() {
-        let public_key = base64::decode(COSMOS_SECP256K1_PUBKEY_BASE64).unwrap();
-
-        for ((i, msg), sig) in (1..)
-            .zip(&[
-                COSMOS_SECP256K1_MSG_HEX1,
-                COSMOS_SECP256K1_MSG_HEX2,
-                COSMOS_SECP256K1_MSG_HEX3,
-            ])
-            .zip(&[
-                COSMOS_SECP256K1_SIGNATURE_HEX1,
-                COSMOS_SECP256K1_SIGNATURE_HEX2,
-                COSMOS_SECP256K1_SIGNATURE_HEX3,
-            ])
-        {
-            let message = hex::decode(msg).unwrap();
-            let signature = hex::decode(sig).unwrap();
-
-            // Explicit hash
-            let message_hash = Sha256::digest(&message);
-
-            // secp256k1_verify works
-            assert!(
-                secp256k1_verify(&message_hash, &signature, &public_key).unwrap(),
-                "secp256k1_verify() failed (test case {})",
-                i
-            );
-        }
-    }
+    fn test_cosmos_secp256k1_verify() {}
 
     #[test]
-    fn test_cosmos_extra_secp256k1_verify() {
-        use std::fs::File;
-        use std::io::BufReader;
-
-        use serde::Deserialize;
-
-        #[derive(Deserialize, Debug)]
-        struct Encoded {
-            message: String,
-            message_hash: String,
-            signature: String,
-            #[serde(rename = "pubkey")]
-            public_key: String,
-        }
-
-        // Open the file in read-only mode with buffer.
-        let file = File::open(COSMOS_SECP256K1_TESTS_JSON).unwrap();
-        let reader = BufReader::new(file);
-
-        let codes: Vec<Encoded> = serde_json::from_reader(reader).unwrap();
-
-        for (i, encoded) in (1..).zip(codes) {
-            let message = hex::decode(&encoded.message).unwrap();
-
-            let hash = hex::decode(&encoded.message_hash).unwrap();
-            let message_hash = Sha256::digest(&message);
-            assert_eq!(hash.as_slice(), message_hash.as_slice());
-
-            let signature = hex::decode(&encoded.signature).unwrap();
-
-            let public_key = hex::decode(&encoded.public_key).unwrap();
-
-            // secp256k1_verify() works
-            assert!(
-                secp256k1_verify(&message_hash, &signature, &public_key).unwrap(),
-                "verify() failed (test case {})",
-                i
-            );
-        }
-    }
+    fn test_cosmos_extra_secp256k1_verify() {}
 
     #[test]
-    fn secp256k1_recover_pubkey_works() {
-        // Test data from https://github.com/ethereumjs/ethereumjs-util/blob/v6.1.0/test/index.js#L496
-        {
-            let private_key =
-                hex!("3c9229289a6125f7fdf1885a77bb12c37a8d3b4962d936f7e3084dece32a3ca1");
-            let expected = SigningKey::from_bytes(&private_key)
-                .unwrap()
-                .verifying_key()
-                .to_encoded_point(false)
-                .as_bytes()
-                .to_vec();
-            let r_s = hex!("99e71a99cb2270b8cac5254f9e99b6210c6c10224a1579cf389ef88b20a1abe9129ff05af364204442bdb53ab6f18a99ab48acc9326fa689f228040429e3ca66");
-            let recovery_param: u8 = 0;
-            let message_hash =
-                hex!("82ff40c0a986c6a5cfad4ddf4c3aa6996f1a7837f9c398e17e5de5cbd5a12b28");
-            let pubkey = secp256k1_recover_pubkey(&message_hash, &r_s, recovery_param).unwrap();
-            assert_eq!(pubkey, expected);
-        }
-
-        // Test data from https://github.com/randombit/botan/blob/2.9.0/src/tests/data/pubkey/ecdsa_key_recovery.vec
-        {
-            let expected_x = "F3F8BB913AA68589A2C8C607A877AB05252ADBD963E1BE846DDEB8456942AEDC";
-            let expected_y = "A2ED51F08CA3EF3DAC0A7504613D54CD539FC1B3CBC92453CD704B6A2D012B2C";
-            let expected = hex::decode(format!("04{}{}", expected_x, expected_y)).unwrap();
-            let r_s = hex!("E30F2E6A0F705F4FB5F8501BA79C7C0D3FAC847F1AD70B873E9797B17B89B39081F1A4457589F30D76AB9F89E748A68C8A94C30FE0BAC8FB5C0B54EA70BF6D2F");
-            let recovery_param: u8 = 0;
-            let message_hash =
-                hex!("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF");
-            let pubkey = secp256k1_recover_pubkey(&message_hash, &r_s, recovery_param).unwrap();
-            assert_eq!(pubkey, expected);
-        }
-
-        // Test data calculated via Secp256k1.createSignature from @cosmjs/crypto
-        {
-            let expected = hex!("044a071e8a6e10aada2b8cf39fa3b5fb3400b04e99ea8ae64ceea1a977dbeaf5d5f8c8fbd10b71ab14cd561f7df8eb6da50f8a8d81ba564342244d26d1d4211595");
-            let r_s = hex!("45c0b7f8c09a9e1f1cea0c25785594427b6bf8f9f878a8af0b1abbb48e16d0920d8becd0c220f67c51217eecfd7184ef0732481c843857e6bc7fc095c4f6b788");
-            let recovery_param: u8 = 1;
-            let message_hash =
-                hex!("5ae8317d34d1e595e3fa7247db80c0af4320cce1116de187f8f7e2e099c0d8d0");
-            let pubkey = secp256k1_recover_pubkey(&message_hash, &r_s, recovery_param).unwrap();
-            assert_eq!(pubkey, expected);
-        }
-    }
+    fn secp256k1_recover_pubkey_works() {}
 
     #[test]
-    fn secp256k1_recover_pubkey_fails_for_invalid_recovery_param() {
-        let r_s = hex!("45c0b7f8c09a9e1f1cea0c25785594427b6bf8f9f878a8af0b1abbb48e16d0920d8becd0c220f67c51217eecfd7184ef0732481c843857e6bc7fc095c4f6b788");
-        let message_hash = hex!("5ae8317d34d1e595e3fa7247db80c0af4320cce1116de187f8f7e2e099c0d8d0");
-
-        // 2 and 3 are explicitly unsupported
-        let recovery_param: u8 = 2;
-        match secp256k1_recover_pubkey(&message_hash, &r_s, recovery_param).unwrap_err() {
-            CryptoError::InvalidRecoveryParam { .. } => {}
-            err => panic!("Unexpected error: {}", err),
-        }
-        let recovery_param: u8 = 3;
-        match secp256k1_recover_pubkey(&message_hash, &r_s, recovery_param).unwrap_err() {
-            CryptoError::InvalidRecoveryParam { .. } => {}
-            err => panic!("Unexpected error: {}", err),
-        }
-
-        // Other values are garbage
-        let recovery_param: u8 = 4;
-        match secp256k1_recover_pubkey(&message_hash, &r_s, recovery_param).unwrap_err() {
-            CryptoError::InvalidRecoveryParam { .. } => {}
-            err => panic!("Unexpected error: {}", err),
-        }
-        let recovery_param: u8 = 255;
-        match secp256k1_recover_pubkey(&message_hash, &r_s, recovery_param).unwrap_err() {
-            CryptoError::InvalidRecoveryParam { .. } => {}
-            err => panic!("Unexpected error: {}", err),
-        }
-    }
+    fn secp256k1_recover_pubkey_fails_for_invalid_recovery_param() {}
 }
 }
 mod zk {
@@ -1196,23 +428,11 @@ pub enum ZKError {
 }
 
 impl ZKError {
-    pub fn generic_err(msg: impl Into<String>) -> Self {
-        ZKError::GenericErr {
-            msg: msg.into(),
-            #[cfg(feature = "backtraces")]
-            backtrace: Backtrace::capture(),
-        }
-    }
+    pub fn generic_err(msg: impl Into<String>) -> Self {}
 
     /// Numeric error code that can easily be passed over the
     /// contract VM boundary.
-    pub fn code(&self) -> u32 {
-        match self {
-            ZKError::VerifierError { .. } => 3,
-            ZKError::InvalidHashInput { .. } => 4,
-            ZKError::GenericErr { .. } => 10,
-        }
-    }
+    pub fn code(&self) -> u32 {}
 }
 }
 
@@ -1238,52 +458,17 @@ pub struct Poseidon {
 }
 
 impl Poseidon {
-    pub fn new() -> Self {
-        Self {
-            poseidon_width_3_bytes: PoseidonHasher::new(setup_params(Curve::Bn254, 5, 3)),
-            poseidon_width_4_bytes: PoseidonHasher::new(setup_params(Curve::Bn254, 5, 4)),
-            poseidon_width_5_bytes: PoseidonHasher::new(setup_params(Curve::Bn254, 5, 5)),
-        }
-    }
+    pub fn new() -> Self {}
 
-    pub fn hash(&self, inputs: &[&[u8]]) -> Result<Vec<u8>, ZKError> {
-        let num_inputs = inputs.len();
-        let mut packed_inputs = Vec::new();
-
-        for &inp in inputs {
-            packed_inputs.extend_from_slice(inp);
-        }
-
-        let input_f = to_field_elements(&packed_inputs)
-            .map_err(|err| ZKError::generic_err(err.to_string()))?;
-
-        let hash_result = match num_inputs {
-            2 => self.poseidon_width_3_bytes.hash(&input_f),
-            3 => self.poseidon_width_4_bytes.hash(&input_f),
-            4 => self.poseidon_width_5_bytes.hash(&input_f),
-            _ => return Err(ZKError::InvalidHashInput {}),
-        };
-
-        hash_result
-            .map(|h| h.into_repr().to_bytes_le())
-            .map_err(|err| ZKError::generic_err(err.to_string()))
-    }
+    pub fn hash(&self, inputs: &[&[u8]]) -> Result<Vec<u8>, ZKError> {}
 }
 
 impl Default for Poseidon {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self {}
 }
 
 #[test]
-fn test_hash() {
-    let p = Poseidon::new();
-    let commitment_hash =
-        hex::decode("84d6bdcfd953993012f08970d9c9b472d96114b4edc69481968cafc07877381c").unwrap();
-    let ret = p.hash(&[&commitment_hash, &commitment_hash]);
-    assert!(ret.is_ok())
-}
+fn test_hash() {}
 }
 
 #[allow(clippy::all)]
@@ -1309,14 +494,7 @@ impl<E: PairingEngine> ArkworksVerifierGroth16<E> {
         public_inp_bytes: &[u8],
         proof_bytes: &[u8],
         vk_bytes: &[u8],
-    ) -> Result<bool, Error> {
-        let public_input_field_elts = to_field_elements::<E::Fr>(public_inp_bytes)?;
-        let vk = VerifyingKey::<E>::deserialize(vk_bytes)?;
-        let proof = Proof::<E>::deserialize(proof_bytes)?;
-
-        let res = Groth16::<E>::verify(&vk, &public_input_field_elts, &proof)?;
-        Ok(res)
-    }
+    ) -> Result<bool, Error> {}
 }
 
 pub type ArkworksVerifierBn254 = ArkworksVerifierGroth16<Bn254>;
@@ -1325,10 +503,7 @@ pub fn groth16_verify(
     public_inp_bytes: &[u8],
     proof_bytes: &[u8],
     vk_bytes: &[u8],
-) -> ZKResult<bool> {
-    ArkworksVerifierBn254::verify(public_inp_bytes, proof_bytes, &vk_bytes)
-        .map_err(|_| ZKError::VerifierError {})
-}
+) -> ZKResult<bool> {}
 }
 
 #[allow(clippy::all)]
@@ -1338,13 +513,7 @@ use ark_ff::{BigInteger, PrimeField};
 use ark_std::vec::Vec;
 use arkworks_setups::common::keccak_256;
 
-pub fn curve_hash(input: &[u8]) -> Vec<u8> {
-    // better secure
-    let res = keccak_256(input);
-    Bn254Fr::from_le_bytes_mod_order(&res)
-        .into_repr()
-        .to_bytes_le()
-}
+pub fn curve_hash(input: &[u8]) -> Vec<u8> {}
 }
 
 pub use errors::{ZKError, ZKResult};

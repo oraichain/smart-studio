@@ -33,6 +33,60 @@ fn clean_token(line: &str) -> &str {
     }
 }
 
+fn peak_until(input: &str, start: usize, start_char: &str, end_char: &str) -> (usize, usize) {
+    let mut matched = 1;
+    let mut end_ind = start + 1;
+    let mut start_ind = start;
+
+    while end_ind < input.len() {
+        let c = input.get(end_ind - 1..end_ind).unwrap_or_default();
+        if c.eq(start_char) {
+            matched += 1;
+        } else if c.eq(end_char) {
+            matched -= 1;
+        }
+
+        if matched == 0 {
+            break;
+        }
+        end_ind += 1;
+    }
+    (start_ind, end_ind)
+}
+
+fn remove_function_body(mut input: &str) -> String {
+    lazy_static::lazy_static! {
+        static ref FN_REGEX: regex::Regex = regex::Regex::new(r"[^\w]+fn\s*[^{}]+\{").unwrap();
+    }
+    let mut peak_start_ind: usize = 0;
+    let mut ret: Vec<(usize, usize)> = FN_REGEX
+        .find_iter(input)
+        .map(|mat| {
+            let (start_ind, end_ind) = peak_until(input, mat.end(), "{", "}");
+            if end_ind < peak_start_ind {
+                return (0, 0);
+            }
+            let ret = (peak_start_ind, start_ind);
+            peak_start_ind = end_ind;
+            ret
+        })
+        .filter(|item| item.1 > 0)
+        .collect();
+
+    ret.push((peak_start_ind, input.len()));
+
+    let mut output = String::new();
+    for (start, end) in ret {
+        output.push_str(input.get(start..end).unwrap_or_default());
+        // custom logic here?
+        if end < input.len() {
+            output.push_str("}");
+        }
+    }
+
+    output
+}
+
 fn is_external_mod<'a>(mod_state: &mut ModState<'a>, line: &'a str) -> Option<Mod<'a>> {
     let line = remove_comment(line);
     if line.is_empty() {
@@ -131,7 +185,7 @@ fn put_module_in_string(
             };
             let rr = 10000;
             expand_cnt -= 1;
-            println!("{} mod found: {}", ">".repeat(depth), line);
+            // println!("{} mod found: {}", ">".repeat(depth), line);
             output.push_line(&format!("{}mod {} {{", m.pub_prefix, m.name));
             let mut parent_path = path.parent().unwrap().to_owned();
             let file_name =
@@ -142,7 +196,7 @@ fn put_module_in_string(
             let same_level_path = parent_path.join(format!("{}.rs", m.name));
             let folder_path = parent_path.join(format!("{}/mod.rs", m.name));
             let child_path = if let Some(ep) = m.explicit_path {
-                println!("explicit path found: {:?}", ep);
+                // println!("explicit path found: {:?}", ep);
                 path.parent().unwrap().join(ep)
             } else if same_level_path.exists() {
                 same_level_path
@@ -176,7 +230,10 @@ fn main() {
         .output()
         .expect("Failed to execute rustc")
         .stdout;
-    let sysroot = std::str::from_utf8(&rustc_result).expect("rustc output wasn't utf8");
+    let sysroot_path = format!(
+        "{}/lib/rustlib/src/rust/library",
+        std::str::from_utf8(&rustc_result).expect("rustc output wasn't utf8").trim()
+    );
     let cosmwasm_path = std::env::var("COSMWASM_PATH").unwrap();
     let output_path = std::env::var("OUTPUT_PATH")
         .map(|str| str.trim_end_matches('/').to_string())
@@ -184,11 +241,7 @@ fn main() {
 
     // rust library
     let lib_rust_paths = [
-        (
-            format!("{}/lib/rustlib/src/rust/library", sysroot.trim()),
-            vec!["std", "alloc", "core"],
-            format!("{}/", output_path),
-        ),
+        (sysroot_path.clone(), vec!["std", "alloc", "core"], format!("{}/", output_path)),
         (
             format!("{}/packages", cosmwasm_path),
             vec!["std", "derive", "schema", "schema-derive", "crypto", "storage"],
@@ -202,10 +255,13 @@ fn main() {
             let path = Path::new(path_string);
 
             let output_path = format!("{}{}.rs", out_prefix, package);
-            println!("output_path {}", output_path);
+
             let mut output = String::default();
             put_module_in_string(&mut output, path, 0, 4000).unwrap();
-            // remove function body and test to load faster
+            // need remove function body and test to load faster with core rust
+            if rust_path != sysroot_path || package == "alloc" {
+                output = remove_function_body(&output);
+            }
             fs::write(output_path, output.clone()).unwrap();
         }
     }

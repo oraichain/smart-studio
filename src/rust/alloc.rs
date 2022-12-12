@@ -171,132 +171,7 @@ extern crate test;
 
 // Module with internal macros used by other modules (needs to be included before other modules).
 #[macro_use]
-mod macros {
-/// Creates a [`Vec`] containing the arguments.
-///
-/// `vec!` allows `Vec`s to be defined with the same syntax as array expressions.
-/// There are two forms of this macro:
-///
-/// - Create a [`Vec`] containing a given list of elements:
-///
-/// ```
-/// let v = vec![1, 2, 3];
-/// assert_eq!(v[0], 1);
-/// assert_eq!(v[1], 2);
-/// assert_eq!(v[2], 3);
-/// ```
-///
-/// - Create a [`Vec`] from a given element and size:
-///
-/// ```
-/// let v = vec![1; 3];
-/// assert_eq!(v, [1, 1, 1]);
-/// ```
-///
-/// Note that unlike array expressions this syntax supports all elements
-/// which implement [`Clone`] and the number of elements doesn't have to be
-/// a constant.
-///
-/// This will use `clone` to duplicate an expression, so one should be careful
-/// using this with types having a nonstandard `Clone` implementation. For
-/// example, `vec![Rc::new(1); 5]` will create a vector of five references
-/// to the same boxed integer value, not five references pointing to independently
-/// boxed integers.
-///
-/// Also, note that `vec![expr; 0]` is allowed, and produces an empty vector.
-/// This will still evaluate `expr`, however, and immediately drop the resulting value, so
-/// be mindful of side effects.
-///
-/// [`Vec`]: crate::vec::Vec
-#[cfg(not(test))]
-#[macro_export]
-#[stable(feature = "rust1", since = "1.0.0")]
-#[allow_internal_unstable(box_syntax, liballoc_internals)]
-macro_rules! vec {
-    () => (
-        $crate::__rust_force_expr!($crate::vec::Vec::new())
-    );
-    ($elem:expr; $n:expr) => (
-        $crate::__rust_force_expr!($crate::vec::from_elem($elem, $n))
-    );
-    ($($x:expr),+ $(,)?) => (
-        $crate::__rust_force_expr!(<[_]>::into_vec(box [$($x),+]))
-    );
-}
-
-// HACK(japaric): with cfg(test) the inherent `[T]::into_vec` method, which is
-// required for this macro definition, is not available. Instead use the
-// `slice::into_vec`  function which is only available with cfg(test)
-// NB see the slice::hack module in slice.rs for more information
-#[cfg(test)]
-macro_rules! vec {
-    () => (
-        $crate::vec::Vec::new()
-    );
-    ($elem:expr; $n:expr) => (
-        $crate::vec::from_elem($elem, $n)
-    );
-    ($($x:expr),*) => (
-        $crate::slice::into_vec(box [$($x),*])
-    );
-    ($($x:expr,)*) => (vec![$($x),*])
-}
-
-/// Creates a `String` using interpolation of runtime expressions.
-///
-/// The first argument `format!` receives is a format string. This must be a string
-/// literal. The power of the formatting string is in the `{}`s contained.
-///
-/// Additional parameters passed to `format!` replace the `{}`s within the
-/// formatting string in the order given unless named or positional parameters
-/// are used; see [`std::fmt`] for more information.
-///
-/// A common use for `format!` is concatenation and interpolation of strings.
-/// The same convention is used with [`print!`] and [`write!`] macros,
-/// depending on the intended destination of the string.
-///
-/// To convert a single value to a string, use the [`to_string`] method. This
-/// will use the [`Display`] formatting trait.
-///
-/// [`std::fmt`]: ../std/fmt/index.html
-/// [`print!`]: ../std/macro.print.html
-/// [`write!`]: core::write
-/// [`to_string`]: crate::string::ToString
-/// [`Display`]: core::fmt::Display
-///
-/// # Panics
-///
-/// `format!` panics if a formatting trait implementation returns an error.
-/// This indicates an incorrect implementation
-/// since `fmt::Write for String` never returns an error itself.
-///
-/// # Examples
-///
-/// ```
-/// format!("test");
-/// format!("hello {}", "world!");
-/// format!("x = {}, y = {y}", 10, y = 30);
-/// ```
-#[macro_export]
-#[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "format_macro")]
-macro_rules! format {
-    ($($arg:tt)*) => {{
-        let res = $crate::fmt::format($crate::__export::format_args!($($arg)*));
-        res
-    }}
-}
-
-/// Force AST node to an expression to improve diagnostics in pattern position.
-#[doc(hidden)]
-#[macro_export]
-#[unstable(feature = "liballoc_internals", issue = "none", reason = "implementation detail")]
-macro_rules! __rust_force_expr {
-    ($e:expr) => {
-        $e
-    };
-}
-}
+mod macros {}
 
 // Heaps provided for low-level allocation strategies
 
@@ -326,29 +201,11 @@ use crate::boxed::Box;
 use test::Bencher;
 
 #[test]
-fn allocate_zeroed() {
-    unsafe {
-        let layout = Layout::from_size_align(1024, 1).unwrap();
-        let ptr =
-            Global.allocate_zeroed(layout.clone()).unwrap_or_else(|_| handle_alloc_error(layout));
-
-        let mut i = ptr.as_non_null_ptr().as_ptr();
-        let end = i.add(layout.size());
-        while i < end {
-            assert_eq!(*i, 0);
-            i = i.offset(1);
-        }
-        Global.deallocate(ptr.as_non_null_ptr(), layout);
-    }
-}
+fn allocate_zeroed() {}
 
 #[bench]
 #[cfg_attr(miri, ignore)] // isolated Miri does not support benchmarks
-fn alloc_owned_small(b: &mut Bencher) {
-    b.iter(|| {
-        let _: Box<_> = box 10;
-    })
-}
+fn alloc_owned_small(b: &mut Bencher) {}
 }
 
 extern "Rust" {
@@ -417,9 +274,7 @@ pub use std::alloc::Global;
 #[stable(feature = "global_alloc", since = "1.28.0")]
 #[must_use = "losing the pointer will leak memory"]
 #[inline]
-pub unsafe fn alloc(layout: Layout) -> *mut u8 {
-    unsafe { __rust_alloc(layout.size(), layout.align()) }
-}
+pub unsafe fn alloc(layout: Layout) -> *mut u8 {}
 
 /// Deallocate memory with the global allocator.
 ///
@@ -435,9 +290,7 @@ pub unsafe fn alloc(layout: Layout) -> *mut u8 {
 /// See [`GlobalAlloc::dealloc`].
 #[stable(feature = "global_alloc", since = "1.28.0")]
 #[inline]
-pub unsafe fn dealloc(ptr: *mut u8, layout: Layout) {
-    unsafe { __rust_dealloc(ptr, layout.size(), layout.align()) }
-}
+pub unsafe fn dealloc(ptr: *mut u8, layout: Layout) {}
 
 /// Reallocate memory with the global allocator.
 ///
@@ -454,9 +307,7 @@ pub unsafe fn dealloc(ptr: *mut u8, layout: Layout) {
 #[stable(feature = "global_alloc", since = "1.28.0")]
 #[must_use = "losing the pointer will leak memory"]
 #[inline]
-pub unsafe fn realloc(ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
-    unsafe { __rust_realloc(ptr, layout.size(), layout.align(), new_size) }
-}
+pub unsafe fn realloc(ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {}
 
 /// Allocate zero-initialized memory with the global allocator.
 ///
@@ -488,24 +339,12 @@ pub unsafe fn realloc(ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 
 #[stable(feature = "global_alloc", since = "1.28.0")]
 #[must_use = "losing the pointer will leak memory"]
 #[inline]
-pub unsafe fn alloc_zeroed(layout: Layout) -> *mut u8 {
-    unsafe { __rust_alloc_zeroed(layout.size(), layout.align()) }
-}
+pub unsafe fn alloc_zeroed(layout: Layout) -> *mut u8 {}
 
 #[cfg(not(test))]
 impl Global {
     #[inline]
-    fn alloc_impl(&self, layout: Layout, zeroed: bool) -> Result<NonNull<[u8]>, AllocError> {
-        match layout.size() {
-            0 => Ok(NonNull::slice_from_raw_parts(layout.dangling(), 0)),
-            // SAFETY: `layout` is non-zero in size,
-            size => unsafe {
-                let raw_ptr = if zeroed { alloc_zeroed(layout) } else { alloc(layout) };
-                let ptr = NonNull::new(raw_ptr).ok_or(AllocError)?;
-                Ok(NonNull::slice_from_raw_parts(ptr, size))
-            },
-        }
-    }
+    fn alloc_impl(&self, layout: Layout, zeroed: bool) -> Result<NonNull<[u8]>, AllocError> {}
 
     // SAFETY: Same as `Allocator::grow`
     #[inline]
@@ -515,67 +354,20 @@ impl Global {
         old_layout: Layout,
         new_layout: Layout,
         zeroed: bool,
-    ) -> Result<NonNull<[u8]>, AllocError> {
-        debug_assert!(
-            new_layout.size() >= old_layout.size(),
-            "`new_layout.size()` must be greater than or equal to `old_layout.size()`"
-        );
-
-        match old_layout.size() {
-            0 => self.alloc_impl(new_layout, zeroed),
-
-            // SAFETY: `new_size` is non-zero as `old_size` is greater than or equal to `new_size`
-            // as required by safety conditions. Other conditions must be upheld by the caller
-            old_size if old_layout.align() == new_layout.align() => unsafe {
-                let new_size = new_layout.size();
-
-                // `realloc` probably checks for `new_size >= old_layout.size()` or something similar.
-                intrinsics::assume(new_size >= old_layout.size());
-
-                let raw_ptr = realloc(ptr.as_ptr(), old_layout, new_size);
-                let ptr = NonNull::new(raw_ptr).ok_or(AllocError)?;
-                if zeroed {
-                    raw_ptr.add(old_size).write_bytes(0, new_size - old_size);
-                }
-                Ok(NonNull::slice_from_raw_parts(ptr, new_size))
-            },
-
-            // SAFETY: because `new_layout.size()` must be greater than or equal to `old_size`,
-            // both the old and new memory allocation are valid for reads and writes for `old_size`
-            // bytes. Also, because the old allocation wasn't yet deallocated, it cannot overlap
-            // `new_ptr`. Thus, the call to `copy_nonoverlapping` is safe. The safety contract
-            // for `dealloc` must be upheld by the caller.
-            old_size => unsafe {
-                let new_ptr = self.alloc_impl(new_layout, zeroed)?;
-                ptr::copy_nonoverlapping(ptr.as_ptr(), new_ptr.as_mut_ptr(), old_size);
-                self.deallocate(ptr, old_layout);
-                Ok(new_ptr)
-            },
-        }
-    }
+    ) -> Result<NonNull<[u8]>, AllocError> {}
 }
 
 #[unstable(feature = "allocator_api", issue = "32838")]
 #[cfg(not(test))]
 unsafe impl Allocator for Global {
     #[inline]
-    fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
-        self.alloc_impl(layout, false)
-    }
+    fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {}
 
     #[inline]
-    fn allocate_zeroed(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
-        self.alloc_impl(layout, true)
-    }
+    fn allocate_zeroed(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {}
 
     #[inline]
-    unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
-        if layout.size() != 0 {
-            // SAFETY: `layout` is non-zero in size,
-            // other conditions must be upheld by the caller
-            unsafe { dealloc(ptr.as_ptr(), layout) }
-        }
-    }
+    unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {}
 
     #[inline]
     unsafe fn grow(
@@ -583,10 +375,7 @@ unsafe impl Allocator for Global {
         ptr: NonNull<u8>,
         old_layout: Layout,
         new_layout: Layout,
-    ) -> Result<NonNull<[u8]>, AllocError> {
-        // SAFETY: all conditions must be upheld by the caller
-        unsafe { self.grow_impl(ptr, old_layout, new_layout, false) }
-    }
+    ) -> Result<NonNull<[u8]>, AllocError> {}
 
     #[inline]
     unsafe fn grow_zeroed(
@@ -594,10 +383,7 @@ unsafe impl Allocator for Global {
         ptr: NonNull<u8>,
         old_layout: Layout,
         new_layout: Layout,
-    ) -> Result<NonNull<[u8]>, AllocError> {
-        // SAFETY: all conditions must be upheld by the caller
-        unsafe { self.grow_impl(ptr, old_layout, new_layout, true) }
-    }
+    ) -> Result<NonNull<[u8]>, AllocError> {}
 
     #[inline]
     unsafe fn shrink(
@@ -605,55 +391,14 @@ unsafe impl Allocator for Global {
         ptr: NonNull<u8>,
         old_layout: Layout,
         new_layout: Layout,
-    ) -> Result<NonNull<[u8]>, AllocError> {
-        debug_assert!(
-            new_layout.size() <= old_layout.size(),
-            "`new_layout.size()` must be smaller than or equal to `old_layout.size()`"
-        );
-
-        match new_layout.size() {
-            // SAFETY: conditions must be upheld by the caller
-            0 => unsafe {
-                self.deallocate(ptr, old_layout);
-                Ok(NonNull::slice_from_raw_parts(new_layout.dangling(), 0))
-            },
-
-            // SAFETY: `new_size` is non-zero. Other conditions must be upheld by the caller
-            new_size if old_layout.align() == new_layout.align() => unsafe {
-                // `realloc` probably checks for `new_size <= old_layout.size()` or something similar.
-                intrinsics::assume(new_size <= old_layout.size());
-
-                let raw_ptr = realloc(ptr.as_ptr(), old_layout, new_size);
-                let ptr = NonNull::new(raw_ptr).ok_or(AllocError)?;
-                Ok(NonNull::slice_from_raw_parts(ptr, new_size))
-            },
-
-            // SAFETY: because `new_size` must be smaller than or equal to `old_layout.size()`,
-            // both the old and new memory allocation are valid for reads and writes for `new_size`
-            // bytes. Also, because the old allocation wasn't yet deallocated, it cannot overlap
-            // `new_ptr`. Thus, the call to `copy_nonoverlapping` is safe. The safety contract
-            // for `dealloc` must be upheld by the caller.
-            new_size => unsafe {
-                let new_ptr = self.allocate(new_layout)?;
-                ptr::copy_nonoverlapping(ptr.as_ptr(), new_ptr.as_mut_ptr(), new_size);
-                self.deallocate(ptr, old_layout);
-                Ok(new_ptr)
-            },
-        }
-    }
+    ) -> Result<NonNull<[u8]>, AllocError> {}
 }
 
 /// The allocator for unique pointers.
 #[cfg(all(not(no_global_oom_handling), not(test)))]
 #[lang = "exchange_malloc"]
 #[inline]
-unsafe fn exchange_malloc(size: usize, align: usize) -> *mut u8 {
-    let layout = unsafe { Layout::from_size_align_unchecked(size, align) };
-    match Global.allocate(layout) {
-        Ok(ptr) => ptr.as_mut_ptr(),
-        Err(_) => handle_alloc_error(layout),
-    }
-}
+unsafe fn exchange_malloc(size: usize, align: usize) -> *mut u8 {}
 
 #[cfg_attr(not(test), lang = "box_free")]
 #[inline]
@@ -662,14 +407,7 @@ unsafe fn exchange_malloc(size: usize, align: usize) -> *mut u8 {
 // well.
 // For example if `Box` is changed to  `struct Box<T: ?Sized, A: Allocator>(Unique<T>, A)`,
 // this function has to be changed to `fn box_free<T: ?Sized, A: Allocator>(Unique<T>, A)` as well.
-pub(crate) unsafe fn box_free<T: ?Sized, A: Allocator>(ptr: Unique<T>, alloc: A) {
-    unsafe {
-        let size = size_of_val(ptr.as_ref());
-        let align = min_align_of_val(ptr.as_ref());
-        let layout = Layout::from_size_align_unchecked(size, align);
-        alloc.deallocate(ptr.cast().into(), layout)
-    }
-}
+pub(crate) unsafe fn box_free<T: ?Sized, A: Allocator>(ptr: Unique<T>, alloc: A) {}
 
 // # Allocation error handler
 
@@ -698,11 +436,7 @@ extern "Rust" {
 #[cfg(all(not(no_global_oom_handling), not(test)))]
 #[rustc_allocator_nounwind]
 #[cold]
-pub fn handle_alloc_error(layout: Layout) -> ! {
-    unsafe {
-        __rust_alloc_error_handler(layout.size(), layout.align());
-    }
-}
+pub fn handle_alloc_error(layout: Layout) -> ! {}
 
 // For alloc test `std::alloc::handle_alloc_error` can be used directly.
 #[cfg(all(not(no_global_oom_handling), test))]
@@ -719,20 +453,11 @@ pub mod __alloc_error_handler {
 
     // if there is no `#[alloc_error_handler]`
     #[rustc_std_internal_symbol]
-    pub unsafe extern "C" fn __rdl_oom(size: usize, _align: usize) -> ! {
-        panic!("memory allocation of {} bytes failed", size)
-    }
+    pub unsafe extern "C" fn __rdl_oom(size: usize, _align: usize) -> ! {}
 
     // if there is an `#[alloc_error_handler]`
     #[rustc_std_internal_symbol]
-    pub unsafe extern "C" fn __rg_oom(size: usize, align: usize) -> ! {
-        let layout = unsafe { Layout::from_size_align_unchecked(size, align) };
-        extern "Rust" {
-            #[lang = "oom"]
-            fn oom_impl(layout: Layout) -> !;
-        }
-        unsafe { oom_impl(layout) }
-    }
+    pub unsafe extern "C" fn __rg_oom(size: usize, align: usize) -> ! {}
 }
 
 /// Specialize clones into pre-allocated, uninitialized memory.
@@ -743,19 +468,12 @@ pub(crate) trait WriteCloneIntoRaw: Sized {
 
 impl<T: Clone> WriteCloneIntoRaw for T {
     #[inline]
-    default unsafe fn write_clone_into_raw(&self, target: *mut Self) {
-        // Having allocated *first* may allow the optimizer to create
-        // the cloned value in-place, skipping the local and move.
-        unsafe { target.write(self.clone()) };
-    }
+    default unsafe fn write_clone_into_raw(&self, target: *mut Self) {}
 }
 
 impl<T: Copy> WriteCloneIntoRaw for T {
     #[inline]
-    unsafe fn write_clone_into_raw(&self, target: *mut Self) {
-        // We can always copy in-place, without ever involving a local value.
-        unsafe { target.copy_from_nonoverlapping(self, 1) };
-    }
+    unsafe fn write_clone_into_raw(&self, target: *mut Self) {}
 }
 }
 
@@ -867,9 +585,7 @@ pub mod boxed {
 //! pub struct Foo;
 //!
 //! #[no_mangle]
-//! pub extern "C" fn foo_new() -> Box<Foo> {
-//!     Box::new(Foo)
-//! }
+//! pub extern "C" fn foo_new() -> Box<Foo> {}
 //!
 //! #[no_mangle]
 //! pub extern "C" fn foo_delete(_: Option<Box<Foo>>) {}
@@ -956,9 +672,7 @@ impl<T> Box<T> {
     #[inline(always)]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
-    pub fn new(x: T) -> Self {
-        box x
-    }
+    pub fn new(x: T) -> Self {}
 
     /// Constructs a new box with uninitialized contents.
     ///
@@ -982,9 +696,7 @@ impl<T> Box<T> {
     #[unstable(feature = "new_uninit", issue = "63291")]
     #[must_use]
     #[inline]
-    pub fn new_uninit() -> Box<mem::MaybeUninit<T>> {
-        Self::new_uninit_in(Global)
-    }
+    pub fn new_uninit() -> Box<mem::MaybeUninit<T>> {}
 
     /// Constructs a new `Box` with uninitialized contents, with the memory
     /// being filled with `0` bytes.
@@ -1008,9 +720,7 @@ impl<T> Box<T> {
     #[inline]
     #[unstable(feature = "new_uninit", issue = "63291")]
     #[must_use]
-    pub fn new_zeroed() -> Box<mem::MaybeUninit<T>> {
-        Self::new_zeroed_in(Global)
-    }
+    pub fn new_zeroed() -> Box<mem::MaybeUninit<T>> {}
 
     /// Constructs a new `Pin<Box<T>>`. If `T` does not implement `Unpin`, then
     /// `x` will be pinned in memory and unable to be moved.
@@ -1018,9 +728,7 @@ impl<T> Box<T> {
     #[stable(feature = "pin", since = "1.33.0")]
     #[must_use]
     #[inline(always)]
-    pub fn pin(x: T) -> Pin<Box<T>> {
-        (box x).into()
-    }
+    pub fn pin(x: T) -> Pin<Box<T>> {}
 
     /// Allocates memory on the heap then places `x` into it,
     /// returning an error if the allocation fails
@@ -1037,9 +745,7 @@ impl<T> Box<T> {
     /// ```
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
-    pub fn try_new(x: T) -> Result<Self, AllocError> {
-        Self::try_new_in(x, Global)
-    }
+    pub fn try_new(x: T) -> Result<Self, AllocError> {}
 
     /// Constructs a new box with uninitialized contents on the heap,
     /// returning an error if the allocation fails
@@ -1064,9 +770,7 @@ impl<T> Box<T> {
     #[unstable(feature = "allocator_api", issue = "32838")]
     // #[unstable(feature = "new_uninit", issue = "63291")]
     #[inline]
-    pub fn try_new_uninit() -> Result<Box<mem::MaybeUninit<T>>, AllocError> {
-        Box::try_new_uninit_in(Global)
-    }
+    pub fn try_new_uninit() -> Result<Box<mem::MaybeUninit<T>>, AllocError> {}
 
     /// Constructs a new `Box` with uninitialized contents, with the memory
     /// being filled with `0` bytes on the heap
@@ -1090,9 +794,7 @@ impl<T> Box<T> {
     #[unstable(feature = "allocator_api", issue = "32838")]
     // #[unstable(feature = "new_uninit", issue = "63291")]
     #[inline]
-    pub fn try_new_zeroed() -> Result<Box<mem::MaybeUninit<T>>, AllocError> {
-        Box::try_new_zeroed_in(Global)
-    }
+    pub fn try_new_zeroed() -> Result<Box<mem::MaybeUninit<T>>, AllocError> {}
 }
 
 impl<T, A: Allocator> Box<T, A> {
@@ -1113,13 +815,7 @@ impl<T, A: Allocator> Box<T, A> {
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[must_use]
     #[inline]
-    pub fn new_in(x: T, alloc: A) -> Self {
-        let mut boxed = Self::new_uninit_in(alloc);
-        unsafe {
-            boxed.as_mut_ptr().write(x);
-            boxed.assume_init()
-        }
-    }
+    pub fn new_in(x: T, alloc: A) -> Self {}
 
     /// Allocates memory in the given allocator then places `x` into it,
     /// returning an error if the allocation fails
@@ -1138,13 +834,7 @@ impl<T, A: Allocator> Box<T, A> {
     /// ```
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
-    pub fn try_new_in(x: T, alloc: A) -> Result<Self, AllocError> {
-        let mut boxed = Self::try_new_uninit_in(alloc)?;
-        unsafe {
-            boxed.as_mut_ptr().write(x);
-            Ok(boxed.assume_init())
-        }
-    }
+    pub fn try_new_in(x: T, alloc: A) -> Result<Self, AllocError> {}
 
     /// Constructs a new box with uninitialized contents in the provided allocator.
     ///
@@ -1170,15 +860,7 @@ impl<T, A: Allocator> Box<T, A> {
     #[cfg(not(no_global_oom_handling))]
     #[must_use]
     // #[unstable(feature = "new_uninit", issue = "63291")]
-    pub fn new_uninit_in(alloc: A) -> Box<mem::MaybeUninit<T>, A> {
-        let layout = Layout::new::<mem::MaybeUninit<T>>();
-        // NOTE: Prefer match over unwrap_or_else since closure sometimes not inlineable.
-        // That would make code size bigger.
-        match Box::try_new_uninit_in(alloc) {
-            Ok(m) => m,
-            Err(_) => handle_alloc_error(layout),
-        }
-    }
+    pub fn new_uninit_in(alloc: A) -> Box<mem::MaybeUninit<T>, A> {}
 
     /// Constructs a new box with uninitialized contents in the provided allocator,
     /// returning an error if the allocation fails
@@ -1204,11 +886,7 @@ impl<T, A: Allocator> Box<T, A> {
     /// ```
     #[unstable(feature = "allocator_api", issue = "32838")]
     // #[unstable(feature = "new_uninit", issue = "63291")]
-    pub fn try_new_uninit_in(alloc: A) -> Result<Box<mem::MaybeUninit<T>, A>, AllocError> {
-        let layout = Layout::new::<mem::MaybeUninit<T>>();
-        let ptr = alloc.allocate(layout)?.cast();
-        unsafe { Ok(Box::from_raw_in(ptr.as_ptr(), alloc)) }
-    }
+    pub fn try_new_uninit_in(alloc: A) -> Result<Box<mem::MaybeUninit<T>, A>, AllocError> {}
 
     /// Constructs a new `Box` with uninitialized contents, with the memory
     /// being filled with `0` bytes in the provided allocator.
@@ -1234,15 +912,7 @@ impl<T, A: Allocator> Box<T, A> {
     #[cfg(not(no_global_oom_handling))]
     // #[unstable(feature = "new_uninit", issue = "63291")]
     #[must_use]
-    pub fn new_zeroed_in(alloc: A) -> Box<mem::MaybeUninit<T>, A> {
-        let layout = Layout::new::<mem::MaybeUninit<T>>();
-        // NOTE: Prefer match over unwrap_or_else since closure sometimes not inlineable.
-        // That would make code size bigger.
-        match Box::try_new_zeroed_in(alloc) {
-            Ok(m) => m,
-            Err(_) => handle_alloc_error(layout),
-        }
-    }
+    pub fn new_zeroed_in(alloc: A) -> Box<mem::MaybeUninit<T>, A> {}
 
     /// Constructs a new `Box` with uninitialized contents, with the memory
     /// being filled with `0` bytes in the provided allocator,
@@ -1268,11 +938,7 @@ impl<T, A: Allocator> Box<T, A> {
     /// [zeroed]: mem::MaybeUninit::zeroed
     #[unstable(feature = "allocator_api", issue = "32838")]
     // #[unstable(feature = "new_uninit", issue = "63291")]
-    pub fn try_new_zeroed_in(alloc: A) -> Result<Box<mem::MaybeUninit<T>, A>, AllocError> {
-        let layout = Layout::new::<mem::MaybeUninit<T>>();
-        let ptr = alloc.allocate_zeroed(layout)?.cast();
-        unsafe { Ok(Box::from_raw_in(ptr.as_ptr(), alloc)) }
-    }
+    pub fn try_new_zeroed_in(alloc: A) -> Result<Box<mem::MaybeUninit<T>, A>, AllocError> {}
 
     /// Constructs a new `Pin<Box<T, A>>`. If `T` does not implement `Unpin`, then
     /// `x` will be pinned in memory and unable to be moved.
@@ -1283,18 +949,13 @@ impl<T, A: Allocator> Box<T, A> {
     pub fn pin_in(x: T, alloc: A) -> Pin<Self>
     where
         A: 'static,
-    {
-        Self::new_in(x, alloc).into()
-    }
+    {}
 
     /// Converts a `Box<T>` into a `Box<[T]>`
     ///
     /// This conversion does not allocate on the heap and happens in place.
     #[unstable(feature = "box_into_boxed_slice", issue = "71582")]
-    pub fn into_boxed_slice(boxed: Self) -> Box<[T], A> {
-        let (raw, alloc) = Box::into_raw_with_allocator(boxed);
-        unsafe { Box::from_raw_in(raw as *mut [T; 1], alloc) }
-    }
+    pub fn into_boxed_slice(boxed: Self) -> Box<[T], A> {}
 
     /// Consumes the `Box`, returning the wrapped value.
     ///
@@ -1309,9 +970,7 @@ impl<T, A: Allocator> Box<T, A> {
     /// ```
     #[unstable(feature = "box_into_inner", issue = "80437")]
     #[inline]
-    pub fn into_inner(boxed: Self) -> T {
-        *boxed
-    }
+    pub fn into_inner(boxed: Self) -> T {}
 }
 
 impl<T> Box<[T]> {
@@ -1338,9 +997,7 @@ impl<T> Box<[T]> {
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "new_uninit", issue = "63291")]
     #[must_use]
-    pub fn new_uninit_slice(len: usize) -> Box<[mem::MaybeUninit<T>]> {
-        unsafe { RawVec::with_capacity(len).into_box(len) }
-    }
+    pub fn new_uninit_slice(len: usize) -> Box<[mem::MaybeUninit<T>]> {}
 
     /// Constructs a new boxed slice with uninitialized contents, with the memory
     /// being filled with `0` bytes.
@@ -1363,9 +1020,7 @@ impl<T> Box<[T]> {
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "new_uninit", issue = "63291")]
     #[must_use]
-    pub fn new_zeroed_slice(len: usize) -> Box<[mem::MaybeUninit<T>]> {
-        unsafe { RawVec::with_capacity_zeroed(len).into_box(len) }
-    }
+    pub fn new_zeroed_slice(len: usize) -> Box<[mem::MaybeUninit<T>]> {}
 
     /// Constructs a new boxed slice with uninitialized contents. Returns an error if
     /// the allocation fails
@@ -1389,16 +1044,7 @@ impl<T> Box<[T]> {
     /// ```
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
-    pub fn try_new_uninit_slice(len: usize) -> Result<Box<[mem::MaybeUninit<T>]>, AllocError> {
-        unsafe {
-            let layout = match Layout::array::<mem::MaybeUninit<T>>(len) {
-                Ok(l) => l,
-                Err(_) => return Err(AllocError),
-            };
-            let ptr = Global.allocate(layout)?;
-            Ok(RawVec::from_raw_parts_in(ptr.as_mut_ptr() as *mut _, len, Global).into_box(len))
-        }
-    }
+    pub fn try_new_uninit_slice(len: usize) -> Result<Box<[mem::MaybeUninit<T>]>, AllocError> {}
 
     /// Constructs a new boxed slice with uninitialized contents, with the memory
     /// being filled with `0` bytes. Returns an error if the allocation fails
@@ -1421,16 +1067,7 @@ impl<T> Box<[T]> {
     /// [zeroed]: mem::MaybeUninit::zeroed
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
-    pub fn try_new_zeroed_slice(len: usize) -> Result<Box<[mem::MaybeUninit<T>]>, AllocError> {
-        unsafe {
-            let layout = match Layout::array::<mem::MaybeUninit<T>>(len) {
-                Ok(l) => l,
-                Err(_) => return Err(AllocError),
-            };
-            let ptr = Global.allocate_zeroed(layout)?;
-            Ok(RawVec::from_raw_parts_in(ptr.as_mut_ptr() as *mut _, len, Global).into_box(len))
-        }
-    }
+    pub fn try_new_zeroed_slice(len: usize) -> Result<Box<[mem::MaybeUninit<T>]>, AllocError> {}
 }
 
 impl<T, A: Allocator> Box<[T], A> {
@@ -1460,9 +1097,7 @@ impl<T, A: Allocator> Box<[T], A> {
     #[unstable(feature = "allocator_api", issue = "32838")]
     // #[unstable(feature = "new_uninit", issue = "63291")]
     #[must_use]
-    pub fn new_uninit_slice_in(len: usize, alloc: A) -> Box<[mem::MaybeUninit<T>], A> {
-        unsafe { RawVec::with_capacity_in(len, alloc).into_box(len) }
-    }
+    pub fn new_uninit_slice_in(len: usize, alloc: A) -> Box<[mem::MaybeUninit<T>], A> {}
 
     /// Constructs a new boxed slice with uninitialized contents in the provided allocator,
     /// with the memory being filled with `0` bytes.
@@ -1488,9 +1123,7 @@ impl<T, A: Allocator> Box<[T], A> {
     #[unstable(feature = "allocator_api", issue = "32838")]
     // #[unstable(feature = "new_uninit", issue = "63291")]
     #[must_use]
-    pub fn new_zeroed_slice_in(len: usize, alloc: A) -> Box<[mem::MaybeUninit<T>], A> {
-        unsafe { RawVec::with_capacity_zeroed_in(len, alloc).into_box(len) }
-    }
+    pub fn new_zeroed_slice_in(len: usize, alloc: A) -> Box<[mem::MaybeUninit<T>], A> {}
 }
 
 impl<T, A: Allocator> Box<mem::MaybeUninit<T>, A> {
@@ -1524,10 +1157,7 @@ impl<T, A: Allocator> Box<mem::MaybeUninit<T>, A> {
     /// ```
     #[unstable(feature = "new_uninit", issue = "63291")]
     #[inline]
-    pub unsafe fn assume_init(self) -> Box<T, A> {
-        let (raw, alloc) = Box::into_raw_with_allocator(self);
-        unsafe { Box::from_raw_in(raw as *mut T, alloc) }
-    }
+    pub unsafe fn assume_init(self) -> Box<T, A> {}
 }
 
 impl<T, A: Allocator> Box<[mem::MaybeUninit<T>], A> {
@@ -1563,10 +1193,7 @@ impl<T, A: Allocator> Box<[mem::MaybeUninit<T>], A> {
     /// ```
     #[unstable(feature = "new_uninit", issue = "63291")]
     #[inline]
-    pub unsafe fn assume_init(self) -> Box<[T], A> {
-        let (raw, alloc) = Box::into_raw_with_allocator(self);
-        unsafe { Box::from_raw_in(raw as *mut [T], alloc) }
-    }
+    pub unsafe fn assume_init(self) -> Box<[T], A> {}
 }
 
 impl<T: ?Sized> Box<T> {
@@ -1613,9 +1240,7 @@ impl<T: ?Sized> Box<T> {
     /// [`Layout`]: crate::Layout
     #[stable(feature = "box_raw", since = "1.4.0")]
     #[inline]
-    pub unsafe fn from_raw(raw: *mut T) -> Self {
-        unsafe { Self::from_raw_in(raw, Global) }
-    }
+    pub unsafe fn from_raw(raw: *mut T) -> Self {}
 }
 
 impl<T: ?Sized, A: Allocator> Box<T, A> {
@@ -1668,9 +1293,7 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     /// [`Layout`]: crate::Layout
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
-    pub unsafe fn from_raw_in(raw: *mut T, alloc: A) -> Self {
-        Box(unsafe { Unique::new_unchecked(raw) }, alloc)
-    }
+    pub unsafe fn from_raw_in(raw: *mut T, alloc: A) -> Self {}
 
     /// Consumes the `Box`, returning a wrapped raw pointer.
     ///
@@ -1713,9 +1336,7 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     /// [memory layout]: self#memory-layout
     #[stable(feature = "box_raw", since = "1.4.0")]
     #[inline]
-    pub fn into_raw(b: Self) -> *mut T {
-        Self::into_raw_with_allocator(b).0
-    }
+    pub fn into_raw(b: Self) -> *mut T {}
 
     /// Consumes the `Box`, returning a wrapped raw pointer and the allocator.
     ///
@@ -1765,10 +1386,7 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     /// [memory layout]: self#memory-layout
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
-    pub fn into_raw_with_allocator(b: Self) -> (*mut T, A) {
-        let (leaked, alloc) = Box::into_unique(b);
-        (leaked.as_ptr(), alloc)
-    }
+    pub fn into_raw_with_allocator(b: Self) -> (*mut T, A) {}
 
     #[unstable(
         feature = "ptr_internals",
@@ -1777,15 +1395,7 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     )]
     #[inline]
     #[doc(hidden)]
-    pub fn into_unique(b: Self) -> (Unique<T>, A) {
-        // Box is recognized as a "unique pointer" by Stacked Borrows, but internally it is a
-        // raw pointer for the type system. Turning it directly into a raw pointer would not be
-        // recognized as "releasing" the unique pointer to permit aliased raw accesses,
-        // so all raw pointer methods have to go through `Box::leak`. Turning *that* to a raw pointer
-        // behaves correctly.
-        let alloc = unsafe { ptr::read(&b.1) };
-        (Unique::from(Box::leak(b)), alloc)
-    }
+    pub fn into_unique(b: Self) -> (Unique<T>, A) {}
 
     /// Returns a reference to the underlying allocator.
     ///
@@ -1794,9 +1404,7 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     /// is so that there is no conflict with a method on the inner type.
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
-    pub fn allocator(b: &Self) -> &A {
-        &b.1
-    }
+    pub fn allocator(b: &Self) -> &A {}
 
     /// Consumes and leaks the `Box`, returning a mutable reference,
     /// `&'a mut T`. Note that the type `T` must outlive the chosen lifetime
@@ -1838,9 +1446,7 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     pub fn leak<'a>(b: Self) -> &'a mut T
     where
         A: 'a,
-    {
-        unsafe { &mut *mem::ManuallyDrop::new(b).0.as_ptr() }
-    }
+    {}
 
     /// Converts a `Box<T>` into a `Pin<Box<T>>`
     ///
@@ -1851,44 +1457,31 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     pub fn into_pin(boxed: Self) -> Pin<Self>
     where
         A: 'static,
-    {
-        // It's not possible to move or replace the insides of a `Pin<Box<T>>`
-        // when `T: !Unpin`,  so it's safe to pin it directly without any
-        // additional requirements.
-        unsafe { Pin::new_unchecked(boxed) }
-    }
+    {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<#[may_dangle] T: ?Sized, A: Allocator> Drop for Box<T, A> {
-    fn drop(&mut self) {
-        // FIXME: Do nothing, drop is currently performed by compiler.
-    }
+    fn drop(&mut self) {}
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Default> Default for Box<T> {
     /// Creates a `Box<T>`, with the `Default` value for T.
-    fn default() -> Self {
-        box T::default()
-    }
+    fn default() -> Self {}
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Default for Box<[T]> {
-    fn default() -> Self {
-        Box::<[T; 0]>::new([])
-    }
+    fn default() -> Self {}
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "default_box_extra", since = "1.17.0")]
 impl Default for Box<str> {
-    fn default() -> Self {
-        unsafe { from_boxed_utf8_unchecked(Default::default()) }
-    }
+    fn default() -> Self {}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -1909,14 +1502,7 @@ impl<T: Clone, A: Allocator + Clone> Clone for Box<T, A> {
     /// assert_ne!(&*x as *const i32, &*y as *const i32);
     /// ```
     #[inline]
-    fn clone(&self) -> Self {
-        // Pre-allocate memory to allow writing the cloned value directly.
-        let mut boxed = Self::new_uninit_in(self.1.clone());
-        unsafe {
-            (**self).write_clone_into_raw(boxed.as_mut_ptr());
-            boxed.assume_init()
-        }
-    }
+    fn clone(&self) -> Self {}
 
     /// Copies `source`'s contents into `self` without creating a new allocation.
     ///
@@ -1936,116 +1522,64 @@ impl<T: Clone, A: Allocator + Clone> Clone for Box<T, A> {
     /// assert_eq!(yp, &*y);
     /// ```
     #[inline]
-    fn clone_from(&mut self, source: &Self) {
-        (**self).clone_from(&(**source));
-    }
+    fn clone_from(&mut self, source: &Self) {}
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "box_slice_clone", since = "1.3.0")]
 impl Clone for Box<str> {
-    fn clone(&self) -> Self {
-        // this makes a copy of the data
-        let buf: Box<[u8]> = self.as_bytes().into();
-        unsafe { from_boxed_utf8_unchecked(buf) }
-    }
+    fn clone(&self) -> Self {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + PartialEq, A: Allocator> PartialEq for Box<T, A> {
     #[inline]
-    fn eq(&self, other: &Self) -> bool {
-        PartialEq::eq(&**self, &**other)
-    }
+    fn eq(&self, other: &Self) -> bool {}
     #[inline]
-    fn ne(&self, other: &Self) -> bool {
-        PartialEq::ne(&**self, &**other)
-    }
+    fn ne(&self, other: &Self) -> bool {}
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + PartialOrd, A: Allocator> PartialOrd for Box<T, A> {
     #[inline]
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        PartialOrd::partial_cmp(&**self, &**other)
-    }
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {}
     #[inline]
-    fn lt(&self, other: &Self) -> bool {
-        PartialOrd::lt(&**self, &**other)
-    }
+    fn lt(&self, other: &Self) -> bool {}
     #[inline]
-    fn le(&self, other: &Self) -> bool {
-        PartialOrd::le(&**self, &**other)
-    }
+    fn le(&self, other: &Self) -> bool {}
     #[inline]
-    fn ge(&self, other: &Self) -> bool {
-        PartialOrd::ge(&**self, &**other)
-    }
+    fn ge(&self, other: &Self) -> bool {}
     #[inline]
-    fn gt(&self, other: &Self) -> bool {
-        PartialOrd::gt(&**self, &**other)
-    }
+    fn gt(&self, other: &Self) -> bool {}
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + Ord, A: Allocator> Ord for Box<T, A> {
     #[inline]
-    fn cmp(&self, other: &Self) -> Ordering {
-        Ord::cmp(&**self, &**other)
-    }
+    fn cmp(&self, other: &Self) -> Ordering {}
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + Eq, A: Allocator> Eq for Box<T, A> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + Hash, A: Allocator> Hash for Box<T, A> {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        (**self).hash(state);
-    }
+    fn hash<H: Hasher>(&self, state: &mut H) {}
 }
 
 #[stable(feature = "indirect_hasher_impl", since = "1.22.0")]
 impl<T: ?Sized + Hasher, A: Allocator> Hasher for Box<T, A> {
-    fn finish(&self) -> u64 {
-        (**self).finish()
-    }
-    fn write(&mut self, bytes: &[u8]) {
-        (**self).write(bytes)
-    }
-    fn write_u8(&mut self, i: u8) {
-        (**self).write_u8(i)
-    }
-    fn write_u16(&mut self, i: u16) {
-        (**self).write_u16(i)
-    }
-    fn write_u32(&mut self, i: u32) {
-        (**self).write_u32(i)
-    }
-    fn write_u64(&mut self, i: u64) {
-        (**self).write_u64(i)
-    }
-    fn write_u128(&mut self, i: u128) {
-        (**self).write_u128(i)
-    }
-    fn write_usize(&mut self, i: usize) {
-        (**self).write_usize(i)
-    }
-    fn write_i8(&mut self, i: i8) {
-        (**self).write_i8(i)
-    }
-    fn write_i16(&mut self, i: i16) {
-        (**self).write_i16(i)
-    }
-    fn write_i32(&mut self, i: i32) {
-        (**self).write_i32(i)
-    }
-    fn write_i64(&mut self, i: i64) {
-        (**self).write_i64(i)
-    }
-    fn write_i128(&mut self, i: i128) {
-        (**self).write_i128(i)
-    }
-    fn write_isize(&mut self, i: isize) {
-        (**self).write_isize(i)
-    }
+    fn finish(&self) -> u64 {}
+    fn write(&mut self, bytes: &[u8]) {}
+    fn write_u8(&mut self, i: u8) {}
+    fn write_u16(&mut self, i: u16) {}
+    fn write_u32(&mut self, i: u32) {}
+    fn write_u64(&mut self, i: u64) {}
+    fn write_u128(&mut self, i: u128) {}
+    fn write_usize(&mut self, i: usize) {}
+    fn write_i8(&mut self, i: i8) {}
+    fn write_i16(&mut self, i: i16) {}
+    fn write_i32(&mut self, i: i32) {}
+    fn write_i64(&mut self, i: i64) {}
+    fn write_i128(&mut self, i: i128) {}
+    fn write_isize(&mut self, i: isize) {}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -2064,9 +1598,7 @@ impl<T> From<T> for Box<T> {
     ///
     /// assert_eq!(Box::from(x), boxed);
     /// ```
-    fn from(t: T) -> Self {
-        Box::new(t)
-    }
+    fn from(t: T) -> Self {}
 }
 
 #[stable(feature = "pin", since = "1.33.0")]
@@ -2077,9 +1609,7 @@ where
     /// Converts a `Box<T>` into a `Pin<Box<T>>`
     ///
     /// This conversion does not allocate on the heap and happens in place.
-    fn from(boxed: Box<T, A>) -> Self {
-        Box::into_pin(boxed)
-    }
+    fn from(boxed: Box<T, A>) -> Self {}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -2098,14 +1628,7 @@ impl<T: Copy> From<&[T]> for Box<[T]> {
     ///
     /// println!("{:?}", boxed_slice);
     /// ```
-    fn from(slice: &[T]) -> Box<[T]> {
-        let len = slice.len();
-        let buf = RawVec::with_capacity(len);
-        unsafe {
-            ptr::copy_nonoverlapping(slice.as_ptr(), buf.ptr(), len);
-            buf.into_box(slice.len()).assume_init()
-        }
-    }
+    fn from(slice: &[T]) -> Box<[T]> {}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -2118,12 +1641,7 @@ impl<T: Copy> From<Cow<'_, [T]>> for Box<[T]> {
     /// underlying slice. Otherwise, it will try to reuse the owned
     /// `Vec`'s allocation.
     #[inline]
-    fn from(cow: Cow<'_, [T]>) -> Box<[T]> {
-        match cow {
-            Cow::Borrowed(slice) => Box::from(slice),
-            Cow::Owned(slice) => Box::from(slice),
-        }
-    }
+    fn from(cow: Cow<'_, [T]>) -> Box<[T]> {}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -2141,9 +1659,7 @@ impl From<&str> for Box<str> {
     /// println!("{}", boxed);
     /// ```
     #[inline]
-    fn from(s: &str) -> Box<str> {
-        unsafe { from_boxed_utf8_unchecked(Box::from(s.as_bytes())) }
-    }
+    fn from(s: &str) -> Box<str> {}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -2173,12 +1689,7 @@ impl From<Cow<'_, str>> for Box<str> {
     /// println!("{}", boxed);
     /// ```
     #[inline]
-    fn from(cow: Cow<'_, str>) -> Box<str> {
-        match cow {
-            Cow::Borrowed(s) => Box::from(s),
-            Cow::Owned(s) => Box::from(s),
-        }
-    }
+    fn from(cow: Cow<'_, str>) -> Box<str> {}
 }
 
 #[stable(feature = "boxed_str_conv", since = "1.19.0")]
@@ -2200,10 +1711,7 @@ impl<A: Allocator> From<Box<str, A>> for Box<[u8], A> {
     /// assert_eq!(boxed_slice, boxed_str);
     /// ```
     #[inline]
-    fn from(s: Box<str, A>) -> Self {
-        let (raw, alloc) = Box::into_raw_with_allocator(s);
-        unsafe { Box::from_raw_in(raw as *mut [u8], alloc) }
-    }
+    fn from(s: Box<str, A>) -> Self {}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -2219,9 +1727,7 @@ impl<T, const N: usize> From<[T; N]> for Box<[T]> {
     /// let boxed: Box<[u8]> = Box::from([4, 2]);
     /// println!("{:?}", boxed);
     /// ```
-    fn from(array: [T; N]) -> Box<[T]> {
-        box array
-    }
+    fn from(array: [T; N]) -> Box<[T]> {}
 }
 
 #[stable(feature = "boxed_slice_try_from", since = "1.43.0")]
@@ -2237,13 +1743,7 @@ impl<T, const N: usize> TryFrom<Box<[T]>> for Box<[T; N]> {
     ///
     /// Returns the old `Box<[T]>` in the `Err` variant if
     /// `boxed_slice.len()` does not equal `N`.
-    fn try_from(boxed_slice: Box<[T]>) -> Result<Self, Self::Error> {
-        if boxed_slice.len() == N {
-            Ok(unsafe { Box::from_raw(Box::into_raw(boxed_slice) as *mut [T; N]) })
-        } else {
-            Err(boxed_slice)
-        }
-    }
+    fn try_from(boxed_slice: Box<[T]>) -> Result<Self, Self::Error> {}
 }
 
 impl<A: Allocator> Box<dyn Any, A> {
@@ -2256,26 +1756,13 @@ impl<A: Allocator> Box<dyn Any, A> {
     /// ```
     /// use std::any::Any;
     ///
-    /// fn print_if_string(value: Box<dyn Any>) {
-    ///     if let Ok(string) = value.downcast::<String>() {
-    ///         println!("String ({}): {}", string.len(), string);
-    ///     }
-    /// }
+    /// fn print_if_string(value: Box<dyn Any>) {}
     ///
     /// let my_string = "Hello World".to_string();
     /// print_if_string(Box::new(my_string));
     /// print_if_string(Box::new(0i8));
     /// ```
-    pub fn downcast<T: Any>(self) -> Result<Box<T, A>, Self> {
-        if self.is::<T>() {
-            unsafe {
-                let (raw, alloc): (*mut dyn Any, _) = Box::into_raw_with_allocator(self);
-                Ok(Box::from_raw_in(raw as *mut T, alloc))
-            }
-        } else {
-            Err(self)
-        }
-    }
+    pub fn downcast<T: Any>(self) -> Result<Box<T, A>, Self> {}
 }
 
 impl<A: Allocator> Box<dyn Any + Send, A> {
@@ -2288,26 +1775,13 @@ impl<A: Allocator> Box<dyn Any + Send, A> {
     /// ```
     /// use std::any::Any;
     ///
-    /// fn print_if_string(value: Box<dyn Any + Send>) {
-    ///     if let Ok(string) = value.downcast::<String>() {
-    ///         println!("String ({}): {}", string.len(), string);
-    ///     }
-    /// }
+    /// fn print_if_string(value: Box<dyn Any + Send>) {}
     ///
     /// let my_string = "Hello World".to_string();
     /// print_if_string(Box::new(my_string));
     /// print_if_string(Box::new(0i8));
     /// ```
-    pub fn downcast<T: Any>(self) -> Result<Box<T, A>, Self> {
-        if self.is::<T>() {
-            unsafe {
-                let (raw, alloc): (*mut (dyn Any + Send), _) = Box::into_raw_with_allocator(self);
-                Ok(Box::from_raw_in(raw as *mut T, alloc))
-            }
-        } else {
-            Err(self)
-        }
-    }
+    pub fn downcast<T: Any>(self) -> Result<Box<T, A>, Self> {}
 }
 
 impl<A: Allocator> Box<dyn Any + Send + Sync, A> {
@@ -2320,67 +1794,40 @@ impl<A: Allocator> Box<dyn Any + Send + Sync, A> {
     /// ```
     /// use std::any::Any;
     ///
-    /// fn print_if_string(value: Box<dyn Any + Send + Sync>) {
-    ///     if let Ok(string) = value.downcast::<String>() {
-    ///         println!("String ({}): {}", string.len(), string);
-    ///     }
-    /// }
+    /// fn print_if_string(value: Box<dyn Any + Send + Sync>) {}
     ///
     /// let my_string = "Hello World".to_string();
     /// print_if_string(Box::new(my_string));
     /// print_if_string(Box::new(0i8));
     /// ```
-    pub fn downcast<T: Any>(self) -> Result<Box<T, A>, Self> {
-        if self.is::<T>() {
-            unsafe {
-                let (raw, alloc): (*mut (dyn Any + Send + Sync), _) =
-                    Box::into_raw_with_allocator(self);
-                Ok(Box::from_raw_in(raw as *mut T, alloc))
-            }
-        } else {
-            Err(self)
-        }
-    }
+    pub fn downcast<T: Any>(self) -> Result<Box<T, A>, Self> {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: fmt::Display + ?Sized, A: Allocator> fmt::Display for Box<T, A> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(&**self, f)
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: fmt::Debug + ?Sized, A: Allocator> fmt::Debug for Box<T, A> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Debug::fmt(&**self, f)
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized, A: Allocator> fmt::Pointer for Box<T, A> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // It's not possible to extract the inner Uniq directly from the Box,
-        // instead we cast it to a *const which aliases the Unique
-        let ptr: *const T = &**self;
-        fmt::Pointer::fmt(&ptr, f)
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized, A: Allocator> Deref for Box<T, A> {
     type Target = T;
 
-    fn deref(&self) -> &T {
-        &**self
-    }
+    fn deref(&self) -> &T {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized, A: Allocator> DerefMut for Box<T, A> {
-    fn deref_mut(&mut self) -> &mut T {
-        &mut **self
-    }
+    fn deref_mut(&mut self) -> &mut T {}
 }
 
 #[unstable(feature = "receiver_trait", issue = "none")]
@@ -2389,18 +1836,10 @@ impl<T: ?Sized, A: Allocator> Receiver for Box<T, A> {}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<I: Iterator + ?Sized, A: Allocator> Iterator for Box<I, A> {
     type Item = I::Item;
-    fn next(&mut self) -> Option<I::Item> {
-        (**self).next()
-    }
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        (**self).size_hint()
-    }
-    fn nth(&mut self, n: usize) -> Option<I::Item> {
-        (**self).nth(n)
-    }
-    fn last(self) -> Option<I::Item> {
-        BoxIter::last(self)
-    }
+    fn next(&mut self) -> Option<I::Item> {}
+    fn size_hint(&self) -> (usize, Option<usize>) {}
+    fn nth(&mut self, n: usize) -> Option<I::Item> {}
+    fn last(self) -> Option<I::Item> {}
 }
 
 trait BoxIter {
@@ -2410,42 +1849,25 @@ trait BoxIter {
 
 impl<I: Iterator + ?Sized, A: Allocator> BoxIter for Box<I, A> {
     type Item = I::Item;
-    default fn last(self) -> Option<I::Item> {
-        #[inline]
-        fn some<T>(_: Option<T>, x: T) -> Option<T> {
-            Some(x)
-        }
-
-        self.fold(None, some)
-    }
+    default fn last(self) -> Option<I::Item> {}
 }
 
 /// Specialization for sized `I`s that uses `I`s implementation of `last()`
 /// instead of the default.
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<I: Iterator, A: Allocator> BoxIter for Box<I, A> {
-    fn last(self) -> Option<I::Item> {
-        (*self).last()
-    }
+    fn last(self) -> Option<I::Item> {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<I: DoubleEndedIterator + ?Sized, A: Allocator> DoubleEndedIterator for Box<I, A> {
-    fn next_back(&mut self) -> Option<I::Item> {
-        (**self).next_back()
-    }
-    fn nth_back(&mut self, n: usize) -> Option<I::Item> {
-        (**self).nth_back(n)
-    }
+    fn next_back(&mut self) -> Option<I::Item> {}
+    fn nth_back(&mut self, n: usize) -> Option<I::Item> {}
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<I: ExactSizeIterator + ?Sized, A: Allocator> ExactSizeIterator for Box<I, A> {
-    fn len(&self) -> usize {
-        (**self).len()
-    }
-    fn is_empty(&self) -> bool {
-        (**self).is_empty()
-    }
+    fn len(&self) -> usize {}
+    fn is_empty(&self) -> bool {}
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -2455,23 +1877,17 @@ impl<I: FusedIterator + ?Sized, A: Allocator> FusedIterator for Box<I, A> {}
 impl<Args, F: FnOnce<Args> + ?Sized, A: Allocator> FnOnce<Args> for Box<F, A> {
     type Output = <F as FnOnce<Args>>::Output;
 
-    extern "rust-call" fn call_once(self, args: Args) -> Self::Output {
-        <F as FnOnce<Args>>::call_once(*self, args)
-    }
+    extern "rust-call" fn call_once(self, args: Args) -> Self::Output {}
 }
 
 #[stable(feature = "boxed_closure_impls", since = "1.35.0")]
 impl<Args, F: FnMut<Args> + ?Sized, A: Allocator> FnMut<Args> for Box<F, A> {
-    extern "rust-call" fn call_mut(&mut self, args: Args) -> Self::Output {
-        <F as FnMut<Args>>::call_mut(self, args)
-    }
+    extern "rust-call" fn call_mut(&mut self, args: Args) -> Self::Output {}
 }
 
 #[stable(feature = "boxed_closure_impls", since = "1.35.0")]
 impl<Args, F: Fn<Args> + ?Sized, A: Allocator> Fn<Args> for Box<F, A> {
-    extern "rust-call" fn call(&self, args: Args) -> Self::Output {
-        <F as Fn<Args>>::call(self, args)
-    }
+    extern "rust-call" fn call(&self, args: Args) -> Self::Output {}
 }
 
 #[unstable(feature = "coerce_unsized", issue = "27732")]
@@ -2483,54 +1899,35 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Box<U>> for Box<T, Global
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "boxed_slice_from_iter", since = "1.32.0")]
 impl<I> FromIterator<I> for Box<[I]> {
-    fn from_iter<T: IntoIterator<Item = I>>(iter: T) -> Self {
-        iter.into_iter().collect::<Vec<_>>().into_boxed_slice()
-    }
+    fn from_iter<T: IntoIterator<Item = I>>(iter: T) -> Self {}
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "box_slice_clone", since = "1.3.0")]
 impl<T: Clone, A: Allocator + Clone> Clone for Box<[T], A> {
-    fn clone(&self) -> Self {
-        let alloc = Box::allocator(self).clone();
-        self.to_vec_in(alloc).into_boxed_slice()
-    }
+    fn clone(&self) -> Self {}
 
-    fn clone_from(&mut self, other: &Self) {
-        if self.len() == other.len() {
-            self.clone_from_slice(&other);
-        } else {
-            *self = other.clone();
-        }
-    }
+    fn clone_from(&mut self, other: &Self) {}
 }
 
 #[stable(feature = "box_borrow", since = "1.1.0")]
 impl<T: ?Sized, A: Allocator> borrow::Borrow<T> for Box<T, A> {
-    fn borrow(&self) -> &T {
-        &**self
-    }
+    fn borrow(&self) -> &T {}
 }
 
 #[stable(feature = "box_borrow", since = "1.1.0")]
 impl<T: ?Sized, A: Allocator> borrow::BorrowMut<T> for Box<T, A> {
-    fn borrow_mut(&mut self) -> &mut T {
-        &mut **self
-    }
+    fn borrow_mut(&mut self) -> &mut T {}
 }
 
 #[stable(since = "1.5.0", feature = "smart_ptr_as_ref")]
 impl<T: ?Sized, A: Allocator> AsRef<T> for Box<T, A> {
-    fn as_ref(&self) -> &T {
-        &**self
-    }
+    fn as_ref(&self) -> &T {}
 }
 
 #[stable(since = "1.5.0", feature = "smart_ptr_as_ref")]
 impl<T: ?Sized, A: Allocator> AsMut<T> for Box<T, A> {
-    fn as_mut(&mut self) -> &mut T {
-        &mut **self
-    }
+    fn as_mut(&mut self) -> &mut T {}
 }
 
 /* Nota bene
@@ -2566,9 +1963,7 @@ where
     type Yield = G::Yield;
     type Return = G::Return;
 
-    fn resume(mut self: Pin<&mut Self>, arg: R) -> GeneratorState<Self::Yield, Self::Return> {
-        G::resume(Pin::new(&mut *self), arg)
-    }
+    fn resume(mut self: Pin<&mut Self>, arg: R) -> GeneratorState<Self::Yield, Self::Return> {}
 }
 
 #[unstable(feature = "generator_trait", issue = "43122")]
@@ -2579,9 +1974,7 @@ where
     type Yield = G::Yield;
     type Return = G::Return;
 
-    fn resume(mut self: Pin<&mut Self>, arg: R) -> GeneratorState<Self::Yield, Self::Return> {
-        G::resume((*self).as_mut(), arg)
-    }
+    fn resume(mut self: Pin<&mut Self>, arg: R) -> GeneratorState<Self::Yield, Self::Return> {}
 }
 
 #[stable(feature = "futures_api", since = "1.36.0")]
@@ -2591,22 +1984,16 @@ where
 {
     type Output = F::Output;
 
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        F::poll(Pin::new(&mut *self), cx)
-    }
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {}
 }
 
 #[unstable(feature = "async_stream", issue = "79024")]
 impl<S: ?Sized + Stream + Unpin> Stream for Box<S> {
     type Item = S::Item;
 
-    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        Pin::new(&mut **self).poll_next(cx)
-    }
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {}
 
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        (**self).size_hint()
-    }
+    fn size_hint(&self) -> (usize, Option<usize>) {}
 }
 }
 #[cfg(test)]
@@ -2639,9 +2026,7 @@ where
     B: ToOwned,
     <B as ToOwned>::Owned: 'a,
 {
-    fn borrow(&self) -> &B {
-        &**self
-    }
+    fn borrow(&self) -> &B {}
 }
 
 /// A generalization of `Clone` to borrowed data.
@@ -2691,9 +2076,7 @@ pub trait ToOwned {
     /// [1, 2][..].clone_into(&mut v);
     /// ```
     #[unstable(feature = "toowned_clone_into", reason = "recently added", issue = "41263")]
-    fn clone_into(&self, target: &mut Self::Owned) {
-        *target = self.to_owned();
-    }
+    fn clone_into(&self, target: &mut Self::Owned) {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -2702,13 +2085,9 @@ where
     T: Clone,
 {
     type Owned = T;
-    fn to_owned(&self) -> T {
-        self.clone()
-    }
+    fn to_owned(&self) -> T {}
 
-    fn clone_into(&self, target: &mut T) {
-        target.clone_from(self);
-    }
+    fn clone_into(&self, target: &mut T) {}
 }
 
 /// A clone-on-write smart pointer.
@@ -2733,15 +2112,7 @@ where
 /// ```
 /// use std::borrow::Cow;
 ///
-/// fn abs_all(input: &mut Cow<[i32]>) {
-///     for i in 0..input.len() {
-///         let v = input[i];
-///         if v < 0 {
-///             // Clones into a vector if not already owned.
-///             input.to_mut()[i] = -v;
-///         }
-///     }
-/// }
+/// fn abs_all(input: &mut Cow<[i32]>) {}
 ///
 /// // No clone occurs because `input` doesn't need to be mutated.
 /// let slice = [0, 1, 2];
@@ -2768,9 +2139,7 @@ where
 /// }
 ///
 /// impl<'a, X: Clone + 'a> Items<'a, X> where [X]: ToOwned<Owned = Vec<X>> {
-///     fn new(v: Cow<'a, [X]>) -> Self {
-///         Items { values: v }
-///     }
+///     fn new(v: Cow<'a, [X]>) -> Self {}
 /// }
 ///
 /// // Creates a container from borrowed values of a slice
@@ -2809,22 +2178,9 @@ where
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<B: ?Sized + ToOwned> Clone for Cow<'_, B> {
-    fn clone(&self) -> Self {
-        match *self {
-            Borrowed(b) => Borrowed(b),
-            Owned(ref o) => {
-                let b: &B = o.borrow();
-                Owned(b.to_owned())
-            }
-        }
-    }
+    fn clone(&self) -> Self {}
 
-    fn clone_from(&mut self, source: &Self) {
-        match (self, source) {
-            (&mut Owned(ref mut dest), &Owned(ref o)) => o.borrow().clone_into(dest),
-            (t, s) => *t = s.clone(),
-        }
-    }
+    fn clone_from(&mut self, source: &Self) {}
 }
 
 impl<B: ?Sized + ToOwned> Cow<'_, B> {
@@ -2844,12 +2200,7 @@ impl<B: ?Sized + ToOwned> Cow<'_, B> {
     /// ```
     #[unstable(feature = "cow_is_borrowed", issue = "65143")]
     #[rustc_const_unstable(feature = "const_cow_is_borrowed", issue = "65143")]
-    pub const fn is_borrowed(&self) -> bool {
-        match *self {
-            Borrowed(_) => true,
-            Owned(_) => false,
-        }
-    }
+    pub const fn is_borrowed(&self) -> bool {}
 
     /// Returns true if the data is owned, i.e. if `to_mut` would be a no-op.
     ///
@@ -2867,9 +2218,7 @@ impl<B: ?Sized + ToOwned> Cow<'_, B> {
     /// ```
     #[unstable(feature = "cow_is_borrowed", issue = "65143")]
     #[rustc_const_unstable(feature = "const_cow_is_borrowed", issue = "65143")]
-    pub const fn is_owned(&self) -> bool {
-        !self.is_borrowed()
-    }
+    pub const fn is_owned(&self) -> bool {}
 
     /// Acquires a mutable reference to the owned form of the data.
     ///
@@ -2889,18 +2238,7 @@ impl<B: ?Sized + ToOwned> Cow<'_, B> {
     /// );
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn to_mut(&mut self) -> &mut <B as ToOwned>::Owned {
-        match *self {
-            Borrowed(borrowed) => {
-                *self = Owned(borrowed.to_owned());
-                match *self {
-                    Borrowed(..) => unreachable!(),
-                    Owned(ref mut owned) => owned,
-                }
-            }
-            Owned(ref mut owned) => owned,
-        }
-    }
+    pub fn to_mut(&mut self) -> &mut <B as ToOwned>::Owned {}
 
     /// Extracts the owned data.
     ///
@@ -2937,12 +2275,7 @@ impl<B: ?Sized + ToOwned> Cow<'_, B> {
     /// );
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn into_owned(self) -> <B as ToOwned>::Owned {
-        match self {
-            Borrowed(borrowed) => borrowed.to_owned(),
-            Owned(owned) => owned,
-        }
-    }
+    pub fn into_owned(self) -> <B as ToOwned>::Owned {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -2953,12 +2286,7 @@ where
 {
     type Target = B;
 
-    fn deref(&self) -> &B {
-        match *self {
-            Borrowed(borrowed) => borrowed,
-            Owned(ref owned) => owned.borrow(),
-        }
-    }
+    fn deref(&self) -> &B {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -2970,9 +2298,7 @@ where
     B: Ord + ToOwned,
 {
     #[inline]
-    fn cmp(&self, other: &Self) -> Ordering {
-        Ord::cmp(&**self, &**other)
-    }
+    fn cmp(&self, other: &Self) -> Ordering {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -2982,9 +2308,7 @@ where
     C: ToOwned,
 {
     #[inline]
-    fn eq(&self, other: &Cow<'b, C>) -> bool {
-        PartialEq::eq(&**self, &**other)
-    }
+    fn eq(&self, other: &Cow<'b, C>) -> bool {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -2993,9 +2317,7 @@ where
     B: PartialOrd + ToOwned,
 {
     #[inline]
-    fn partial_cmp(&self, other: &Cow<'a, B>) -> Option<Ordering> {
-        PartialOrd::partial_cmp(&**self, &**other)
-    }
+    fn partial_cmp(&self, other: &Cow<'a, B>) -> Option<Ordering> {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -3003,12 +2325,7 @@ impl<B: ?Sized> fmt::Debug for Cow<'_, B>
 where
     B: fmt::Debug + ToOwned<Owned: fmt::Debug>,
 {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match *self {
-            Borrowed(ref b) => fmt::Debug::fmt(b, f),
-            Owned(ref o) => fmt::Debug::fmt(o, f),
-        }
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -3016,12 +2333,7 @@ impl<B: ?Sized> fmt::Display for Cow<'_, B>
 where
     B: fmt::Display + ToOwned<Owned: fmt::Display>,
 {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match *self {
-            Borrowed(ref b) => fmt::Display::fmt(b, f),
-            Owned(ref o) => fmt::Display::fmt(o, f),
-        }
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
 }
 
 #[stable(feature = "default", since = "1.11.0")]
@@ -3030,9 +2342,7 @@ where
     B: ToOwned<Owned: Default>,
 {
     /// Creates an owned Cow<'a, B> with the default value for the contained owned value.
-    fn default() -> Self {
-        Owned(<B as ToOwned>::Owned::default())
-    }
+    fn default() -> Self {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -3041,16 +2351,12 @@ where
     B: Hash + ToOwned,
 {
     #[inline]
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        Hash::hash(&**self, state)
-    }
+    fn hash<H: Hasher>(&self, state: &mut H) {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + ToOwned> AsRef<T> for Cow<'_, T> {
-    fn as_ref(&self) -> &T {
-        self
-    }
+    fn as_ref(&self) -> &T {}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -3059,10 +2365,7 @@ impl<'a> Add<&'a str> for Cow<'a, str> {
     type Output = Cow<'a, str>;
 
     #[inline]
-    fn add(mut self, rhs: &'a str) -> Self::Output {
-        self += rhs;
-        self
-    }
+    fn add(mut self, rhs: &'a str) -> Self::Output {}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -3071,44 +2374,19 @@ impl<'a> Add<Cow<'a, str>> for Cow<'a, str> {
     type Output = Cow<'a, str>;
 
     #[inline]
-    fn add(mut self, rhs: Cow<'a, str>) -> Self::Output {
-        self += rhs;
-        self
-    }
+    fn add(mut self, rhs: Cow<'a, str>) -> Self::Output {}
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "cow_add", since = "1.14.0")]
 impl<'a> AddAssign<&'a str> for Cow<'a, str> {
-    fn add_assign(&mut self, rhs: &'a str) {
-        if self.is_empty() {
-            *self = Cow::Borrowed(rhs)
-        } else if !rhs.is_empty() {
-            if let Cow::Borrowed(lhs) = *self {
-                let mut s = String::with_capacity(lhs.len() + rhs.len());
-                s.push_str(lhs);
-                *self = Cow::Owned(s);
-            }
-            self.to_mut().push_str(rhs);
-        }
-    }
+    fn add_assign(&mut self, rhs: &'a str) {}
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "cow_add", since = "1.14.0")]
 impl<'a> AddAssign<Cow<'a, str>> for Cow<'a, str> {
-    fn add_assign(&mut self, rhs: Cow<'a, str>) {
-        if self.is_empty() {
-            *self = rhs
-        } else if !rhs.is_empty() {
-            if let Cow::Borrowed(lhs) = *self {
-                let mut s = String::with_capacity(lhs.len() + rhs.len());
-                s.push_str(lhs);
-                *self = Cow::Owned(s);
-            }
-            self.to_mut().push_str(&rhs);
-        }
-    }
+    fn add_assign(&mut self, rhs: Cow<'a, str>) {}
 }
 }
 pub mod collections {
@@ -3150,20 +2428,12 @@ pub mod binary_heap {
 //! // Explicitly implement the trait so the queue becomes a min-heap
 //! // instead of a max-heap.
 //! impl Ord for State {
-//!     fn cmp(&self, other: &Self) -> Ordering {
-//!         // Notice that the we flip the ordering on costs.
-//!         // In case of a tie we compare positions - this step is necessary
-//!         // to make implementations of `PartialEq` and `Ord` consistent.
-//!         other.cost.cmp(&self.cost)
-//!             .then_with(|| self.position.cmp(&other.position))
-//!     }
+//!     fn cmp(&self, other: &Self) -> Ordering {}
 //! }
 //!
 //! // `PartialOrd` needs to be implemented as well.
 //! impl PartialOrd for State {
-//!     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-//!         Some(self.cmp(other))
-//!     }
+//!     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {}
 //! }
 //!
 //! // Each node is represented as a `usize`, for a shorter implementation.
@@ -3178,86 +2448,9 @@ pub mod binary_heap {
 //! // to each node. This implementation isn't memory-efficient as it may leave duplicate
 //! // nodes in the queue. It also uses `usize::MAX` as a sentinel value,
 //! // for a simpler implementation.
-//! fn shortest_path(adj_list: &Vec<Vec<Edge>>, start: usize, goal: usize) -> Option<usize> {
-//!     // dist[node] = current shortest distance from `start` to `node`
-//!     let mut dist: Vec<_> = (0..adj_list.len()).map(|_| usize::MAX).collect();
+//! fn shortest_path(adj_list: &Vec<Vec<Edge>>, start: usize, goal: usize) -> Option<usize> {}
 //!
-//!     let mut heap = BinaryHeap::new();
-//!
-//!     // We're at `start`, with a zero cost
-//!     dist[start] = 0;
-//!     heap.push(State { cost: 0, position: start });
-//!
-//!     // Examine the frontier with lower cost nodes first (min-heap)
-//!     while let Some(State { cost, position }) = heap.pop() {
-//!         // Alternatively we could have continued to find all shortest paths
-//!         if position == goal { return Some(cost); }
-//!
-//!         // Important as we may have already found a better way
-//!         if cost > dist[position] { continue; }
-//!
-//!         // For each node we can reach, see if we can find a way with
-//!         // a lower cost going through this node
-//!         for edge in &adj_list[position] {
-//!             let next = State { cost: cost + edge.cost, position: edge.node };
-//!
-//!             // If so, add it to the frontier and continue
-//!             if next.cost < dist[next.position] {
-//!                 heap.push(next);
-//!                 // Relaxation, we have now found a better way
-//!                 dist[next.position] = next.cost;
-//!             }
-//!         }
-//!     }
-//!
-//!     // Goal not reachable
-//!     None
-//! }
-//!
-//! fn main() {
-//!     // This is the directed graph we're going to use.
-//!     // The node numbers correspond to the different states,
-//!     // and the edge weights symbolize the cost of moving
-//!     // from one node to another.
-//!     // Note that the edges are one-way.
-//!     //
-//!     //                  7
-//!     //          +-----------------+
-//!     //          |                 |
-//!     //          v   1        2    |  2
-//!     //          0 -----> 1 -----> 3 ---> 4
-//!     //          |        ^        ^      ^
-//!     //          |        | 1      |      |
-//!     //          |        |        | 3    | 1
-//!     //          +------> 2 -------+      |
-//!     //           10      |               |
-//!     //                   +---------------+
-//!     //
-//!     // The graph is represented as an adjacency list where each index,
-//!     // corresponding to a node value, has a list of outgoing edges.
-//!     // Chosen for its efficiency.
-//!     let graph = vec![
-//!         // Node 0
-//!         vec![Edge { node: 2, cost: 10 },
-//!              Edge { node: 1, cost: 1 }],
-//!         // Node 1
-//!         vec![Edge { node: 3, cost: 2 }],
-//!         // Node 2
-//!         vec![Edge { node: 1, cost: 1 },
-//!              Edge { node: 3, cost: 3 },
-//!              Edge { node: 4, cost: 1 }],
-//!         // Node 3
-//!         vec![Edge { node: 0, cost: 7 },
-//!              Edge { node: 4, cost: 2 }],
-//!         // Node 4
-//!         vec![]];
-//!
-//!     assert_eq!(shortest_path(&graph, 0, 1), Some(1));
-//!     assert_eq!(shortest_path(&graph, 0, 3), Some(3));
-//!     assert_eq!(shortest_path(&graph, 3, 0), Some(7));
-//!     assert_eq!(shortest_path(&graph, 0, 4), Some(5));
-//!     assert_eq!(shortest_path(&graph, 4, 0), None);
-//! }
+//! fn main() {}
 //! ```
 
 #![allow(missing_docs)]
@@ -3399,76 +2592,48 @@ pub struct PeekMut<'a, T: 'a + Ord> {
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<T: Ord + fmt::Debug> fmt::Debug for PeekMut<'_, T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("PeekMut").field(&self.heap.data[0]).finish()
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
 }
 
 #[stable(feature = "binary_heap_peek_mut", since = "1.12.0")]
 impl<T: Ord> Drop for PeekMut<'_, T> {
-    fn drop(&mut self) {
-        if self.sift {
-            // SAFETY: PeekMut is only instantiated for non-empty heaps.
-            unsafe { self.heap.sift_down(0) };
-        }
-    }
+    fn drop(&mut self) {}
 }
 
 #[stable(feature = "binary_heap_peek_mut", since = "1.12.0")]
 impl<T: Ord> Deref for PeekMut<'_, T> {
     type Target = T;
-    fn deref(&self) -> &T {
-        debug_assert!(!self.heap.is_empty());
-        // SAFE: PeekMut is only instantiated for non-empty heaps
-        unsafe { self.heap.data.get_unchecked(0) }
-    }
+    fn deref(&self) -> &T {}
 }
 
 #[stable(feature = "binary_heap_peek_mut", since = "1.12.0")]
 impl<T: Ord> DerefMut for PeekMut<'_, T> {
-    fn deref_mut(&mut self) -> &mut T {
-        debug_assert!(!self.heap.is_empty());
-        self.sift = true;
-        // SAFE: PeekMut is only instantiated for non-empty heaps
-        unsafe { self.heap.data.get_unchecked_mut(0) }
-    }
+    fn deref_mut(&mut self) -> &mut T {}
 }
 
 impl<'a, T: Ord> PeekMut<'a, T> {
     /// Removes the peeked value from the heap and returns it.
     #[stable(feature = "binary_heap_peek_mut_pop", since = "1.18.0")]
-    pub fn pop(mut this: PeekMut<'a, T>) -> T {
-        let value = this.heap.pop().unwrap();
-        this.sift = false;
-        value
-    }
+    pub fn pop(mut this: PeekMut<'a, T>) -> T {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Clone> Clone for BinaryHeap<T> {
-    fn clone(&self) -> Self {
-        BinaryHeap { data: self.data.clone() }
-    }
+    fn clone(&self) -> Self {}
 
-    fn clone_from(&mut self, source: &Self) {
-        self.data.clone_from(&source.data);
-    }
+    fn clone_from(&mut self, source: &Self) {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Ord> Default for BinaryHeap<T> {
     /// Creates an empty `BinaryHeap<T>`.
     #[inline]
-    fn default() -> BinaryHeap<T> {
-        BinaryHeap::new()
-    }
+    fn default() -> BinaryHeap<T> {}
 }
 
 #[stable(feature = "binaryheap_debug", since = "1.4.0")]
 impl<T: fmt::Debug> fmt::Debug for BinaryHeap<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_list().entries(self.iter()).finish()
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
 }
 
 impl<T: Ord> BinaryHeap<T> {
@@ -3485,9 +2650,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
-    pub fn new() -> BinaryHeap<T> {
-        BinaryHeap { data: vec![] }
-    }
+    pub fn new() -> BinaryHeap<T> {}
 
     /// Creates an empty `BinaryHeap` with a specific capacity.
     /// This preallocates enough memory for `capacity` elements,
@@ -3505,9 +2668,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
-    pub fn with_capacity(capacity: usize) -> BinaryHeap<T> {
-        BinaryHeap { data: Vec::with_capacity(capacity) }
-    }
+    pub fn with_capacity(capacity: usize) -> BinaryHeap<T> {}
 
     /// Returns a mutable reference to the greatest item in the binary heap, or
     /// `None` if it is empty.
@@ -3539,9 +2700,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// If the item is modified then the worst case time complexity is *O*(log(*n*)),
     /// otherwise it's *O*(1).
     #[stable(feature = "binary_heap_peek_mut", since = "1.12.0")]
-    pub fn peek_mut(&mut self) -> Option<PeekMut<'_, T>> {
-        if self.is_empty() { None } else { Some(PeekMut { heap: self, sift: false }) }
-    }
+    pub fn peek_mut(&mut self) -> Option<PeekMut<'_, T>> {}
 
     /// Removes the greatest item from the binary heap and returns it, or `None` if it
     /// is empty.
@@ -3563,16 +2722,7 @@ impl<T: Ord> BinaryHeap<T> {
     ///
     /// The worst case cost of `pop` on a heap containing *n* elements is *O*(log(*n*)).
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn pop(&mut self) -> Option<T> {
-        self.data.pop().map(|mut item| {
-            if !self.is_empty() {
-                swap(&mut item, &mut self.data[0]);
-                // SAFETY: !self.is_empty() means that self.len() > 0
-                unsafe { self.sift_down_to_bottom(0) };
-            }
-            item
-        })
-    }
+    pub fn pop(&mut self) -> Option<T> {}
 
     /// Pushes an item onto the binary heap.
     ///
@@ -3607,13 +2757,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// occurs when capacity is exhausted and needs a resize. The resize cost
     /// has been amortized in the previous figures.
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn push(&mut self, item: T) {
-        let old_len = self.len();
-        self.data.push(item);
-        // SAFETY: Since we pushed a new item it means that
-        //  old_len = self.len() - 1 < self.len()
-        unsafe { self.sift_up(0, old_len) };
-    }
+    pub fn push(&mut self, item: T) {}
 
     /// Consumes the `BinaryHeap` and returns a vector in sorted
     /// (ascending) order.
@@ -3634,25 +2778,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// ```
     #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "binary_heap_extras_15", since = "1.5.0")]
-    pub fn into_sorted_vec(mut self) -> Vec<T> {
-        let mut end = self.len();
-        while end > 1 {
-            end -= 1;
-            // SAFETY: `end` goes from `self.len() - 1` to 1 (both included),
-            //  so it's always a valid index to access.
-            //  It is safe to access index 0 (i.e. `ptr`), because
-            //  1 <= end < self.len(), which means self.len() >= 2.
-            unsafe {
-                let ptr = self.data.as_mut_ptr();
-                ptr::swap(ptr, ptr.add(end));
-            }
-            // SAFETY: `end` goes from `self.len() - 1` to 1 (both included) so:
-            //  0 < 1 <= end <= self.len() - 1 < self.len()
-            //  Which means 0 < end and end < self.len().
-            unsafe { self.sift_down_range(0, end) };
-        }
-        self.into_vec()
-    }
+    pub fn into_sorted_vec(mut self) -> Vec<T> {}
 
     // The implementations of sift_up and sift_down use unsafe blocks in
     // order to move an element out of the vector (leaving behind a
@@ -3666,28 +2792,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// # Safety
     ///
     /// The caller must guarantee that `pos < self.len()`.
-    unsafe fn sift_up(&mut self, start: usize, pos: usize) -> usize {
-        // Take out the value at `pos` and create a hole.
-        // SAFETY: The caller guarantees that pos < self.len()
-        let mut hole = unsafe { Hole::new(&mut self.data, pos) };
-
-        while hole.pos() > start {
-            let parent = (hole.pos() - 1) / 2;
-
-            // SAFETY: hole.pos() > start >= 0, which means hole.pos() > 0
-            //  and so hole.pos() - 1 can't underflow.
-            //  This guarantees that parent < hole.pos() so
-            //  it's a valid index and also != hole.pos().
-            if hole.element() <= unsafe { hole.get(parent) } {
-                break;
-            }
-
-            // SAFETY: Same as above
-            unsafe { hole.move_to(parent) };
-        }
-
-        hole.pos()
-    }
+    unsafe fn sift_up(&mut self, start: usize, pos: usize) -> usize {}
 
     /// Take an element at `pos` and move it down the heap,
     /// while its children are larger.
@@ -3695,52 +2800,12 @@ impl<T: Ord> BinaryHeap<T> {
     /// # Safety
     ///
     /// The caller must guarantee that `pos < end <= self.len()`.
-    unsafe fn sift_down_range(&mut self, pos: usize, end: usize) {
-        // SAFETY: The caller guarantees that pos < end <= self.len().
-        let mut hole = unsafe { Hole::new(&mut self.data, pos) };
-        let mut child = 2 * hole.pos() + 1;
-
-        // Loop invariant: child == 2 * hole.pos() + 1.
-        while child <= end.saturating_sub(2) {
-            // compare with the greater of the two children
-            // SAFETY: child < end - 1 < self.len() and
-            //  child + 1 < end <= self.len(), so they're valid indexes.
-            //  child == 2 * hole.pos() + 1 != hole.pos() and
-            //  child + 1 == 2 * hole.pos() + 2 != hole.pos().
-            // FIXME: 2 * hole.pos() + 1 or 2 * hole.pos() + 2 could overflow
-            //  if T is a ZST
-            child += unsafe { hole.get(child) <= hole.get(child + 1) } as usize;
-
-            // if we are already in order, stop.
-            // SAFETY: child is now either the old child or the old child+1
-            //  We already proven that both are < self.len() and != hole.pos()
-            if hole.element() >= unsafe { hole.get(child) } {
-                return;
-            }
-
-            // SAFETY: same as above.
-            unsafe { hole.move_to(child) };
-            child = 2 * hole.pos() + 1;
-        }
-
-        // SAFETY: && short circuit, which means that in the
-        //  second condition it's already true that child == end - 1 < self.len().
-        if child == end - 1 && hole.element() < unsafe { hole.get(child) } {
-            // SAFETY: child is already proven to be a valid index and
-            //  child == 2 * hole.pos() + 1 != hole.pos().
-            unsafe { hole.move_to(child) };
-        }
-    }
+    unsafe fn sift_down_range(&mut self, pos: usize, end: usize) {}
 
     /// # Safety
     ///
     /// The caller must guarantee that `pos < self.len()`.
-    unsafe fn sift_down(&mut self, pos: usize) {
-        let len = self.len();
-        // SAFETY: pos < len is guaranteed by the caller and
-        //  obviously len = self.len() <= self.len().
-        unsafe { self.sift_down_range(pos, len) };
-    }
+    unsafe fn sift_down(&mut self, pos: usize) {}
 
     /// Take an element at `pos` and move it all the way down the heap,
     /// then sift it up to its position.
@@ -3751,89 +2816,12 @@ impl<T: Ord> BinaryHeap<T> {
     /// # Safety
     ///
     /// The caller must guarantee that `pos < self.len()`.
-    unsafe fn sift_down_to_bottom(&mut self, mut pos: usize) {
-        let end = self.len();
-        let start = pos;
-
-        // SAFETY: The caller guarantees that pos < self.len().
-        let mut hole = unsafe { Hole::new(&mut self.data, pos) };
-        let mut child = 2 * hole.pos() + 1;
-
-        // Loop invariant: child == 2 * hole.pos() + 1.
-        while child <= end.saturating_sub(2) {
-            // SAFETY: child < end - 1 < self.len() and
-            //  child + 1 < end <= self.len(), so they're valid indexes.
-            //  child == 2 * hole.pos() + 1 != hole.pos() and
-            //  child + 1 == 2 * hole.pos() + 2 != hole.pos().
-            // FIXME: 2 * hole.pos() + 1 or 2 * hole.pos() + 2 could overflow
-            //  if T is a ZST
-            child += unsafe { hole.get(child) <= hole.get(child + 1) } as usize;
-
-            // SAFETY: Same as above
-            unsafe { hole.move_to(child) };
-            child = 2 * hole.pos() + 1;
-        }
-
-        if child == end - 1 {
-            // SAFETY: child == end - 1 < self.len(), so it's a valid index
-            //  and child == 2 * hole.pos() + 1 != hole.pos().
-            unsafe { hole.move_to(child) };
-        }
-        pos = hole.pos();
-        drop(hole);
-
-        // SAFETY: pos is the position in the hole and was already proven
-        //  to be a valid index.
-        unsafe { self.sift_up(start, pos) };
-    }
+    unsafe fn sift_down_to_bottom(&mut self, mut pos: usize) {}
 
     /// Rebuild assuming data[0..start] is still a proper heap.
-    fn rebuild_tail(&mut self, start: usize) {
-        if start == self.len() {
-            return;
-        }
+    fn rebuild_tail(&mut self, start: usize) {}
 
-        let tail_len = self.len() - start;
-
-        #[inline(always)]
-        fn log2_fast(x: usize) -> usize {
-            (usize::BITS - x.leading_zeros() - 1) as usize
-        }
-
-        // `rebuild` takes O(self.len()) operations
-        // and about 2 * self.len() comparisons in the worst case
-        // while repeating `sift_up` takes O(tail_len * log(start)) operations
-        // and about 1 * tail_len * log_2(start) comparisons in the worst case,
-        // assuming start >= tail_len. For larger heaps, the crossover point
-        // no longer follows this reasoning and was determined empirically.
-        let better_to_rebuild = if start < tail_len {
-            true
-        } else if self.len() <= 2048 {
-            2 * self.len() < tail_len * log2_fast(start)
-        } else {
-            2 * self.len() < tail_len * 11
-        };
-
-        if better_to_rebuild {
-            self.rebuild();
-        } else {
-            for i in start..self.len() {
-                // SAFETY: The index `i` is always less than self.len().
-                unsafe { self.sift_up(0, i) };
-            }
-        }
-    }
-
-    fn rebuild(&mut self) {
-        let mut n = self.len() / 2;
-        while n > 0 {
-            n -= 1;
-            // SAFETY: n starts from self.len() / 2 and goes down to 0.
-            //  The only case when !(n < self.len()) is if
-            //  self.len() == 0, but it's ruled out by the loop condition.
-            unsafe { self.sift_down(n) };
-        }
-    }
+    fn rebuild(&mut self) {}
 
     /// Moves all the elements of `other` into `self`, leaving `other` empty.
     ///
@@ -3856,17 +2844,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// assert!(b.is_empty());
     /// ```
     #[stable(feature = "binary_heap_append", since = "1.11.0")]
-    pub fn append(&mut self, other: &mut Self) {
-        if self.len() < other.len() {
-            swap(self, other);
-        }
-
-        let start = self.data.len();
-
-        self.data.append(&mut other.data);
-
-        self.rebuild_tail(start);
-    }
+    pub fn append(&mut self, other: &mut Self) {}
 
     /// Returns an iterator which retrieves elements in heap order.
     /// The retrieved elements are removed from the original heap.
@@ -3892,9 +2870,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// ```
     #[inline]
     #[unstable(feature = "binary_heap_drain_sorted", issue = "59278")]
-    pub fn drain_sorted(&mut self) -> DrainSorted<'_, T> {
-        DrainSorted { inner: self }
-    }
+    pub fn drain_sorted(&mut self) -> DrainSorted<'_, T> {}
 
     /// Retains only the elements specified by the predicate.
     ///
@@ -3919,20 +2895,7 @@ impl<T: Ord> BinaryHeap<T> {
     pub fn retain<F>(&mut self, mut f: F)
     where
         F: FnMut(&T) -> bool,
-    {
-        let mut first_removed = self.len();
-        let mut i = 0;
-        self.data.retain(|e| {
-            let keep = f(e);
-            if !keep && i < first_removed {
-                first_removed = i;
-            }
-            i += 1;
-            keep
-        });
-        // data[0..first_removed] is untouched, so we only need to rebuild the tail:
-        self.rebuild_tail(first_removed);
-    }
+    {}
 }
 
 impl<T> BinaryHeap<T> {
@@ -3953,9 +2916,7 @@ impl<T> BinaryHeap<T> {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn iter(&self) -> Iter<'_, T> {
-        Iter { iter: self.data.iter() }
-    }
+    pub fn iter(&self) -> Iter<'_, T> {}
 
     /// Returns an iterator which retrieves elements in heap order.
     /// This method consumes the original heap.
@@ -3972,9 +2933,7 @@ impl<T> BinaryHeap<T> {
     /// assert_eq!(heap.into_iter_sorted().take(2).collect::<Vec<_>>(), vec![5, 4]);
     /// ```
     #[unstable(feature = "binary_heap_into_iter_sorted", issue = "59278")]
-    pub fn into_iter_sorted(self) -> IntoIterSorted<T> {
-        IntoIterSorted { inner: self }
-    }
+    pub fn into_iter_sorted(self) -> IntoIterSorted<T> {}
 
     /// Returns the greatest item in the binary heap, or `None` if it is empty.
     ///
@@ -3999,9 +2958,7 @@ impl<T> BinaryHeap<T> {
     /// Cost is *O*(1) in the worst case.
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn peek(&self) -> Option<&T> {
-        self.data.get(0)
-    }
+    pub fn peek(&self) -> Option<&T> {}
 
     /// Returns the number of elements the binary heap can hold without reallocating.
     ///
@@ -4017,9 +2974,7 @@ impl<T> BinaryHeap<T> {
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn capacity(&self) -> usize {
-        self.data.capacity()
-    }
+    pub fn capacity(&self) -> usize {}
 
     /// Reserves the minimum capacity for exactly `additional` more elements to be inserted in the
     /// given `BinaryHeap`. Does nothing if the capacity is already sufficient.
@@ -4046,9 +3001,7 @@ impl<T> BinaryHeap<T> {
     ///
     /// [`reserve`]: BinaryHeap::reserve
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn reserve_exact(&mut self, additional: usize) {
-        self.data.reserve_exact(additional);
-    }
+    pub fn reserve_exact(&mut self, additional: usize) {}
 
     /// Reserves capacity for at least `additional` more elements to be inserted in the
     /// `BinaryHeap`. The collection may reserve more space to avoid frequent reallocations.
@@ -4069,9 +3022,7 @@ impl<T> BinaryHeap<T> {
     /// heap.push(4);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn reserve(&mut self, additional: usize) {
-        self.data.reserve(additional);
-    }
+    pub fn reserve(&mut self, additional: usize) {}
 
     /// Discards as much additional capacity as possible.
     ///
@@ -4088,9 +3039,7 @@ impl<T> BinaryHeap<T> {
     /// assert!(heap.capacity() == 0);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn shrink_to_fit(&mut self) {
-        self.data.shrink_to_fit();
-    }
+    pub fn shrink_to_fit(&mut self) {}
 
     /// Discards capacity with a lower bound.
     ///
@@ -4111,9 +3060,7 @@ impl<T> BinaryHeap<T> {
     /// ```
     #[inline]
     #[stable(feature = "shrink_to", since = "1.56.0")]
-    pub fn shrink_to(&mut self, min_capacity: usize) {
-        self.data.shrink_to(min_capacity)
-    }
+    pub fn shrink_to(&mut self, min_capacity: usize) {}
 
     /// Returns a slice of all values in the underlying vector, in arbitrary
     /// order.
@@ -4133,9 +3080,7 @@ impl<T> BinaryHeap<T> {
     /// ```
     #[must_use]
     #[unstable(feature = "binary_heap_as_slice", issue = "83659")]
-    pub fn as_slice(&self) -> &[T] {
-        self.data.as_slice()
-    }
+    pub fn as_slice(&self) -> &[T] {}
 
     /// Consumes the `BinaryHeap` and returns the underlying vector
     /// in arbitrary order.
@@ -4156,9 +3101,7 @@ impl<T> BinaryHeap<T> {
     /// ```
     #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "binary_heap_extras_15", since = "1.5.0")]
-    pub fn into_vec(self) -> Vec<T> {
-        self.into()
-    }
+    pub fn into_vec(self) -> Vec<T> {}
 
     /// Returns the length of the binary heap.
     ///
@@ -4174,9 +3117,7 @@ impl<T> BinaryHeap<T> {
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn len(&self) -> usize {
-        self.data.len()
-    }
+    pub fn len(&self) -> usize {}
 
     /// Checks if the binary heap is empty.
     ///
@@ -4198,9 +3139,7 @@ impl<T> BinaryHeap<T> {
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn is_empty(&self) -> bool {
-        self.len() == 0
-    }
+    pub fn is_empty(&self) -> bool {}
 
     /// Clears the binary heap, returning an iterator over the removed elements.
     ///
@@ -4224,9 +3163,7 @@ impl<T> BinaryHeap<T> {
     /// ```
     #[inline]
     #[stable(feature = "drain", since = "1.6.0")]
-    pub fn drain(&mut self) -> Drain<'_, T> {
-        Drain { iter: self.data.drain(..) }
-    }
+    pub fn drain(&mut self) -> Drain<'_, T> {}
 
     /// Drops all items from the binary heap.
     ///
@@ -4245,9 +3182,7 @@ impl<T> BinaryHeap<T> {
     /// assert!(heap.is_empty());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn clear(&mut self) {
-        self.drain();
-    }
+    pub fn clear(&mut self) {}
 }
 
 /// Hole represents a hole in a slice i.e., an index without valid value
@@ -4265,60 +3200,31 @@ impl<'a, T> Hole<'a, T> {
     ///
     /// Unsafe because pos must be within the data slice.
     #[inline]
-    unsafe fn new(data: &'a mut [T], pos: usize) -> Self {
-        debug_assert!(pos < data.len());
-        // SAFE: pos should be inside the slice
-        let elt = unsafe { ptr::read(data.get_unchecked(pos)) };
-        Hole { data, elt: ManuallyDrop::new(elt), pos }
-    }
+    unsafe fn new(data: &'a mut [T], pos: usize) -> Self {}
 
     #[inline]
-    fn pos(&self) -> usize {
-        self.pos
-    }
+    fn pos(&self) -> usize {}
 
     /// Returns a reference to the element removed.
     #[inline]
-    fn element(&self) -> &T {
-        &self.elt
-    }
+    fn element(&self) -> &T {}
 
     /// Returns a reference to the element at `index`.
     ///
     /// Unsafe because index must be within the data slice and not equal to pos.
     #[inline]
-    unsafe fn get(&self, index: usize) -> &T {
-        debug_assert!(index != self.pos);
-        debug_assert!(index < self.data.len());
-        unsafe { self.data.get_unchecked(index) }
-    }
+    unsafe fn get(&self, index: usize) -> &T {}
 
     /// Move hole to new location
     ///
     /// Unsafe because index must be within the data slice and not equal to pos.
     #[inline]
-    unsafe fn move_to(&mut self, index: usize) {
-        debug_assert!(index != self.pos);
-        debug_assert!(index < self.data.len());
-        unsafe {
-            let ptr = self.data.as_mut_ptr();
-            let index_ptr: *const _ = ptr.add(index);
-            let hole_ptr = ptr.add(self.pos);
-            ptr::copy_nonoverlapping(index_ptr, hole_ptr, 1);
-        }
-        self.pos = index;
-    }
+    unsafe fn move_to(&mut self, index: usize) {}
 }
 
 impl<T> Drop for Hole<'_, T> {
     #[inline]
-    fn drop(&mut self) {
-        // fill the hole again
-        unsafe {
-            let pos = self.pos;
-            ptr::copy_nonoverlapping(&*self.elt, self.data.get_unchecked_mut(pos), 1);
-        }
-    }
+    fn drop(&mut self) {}
 }
 
 /// An iterator over the elements of a `BinaryHeap`.
@@ -4335,17 +3241,13 @@ pub struct Iter<'a, T: 'a> {
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<T: fmt::Debug> fmt::Debug for Iter<'_, T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("Iter").field(&self.iter.as_slice()).finish()
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
 }
 
 // FIXME(#26925) Remove in favor of `#[derive(Clone)]`
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Clone for Iter<'_, T> {
-    fn clone(&self) -> Self {
-        Iter { iter: self.iter.clone() }
-    }
+    fn clone(&self) -> Self {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -4353,34 +3255,24 @@ impl<'a, T> Iterator for Iter<'a, T> {
     type Item = &'a T;
 
     #[inline]
-    fn next(&mut self) -> Option<&'a T> {
-        self.iter.next()
-    }
+    fn next(&mut self) -> Option<&'a T> {}
 
     #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.iter.size_hint()
-    }
+    fn size_hint(&self) -> (usize, Option<usize>) {}
 
     #[inline]
-    fn last(self) -> Option<&'a T> {
-        self.iter.last()
-    }
+    fn last(self) -> Option<&'a T> {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> DoubleEndedIterator for Iter<'a, T> {
     #[inline]
-    fn next_back(&mut self) -> Option<&'a T> {
-        self.iter.next_back()
-    }
+    fn next_back(&mut self) -> Option<&'a T> {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ExactSizeIterator for Iter<'_, T> {
-    fn is_empty(&self) -> bool {
-        self.iter.is_empty()
-    }
+    fn is_empty(&self) -> bool {}
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -4401,9 +3293,7 @@ pub struct IntoIter<T> {
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<T: fmt::Debug> fmt::Debug for IntoIter<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("IntoIter").field(&self.iter.as_slice()).finish()
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -4411,29 +3301,21 @@ impl<T> Iterator for IntoIter<T> {
     type Item = T;
 
     #[inline]
-    fn next(&mut self) -> Option<T> {
-        self.iter.next()
-    }
+    fn next(&mut self) -> Option<T> {}
 
     #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.iter.size_hint()
-    }
+    fn size_hint(&self) -> (usize, Option<usize>) {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> DoubleEndedIterator for IntoIter<T> {
     #[inline]
-    fn next_back(&mut self) -> Option<T> {
-        self.iter.next_back()
-    }
+    fn next_back(&mut self) -> Option<T> {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ExactSizeIterator for IntoIter<T> {
-    fn is_empty(&self) -> bool {
-        self.iter.is_empty()
-    }
+    fn is_empty(&self) -> bool {}
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -4445,9 +3327,7 @@ unsafe impl<T> SourceIter for IntoIter<T> {
     type Source = IntoIter<T>;
 
     #[inline]
-    unsafe fn as_inner(&mut self) -> &mut Self::Source {
-        self
-    }
+    unsafe fn as_inner(&mut self) -> &mut Self::Source {}
 }
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
@@ -4457,9 +3337,7 @@ unsafe impl<I> InPlaceIterable for IntoIter<I> {}
 impl<I> AsIntoIter for IntoIter<I> {
     type Item = I;
 
-    fn as_into_iter(&mut self) -> &mut vec::IntoIter<Self::Item> {
-        &mut self.iter
-    }
+    fn as_into_iter(&mut self) -> &mut vec::IntoIter<Self::Item> {}
 }
 
 #[must_use = "iterators are lazy and do nothing unless consumed"]
@@ -4474,15 +3352,10 @@ impl<T: Ord> Iterator for IntoIterSorted<T> {
     type Item = T;
 
     #[inline]
-    fn next(&mut self) -> Option<T> {
-        self.inner.pop()
-    }
+    fn next(&mut self) -> Option<T> {}
 
     #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        let exact = self.inner.len();
-        (exact, Some(exact))
-    }
+    fn size_hint(&self) -> (usize, Option<usize>) {}
 }
 
 #[unstable(feature = "binary_heap_into_iter_sorted", issue = "59278")]
@@ -4511,29 +3384,21 @@ impl<T> Iterator for Drain<'_, T> {
     type Item = T;
 
     #[inline]
-    fn next(&mut self) -> Option<T> {
-        self.iter.next()
-    }
+    fn next(&mut self) -> Option<T> {}
 
     #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.iter.size_hint()
-    }
+    fn size_hint(&self) -> (usize, Option<usize>) {}
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
 impl<T> DoubleEndedIterator for Drain<'_, T> {
     #[inline]
-    fn next_back(&mut self) -> Option<T> {
-        self.iter.next_back()
-    }
+    fn next_back(&mut self) -> Option<T> {}
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
 impl<T> ExactSizeIterator for Drain<'_, T> {
-    fn is_empty(&self) -> bool {
-        self.iter.is_empty()
-    }
+    fn is_empty(&self) -> bool {}
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -4554,21 +3419,7 @@ pub struct DrainSorted<'a, T: Ord> {
 #[unstable(feature = "binary_heap_drain_sorted", issue = "59278")]
 impl<'a, T: Ord> Drop for DrainSorted<'a, T> {
     /// Removes heap elements in heap order.
-    fn drop(&mut self) {
-        struct DropGuard<'r, 'a, T: Ord>(&'r mut DrainSorted<'a, T>);
-
-        impl<'r, 'a, T: Ord> Drop for DropGuard<'r, 'a, T> {
-            fn drop(&mut self) {
-                while self.0.inner.pop().is_some() {}
-            }
-        }
-
-        while let Some(item) = self.inner.pop() {
-            let guard = DropGuard(self);
-            drop(item);
-            mem::forget(guard);
-        }
-    }
+    fn drop(&mut self) {}
 }
 
 #[unstable(feature = "binary_heap_drain_sorted", issue = "59278")]
@@ -4576,15 +3427,10 @@ impl<T: Ord> Iterator for DrainSorted<'_, T> {
     type Item = T;
 
     #[inline]
-    fn next(&mut self) -> Option<T> {
-        self.inner.pop()
-    }
+    fn next(&mut self) -> Option<T> {}
 
     #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        let exact = self.inner.len();
-        (exact, Some(exact))
-    }
+    fn size_hint(&self) -> (usize, Option<usize>) {}
 }
 
 #[unstable(feature = "binary_heap_drain_sorted", issue = "59278")]
@@ -4601,11 +3447,7 @@ impl<T: Ord> From<Vec<T>> for BinaryHeap<T> {
     /// Converts a `Vec<T>` into a `BinaryHeap<T>`.
     ///
     /// This conversion happens in-place, and has *O*(*n*) time complexity.
-    fn from(vec: Vec<T>) -> BinaryHeap<T> {
-        let mut heap = BinaryHeap { data: vec };
-        heap.rebuild();
-        heap
-    }
+    fn from(vec: Vec<T>) -> BinaryHeap<T> {}
 }
 
 #[stable(feature = "std_collections_from_array", since = "1.56.0")]
@@ -4619,9 +3461,7 @@ impl<T: Ord, const N: usize> From<[T; N]> for BinaryHeap<T> {
     ///     assert_eq!(a, b);
     /// }
     /// ```
-    fn from(arr: [T; N]) -> Self {
-        core::array::IntoIter::new(arr).collect()
-    }
+    fn from(arr: [T; N]) -> Self {}
 }
 
 #[stable(feature = "binary_heap_extras_15", since = "1.5.0")]
@@ -4630,16 +3470,12 @@ impl<T> From<BinaryHeap<T>> for Vec<T> {
     ///
     /// This conversion requires no data movement or allocation, and has
     /// constant time complexity.
-    fn from(heap: BinaryHeap<T>) -> Vec<T> {
-        heap.data
-    }
+    fn from(heap: BinaryHeap<T>) -> Vec<T> {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Ord> FromIterator<T> for BinaryHeap<T> {
-    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> BinaryHeap<T> {
-        BinaryHeap::from(iter.into_iter().collect::<Vec<_>>())
-    }
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> BinaryHeap<T> {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -4665,9 +3501,7 @@ impl<T> IntoIterator for BinaryHeap<T> {
     ///     println!("{}", x);
     /// }
     /// ```
-    fn into_iter(self) -> IntoIter<T> {
-        IntoIter { iter: self.data.into_iter() }
-    }
+    fn into_iter(self) -> IntoIter<T> {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -4675,67 +3509,42 @@ impl<'a, T> IntoIterator for &'a BinaryHeap<T> {
     type Item = &'a T;
     type IntoIter = Iter<'a, T>;
 
-    fn into_iter(self) -> Iter<'a, T> {
-        self.iter()
-    }
+    fn into_iter(self) -> Iter<'a, T> {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Ord> Extend<T> for BinaryHeap<T> {
     #[inline]
-    fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
-        <Self as SpecExtend<I>>::spec_extend(self, iter);
-    }
+    fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {}
 
     #[inline]
-    fn extend_one(&mut self, item: T) {
-        self.push(item);
-    }
+    fn extend_one(&mut self, item: T) {}
 
     #[inline]
-    fn extend_reserve(&mut self, additional: usize) {
-        self.reserve(additional);
-    }
+    fn extend_reserve(&mut self, additional: usize) {}
 }
 
 impl<T: Ord, I: IntoIterator<Item = T>> SpecExtend<I> for BinaryHeap<T> {
-    default fn spec_extend(&mut self, iter: I) {
-        self.extend_desugared(iter.into_iter());
-    }
+    default fn spec_extend(&mut self, iter: I) {}
 }
 
 impl<T: Ord> SpecExtend<BinaryHeap<T>> for BinaryHeap<T> {
-    fn spec_extend(&mut self, ref mut other: BinaryHeap<T>) {
-        self.append(other);
-    }
+    fn spec_extend(&mut self, ref mut other: BinaryHeap<T>) {}
 }
 
 impl<T: Ord> BinaryHeap<T> {
-    fn extend_desugared<I: IntoIterator<Item = T>>(&mut self, iter: I) {
-        let iterator = iter.into_iter();
-        let (lower, _) = iterator.size_hint();
-
-        self.reserve(lower);
-
-        iterator.for_each(move |elem| self.push(elem));
-    }
+    fn extend_desugared<I: IntoIterator<Item = T>>(&mut self, iter: I) {}
 }
 
 #[stable(feature = "extend_ref", since = "1.2.0")]
 impl<'a, T: 'a + Ord + Copy> Extend<&'a T> for BinaryHeap<T> {
-    fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
-        self.extend(iter.into_iter().cloned());
-    }
+    fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {}
 
     #[inline]
-    fn extend_one(&mut self, &item: &'a T) {
-        self.push(item);
-    }
+    fn extend_one(&mut self, &item: &'a T) {}
 
     #[inline]
-    fn extend_reserve(&mut self, additional: usize) {
-        self.reserve(additional);
-    }
+    fn extend_reserve(&mut self, additional: usize) {}
 }
 }
 #[cfg(not(no_global_oom_handling))]
@@ -4761,13 +3570,7 @@ impl<K, V> Root<K, V> {
     where
         K: Ord,
         I: Iterator<Item = (K, V)> + FusedIterator,
-    {
-        // We prepare to merge `left` and `right` into a sorted sequence in linear time.
-        let iter = MergeIter(MergeIterInner::new(left, right));
-
-        // Meanwhile, we build a tree from the sorted sequence in linear time.
-        self.bulk_push(iter, length)
-    }
+    {}
 
     /// Pushes all key-value pairs to the end of the tree, incrementing a
     /// `length` variable along the way. The latter makes it easier for the
@@ -4775,56 +3578,7 @@ impl<K, V> Root<K, V> {
     pub fn bulk_push<I>(&mut self, iter: I, length: &mut usize)
     where
         I: Iterator<Item = (K, V)>,
-    {
-        let mut cur_node = self.borrow_mut().last_leaf_edge().into_node();
-        // Iterate through all key-value pairs, pushing them into nodes at the right level.
-        for (key, value) in iter {
-            // Try to push key-value pair into the current leaf node.
-            if cur_node.len() < node::CAPACITY {
-                cur_node.push(key, value);
-            } else {
-                // No space left, go up and push there.
-                let mut open_node;
-                let mut test_node = cur_node.forget_type();
-                loop {
-                    match test_node.ascend() {
-                        Ok(parent) => {
-                            let parent = parent.into_node();
-                            if parent.len() < node::CAPACITY {
-                                // Found a node with space left, push here.
-                                open_node = parent;
-                                break;
-                            } else {
-                                // Go up again.
-                                test_node = parent.forget_type();
-                            }
-                        }
-                        Err(_) => {
-                            // We are at the top, create a new root node and push there.
-                            open_node = self.push_internal_level();
-                            break;
-                        }
-                    }
-                }
-
-                // Push key-value pair and new right subtree.
-                let tree_height = open_node.height() - 1;
-                let mut right_tree = Root::new();
-                for _ in 0..tree_height {
-                    right_tree.push_internal_level();
-                }
-                open_node.push(key, value, right_tree);
-
-                // Go down to the right-most leaf again.
-                cur_node = open_node.forget_type().last_leaf_edge().into_node();
-            }
-
-            // Increment length every iteration, to make sure the map drops
-            // the appended elements even if advancing the iterator panicks.
-            *length += 1;
-        }
-        self.fix_right_border_of_plentiful();
-    }
+    {}
 }
 
 // An iterator for merging two sorted sequences into one
@@ -4837,10 +3591,7 @@ where
     type Item = (K, V);
 
     /// If two keys are equal, returns the key-value pair from the right source.
-    fn next(&mut self) -> Option<(K, V)> {
-        let (a_next, b_next) = self.0.nexts(|a: &(K, V), b: &(K, V)| K::cmp(&a.0, &b.0));
-        b_next.or(a_next)
-    }
+    fn next(&mut self) -> Option<(K, V)> {}
 }
 }
 mod borrow {
@@ -4869,13 +3620,7 @@ impl<'a, T> DormantMutRef<'a, T> {
     /// Capture a unique borrow, and immediately reborrow it. For the compiler,
     /// the lifetime of the new reference is the same as the lifetime of the
     /// original reference, but you promise to use it for a shorter period.
-    pub fn new(t: &'a mut T) -> (&'a mut T, Self) {
-        let ptr = NonNull::from(t);
-        // SAFETY: we hold the borrow throughout 'a via `_marker`, and we expose
-        // only this reference, so it is unique.
-        let new_ref = unsafe { &mut *ptr.as_ptr() };
-        (new_ref, Self { ptr, _marker: PhantomData })
-    }
+    pub fn new(t: &'a mut T) -> (&'a mut T, Self) {}
 
     /// Revert to the unique borrow initially captured.
     ///
@@ -4883,10 +3628,7 @@ impl<'a, T> DormantMutRef<'a, T> {
     ///
     /// The reborrow must have ended, i.e., the reference returned by `new` and
     /// all pointers and references derived from it, must not be used anymore.
-    pub unsafe fn awaken(self) -> &'a mut T {
-        // SAFETY: our own safety conditions imply this reference is again unique.
-        unsafe { &mut *self.ptr.as_ptr() }
-    }
+    pub unsafe fn awaken(self) -> &'a mut T {}
 }
 
 #[cfg(test)]
@@ -4894,22 +3636,7 @@ mod tests {
 use super::DormantMutRef;
 
 #[test]
-fn test_borrow() {
-    let mut data = 1;
-    let mut stack = vec![];
-    let mut rr = &mut data;
-    for factor in [2, 3, 7].iter() {
-        let (r, dormant_r) = DormantMutRef::new(rr);
-        rr = r;
-        assert_eq!(*rr, 1);
-        stack.push((factor, dormant_r));
-    }
-    while let Some((factor, dormant_r)) = stack.pop() {
-        let r = unsafe { dormant_r.awaken() };
-        *r *= factor;
-    }
-    assert_eq!(data, 42);
-}
+fn test_borrow() {}
 }
 }
 mod dedup_sorted_iter {
@@ -4930,9 +3657,7 @@ impl<K, V, I> DedupSortedIter<K, V, I>
 where
     I: Iterator<Item = (K, V)>,
 {
-    pub fn new(iter: I) -> Self {
-        Self { iter: iter.peekable() }
-    }
+    pub fn new(iter: I) -> Self {}
 }
 
 impl<K, V, I> Iterator for DedupSortedIter<K, V, I>
@@ -4942,23 +3667,7 @@ where
 {
     type Item = (K, V);
 
-    fn next(&mut self) -> Option<(K, V)> {
-        loop {
-            let next = match self.iter.next() {
-                Some(next) => next,
-                None => return None,
-            };
-
-            let peeked = match self.iter.peek() {
-                Some(peeked) => peeked,
-                None => return Some(next),
-            };
-
-            if next.0 != peeked.0 {
-                return Some(next);
-            }
-        }
-    }
+    fn next(&mut self) -> Option<(K, V)> {}
 }
 }
 mod fix {
@@ -4972,40 +3681,7 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
     /// an empty root.
     fn fix_node_through_parent(
         self,
-    ) -> Result<Option<NodeRef<marker::Mut<'a>, K, V, marker::Internal>>, Self> {
-        let len = self.len();
-        if len >= MIN_LEN {
-            Ok(None)
-        } else {
-            match self.choose_parent_kv() {
-                Ok(Left(mut left_parent_kv)) => {
-                    if left_parent_kv.can_merge() {
-                        let parent = left_parent_kv.merge_tracking_parent();
-                        Ok(Some(parent))
-                    } else {
-                        left_parent_kv.bulk_steal_left(MIN_LEN - len);
-                        Ok(None)
-                    }
-                }
-                Ok(Right(mut right_parent_kv)) => {
-                    if right_parent_kv.can_merge() {
-                        let parent = right_parent_kv.merge_tracking_parent();
-                        Ok(Some(parent))
-                    } else {
-                        right_parent_kv.bulk_steal_right(MIN_LEN - len);
-                        Ok(None)
-                    }
-                }
-                Err(root) => {
-                    if len > 0 {
-                        Ok(None)
-                    } else {
-                        Err(root)
-                    }
-                }
-            }
-        }
-    }
+    ) -> Result<Option<NodeRef<marker::Mut<'a>, K, V, marker::Internal>>, Self> {}
 }
 
 impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
@@ -5016,80 +3692,31 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
     ///
     /// This method does not expect ancestors to already be underfull upon entry
     /// and panics if it encounters an empty ancestor.
-    pub fn fix_node_and_affected_ancestors(mut self) -> bool {
-        loop {
-            match self.fix_node_through_parent() {
-                Ok(Some(parent)) => self = parent.forget_type(),
-                Ok(None) => return true,
-                Err(_) => return false,
-            }
-        }
-    }
+    pub fn fix_node_and_affected_ancestors(mut self) -> bool {}
 }
 
 impl<K, V> Root<K, V> {
     /// Removes empty levels on the top, but keeps an empty leaf if the entire tree is empty.
-    pub fn fix_top(&mut self) {
-        while self.height() > 0 && self.len() == 0 {
-            self.pop_internal_level();
-        }
-    }
+    pub fn fix_top(&mut self) {}
 
     /// Stocks up or merge away any underfull nodes on the right border of the
     /// tree. The other nodes, those that are not the root nor a rightmost edge,
     /// must already have at least MIN_LEN elements.
-    pub fn fix_right_border(&mut self) {
-        self.fix_top();
-        if self.len() > 0 {
-            self.borrow_mut().last_kv().fix_right_border_of_right_edge();
-            self.fix_top();
-        }
-    }
+    pub fn fix_right_border(&mut self) {}
 
     /// The symmetric clone of `fix_right_border`.
-    pub fn fix_left_border(&mut self) {
-        self.fix_top();
-        if self.len() > 0 {
-            self.borrow_mut().first_kv().fix_left_border_of_left_edge();
-            self.fix_top();
-        }
-    }
+    pub fn fix_left_border(&mut self) {}
 
     /// Stock up any underfull nodes on the right border of the tree.
     /// The other nodes, those that are not the root nor a rightmost edge,
     /// must be prepared to have up to MIN_LEN elements stolen.
-    pub fn fix_right_border_of_plentiful(&mut self) {
-        let mut cur_node = self.borrow_mut();
-        while let Internal(internal) = cur_node.force() {
-            // Check if right-most child is underfull.
-            let mut last_kv = internal.last_kv().consider_for_balancing();
-            debug_assert!(last_kv.left_child_len() >= MIN_LEN * 2);
-            let right_child_len = last_kv.right_child_len();
-            if right_child_len < MIN_LEN {
-                // We need to steal.
-                last_kv.bulk_steal_left(MIN_LEN - right_child_len);
-            }
-
-            // Go further down.
-            cur_node = last_kv.into_right_child();
-        }
-    }
+    pub fn fix_right_border_of_plentiful(&mut self) {}
 }
 
 impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, marker::KV> {
-    fn fix_left_border_of_left_edge(mut self) {
-        while let Internal(internal_kv) = self.force() {
-            self = internal_kv.fix_left_child().first_kv();
-            debug_assert!(self.reborrow().into_node().len() > MIN_LEN);
-        }
-    }
+    fn fix_left_border_of_left_edge(mut self) {}
 
-    fn fix_right_border_of_right_edge(mut self) {
-        while let Internal(internal_kv) = self.force() {
-            self = internal_kv.fix_right_child().last_kv();
-            debug_assert!(self.reborrow().into_node().len() > MIN_LEN);
-        }
-    }
+    fn fix_right_border_of_right_edge(mut self) {}
 }
 
 impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::KV> {
@@ -5097,41 +3724,13 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, 
     /// provisions an extra element to allow merging its children in turn
     /// without becoming underfull.
     /// Returns the left child.
-    fn fix_left_child(self) -> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
-        let mut internal_kv = self.consider_for_balancing();
-        let left_len = internal_kv.left_child_len();
-        debug_assert!(internal_kv.right_child_len() >= MIN_LEN);
-        if internal_kv.can_merge() {
-            internal_kv.merge_tracking_child()
-        } else {
-            // `MIN_LEN + 1` to avoid readjust if merge happens on the next level.
-            let count = (MIN_LEN + 1).saturating_sub(left_len);
-            if count > 0 {
-                internal_kv.bulk_steal_right(count);
-            }
-            internal_kv.into_left_child()
-        }
-    }
+    fn fix_left_child(self) -> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {}
 
     /// Stocks up the right child, assuming the left child isn't underfull, and
     /// provisions an extra element to allow merging its children in turn
     /// without becoming underfull.
     /// Returns wherever the right child ended up.
-    fn fix_right_child(self) -> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
-        let mut internal_kv = self.consider_for_balancing();
-        let right_len = internal_kv.right_child_len();
-        debug_assert!(internal_kv.left_child_len() >= MIN_LEN);
-        if internal_kv.can_merge() {
-            internal_kv.merge_tracking_child()
-        } else {
-            // `MIN_LEN + 1` to avoid readjust if merge happens on the next level.
-            let count = (MIN_LEN + 1).saturating_sub(right_len);
-            if count > 0 {
-                internal_kv.bulk_steal_left(count);
-            }
-            internal_kv.into_right_child()
-        }
-    }
+    fn fix_right_child(self) -> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {}
 }
 }
 pub mod map {
@@ -5182,12 +3781,7 @@ pub enum Entry<'a, K: 'a, V: 'a> {
 
 #[stable(feature = "debug_btree_map", since = "1.12.0")]
 impl<K: Debug + Ord, V: Debug> Debug for Entry<'_, K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match *self {
-            Vacant(ref v) => f.debug_tuple("Entry").field(v).finish(),
-            Occupied(ref o) => f.debug_tuple("Entry").field(o).finish(),
-        }
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
 }
 
 /// A view into a vacant entry in a `BTreeMap`.
@@ -5204,9 +3798,7 @@ pub struct VacantEntry<'a, K: 'a, V: 'a> {
 
 #[stable(feature = "debug_btree_map", since = "1.12.0")]
 impl<K: Debug + Ord, V> Debug for VacantEntry<'_, K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("VacantEntry").field(self.key()).finish()
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
 }
 
 /// A view into an occupied entry in a `BTreeMap`.
@@ -5222,9 +3814,7 @@ pub struct OccupiedEntry<'a, K: 'a, V: 'a> {
 
 #[stable(feature = "debug_btree_map", since = "1.12.0")]
 impl<K: Debug + Ord, V: Debug> Debug for OccupiedEntry<'_, K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("OccupiedEntry").field("key", self.key()).field("value", self.get()).finish()
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
 }
 
 /// The error returned by [`try_insert`](BTreeMap::try_insert) when the key already exists.
@@ -5240,26 +3830,12 @@ pub struct OccupiedError<'a, K: 'a, V: 'a> {
 
 #[unstable(feature = "map_try_insert", issue = "82766")]
 impl<K: Debug + Ord, V: Debug> Debug for OccupiedError<'_, K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("OccupiedError")
-            .field("key", self.entry.key())
-            .field("old_value", self.entry.get())
-            .field("new_value", &self.value)
-            .finish()
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
 }
 
 #[unstable(feature = "map_try_insert", issue = "82766")]
 impl<'a, K: Debug + Ord, V: Debug> fmt::Display for OccupiedError<'a, K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "failed to insert {:?}, key {:?} already exists with value {:?}",
-            self.value,
-            self.entry.key(),
-            self.entry.get(),
-        )
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
 }
 
 impl<'a, K: Ord, V> Entry<'a, K, V> {
@@ -5277,12 +3853,7 @@ impl<'a, K: Ord, V> Entry<'a, K, V> {
     /// assert_eq!(map["poneyland"], 12);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn or_insert(self, default: V) -> &'a mut V {
-        match self {
-            Occupied(entry) => entry.into_mut(),
-            Vacant(entry) => entry.insert(default),
-        }
-    }
+    pub fn or_insert(self, default: V) -> &'a mut V {}
 
     /// Ensures a value is in the entry by inserting the result of the default function if empty,
     /// and returns a mutable reference to the value in the entry.
@@ -5300,12 +3871,7 @@ impl<'a, K: Ord, V> Entry<'a, K, V> {
     /// assert_eq!(map["poneyland"], "hoho".to_string());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn or_insert_with<F: FnOnce() -> V>(self, default: F) -> &'a mut V {
-        match self {
-            Occupied(entry) => entry.into_mut(),
-            Vacant(entry) => entry.insert(default()),
-        }
-    }
+    pub fn or_insert_with<F: FnOnce() -> V>(self, default: F) -> &'a mut V {}
 
     /// Ensures a value is in the entry by inserting, if empty, the result of the default function.
     /// This method allows for generating key-derived values for insertion by providing the default
@@ -5327,15 +3893,7 @@ impl<'a, K: Ord, V> Entry<'a, K, V> {
     /// ```
     #[inline]
     #[stable(feature = "or_insert_with_key", since = "1.50.0")]
-    pub fn or_insert_with_key<F: FnOnce(&K) -> V>(self, default: F) -> &'a mut V {
-        match self {
-            Occupied(entry) => entry.into_mut(),
-            Vacant(entry) => {
-                let value = default(entry.key());
-                entry.insert(value)
-            }
-        }
-    }
+    pub fn or_insert_with_key<F: FnOnce(&K) -> V>(self, default: F) -> &'a mut V {}
 
     /// Returns a reference to this entry's key.
     ///
@@ -5348,12 +3906,7 @@ impl<'a, K: Ord, V> Entry<'a, K, V> {
     /// assert_eq!(map.entry("poneyland").key(), &"poneyland");
     /// ```
     #[stable(feature = "map_entry_keys", since = "1.10.0")]
-    pub fn key(&self) -> &K {
-        match *self {
-            Occupied(ref entry) => entry.key(),
-            Vacant(ref entry) => entry.key(),
-        }
-    }
+    pub fn key(&self) -> &K {}
 
     /// Provides in-place mutable access to an occupied entry before any
     /// potential inserts into the map.
@@ -5379,15 +3932,7 @@ impl<'a, K: Ord, V> Entry<'a, K, V> {
     pub fn and_modify<F>(self, f: F) -> Self
     where
         F: FnOnce(&mut V),
-    {
-        match self {
-            Occupied(mut entry) => {
-                f(entry.get_mut());
-                Occupied(entry)
-            }
-            Vacant(entry) => Vacant(entry),
-        }
-    }
+    {}
 }
 
 impl<'a, K: Ord, V: Default> Entry<'a, K, V> {
@@ -5405,12 +3950,7 @@ impl<'a, K: Ord, V: Default> Entry<'a, K, V> {
     ///
     /// assert_eq!(map["poneyland"], None);
     /// ```
-    pub fn or_default(self) -> &'a mut V {
-        match self {
-            Occupied(entry) => entry.into_mut(),
-            Vacant(entry) => entry.insert(Default::default()),
-        }
-    }
+    pub fn or_default(self) -> &'a mut V {}
 }
 
 impl<'a, K: Ord, V> VacantEntry<'a, K, V> {
@@ -5426,9 +3966,7 @@ impl<'a, K: Ord, V> VacantEntry<'a, K, V> {
     /// assert_eq!(map.entry("poneyland").key(), &"poneyland");
     /// ```
     #[stable(feature = "map_entry_keys", since = "1.10.0")]
-    pub fn key(&self) -> &K {
-        &self.key
-    }
+    pub fn key(&self) -> &K {}
 
     /// Take ownership of the key.
     ///
@@ -5445,9 +3983,7 @@ impl<'a, K: Ord, V> VacantEntry<'a, K, V> {
     /// }
     /// ```
     #[stable(feature = "map_entry_recover_keys2", since = "1.12.0")]
-    pub fn into_key(self) -> K {
-        self.key
-    }
+    pub fn into_key(self) -> K {}
 
     /// Sets the value of the entry with the `VacantEntry`'s key,
     /// and returns a mutable reference to it.
@@ -5466,28 +4002,7 @@ impl<'a, K: Ord, V> VacantEntry<'a, K, V> {
     /// assert_eq!(map["poneyland"], 37);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn insert(self, value: V) -> &'a mut V {
-        let out_ptr = match self.handle.insert_recursing(self.key, value) {
-            (Fit(_), val_ptr) => {
-                // SAFETY: We have consumed self.handle and the handle returned.
-                let map = unsafe { self.dormant_map.awaken() };
-                map.length += 1;
-                val_ptr
-            }
-            (Split(ins), val_ptr) => {
-                drop(ins.left);
-                // SAFETY: We have consumed self.handle and the reference returned.
-                let map = unsafe { self.dormant_map.awaken() };
-                let root = map.root.as_mut().unwrap();
-                root.push_internal_level().push(ins.kv.0, ins.kv.1, ins.right);
-                map.length += 1;
-                val_ptr
-            }
-        };
-        // Now that we have finished growing the tree using borrowed references,
-        // dereference the pointer to a part of it, that we picked up along the way.
-        unsafe { &mut *out_ptr }
-    }
+    pub fn insert(self, value: V) -> &'a mut V {}
 }
 
 impl<'a, K: Ord, V> OccupiedEntry<'a, K, V> {
@@ -5504,9 +4019,7 @@ impl<'a, K: Ord, V> OccupiedEntry<'a, K, V> {
     /// ```
     #[must_use]
     #[stable(feature = "map_entry_keys", since = "1.10.0")]
-    pub fn key(&self) -> &K {
-        self.handle.reborrow().into_kv().0
-    }
+    pub fn key(&self) -> &K {}
 
     /// Take ownership of the key and value from the map.
     ///
@@ -5528,9 +4041,7 @@ impl<'a, K: Ord, V> OccupiedEntry<'a, K, V> {
     /// // println!("{}", map["poneyland"]);
     /// ```
     #[stable(feature = "map_entry_recover_keys2", since = "1.12.0")]
-    pub fn remove_entry(self) -> (K, V) {
-        self.remove_kv()
-    }
+    pub fn remove_entry(self) -> (K, V) {}
 
     /// Gets a reference to the value in the entry.
     ///
@@ -5549,9 +4060,7 @@ impl<'a, K: Ord, V> OccupiedEntry<'a, K, V> {
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn get(&self) -> &V {
-        self.handle.reborrow().into_kv().1
-    }
+    pub fn get(&self) -> &V {}
 
     /// Gets a mutable reference to the value in the entry.
     ///
@@ -5580,9 +4089,7 @@ impl<'a, K: Ord, V> OccupiedEntry<'a, K, V> {
     /// assert_eq!(map["poneyland"], 24);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn get_mut(&mut self) -> &mut V {
-        self.handle.kv_mut().1
-    }
+    pub fn get_mut(&mut self) -> &mut V {}
 
     /// Converts the entry into a mutable reference to its value.
     ///
@@ -5607,9 +4114,7 @@ impl<'a, K: Ord, V> OccupiedEntry<'a, K, V> {
     /// ```
     #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn into_mut(self) -> &'a mut V {
-        self.handle.into_val_mut()
-    }
+    pub fn into_mut(self) -> &'a mut V {}
 
     /// Sets the value of the entry with the `OccupiedEntry`'s key,
     /// and returns the entry's old value.
@@ -5629,9 +4134,7 @@ impl<'a, K: Ord, V> OccupiedEntry<'a, K, V> {
     /// assert_eq!(map["poneyland"], 15);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn insert(&mut self, value: V) -> V {
-        mem::replace(self.get_mut(), value)
-    }
+    pub fn insert(&mut self, value: V) -> V {}
 
     /// Takes the value of the entry out of the map, and returns it.
     ///
@@ -5651,23 +4154,10 @@ impl<'a, K: Ord, V> OccupiedEntry<'a, K, V> {
     /// // println!("{}", map["poneyland"]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn remove(self) -> V {
-        self.remove_kv().1
-    }
+    pub fn remove(self) -> V {}
 
     // Body of `remove_entry`, probably separate because the name reflects the returned pair.
-    pub(super) fn remove_kv(self) -> (K, V) {
-        let mut emptied_internal_root = false;
-        let (old_kv, _) = self.handle.remove_kv_tracking(|| emptied_internal_root = true);
-        // SAFETY: we consumed the intermediate root borrow, `self.handle`.
-        let map = unsafe { self.dormant_map.awaken() };
-        map.length -= 1;
-        if emptied_internal_root {
-            let root = map.root.as_mut().unwrap();
-            root.pop_internal_level();
-        }
-        old_kv
-    }
+    pub(super) fn remove_kv(self) -> (K, V) {}
 }
 }
 pub use entry::{Entry, OccupiedEntry, OccupiedError, VacantEntry};
@@ -5790,11 +4280,7 @@ pub(super) const MIN_LEN: usize = node::MIN_LEN_AFTER_SPLIT;
 /// // would be `BTreeMap<&str, u8>` in this example).
 /// let mut player_stats = BTreeMap::new();
 ///
-/// fn random_stat_buff() -> u8 {
-///     // could actually return some random value here - let's just return
-///     // some fixed value for now
-///     42
-/// }
+/// fn random_stat_buff() -> u8 {}
 ///
 /// // insert a key only if it doesn't already exist
 /// player_stats.entry("health").or_insert(100);
@@ -5817,84 +4303,12 @@ pub struct BTreeMap<K, V> {
 
 #[stable(feature = "btree_drop", since = "1.7.0")]
 unsafe impl<#[may_dangle] K, #[may_dangle] V> Drop for BTreeMap<K, V> {
-    fn drop(&mut self) {
-        drop(unsafe { ptr::read(self) }.into_iter())
-    }
+    fn drop(&mut self) {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K: Clone, V: Clone> Clone for BTreeMap<K, V> {
-    fn clone(&self) -> BTreeMap<K, V> {
-        fn clone_subtree<'a, K: Clone, V: Clone>(
-            node: NodeRef<marker::Immut<'a>, K, V, marker::LeafOrInternal>,
-        ) -> BTreeMap<K, V>
-        where
-            K: 'a,
-            V: 'a,
-        {
-            match node.force() {
-                Leaf(leaf) => {
-                    let mut out_tree = BTreeMap { root: Some(Root::new()), length: 0 };
-
-                    {
-                        let root = out_tree.root.as_mut().unwrap(); // unwrap succeeds because we just wrapped
-                        let mut out_node = match root.borrow_mut().force() {
-                            Leaf(leaf) => leaf,
-                            Internal(_) => unreachable!(),
-                        };
-
-                        let mut in_edge = leaf.first_edge();
-                        while let Ok(kv) = in_edge.right_kv() {
-                            let (k, v) = kv.into_kv();
-                            in_edge = kv.right_edge();
-
-                            out_node.push(k.clone(), v.clone());
-                            out_tree.length += 1;
-                        }
-                    }
-
-                    out_tree
-                }
-                Internal(internal) => {
-                    let mut out_tree = clone_subtree(internal.first_edge().descend());
-
-                    {
-                        let out_root = BTreeMap::ensure_is_owned(&mut out_tree.root);
-                        let mut out_node = out_root.push_internal_level();
-                        let mut in_edge = internal.first_edge();
-                        while let Ok(kv) = in_edge.right_kv() {
-                            let (k, v) = kv.into_kv();
-                            in_edge = kv.right_edge();
-
-                            let k = (*k).clone();
-                            let v = (*v).clone();
-                            let subtree = clone_subtree(in_edge.descend());
-
-                            // We can't destructure subtree directly
-                            // because BTreeMap implements Drop
-                            let (subroot, sublength) = unsafe {
-                                let subtree = ManuallyDrop::new(subtree);
-                                let root = ptr::read(&subtree.root);
-                                let length = subtree.length;
-                                (root, length)
-                            };
-
-                            out_node.push(k, v, subroot.unwrap_or_else(Root::new));
-                            out_tree.length += 1 + sublength;
-                        }
-                    }
-
-                    out_tree
-                }
-            }
-        }
-
-        if self.is_empty() {
-            BTreeMap::new()
-        } else {
-            clone_subtree(self.root.as_ref().unwrap().reborrow()) // unwrap succeeds because not empty
-        }
-    }
+    fn clone(&self) -> BTreeMap<K, V> {}
 }
 
 impl<K, Q: ?Sized> super::Recover<Q> for BTreeMap<K, ()>
@@ -5904,36 +4318,11 @@ where
 {
     type Key = K;
 
-    fn get(&self, key: &Q) -> Option<&K> {
-        let root_node = self.root.as_ref()?.reborrow();
-        match root_node.search_tree(key) {
-            Found(handle) => Some(handle.into_kv().0),
-            GoDown(_) => None,
-        }
-    }
+    fn get(&self, key: &Q) -> Option<&K> {}
 
-    fn take(&mut self, key: &Q) -> Option<K> {
-        let (map, dormant_map) = DormantMutRef::new(self);
-        let root_node = map.root.as_mut()?.borrow_mut();
-        match root_node.search_tree(key) {
-            Found(handle) => {
-                Some(OccupiedEntry { handle, dormant_map, _marker: PhantomData }.remove_kv().0)
-            }
-            GoDown(_) => None,
-        }
-    }
+    fn take(&mut self, key: &Q) -> Option<K> {}
 
-    fn replace(&mut self, key: K) -> Option<K> {
-        let (map, dormant_map) = DormantMutRef::new(self);
-        let root_node = Self::ensure_is_owned(&mut map.root).borrow_mut();
-        match root_node.search_tree::<K>(&key) {
-            Found(mut kv) => Some(mem::replace(kv.key_mut(), key)),
-            GoDown(handle) => {
-                VacantEntry { key, handle, dormant_map, _marker: PhantomData }.insert(());
-                None
-            }
-        }
-    }
+    fn replace(&mut self, key: K) -> Option<K> {}
 }
 
 /// An iterator over the entries of a `BTreeMap`.
@@ -5951,9 +4340,7 @@ pub struct Iter<'a, K: 'a, V: 'a> {
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<K: fmt::Debug, V: fmt::Debug> fmt::Debug for Iter<'_, K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_list().entries(self.clone()).finish()
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
 }
 
 /// A mutable iterator over the entries of a `BTreeMap`.
@@ -5974,10 +4361,7 @@ pub struct IterMut<'a, K: 'a, V: 'a> {
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<K: fmt::Debug, V: fmt::Debug> fmt::Debug for IterMut<'_, K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let range = Iter { range: self.range.reborrow(), length: self.length };
-        f.debug_list().entries(range).finish()
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
 }
 
 /// An owning iterator over the entries of a `BTreeMap`.
@@ -5997,16 +4381,12 @@ pub struct IntoIter<K, V> {
 impl<K, V> IntoIter<K, V> {
     /// Returns an iterator of references over the remaining items.
     #[inline]
-    pub(super) fn iter(&self) -> Iter<'_, K, V> {
-        Iter { range: self.range.reborrow(), length: self.length }
-    }
+    pub(super) fn iter(&self) -> Iter<'_, K, V> {}
 }
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<K: fmt::Debug, V: fmt::Debug> fmt::Debug for IntoIter<K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_list().entries(self.iter()).finish()
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
 }
 
 /// An iterator over the keys of a `BTreeMap`.
@@ -6023,9 +4403,7 @@ pub struct Keys<'a, K: 'a, V: 'a> {
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<K: fmt::Debug, V> fmt::Debug for Keys<'_, K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_list().entries(self.clone()).finish()
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
 }
 
 /// An iterator over the values of a `BTreeMap`.
@@ -6042,9 +4420,7 @@ pub struct Values<'a, K: 'a, V: 'a> {
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<K, V: fmt::Debug> fmt::Debug for Values<'_, K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_list().entries(self.clone()).finish()
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
 }
 
 /// A mutable iterator over the values of a `BTreeMap`.
@@ -6061,9 +4437,7 @@ pub struct ValuesMut<'a, K: 'a, V: 'a> {
 
 #[stable(feature = "map_values_mut", since = "1.10.0")]
 impl<K, V: fmt::Debug> fmt::Debug for ValuesMut<'_, K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_list().entries(self.inner.iter().map(|(_, val)| val)).finish()
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
 }
 
 /// An owning iterator over the keys of a `BTreeMap`.
@@ -6080,9 +4454,7 @@ pub struct IntoKeys<K, V> {
 
 #[stable(feature = "map_into_keys_values", since = "1.54.0")]
 impl<K: fmt::Debug, V> fmt::Debug for IntoKeys<K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_list().entries(self.inner.iter().map(|(key, _)| key)).finish()
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
 }
 
 /// An owning iterator over the values of a `BTreeMap`.
@@ -6099,9 +4471,7 @@ pub struct IntoValues<K, V> {
 
 #[stable(feature = "map_into_keys_values", since = "1.54.0")]
 impl<K, V: fmt::Debug> fmt::Debug for IntoValues<K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_list().entries(self.inner.iter().map(|(_, val)| val)).finish()
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
 }
 
 /// An iterator over a sub-range of entries in a `BTreeMap`.
@@ -6118,9 +4488,7 @@ pub struct Range<'a, K: 'a, V: 'a> {
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<K: fmt::Debug, V: fmt::Debug> fmt::Debug for Range<'_, K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_list().entries(self.clone()).finish()
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
 }
 
 /// A mutable iterator over a sub-range of entries in a `BTreeMap`.
@@ -6140,10 +4508,7 @@ pub struct RangeMut<'a, K: 'a, V: 'a> {
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<K: fmt::Debug, V: fmt::Debug> fmt::Debug for RangeMut<'_, K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let range = Range { inner: self.inner.reborrow() };
-        f.debug_list().entries(range).finish()
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
 }
 
 impl<K, V> BTreeMap<K, V> {
@@ -6166,9 +4531,7 @@ impl<K, V> BTreeMap<K, V> {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_btree_new", issue = "71835")]
     #[must_use]
-    pub const fn new() -> BTreeMap<K, V> {
-        BTreeMap { root: None, length: 0 }
-    }
+    pub const fn new() -> BTreeMap<K, V> {}
 
     /// Clears the map, removing all elements.
     ///
@@ -6185,9 +4548,7 @@ impl<K, V> BTreeMap<K, V> {
     /// assert!(a.is_empty());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn clear(&mut self) {
-        *self = BTreeMap::new();
-    }
+    pub fn clear(&mut self) {}
 
     /// Returns a reference to the value corresponding to the key.
     ///
@@ -6211,13 +4572,7 @@ impl<K, V> BTreeMap<K, V> {
     where
         K: Borrow<Q> + Ord,
         Q: Ord,
-    {
-        let root_node = self.root.as_ref()?.reborrow();
-        match root_node.search_tree(key) {
-            Found(handle) => Some(handle.into_kv().1),
-            GoDown(_) => None,
-        }
-    }
+    {}
 
     /// Returns the key-value pair corresponding to the supplied key.
     ///
@@ -6239,13 +4594,7 @@ impl<K, V> BTreeMap<K, V> {
     where
         K: Borrow<Q> + Ord,
         Q: Ord,
-    {
-        let root_node = self.root.as_ref()?.reborrow();
-        match root_node.search_tree(k) {
-            Found(handle) => Some(handle.into_kv()),
-            GoDown(_) => None,
-        }
-    }
+    {}
 
     /// Returns the first key-value pair in the map.
     /// The key in this pair is the minimum key in the map.
@@ -6268,10 +4617,7 @@ impl<K, V> BTreeMap<K, V> {
     pub fn first_key_value(&self) -> Option<(&K, &V)>
     where
         K: Ord,
-    {
-        let root_node = self.root.as_ref()?.reborrow();
-        root_node.first_leaf_edge().right_kv().ok().map(Handle::into_kv)
-    }
+    {}
 
     /// Returns the first entry in the map for in-place manipulation.
     /// The key of this entry is the minimum key in the map.
@@ -6297,12 +4643,7 @@ impl<K, V> BTreeMap<K, V> {
     pub fn first_entry(&mut self) -> Option<OccupiedEntry<'_, K, V>>
     where
         K: Ord,
-    {
-        let (map, dormant_map) = DormantMutRef::new(self);
-        let root_node = map.root.as_mut()?.borrow_mut();
-        let kv = root_node.first_leaf_edge().right_kv().ok()?;
-        Some(OccupiedEntry { handle: kv.forget_node_type(), dormant_map, _marker: PhantomData })
-    }
+    {}
 
     /// Removes and returns the first element in the map.
     /// The key of this element is the minimum key that was in the map.
@@ -6327,9 +4668,7 @@ impl<K, V> BTreeMap<K, V> {
     pub fn pop_first(&mut self) -> Option<(K, V)>
     where
         K: Ord,
-    {
-        self.first_entry().map(|entry| entry.remove_entry())
-    }
+    {}
 
     /// Returns the last key-value pair in the map.
     /// The key in this pair is the maximum key in the map.
@@ -6351,10 +4690,7 @@ impl<K, V> BTreeMap<K, V> {
     pub fn last_key_value(&self) -> Option<(&K, &V)>
     where
         K: Ord,
-    {
-        let root_node = self.root.as_ref()?.reborrow();
-        root_node.last_leaf_edge().left_kv().ok().map(Handle::into_kv)
-    }
+    {}
 
     /// Returns the last entry in the map for in-place manipulation.
     /// The key of this entry is the maximum key in the map.
@@ -6380,12 +4716,7 @@ impl<K, V> BTreeMap<K, V> {
     pub fn last_entry(&mut self) -> Option<OccupiedEntry<'_, K, V>>
     where
         K: Ord,
-    {
-        let (map, dormant_map) = DormantMutRef::new(self);
-        let root_node = map.root.as_mut()?.borrow_mut();
-        let kv = root_node.last_leaf_edge().left_kv().ok()?;
-        Some(OccupiedEntry { handle: kv.forget_node_type(), dormant_map, _marker: PhantomData })
-    }
+    {}
 
     /// Removes and returns the last element in the map.
     /// The key of this element is the maximum key that was in the map.
@@ -6410,9 +4741,7 @@ impl<K, V> BTreeMap<K, V> {
     pub fn pop_last(&mut self) -> Option<(K, V)>
     where
         K: Ord,
-    {
-        self.last_entry().map(|entry| entry.remove_entry())
-    }
+    {}
 
     /// Returns `true` if the map contains a value for the specified key.
     ///
@@ -6436,9 +4765,7 @@ impl<K, V> BTreeMap<K, V> {
     where
         K: Borrow<Q> + Ord,
         Q: Ord,
-    {
-        self.get(key).is_some()
-    }
+    {}
 
     /// Returns a mutable reference to the value corresponding to the key.
     ///
@@ -6465,13 +4792,7 @@ impl<K, V> BTreeMap<K, V> {
     where
         K: Borrow<Q> + Ord,
         Q: Ord,
-    {
-        let root_node = self.root.as_mut()?.borrow_mut();
-        match root_node.search_tree(key) {
-            Found(handle) => Some(handle.into_val_mut()),
-            GoDown(_) => None,
-        }
-    }
+    {}
 
     /// Inserts a key-value pair into the map.
     ///
@@ -6503,15 +4824,7 @@ impl<K, V> BTreeMap<K, V> {
     pub fn insert(&mut self, key: K, value: V) -> Option<V>
     where
         K: Ord,
-    {
-        match self.entry(key) {
-            Occupied(mut entry) => Some(entry.insert(value)),
-            Vacant(entry) => {
-                entry.insert(value);
-                None
-            }
-        }
-    }
+    {}
 
     /// Tries to insert a key-value pair into the map, and returns
     /// a mutable reference to the value in the entry.
@@ -6540,12 +4853,7 @@ impl<K, V> BTreeMap<K, V> {
     pub fn try_insert(&mut self, key: K, value: V) -> Result<&mut V, OccupiedError<'_, K, V>>
     where
         K: Ord,
-    {
-        match self.entry(key) {
-            Occupied(entry) => Err(OccupiedError { entry, value }),
-            Vacant(entry) => Ok(entry.insert(value)),
-        }
-    }
+    {}
 
     /// Removes a key from the map, returning the value at the key if the key
     /// was previously in the map.
@@ -6570,9 +4878,7 @@ impl<K, V> BTreeMap<K, V> {
     where
         K: Borrow<Q> + Ord,
         Q: Ord,
-    {
-        self.remove_entry(key).map(|(_, v)| v)
-    }
+    {}
 
     /// Removes a key from the map, returning the stored key and value if the key
     /// was previously in the map.
@@ -6597,16 +4903,7 @@ impl<K, V> BTreeMap<K, V> {
     where
         K: Borrow<Q> + Ord,
         Q: Ord,
-    {
-        let (map, dormant_map) = DormantMutRef::new(self);
-        let root_node = map.root.as_mut()?.borrow_mut();
-        match root_node.search_tree(key) {
-            Found(handle) => {
-                Some(OccupiedEntry { handle, dormant_map, _marker: PhantomData }.remove_entry())
-            }
-            GoDown(_) => None,
-        }
-    }
+    {}
 
     /// Retains only the elements specified by the predicate.
     ///
@@ -6629,9 +4926,7 @@ impl<K, V> BTreeMap<K, V> {
     where
         K: Ord,
         F: FnMut(&K, &mut V) -> bool,
-    {
-        self.drain_filter(|k, v| !f(k, v));
-    }
+    {}
 
     /// Moves all elements from `other` into `Self`, leaving `other` empty.
     ///
@@ -6665,23 +4960,7 @@ impl<K, V> BTreeMap<K, V> {
     pub fn append(&mut self, other: &mut Self)
     where
         K: Ord,
-    {
-        // Do we have to append anything at all?
-        if other.is_empty() {
-            return;
-        }
-
-        // We can just swap `self` and `other` if `self` is empty.
-        if self.is_empty() {
-            mem::swap(self, other);
-            return;
-        }
-
-        let self_iter = mem::take(self).into_iter();
-        let other_iter = mem::take(other).into_iter();
-        let root = BTreeMap::ensure_is_owned(&mut self.root);
-        root.append_from_sorted_iters(self_iter, other_iter, &mut self.length)
-    }
+    {}
 
     /// Constructs a double-ended iterator over a sub-range of elements in the map.
     /// The simplest way is to use the range syntax `min..max`, thus `range(min..max)` will
@@ -6718,13 +4997,7 @@ impl<K, V> BTreeMap<K, V> {
         T: Ord,
         K: Borrow<T> + Ord,
         R: RangeBounds<T>,
-    {
-        if let Some(root) = &self.root {
-            Range { inner: root.reborrow().range_search(range) }
-        } else {
-            Range { inner: LeafRange::none() }
-        }
-    }
+    {}
 
     /// Constructs a mutable double-ended iterator over a sub-range of elements in the map.
     /// The simplest way is to use the range syntax `min..max`, thus `range(min..max)` will
@@ -6762,13 +5035,7 @@ impl<K, V> BTreeMap<K, V> {
         T: Ord,
         K: Borrow<T> + Ord,
         R: RangeBounds<T>,
-    {
-        if let Some(root) = &mut self.root {
-            RangeMut { inner: root.borrow_valmut().range_search(range), _marker: PhantomData }
-        } else {
-            RangeMut { inner: LeafRange::none(), _marker: PhantomData }
-        }
-    }
+    {}
 
     /// Gets the given key's corresponding entry in the map for in-place manipulation.
     ///
@@ -6792,17 +5059,7 @@ impl<K, V> BTreeMap<K, V> {
     pub fn entry(&mut self, key: K) -> Entry<'_, K, V>
     where
         K: Ord,
-    {
-        // FIXME(@porglezomp) Avoid allocating if we don't insert
-        let (map, dormant_map) = DormantMutRef::new(self);
-        let root_node = Self::ensure_is_owned(&mut map.root).borrow_mut();
-        match root_node.search_tree(&key) {
-            Found(handle) => Occupied(OccupiedEntry { handle, dormant_map, _marker: PhantomData }),
-            GoDown(handle) => {
-                Vacant(VacantEntry { key, handle, dormant_map, _marker: PhantomData })
-            }
-        }
-    }
+    {}
 
     /// Splits the collection into two at the given key. Returns everything after the given key,
     /// including the key.
@@ -6837,21 +5094,7 @@ impl<K, V> BTreeMap<K, V> {
     pub fn split_off<Q: ?Sized + Ord>(&mut self, key: &Q) -> Self
     where
         K: Borrow<Q> + Ord,
-    {
-        if self.is_empty() {
-            return Self::new();
-        }
-
-        let total_num = self.len();
-        let left_root = self.root.as_mut().unwrap(); // unwrap succeeds because not empty
-
-        let right_root = left_root.split_off(key);
-
-        let (new_left_len, right_len) = Root::calc_split_length(total_num, &left_root, &right_root);
-        self.length = new_left_len;
-
-        BTreeMap { root: Some(right_root), length: right_len }
-    }
+    {}
 
     /// Creates an iterator that visits all elements (key-value pairs) in
     /// ascending key order and uses a closure to determine if an element should
@@ -6890,26 +5133,12 @@ impl<K, V> BTreeMap<K, V> {
     where
         K: Ord,
         F: FnMut(&K, &mut V) -> bool,
-    {
-        DrainFilter { pred, inner: self.drain_filter_inner() }
-    }
+    {}
 
     pub(super) fn drain_filter_inner(&mut self) -> DrainFilterInner<'_, K, V>
     where
         K: Ord,
-    {
-        if let Some(root) = self.root.as_mut() {
-            let (root, dormant_root) = DormantMutRef::new(root);
-            let front = root.borrow_mut().first_leaf_edge();
-            DrainFilterInner {
-                length: &mut self.length,
-                dormant_root: Some(dormant_root),
-                cur_leaf_edge: Some(front),
-            }
-        } else {
-            DrainFilterInner { length: &mut self.length, dormant_root: None, cur_leaf_edge: None }
-        }
-    }
+    {}
 
     /// Creates a consuming iterator visiting all the keys, in sorted order.
     /// The map cannot be used after calling this.
@@ -6929,9 +5158,7 @@ impl<K, V> BTreeMap<K, V> {
     /// ```
     #[inline]
     #[stable(feature = "map_into_keys_values", since = "1.54.0")]
-    pub fn into_keys(self) -> IntoKeys<K, V> {
-        IntoKeys { inner: self.into_iter() }
-    }
+    pub fn into_keys(self) -> IntoKeys<K, V> {}
 
     /// Creates a consuming iterator visiting all the values, in order by key.
     /// The map cannot be used after calling this.
@@ -6951,21 +5178,14 @@ impl<K, V> BTreeMap<K, V> {
     /// ```
     #[inline]
     #[stable(feature = "map_into_keys_values", since = "1.54.0")]
-    pub fn into_values(self) -> IntoValues<K, V> {
-        IntoValues { inner: self.into_iter() }
-    }
+    pub fn into_values(self) -> IntoValues<K, V> {}
 
     /// Makes a `BTreeMap` from a sorted iterator.
     pub(crate) fn bulk_build_from_sorted_iter<I>(iter: I) -> Self
     where
         K: Ord,
         I: Iterator<Item = (K, V)>,
-    {
-        let mut root = Root::new();
-        let mut length = 0;
-        root.bulk_push(DedupSortedIter::new(iter), &mut length);
-        BTreeMap { root: Some(root), length }
-    }
+    {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -6973,39 +5193,22 @@ impl<'a, K, V> IntoIterator for &'a BTreeMap<K, V> {
     type Item = (&'a K, &'a V);
     type IntoIter = Iter<'a, K, V>;
 
-    fn into_iter(self) -> Iter<'a, K, V> {
-        self.iter()
-    }
+    fn into_iter(self) -> Iter<'a, K, V> {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K: 'a, V: 'a> Iterator for Iter<'a, K, V> {
     type Item = (&'a K, &'a V);
 
-    fn next(&mut self) -> Option<(&'a K, &'a V)> {
-        if self.length == 0 {
-            None
-        } else {
-            self.length -= 1;
-            Some(unsafe { self.range.next_unchecked() })
-        }
-    }
+    fn next(&mut self) -> Option<(&'a K, &'a V)> {}
 
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        (self.length, Some(self.length))
-    }
+    fn size_hint(&self) -> (usize, Option<usize>) {}
 
-    fn last(mut self) -> Option<(&'a K, &'a V)> {
-        self.next_back()
-    }
+    fn last(mut self) -> Option<(&'a K, &'a V)> {}
 
-    fn min(mut self) -> Option<(&'a K, &'a V)> {
-        self.next()
-    }
+    fn min(mut self) -> Option<(&'a K, &'a V)> {}
 
-    fn max(mut self) -> Option<(&'a K, &'a V)> {
-        self.next_back()
-    }
+    fn max(mut self) -> Option<(&'a K, &'a V)> {}
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -7013,28 +5216,17 @@ impl<K, V> FusedIterator for Iter<'_, K, V> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K: 'a, V: 'a> DoubleEndedIterator for Iter<'a, K, V> {
-    fn next_back(&mut self) -> Option<(&'a K, &'a V)> {
-        if self.length == 0 {
-            None
-        } else {
-            self.length -= 1;
-            Some(unsafe { self.range.next_back_unchecked() })
-        }
-    }
+    fn next_back(&mut self) -> Option<(&'a K, &'a V)> {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K, V> ExactSizeIterator for Iter<'_, K, V> {
-    fn len(&self) -> usize {
-        self.length
-    }
+    fn len(&self) -> usize {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K, V> Clone for Iter<'_, K, V> {
-    fn clone(&self) -> Self {
-        Iter { range: self.range.clone(), length: self.length }
-    }
+    fn clone(&self) -> Self {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -7042,58 +5234,32 @@ impl<'a, K, V> IntoIterator for &'a mut BTreeMap<K, V> {
     type Item = (&'a K, &'a mut V);
     type IntoIter = IterMut<'a, K, V>;
 
-    fn into_iter(self) -> IterMut<'a, K, V> {
-        self.iter_mut()
-    }
+    fn into_iter(self) -> IterMut<'a, K, V> {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K: 'a, V: 'a> Iterator for IterMut<'a, K, V> {
     type Item = (&'a K, &'a mut V);
 
-    fn next(&mut self) -> Option<(&'a K, &'a mut V)> {
-        if self.length == 0 {
-            None
-        } else {
-            self.length -= 1;
-            Some(unsafe { self.range.next_unchecked() })
-        }
-    }
+    fn next(&mut self) -> Option<(&'a K, &'a mut V)> {}
 
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        (self.length, Some(self.length))
-    }
+    fn size_hint(&self) -> (usize, Option<usize>) {}
 
-    fn last(mut self) -> Option<(&'a K, &'a mut V)> {
-        self.next_back()
-    }
+    fn last(mut self) -> Option<(&'a K, &'a mut V)> {}
 
-    fn min(mut self) -> Option<(&'a K, &'a mut V)> {
-        self.next()
-    }
+    fn min(mut self) -> Option<(&'a K, &'a mut V)> {}
 
-    fn max(mut self) -> Option<(&'a K, &'a mut V)> {
-        self.next_back()
-    }
+    fn max(mut self) -> Option<(&'a K, &'a mut V)> {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K: 'a, V: 'a> DoubleEndedIterator for IterMut<'a, K, V> {
-    fn next_back(&mut self) -> Option<(&'a K, &'a mut V)> {
-        if self.length == 0 {
-            None
-        } else {
-            self.length -= 1;
-            Some(unsafe { self.range.next_back_unchecked() })
-        }
-    }
+    fn next_back(&mut self) -> Option<(&'a K, &'a mut V)> {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K, V> ExactSizeIterator for IterMut<'_, K, V> {
-    fn len(&self) -> usize {
-        self.length
-    }
+    fn len(&self) -> usize {}
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -7102,9 +5268,7 @@ impl<K, V> FusedIterator for IterMut<'_, K, V> {}
 impl<'a, K, V> IterMut<'a, K, V> {
     /// Returns an iterator of references over the remaining items.
     #[inline]
-    pub(super) fn iter(&self) -> Iter<'_, K, V> {
-        Iter { range: self.range.reborrow(), length: self.length }
-    }
+    pub(super) fn iter(&self) -> Iter<'_, K, V> {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -7112,41 +5276,12 @@ impl<K, V> IntoIterator for BTreeMap<K, V> {
     type Item = (K, V);
     type IntoIter = IntoIter<K, V>;
 
-    fn into_iter(self) -> IntoIter<K, V> {
-        let mut me = ManuallyDrop::new(self);
-        if let Some(root) = me.root.take() {
-            let full_range = root.into_dying().full_range();
-
-            IntoIter { range: full_range, length: me.length }
-        } else {
-            IntoIter { range: LazyLeafRange::none(), length: 0 }
-        }
-    }
+    fn into_iter(self) -> IntoIter<K, V> {}
 }
 
 #[stable(feature = "btree_drop", since = "1.7.0")]
 impl<K, V> Drop for IntoIter<K, V> {
-    fn drop(&mut self) {
-        struct DropGuard<'a, K, V>(&'a mut IntoIter<K, V>);
-
-        impl<'a, K, V> Drop for DropGuard<'a, K, V> {
-            fn drop(&mut self) {
-                // Continue the same loop we perform below. This only runs when unwinding, so we
-                // don't have to care about panics this time (they'll abort).
-                while let Some(kv) = self.0.dying_next() {
-                    // SAFETY: we consume the dying handle immediately.
-                    unsafe { kv.drop_key_val() };
-                }
-            }
-        }
-
-        while let Some(kv) = self.dying_next() {
-            let guard = DropGuard(self);
-            // SAFETY: we don't touch the tree before consuming the dying handle.
-            unsafe { kv.drop_key_val() };
-            mem::forget(guard);
-        }
-    }
+    fn drop(&mut self) {}
 }
 
 impl<K, V> IntoIter<K, V> {
@@ -7154,58 +5289,32 @@ impl<K, V> IntoIter<K, V> {
     /// invalidated by further calls to this function and some others.
     fn dying_next(
         &mut self,
-    ) -> Option<Handle<NodeRef<marker::Dying, K, V, marker::LeafOrInternal>, marker::KV>> {
-        if self.length == 0 {
-            self.range.deallocating_end();
-            None
-        } else {
-            self.length -= 1;
-            Some(unsafe { self.range.deallocating_next_unchecked() })
-        }
-    }
+    ) -> Option<Handle<NodeRef<marker::Dying, K, V, marker::LeafOrInternal>, marker::KV>> {}
 
     /// Core of a `next_back` method returning a dying KV handle,
     /// invalidated by further calls to this function and some others.
     fn dying_next_back(
         &mut self,
-    ) -> Option<Handle<NodeRef<marker::Dying, K, V, marker::LeafOrInternal>, marker::KV>> {
-        if self.length == 0 {
-            self.range.deallocating_end();
-            None
-        } else {
-            self.length -= 1;
-            Some(unsafe { self.range.deallocating_next_back_unchecked() })
-        }
-    }
+    ) -> Option<Handle<NodeRef<marker::Dying, K, V, marker::LeafOrInternal>, marker::KV>> {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K, V> Iterator for IntoIter<K, V> {
     type Item = (K, V);
 
-    fn next(&mut self) -> Option<(K, V)> {
-        // SAFETY: we consume the dying handle immediately.
-        self.dying_next().map(unsafe { |kv| kv.into_key_val() })
-    }
+    fn next(&mut self) -> Option<(K, V)> {}
 
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        (self.length, Some(self.length))
-    }
+    fn size_hint(&self) -> (usize, Option<usize>) {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K, V> DoubleEndedIterator for IntoIter<K, V> {
-    fn next_back(&mut self) -> Option<(K, V)> {
-        // SAFETY: we consume the dying handle immediately.
-        self.dying_next_back().map(unsafe { |kv| kv.into_key_val() })
-    }
+    fn next_back(&mut self) -> Option<(K, V)> {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K, V> ExactSizeIterator for IntoIter<K, V> {
-    fn len(&self) -> usize {
-        self.length
-    }
+    fn len(&self) -> usize {}
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -7215,39 +5324,25 @@ impl<K, V> FusedIterator for IntoIter<K, V> {}
 impl<'a, K, V> Iterator for Keys<'a, K, V> {
     type Item = &'a K;
 
-    fn next(&mut self) -> Option<&'a K> {
-        self.inner.next().map(|(k, _)| k)
-    }
+    fn next(&mut self) -> Option<&'a K> {}
 
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.inner.size_hint()
-    }
+    fn size_hint(&self) -> (usize, Option<usize>) {}
 
-    fn last(mut self) -> Option<&'a K> {
-        self.next_back()
-    }
+    fn last(mut self) -> Option<&'a K> {}
 
-    fn min(mut self) -> Option<&'a K> {
-        self.next()
-    }
+    fn min(mut self) -> Option<&'a K> {}
 
-    fn max(mut self) -> Option<&'a K> {
-        self.next_back()
-    }
+    fn max(mut self) -> Option<&'a K> {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K, V> DoubleEndedIterator for Keys<'a, K, V> {
-    fn next_back(&mut self) -> Option<&'a K> {
-        self.inner.next_back().map(|(k, _)| k)
-    }
+    fn next_back(&mut self) -> Option<&'a K> {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K, V> ExactSizeIterator for Keys<'_, K, V> {
-    fn len(&self) -> usize {
-        self.inner.len()
-    }
+    fn len(&self) -> usize {}
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -7255,40 +5350,28 @@ impl<K, V> FusedIterator for Keys<'_, K, V> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K, V> Clone for Keys<'_, K, V> {
-    fn clone(&self) -> Self {
-        Keys { inner: self.inner.clone() }
-    }
+    fn clone(&self) -> Self {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K, V> Iterator for Values<'a, K, V> {
     type Item = &'a V;
 
-    fn next(&mut self) -> Option<&'a V> {
-        self.inner.next().map(|(_, v)| v)
-    }
+    fn next(&mut self) -> Option<&'a V> {}
 
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.inner.size_hint()
-    }
+    fn size_hint(&self) -> (usize, Option<usize>) {}
 
-    fn last(mut self) -> Option<&'a V> {
-        self.next_back()
-    }
+    fn last(mut self) -> Option<&'a V> {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K, V> DoubleEndedIterator for Values<'a, K, V> {
-    fn next_back(&mut self) -> Option<&'a V> {
-        self.inner.next_back().map(|(_, v)| v)
-    }
+    fn next_back(&mut self) -> Option<&'a V> {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K, V> ExactSizeIterator for Values<'_, K, V> {
-    fn len(&self) -> usize {
-        self.inner.len()
-    }
+    fn len(&self) -> usize {}
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -7296,9 +5379,7 @@ impl<K, V> FusedIterator for Values<'_, K, V> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K, V> Clone for Values<'_, K, V> {
-    fn clone(&self) -> Self {
-        Values { inner: self.inner.clone() }
-    }
+    fn clone(&self) -> Self {}
 }
 
 /// An iterator produced by calling `drain_filter` on BTreeMap.
@@ -7331,9 +5412,7 @@ impl<K, V, F> Drop for DrainFilter<'_, K, V, F>
 where
     F: FnMut(&K, &mut V) -> bool,
 {
-    fn drop(&mut self) {
-        self.for_each(drop);
-    }
+    fn drop(&mut self) {}
 }
 
 #[unstable(feature = "btree_drain_filter", issue = "70530")]
@@ -7343,9 +5422,7 @@ where
     V: fmt::Debug,
     F: FnMut(&K, &mut V) -> bool,
 {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("DrainFilter").field(&self.inner.peek()).finish()
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
 }
 
 #[unstable(feature = "btree_drain_filter", issue = "70530")]
@@ -7355,54 +5432,23 @@ where
 {
     type Item = (K, V);
 
-    fn next(&mut self) -> Option<(K, V)> {
-        self.inner.next(&mut self.pred)
-    }
+    fn next(&mut self) -> Option<(K, V)> {}
 
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.inner.size_hint()
-    }
+    fn size_hint(&self) -> (usize, Option<usize>) {}
 }
 
 impl<'a, K: 'a, V: 'a> DrainFilterInner<'a, K, V> {
     /// Allow Debug implementations to predict the next element.
-    pub(super) fn peek(&self) -> Option<(&K, &V)> {
-        let edge = self.cur_leaf_edge.as_ref()?;
-        edge.reborrow().next_kv().ok().map(Handle::into_kv)
-    }
+    pub(super) fn peek(&self) -> Option<(&K, &V)> {}
 
     /// Implementation of a typical `DrainFilter::next` method, given the predicate.
     pub(super) fn next<F>(&mut self, pred: &mut F) -> Option<(K, V)>
     where
         F: FnMut(&K, &mut V) -> bool,
-    {
-        while let Ok(mut kv) = self.cur_leaf_edge.take()?.next_kv() {
-            let (k, v) = kv.kv_mut();
-            if pred(k, v) {
-                *self.length -= 1;
-                let (kv, pos) = kv.remove_kv_tracking(|| {
-                    // SAFETY: we will touch the root in a way that will not
-                    // invalidate the position returned.
-                    let root = unsafe { self.dormant_root.take().unwrap().awaken() };
-                    root.pop_internal_level();
-                    self.dormant_root = Some(DormantMutRef::new(root).1);
-                });
-                self.cur_leaf_edge = Some(pos);
-                return Some(kv);
-            }
-            self.cur_leaf_edge = Some(kv.next_leaf_edge());
-        }
-        None
-    }
+    {}
 
     /// Implementation of a typical `DrainFilter::size_hint` method.
-    pub(super) fn size_hint(&self) -> (usize, Option<usize>) {
-        // In most of the btree iterators, `self.length` is the number of elements
-        // yet to be visited. Here, it includes elements that were visited and that
-        // the predicate decided not to drain. Making this upper bound more tight
-        // during iteration would require an extra field.
-        (0, Some(*self.length))
-    }
+    pub(super) fn size_hint(&self) -> (usize, Option<usize>) {}
 }
 
 #[unstable(feature = "btree_drain_filter", issue = "70530")]
@@ -7412,52 +5458,34 @@ impl<K, V, F> FusedIterator for DrainFilter<'_, K, V, F> where F: FnMut(&K, &mut
 impl<'a, K, V> Iterator for Range<'a, K, V> {
     type Item = (&'a K, &'a V);
 
-    fn next(&mut self) -> Option<(&'a K, &'a V)> {
-        self.inner.next_checked()
-    }
+    fn next(&mut self) -> Option<(&'a K, &'a V)> {}
 
-    fn last(mut self) -> Option<(&'a K, &'a V)> {
-        self.next_back()
-    }
+    fn last(mut self) -> Option<(&'a K, &'a V)> {}
 
-    fn min(mut self) -> Option<(&'a K, &'a V)> {
-        self.next()
-    }
+    fn min(mut self) -> Option<(&'a K, &'a V)> {}
 
-    fn max(mut self) -> Option<(&'a K, &'a V)> {
-        self.next_back()
-    }
+    fn max(mut self) -> Option<(&'a K, &'a V)> {}
 }
 
 #[stable(feature = "map_values_mut", since = "1.10.0")]
 impl<'a, K, V> Iterator for ValuesMut<'a, K, V> {
     type Item = &'a mut V;
 
-    fn next(&mut self) -> Option<&'a mut V> {
-        self.inner.next().map(|(_, v)| v)
-    }
+    fn next(&mut self) -> Option<&'a mut V> {}
 
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.inner.size_hint()
-    }
+    fn size_hint(&self) -> (usize, Option<usize>) {}
 
-    fn last(mut self) -> Option<&'a mut V> {
-        self.next_back()
-    }
+    fn last(mut self) -> Option<&'a mut V> {}
 }
 
 #[stable(feature = "map_values_mut", since = "1.10.0")]
 impl<'a, K, V> DoubleEndedIterator for ValuesMut<'a, K, V> {
-    fn next_back(&mut self) -> Option<&'a mut V> {
-        self.inner.next_back().map(|(_, v)| v)
-    }
+    fn next_back(&mut self) -> Option<&'a mut V> {}
 }
 
 #[stable(feature = "map_values_mut", since = "1.10.0")]
 impl<K, V> ExactSizeIterator for ValuesMut<'_, K, V> {
-    fn len(&self) -> usize {
-        self.inner.len()
-    }
+    fn len(&self) -> usize {}
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -7467,39 +5495,25 @@ impl<K, V> FusedIterator for ValuesMut<'_, K, V> {}
 impl<K, V> Iterator for IntoKeys<K, V> {
     type Item = K;
 
-    fn next(&mut self) -> Option<K> {
-        self.inner.next().map(|(k, _)| k)
-    }
+    fn next(&mut self) -> Option<K> {}
 
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.inner.size_hint()
-    }
+    fn size_hint(&self) -> (usize, Option<usize>) {}
 
-    fn last(mut self) -> Option<K> {
-        self.next_back()
-    }
+    fn last(mut self) -> Option<K> {}
 
-    fn min(mut self) -> Option<K> {
-        self.next()
-    }
+    fn min(mut self) -> Option<K> {}
 
-    fn max(mut self) -> Option<K> {
-        self.next_back()
-    }
+    fn max(mut self) -> Option<K> {}
 }
 
 #[stable(feature = "map_into_keys_values", since = "1.54.0")]
 impl<K, V> DoubleEndedIterator for IntoKeys<K, V> {
-    fn next_back(&mut self) -> Option<K> {
-        self.inner.next_back().map(|(k, _)| k)
-    }
+    fn next_back(&mut self) -> Option<K> {}
 }
 
 #[stable(feature = "map_into_keys_values", since = "1.54.0")]
 impl<K, V> ExactSizeIterator for IntoKeys<K, V> {
-    fn len(&self) -> usize {
-        self.inner.len()
-    }
+    fn len(&self) -> usize {}
 }
 
 #[stable(feature = "map_into_keys_values", since = "1.54.0")]
@@ -7509,31 +5523,21 @@ impl<K, V> FusedIterator for IntoKeys<K, V> {}
 impl<K, V> Iterator for IntoValues<K, V> {
     type Item = V;
 
-    fn next(&mut self) -> Option<V> {
-        self.inner.next().map(|(_, v)| v)
-    }
+    fn next(&mut self) -> Option<V> {}
 
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.inner.size_hint()
-    }
+    fn size_hint(&self) -> (usize, Option<usize>) {}
 
-    fn last(mut self) -> Option<V> {
-        self.next_back()
-    }
+    fn last(mut self) -> Option<V> {}
 }
 
 #[stable(feature = "map_into_keys_values", since = "1.54.0")]
 impl<K, V> DoubleEndedIterator for IntoValues<K, V> {
-    fn next_back(&mut self) -> Option<V> {
-        self.inner.next_back().map(|(_, v)| v)
-    }
+    fn next_back(&mut self) -> Option<V> {}
 }
 
 #[stable(feature = "map_into_keys_values", since = "1.54.0")]
 impl<K, V> ExactSizeIterator for IntoValues<K, V> {
-    fn len(&self) -> usize {
-        self.inner.len()
-    }
+    fn len(&self) -> usize {}
 }
 
 #[stable(feature = "map_into_keys_values", since = "1.54.0")]
@@ -7541,9 +5545,7 @@ impl<K, V> FusedIterator for IntoValues<K, V> {}
 
 #[stable(feature = "btree_range", since = "1.17.0")]
 impl<'a, K, V> DoubleEndedIterator for Range<'a, K, V> {
-    fn next_back(&mut self) -> Option<(&'a K, &'a V)> {
-        self.inner.next_back_checked()
-    }
+    fn next_back(&mut self) -> Option<(&'a K, &'a V)> {}
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -7551,37 +5553,25 @@ impl<K, V> FusedIterator for Range<'_, K, V> {}
 
 #[stable(feature = "btree_range", since = "1.17.0")]
 impl<K, V> Clone for Range<'_, K, V> {
-    fn clone(&self) -> Self {
-        Range { inner: self.inner.clone() }
-    }
+    fn clone(&self) -> Self {}
 }
 
 #[stable(feature = "btree_range", since = "1.17.0")]
 impl<'a, K, V> Iterator for RangeMut<'a, K, V> {
     type Item = (&'a K, &'a mut V);
 
-    fn next(&mut self) -> Option<(&'a K, &'a mut V)> {
-        self.inner.next_checked()
-    }
+    fn next(&mut self) -> Option<(&'a K, &'a mut V)> {}
 
-    fn last(mut self) -> Option<(&'a K, &'a mut V)> {
-        self.next_back()
-    }
+    fn last(mut self) -> Option<(&'a K, &'a mut V)> {}
 
-    fn min(mut self) -> Option<(&'a K, &'a mut V)> {
-        self.next()
-    }
+    fn min(mut self) -> Option<(&'a K, &'a mut V)> {}
 
-    fn max(mut self) -> Option<(&'a K, &'a mut V)> {
-        self.next_back()
-    }
+    fn max(mut self) -> Option<(&'a K, &'a mut V)> {}
 }
 
 #[stable(feature = "btree_range", since = "1.17.0")]
 impl<'a, K, V> DoubleEndedIterator for RangeMut<'a, K, V> {
-    fn next_back(&mut self) -> Option<(&'a K, &'a mut V)> {
-        self.inner.next_back_checked()
-    }
+    fn next_back(&mut self) -> Option<(&'a K, &'a mut V)> {}
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -7589,69 +5579,40 @@ impl<K, V> FusedIterator for RangeMut<'_, K, V> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K: Ord, V> FromIterator<(K, V)> for BTreeMap<K, V> {
-    fn from_iter<T: IntoIterator<Item = (K, V)>>(iter: T) -> BTreeMap<K, V> {
-        let mut inputs: Vec<_> = iter.into_iter().collect();
-
-        if inputs.is_empty() {
-            return BTreeMap::new();
-        }
-
-        // use stable sort to preserve the insertion order.
-        inputs.sort_by(|a, b| a.0.cmp(&b.0));
-        BTreeMap::bulk_build_from_sorted_iter(inputs.into_iter())
-    }
+    fn from_iter<T: IntoIterator<Item = (K, V)>>(iter: T) -> BTreeMap<K, V> {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K: Ord, V> Extend<(K, V)> for BTreeMap<K, V> {
     #[inline]
-    fn extend<T: IntoIterator<Item = (K, V)>>(&mut self, iter: T) {
-        iter.into_iter().for_each(move |(k, v)| {
-            self.insert(k, v);
-        });
-    }
+    fn extend<T: IntoIterator<Item = (K, V)>>(&mut self, iter: T) {}
 
     #[inline]
-    fn extend_one(&mut self, (k, v): (K, V)) {
-        self.insert(k, v);
-    }
+    fn extend_one(&mut self, (k, v): (K, V)) {}
 }
 
 #[stable(feature = "extend_ref", since = "1.2.0")]
 impl<'a, K: Ord + Copy, V: Copy> Extend<(&'a K, &'a V)> for BTreeMap<K, V> {
-    fn extend<I: IntoIterator<Item = (&'a K, &'a V)>>(&mut self, iter: I) {
-        self.extend(iter.into_iter().map(|(&key, &value)| (key, value)));
-    }
+    fn extend<I: IntoIterator<Item = (&'a K, &'a V)>>(&mut self, iter: I) {}
 
     #[inline]
-    fn extend_one(&mut self, (&k, &v): (&'a K, &'a V)) {
-        self.insert(k, v);
-    }
+    fn extend_one(&mut self, (&k, &v): (&'a K, &'a V)) {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K: Hash, V: Hash> Hash for BTreeMap<K, V> {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.len().hash(state);
-        for elt in self {
-            elt.hash(state);
-        }
-    }
+    fn hash<H: Hasher>(&self, state: &mut H) {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K, V> Default for BTreeMap<K, V> {
     /// Creates an empty `BTreeMap`.
-    fn default() -> BTreeMap<K, V> {
-        BTreeMap::new()
-    }
+    fn default() -> BTreeMap<K, V> {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K: PartialEq, V: PartialEq> PartialEq for BTreeMap<K, V> {
-    fn eq(&self, other: &BTreeMap<K, V>) -> bool {
-        self.len() == other.len() && self.iter().zip(other).all(|(a, b)| a == b)
-    }
+    fn eq(&self, other: &BTreeMap<K, V>) -> bool {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -7660,24 +5621,18 @@ impl<K: Eq, V: Eq> Eq for BTreeMap<K, V> {}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K: PartialOrd, V: PartialOrd> PartialOrd for BTreeMap<K, V> {
     #[inline]
-    fn partial_cmp(&self, other: &BTreeMap<K, V>) -> Option<Ordering> {
-        self.iter().partial_cmp(other.iter())
-    }
+    fn partial_cmp(&self, other: &BTreeMap<K, V>) -> Option<Ordering> {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K: Ord, V: Ord> Ord for BTreeMap<K, V> {
     #[inline]
-    fn cmp(&self, other: &BTreeMap<K, V>) -> Ordering {
-        self.iter().cmp(other.iter())
-    }
+    fn cmp(&self, other: &BTreeMap<K, V>) -> Ordering {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K: Debug, V: Debug> Debug for BTreeMap<K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_map().entries(self.iter()).finish()
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -7694,9 +5649,7 @@ where
     ///
     /// Panics if the key is not present in the `BTreeMap`.
     #[inline]
-    fn index(&self, key: &Q) -> &V {
-        self.get(key).expect("no entry found for key")
-    }
+    fn index(&self, key: &Q) -> &V {}
 }
 
 #[stable(feature = "std_collections_from_array", since = "1.56.0")]
@@ -7708,15 +5661,7 @@ impl<K: Ord, V, const N: usize> From<[(K, V); N]> for BTreeMap<K, V> {
     /// let map2: BTreeMap<_, _> = [(1, 2), (3, 4)].into();
     /// assert_eq!(map1, map2);
     /// ```
-    fn from(mut arr: [(K, V); N]) -> Self {
-        if N == 0 {
-            return BTreeMap::new();
-        }
-
-        // use stable sort to preserve the insertion order.
-        arr.sort_by(|a, b| a.0.cmp(&b.0));
-        BTreeMap::bulk_build_from_sorted_iter(core::array::IntoIter::new(arr))
-    }
+    fn from(mut arr: [(K, V); N]) -> Self {}
 }
 
 impl<K, V> BTreeMap<K, V> {
@@ -7742,15 +5687,7 @@ impl<K, V> BTreeMap<K, V> {
     /// assert_eq!((*first_key, *first_value), (1, "a"));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn iter(&self) -> Iter<'_, K, V> {
-        if let Some(root) = &self.root {
-            let full_range = root.reborrow().full_range();
-
-            Iter { range: full_range, length: self.length }
-        } else {
-            Iter { range: LazyLeafRange::none(), length: 0 }
-        }
-    }
+    pub fn iter(&self) -> Iter<'_, K, V> {}
 
     /// Gets a mutable iterator over the entries of the map, sorted by key.
     ///
@@ -7774,15 +5711,7 @@ impl<K, V> BTreeMap<K, V> {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn iter_mut(&mut self) -> IterMut<'_, K, V> {
-        if let Some(root) = &mut self.root {
-            let full_range = root.borrow_valmut().full_range();
-
-            IterMut { range: full_range, length: self.length, _marker: PhantomData }
-        } else {
-            IterMut { range: LazyLeafRange::none(), length: 0, _marker: PhantomData }
-        }
-    }
+    pub fn iter_mut(&mut self) -> IterMut<'_, K, V> {}
 
     /// Gets an iterator over the keys of the map, in sorted order.
     ///
@@ -7801,9 +5730,7 @@ impl<K, V> BTreeMap<K, V> {
     /// assert_eq!(keys, [1, 2]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn keys(&self) -> Keys<'_, K, V> {
-        Keys { inner: self.iter() }
-    }
+    pub fn keys(&self) -> Keys<'_, K, V> {}
 
     /// Gets an iterator over the values of the map, in order by key.
     ///
@@ -7822,9 +5749,7 @@ impl<K, V> BTreeMap<K, V> {
     /// assert_eq!(values, ["hello", "goodbye"]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn values(&self) -> Values<'_, K, V> {
-        Values { inner: self.iter() }
-    }
+    pub fn values(&self) -> Values<'_, K, V> {}
 
     /// Gets a mutable iterator over the values of the map, in order by key.
     ///
@@ -7848,9 +5773,7 @@ impl<K, V> BTreeMap<K, V> {
     ///                     String::from("goodbye!")]);
     /// ```
     #[stable(feature = "map_values_mut", since = "1.10.0")]
-    pub fn values_mut(&mut self) -> ValuesMut<'_, K, V> {
-        ValuesMut { inner: self.iter_mut() }
-    }
+    pub fn values_mut(&mut self) -> ValuesMut<'_, K, V> {}
 
     /// Returns the number of elements in the map.
     ///
@@ -7869,9 +5792,7 @@ impl<K, V> BTreeMap<K, V> {
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_btree_new", issue = "71835")]
-    pub const fn len(&self) -> usize {
-        self.length
-    }
+    pub const fn len(&self) -> usize {}
 
     /// Returns `true` if the map contains no elements.
     ///
@@ -7890,15 +5811,11 @@ impl<K, V> BTreeMap<K, V> {
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_btree_new", issue = "71835")]
-    pub const fn is_empty(&self) -> bool {
-        self.len() == 0
-    }
+    pub const fn is_empty(&self) -> bool {}
 
     /// If the root node is the empty (non-allocated) root node, allocate our
     /// own node. Is an associated function to avoid borrowing the entire BTreeMap.
-    fn ensure_is_owned(root: &mut Option<Root<K, V>>) -> &mut Root<K, V> {
-        root.get_or_insert_with(Root::new)
-    }
+    fn ensure_is_owned(root: &mut Option<Root<K, V>>) -> &mut Root<K, V> {}
 }
 
 #[cfg(test)]
@@ -7938,41 +5855,11 @@ const MIN_INSERTS_HEIGHT_2: usize = 89;
 
 // Gathers all references from a mutable iterator and makes sure Miri notices if
 // using them is dangerous.
-fn test_all_refs<'a, T: 'a>(dummy: &mut T, iter: impl Iterator<Item = &'a mut T>) {
-    // Gather all those references.
-    let mut refs: Vec<&mut T> = iter.collect();
-    // Use them all. Twice, to be sure we got all interleavings.
-    for r in refs.iter_mut() {
-        mem::swap(dummy, r);
-    }
-    for r in refs {
-        mem::swap(dummy, r);
-    }
-}
+fn test_all_refs<'a, T: 'a>(dummy: &mut T, iter: impl Iterator<Item = &'a mut T>) {}
 
 impl<K, V> BTreeMap<K, V> {
     // Panics if the map (or the code navigating it) is corrupted.
-    fn check_invariants(&self) {
-        if let Some(root) = &self.root {
-            let root_node = root.reborrow();
-
-            // Check the back pointers top-down, before we attempt to rely on
-            // more serious navigation code.
-            assert!(root_node.ascend().is_err());
-            root_node.assert_back_pointers();
-
-            // Check consistency of `length` with what navigation code encounters.
-            assert_eq!(self.length, root_node.calc_length());
-
-            // Lastly, check the invariant causing the least harm.
-            root_node.assert_min_len(if root_node.height() > 0 { 1 } else { 0 });
-        } else {
-            assert_eq!(self.length, 0);
-        }
-
-        // Check that `assert_strictly_ascending` will encounter all keys.
-        assert_eq!(self.length, self.keys().count());
-    }
+    fn check_invariants(&self) {}
 
     // Panics if the map is corrupted or if the keys are not in strictly
     // ascending order, in the current opinion of the `Ord` implementation.
@@ -7981,40 +5868,21 @@ impl<K, V> BTreeMap<K, V> {
     fn check(&self)
     where
         K: Debug + Ord,
-    {
-        self.check_invariants();
-        self.assert_strictly_ascending();
-    }
+    {}
 
     // Returns the height of the root, if any.
-    fn height(&self) -> Option<usize> {
-        self.root.as_ref().map(node::Root::height)
-    }
+    fn height(&self) -> Option<usize> {}
 
     fn dump_keys(&self) -> String
     where
         K: Debug,
-    {
-        if let Some(root) = self.root.as_ref() {
-            root.reborrow().dump_keys()
-        } else {
-            String::from("not yet allocated")
-        }
-    }
+    {}
 
     // Panics if the keys are not in strictly ascending order.
     fn assert_strictly_ascending(&self)
     where
         K: Debug + Ord,
-    {
-        let mut keys = self.keys();
-        if let Some(mut previous) = keys.next() {
-            for next in keys {
-                assert!(previous < next, "{:?} >= {:?}", previous, next);
-                previous = next;
-            }
-        }
-    }
+    {}
 
     // Transform the tree to minimize wasted space, obtaining fewer nodes that
     // are mostly filled up to their capacity. The same compact tree could have
@@ -8022,302 +5890,46 @@ impl<K, V> BTreeMap<K, V> {
     fn compact(&mut self)
     where
         K: Ord,
-    {
-        let iter = mem::take(self).into_iter();
-        let root = BTreeMap::ensure_is_owned(&mut self.root);
-        root.bulk_push(iter, &mut self.length);
-    }
+    {}
 }
 
 impl<'a, K: 'a, V: 'a> NodeRef<marker::Immut<'a>, K, V, marker::LeafOrInternal> {
-    fn assert_min_len(self, min_len: usize) {
-        assert!(self.len() >= min_len, "node len {} < {}", self.len(), min_len);
-        if let node::ForceResult::Internal(node) = self.force() {
-            for idx in 0..=node.len() {
-                let edge = unsafe { Handle::new_edge(node, idx) };
-                edge.descend().assert_min_len(MIN_LEN);
-            }
-        }
-    }
+    fn assert_min_len(self, min_len: usize) {}
 }
 
 // Tests our value of MIN_INSERTS_HEIGHT_2. Failure may mean you just need to
 // adapt that value to match a change in node::CAPACITY or the choices made
 // during insertion, otherwise other test cases may fail or be less useful.
 #[test]
-fn test_levels() {
-    let mut map = BTreeMap::new();
-    map.check();
-    assert_eq!(map.height(), None);
-    assert_eq!(map.len(), 0);
-
-    map.insert(0, ());
-    while map.height() == Some(0) {
-        let last_key = *map.last_key_value().unwrap().0;
-        map.insert(last_key + 1, ());
-    }
-    map.check();
-    // Structure:
-    // - 1 element in internal root node with 2 children
-    // - 6 elements in left leaf child
-    // - 5 elements in right leaf child
-    assert_eq!(map.height(), Some(1));
-    assert_eq!(map.len(), MIN_INSERTS_HEIGHT_1, "{}", map.dump_keys());
-
-    while map.height() == Some(1) {
-        let last_key = *map.last_key_value().unwrap().0;
-        map.insert(last_key + 1, ());
-    }
-    map.check();
-    // Structure:
-    // - 1 element in internal root node with 2 children
-    // - 6 elements in left internal child with 7 grandchildren
-    // - 42 elements in left child's 7 grandchildren with 6 elements each
-    // - 5 elements in right internal child with 6 grandchildren
-    // - 30 elements in right child's 5 first grandchildren with 6 elements each
-    // - 5 elements in right child's last grandchild
-    assert_eq!(map.height(), Some(2));
-    assert_eq!(map.len(), MIN_INSERTS_HEIGHT_2, "{}", map.dump_keys());
-}
+fn test_levels() {}
 
 // Ensures the testing infrastructure usually notices order violations.
 #[test]
 #[should_panic]
-fn test_check_ord_chaos() {
-    let gov = Governor::new();
-    let map: BTreeMap<_, _> = (0..2).map(|i| (Governed(i, &gov), ())).collect();
-    gov.flip();
-    map.check();
-}
+fn test_check_ord_chaos() {}
 
 // Ensures the testing infrastructure doesn't always mind order violations.
 #[test]
-fn test_check_invariants_ord_chaos() {
-    let gov = Governor::new();
-    let map: BTreeMap<_, _> = (0..2).map(|i| (Governed(i, &gov), ())).collect();
-    gov.flip();
-    map.check_invariants();
-}
+fn test_check_invariants_ord_chaos() {}
 
 #[test]
-fn test_basic_large() {
-    let mut map = BTreeMap::new();
-    // Miri is too slow
-    let size = if cfg!(miri) { MIN_INSERTS_HEIGHT_2 } else { 10000 };
-    let size = size + (size % 2); // round up to even number
-    assert_eq!(map.len(), 0);
-
-    for i in 0..size {
-        assert_eq!(map.insert(i, 10 * i), None);
-        assert_eq!(map.len(), i + 1);
-    }
-
-    assert_eq!(map.first_key_value(), Some((&0, &0)));
-    assert_eq!(map.last_key_value(), Some((&(size - 1), &(10 * (size - 1)))));
-    assert_eq!(map.first_entry().unwrap().key(), &0);
-    assert_eq!(map.last_entry().unwrap().key(), &(size - 1));
-
-    for i in 0..size {
-        assert_eq!(map.get(&i).unwrap(), &(i * 10));
-    }
-
-    for i in size..size * 2 {
-        assert_eq!(map.get(&i), None);
-    }
-
-    for i in 0..size {
-        assert_eq!(map.insert(i, 100 * i), Some(10 * i));
-        assert_eq!(map.len(), size);
-    }
-
-    for i in 0..size {
-        assert_eq!(map.get(&i).unwrap(), &(i * 100));
-    }
-
-    for i in 0..size / 2 {
-        assert_eq!(map.remove(&(i * 2)), Some(i * 200));
-        assert_eq!(map.len(), size - i - 1);
-    }
-
-    for i in 0..size / 2 {
-        assert_eq!(map.get(&(2 * i)), None);
-        assert_eq!(map.get(&(2 * i + 1)).unwrap(), &(i * 200 + 100));
-    }
-
-    for i in 0..size / 2 {
-        assert_eq!(map.remove(&(2 * i)), None);
-        assert_eq!(map.remove(&(2 * i + 1)), Some(i * 200 + 100));
-        assert_eq!(map.len(), size / 2 - i - 1);
-    }
-    map.check();
-}
+fn test_basic_large() {}
 
 #[test]
-fn test_basic_small() {
-    let mut map = BTreeMap::new();
-    // Empty, root is absent (None):
-    assert_eq!(map.remove(&1), None);
-    assert_eq!(map.len(), 0);
-    assert_eq!(map.get(&1), None);
-    assert_eq!(map.get_mut(&1), None);
-    assert_eq!(map.first_key_value(), None);
-    assert_eq!(map.last_key_value(), None);
-    assert_eq!(map.keys().count(), 0);
-    assert_eq!(map.values().count(), 0);
-    assert_eq!(map.range(..).next(), None);
-    assert_eq!(map.range(..1).next(), None);
-    assert_eq!(map.range(1..).next(), None);
-    assert_eq!(map.range(1..=1).next(), None);
-    assert_eq!(map.range(1..2).next(), None);
-    assert_eq!(map.height(), None);
-    assert_eq!(map.insert(1, 1), None);
-    assert_eq!(map.height(), Some(0));
-    map.check();
-
-    // 1 key-value pair:
-    assert_eq!(map.len(), 1);
-    assert_eq!(map.get(&1), Some(&1));
-    assert_eq!(map.get_mut(&1), Some(&mut 1));
-    assert_eq!(map.first_key_value(), Some((&1, &1)));
-    assert_eq!(map.last_key_value(), Some((&1, &1)));
-    assert_eq!(map.keys().collect::<Vec<_>>(), vec![&1]);
-    assert_eq!(map.values().collect::<Vec<_>>(), vec![&1]);
-    assert_eq!(map.insert(1, 2), Some(1));
-    assert_eq!(map.len(), 1);
-    assert_eq!(map.get(&1), Some(&2));
-    assert_eq!(map.get_mut(&1), Some(&mut 2));
-    assert_eq!(map.first_key_value(), Some((&1, &2)));
-    assert_eq!(map.last_key_value(), Some((&1, &2)));
-    assert_eq!(map.keys().collect::<Vec<_>>(), vec![&1]);
-    assert_eq!(map.values().collect::<Vec<_>>(), vec![&2]);
-    assert_eq!(map.insert(2, 4), None);
-    assert_eq!(map.height(), Some(0));
-    map.check();
-
-    // 2 key-value pairs:
-    assert_eq!(map.len(), 2);
-    assert_eq!(map.get(&2), Some(&4));
-    assert_eq!(map.get_mut(&2), Some(&mut 4));
-    assert_eq!(map.first_key_value(), Some((&1, &2)));
-    assert_eq!(map.last_key_value(), Some((&2, &4)));
-    assert_eq!(map.keys().collect::<Vec<_>>(), vec![&1, &2]);
-    assert_eq!(map.values().collect::<Vec<_>>(), vec![&2, &4]);
-    assert_eq!(map.remove(&1), Some(2));
-    assert_eq!(map.height(), Some(0));
-    map.check();
-
-    // 1 key-value pair:
-    assert_eq!(map.len(), 1);
-    assert_eq!(map.get(&1), None);
-    assert_eq!(map.get_mut(&1), None);
-    assert_eq!(map.get(&2), Some(&4));
-    assert_eq!(map.get_mut(&2), Some(&mut 4));
-    assert_eq!(map.first_key_value(), Some((&2, &4)));
-    assert_eq!(map.last_key_value(), Some((&2, &4)));
-    assert_eq!(map.keys().collect::<Vec<_>>(), vec![&2]);
-    assert_eq!(map.values().collect::<Vec<_>>(), vec![&4]);
-    assert_eq!(map.remove(&2), Some(4));
-    assert_eq!(map.height(), Some(0));
-    map.check();
-
-    // Empty but root is owned (Some(...)):
-    assert_eq!(map.len(), 0);
-    assert_eq!(map.get(&1), None);
-    assert_eq!(map.get_mut(&1), None);
-    assert_eq!(map.first_key_value(), None);
-    assert_eq!(map.last_key_value(), None);
-    assert_eq!(map.keys().count(), 0);
-    assert_eq!(map.values().count(), 0);
-    assert_eq!(map.range(..).next(), None);
-    assert_eq!(map.range(..1).next(), None);
-    assert_eq!(map.range(1..).next(), None);
-    assert_eq!(map.range(1..=1).next(), None);
-    assert_eq!(map.range(1..2).next(), None);
-    assert_eq!(map.remove(&1), None);
-    assert_eq!(map.height(), Some(0));
-    map.check();
-}
+fn test_basic_small() {}
 
 #[test]
-fn test_iter() {
-    // Miri is too slow
-    let size = if cfg!(miri) { 200 } else { 10000 };
-
-    let mut map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
-
-    fn test<T>(size: usize, mut iter: T)
-    where
-        T: Iterator<Item = (usize, usize)>,
-    {
-        for i in 0..size {
-            assert_eq!(iter.size_hint(), (size - i, Some(size - i)));
-            assert_eq!(iter.next().unwrap(), (i, i));
-        }
-        assert_eq!(iter.size_hint(), (0, Some(0)));
-        assert_eq!(iter.next(), None);
-    }
-    test(size, map.iter().map(|(&k, &v)| (k, v)));
-    test(size, map.iter_mut().map(|(&k, &mut v)| (k, v)));
-    test(size, map.into_iter());
-}
+fn test_iter() {}
 
 #[test]
-fn test_iter_rev() {
-    // Miri is too slow
-    let size = if cfg!(miri) { 200 } else { 10000 };
-
-    let mut map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
-
-    fn test<T>(size: usize, mut iter: T)
-    where
-        T: Iterator<Item = (usize, usize)>,
-    {
-        for i in 0..size {
-            assert_eq!(iter.size_hint(), (size - i, Some(size - i)));
-            assert_eq!(iter.next().unwrap(), (size - i - 1, size - i - 1));
-        }
-        assert_eq!(iter.size_hint(), (0, Some(0)));
-        assert_eq!(iter.next(), None);
-    }
-    test(size, map.iter().rev().map(|(&k, &v)| (k, v)));
-    test(size, map.iter_mut().rev().map(|(&k, &mut v)| (k, v)));
-    test(size, map.into_iter().rev());
-}
+fn test_iter_rev() {}
 
 // Specifically tests iter_mut's ability to mutate the value of pairs in-line.
 fn do_test_iter_mut_mutation<T>(size: usize)
 where
     T: Copy + Debug + Ord + TryFrom<usize>,
     <T as TryFrom<usize>>::Error: Debug,
-{
-    let zero = T::try_from(0).unwrap();
-    let mut map: BTreeMap<T, T> = (0..size).map(|i| (T::try_from(i).unwrap(), zero)).collect();
-
-    // Forward and backward iteration sees enough pairs (also tested elsewhere)
-    assert_eq!(map.iter_mut().count(), size);
-    assert_eq!(map.iter_mut().rev().count(), size);
-
-    // Iterate forwards, trying to mutate to unique values
-    for (i, (k, v)) in map.iter_mut().enumerate() {
-        assert_eq!(*k, T::try_from(i).unwrap());
-        assert_eq!(*v, zero);
-        *v = T::try_from(i + 1).unwrap();
-    }
-
-    // Iterate backwards, checking that mutations succeeded and trying to mutate again
-    for (i, (k, v)) in map.iter_mut().rev().enumerate() {
-        assert_eq!(*k, T::try_from(size - i - 1).unwrap());
-        assert_eq!(*v, T::try_from(size - i).unwrap());
-        *v = T::try_from(2 * size - i).unwrap();
-    }
-
-    // Check that backward mutations succeeded
-    for (i, (k, v)) in map.iter_mut().enumerate() {
-        assert_eq!(*k, T::try_from(i).unwrap());
-        assert_eq!(*v, T::try_from(size + i + 1).unwrap());
-    }
-    map.check();
-}
+{}
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd, Ord)]
 #[repr(align(32))]
@@ -8326,1505 +5938,235 @@ struct Align32(usize);
 impl TryFrom<usize> for Align32 {
     type Error = ();
 
-    fn try_from(s: usize) -> Result<Align32, ()> {
-        Ok(Align32(s))
-    }
+    fn try_from(s: usize) -> Result<Align32, ()> {}
 }
 
 #[test]
-fn test_iter_mut_mutation() {
-    // Check many alignments and trees with roots at various heights.
-    do_test_iter_mut_mutation::<u8>(0);
-    do_test_iter_mut_mutation::<u8>(1);
-    do_test_iter_mut_mutation::<u8>(MIN_INSERTS_HEIGHT_1);
-    do_test_iter_mut_mutation::<u8>(MIN_INSERTS_HEIGHT_2);
-    do_test_iter_mut_mutation::<u16>(1);
-    do_test_iter_mut_mutation::<u16>(MIN_INSERTS_HEIGHT_1);
-    do_test_iter_mut_mutation::<u16>(MIN_INSERTS_HEIGHT_2);
-    do_test_iter_mut_mutation::<u32>(1);
-    do_test_iter_mut_mutation::<u32>(MIN_INSERTS_HEIGHT_1);
-    do_test_iter_mut_mutation::<u32>(MIN_INSERTS_HEIGHT_2);
-    do_test_iter_mut_mutation::<u64>(1);
-    do_test_iter_mut_mutation::<u64>(MIN_INSERTS_HEIGHT_1);
-    do_test_iter_mut_mutation::<u64>(MIN_INSERTS_HEIGHT_2);
-    do_test_iter_mut_mutation::<u128>(1);
-    do_test_iter_mut_mutation::<u128>(MIN_INSERTS_HEIGHT_1);
-    do_test_iter_mut_mutation::<u128>(MIN_INSERTS_HEIGHT_2);
-    do_test_iter_mut_mutation::<Align32>(1);
-    do_test_iter_mut_mutation::<Align32>(MIN_INSERTS_HEIGHT_1);
-    do_test_iter_mut_mutation::<Align32>(MIN_INSERTS_HEIGHT_2);
-}
+fn test_iter_mut_mutation() {}
 
 #[test]
-fn test_values_mut() {
-    let mut a: BTreeMap<_, _> = (0..MIN_INSERTS_HEIGHT_2).map(|i| (i, i)).collect();
-    test_all_refs(&mut 13, a.values_mut());
-    a.check();
-}
+fn test_values_mut() {}
 
 #[test]
-fn test_values_mut_mutation() {
-    let mut a = BTreeMap::new();
-    a.insert(1, String::from("hello"));
-    a.insert(2, String::from("goodbye"));
-
-    for value in a.values_mut() {
-        value.push_str("!");
-    }
-
-    let values: Vec<String> = a.values().cloned().collect();
-    assert_eq!(values, [String::from("hello!"), String::from("goodbye!")]);
-    a.check();
-}
+fn test_values_mut_mutation() {}
 
 #[test]
-fn test_iter_entering_root_twice() {
-    let mut map: BTreeMap<_, _> = (0..2).map(|i| (i, i)).collect();
-    let mut it = map.iter_mut();
-    let front = it.next().unwrap();
-    let back = it.next_back().unwrap();
-    assert_eq!(front, (&0, &mut 0));
-    assert_eq!(back, (&1, &mut 1));
-    *front.1 = 24;
-    *back.1 = 42;
-    assert_eq!(front, (&0, &mut 24));
-    assert_eq!(back, (&1, &mut 42));
-    assert_eq!(it.next(), None);
-    assert_eq!(it.next_back(), None);
-    map.check();
-}
+fn test_iter_entering_root_twice() {}
 
 #[test]
-fn test_iter_descending_to_same_node_twice() {
-    let mut map: BTreeMap<_, _> = (0..MIN_INSERTS_HEIGHT_1).map(|i| (i, i)).collect();
-    let mut it = map.iter_mut();
-    // Descend into first child.
-    let front = it.next().unwrap();
-    // Descend into first child again, after running through second child.
-    while it.next_back().is_some() {}
-    // Check immutable access.
-    assert_eq!(front, (&0, &mut 0));
-    // Perform mutable access.
-    *front.1 = 42;
-    map.check();
-}
+fn test_iter_descending_to_same_node_twice() {}
 
 #[test]
-fn test_iter_mixed() {
-    // Miri is too slow
-    let size = if cfg!(miri) { 200 } else { 10000 };
-
-    let mut map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
-
-    fn test<T>(size: usize, mut iter: T)
-    where
-        T: Iterator<Item = (usize, usize)> + DoubleEndedIterator,
-    {
-        for i in 0..size / 4 {
-            assert_eq!(iter.size_hint(), (size - i * 2, Some(size - i * 2)));
-            assert_eq!(iter.next().unwrap(), (i, i));
-            assert_eq!(iter.next_back().unwrap(), (size - i - 1, size - i - 1));
-        }
-        for i in size / 4..size * 3 / 4 {
-            assert_eq!(iter.size_hint(), (size * 3 / 4 - i, Some(size * 3 / 4 - i)));
-            assert_eq!(iter.next().unwrap(), (i, i));
-        }
-        assert_eq!(iter.size_hint(), (0, Some(0)));
-        assert_eq!(iter.next(), None);
-    }
-    test(size, map.iter().map(|(&k, &v)| (k, v)));
-    test(size, map.iter_mut().map(|(&k, &mut v)| (k, v)));
-    test(size, map.into_iter());
-}
+fn test_iter_mixed() {}
 
 #[test]
-fn test_iter_min_max() {
-    let mut a = BTreeMap::new();
-    assert_eq!(a.iter().min(), None);
-    assert_eq!(a.iter().max(), None);
-    assert_eq!(a.iter_mut().min(), None);
-    assert_eq!(a.iter_mut().max(), None);
-    assert_eq!(a.range(..).min(), None);
-    assert_eq!(a.range(..).max(), None);
-    assert_eq!(a.range_mut(..).min(), None);
-    assert_eq!(a.range_mut(..).max(), None);
-    assert_eq!(a.keys().min(), None);
-    assert_eq!(a.keys().max(), None);
-    assert_eq!(a.values().min(), None);
-    assert_eq!(a.values().max(), None);
-    assert_eq!(a.values_mut().min(), None);
-    assert_eq!(a.values_mut().max(), None);
-    a.insert(1, 42);
-    a.insert(2, 24);
-    assert_eq!(a.iter().min(), Some((&1, &42)));
-    assert_eq!(a.iter().max(), Some((&2, &24)));
-    assert_eq!(a.iter_mut().min(), Some((&1, &mut 42)));
-    assert_eq!(a.iter_mut().max(), Some((&2, &mut 24)));
-    assert_eq!(a.range(..).min(), Some((&1, &42)));
-    assert_eq!(a.range(..).max(), Some((&2, &24)));
-    assert_eq!(a.range_mut(..).min(), Some((&1, &mut 42)));
-    assert_eq!(a.range_mut(..).max(), Some((&2, &mut 24)));
-    assert_eq!(a.keys().min(), Some(&1));
-    assert_eq!(a.keys().max(), Some(&2));
-    assert_eq!(a.values().min(), Some(&24));
-    assert_eq!(a.values().max(), Some(&42));
-    assert_eq!(a.values_mut().min(), Some(&mut 24));
-    assert_eq!(a.values_mut().max(), Some(&mut 42));
-    a.check();
-}
+fn test_iter_min_max() {}
 
-fn range_keys(map: &BTreeMap<i32, i32>, range: impl RangeBounds<i32>) -> Vec<i32> {
-    map.range(range)
-        .map(|(&k, &v)| {
-            assert_eq!(k, v);
-            k
-        })
-        .collect()
-}
+fn range_keys(map: &BTreeMap<i32, i32>, range: impl RangeBounds<i32>) -> Vec<i32> {}
 
 #[test]
-fn test_range_small() {
-    let size = 4;
-
-    let map: BTreeMap<_, _> = (1..=size).map(|i| (i, i)).collect();
-    let all: Vec<_> = (1..=size).collect();
-    let (first, last) = (vec![all[0]], vec![all[size as usize - 1]]);
-
-    assert_eq!(range_keys(&map, (Excluded(0), Excluded(size + 1))), all);
-    assert_eq!(range_keys(&map, (Excluded(0), Included(size + 1))), all);
-    assert_eq!(range_keys(&map, (Excluded(0), Included(size))), all);
-    assert_eq!(range_keys(&map, (Excluded(0), Unbounded)), all);
-    assert_eq!(range_keys(&map, (Included(0), Excluded(size + 1))), all);
-    assert_eq!(range_keys(&map, (Included(0), Included(size + 1))), all);
-    assert_eq!(range_keys(&map, (Included(0), Included(size))), all);
-    assert_eq!(range_keys(&map, (Included(0), Unbounded)), all);
-    assert_eq!(range_keys(&map, (Included(1), Excluded(size + 1))), all);
-    assert_eq!(range_keys(&map, (Included(1), Included(size + 1))), all);
-    assert_eq!(range_keys(&map, (Included(1), Included(size))), all);
-    assert_eq!(range_keys(&map, (Included(1), Unbounded)), all);
-    assert_eq!(range_keys(&map, (Unbounded, Excluded(size + 1))), all);
-    assert_eq!(range_keys(&map, (Unbounded, Included(size + 1))), all);
-    assert_eq!(range_keys(&map, (Unbounded, Included(size))), all);
-    assert_eq!(range_keys(&map, ..), all);
-
-    assert_eq!(range_keys(&map, (Excluded(0), Excluded(1))), vec![]);
-    assert_eq!(range_keys(&map, (Excluded(0), Included(0))), vec![]);
-    assert_eq!(range_keys(&map, (Included(0), Included(0))), vec![]);
-    assert_eq!(range_keys(&map, (Included(0), Excluded(1))), vec![]);
-    assert_eq!(range_keys(&map, (Unbounded, Excluded(1))), vec![]);
-    assert_eq!(range_keys(&map, (Unbounded, Included(0))), vec![]);
-    assert_eq!(range_keys(&map, (Excluded(0), Excluded(2))), first);
-    assert_eq!(range_keys(&map, (Excluded(0), Included(1))), first);
-    assert_eq!(range_keys(&map, (Included(0), Excluded(2))), first);
-    assert_eq!(range_keys(&map, (Included(0), Included(1))), first);
-    assert_eq!(range_keys(&map, (Included(1), Excluded(2))), first);
-    assert_eq!(range_keys(&map, (Included(1), Included(1))), first);
-    assert_eq!(range_keys(&map, (Unbounded, Excluded(2))), first);
-    assert_eq!(range_keys(&map, (Unbounded, Included(1))), first);
-    assert_eq!(range_keys(&map, (Excluded(size - 1), Excluded(size + 1))), last);
-    assert_eq!(range_keys(&map, (Excluded(size - 1), Included(size + 1))), last);
-    assert_eq!(range_keys(&map, (Excluded(size - 1), Included(size))), last);
-    assert_eq!(range_keys(&map, (Excluded(size - 1), Unbounded)), last);
-    assert_eq!(range_keys(&map, (Included(size), Excluded(size + 1))), last);
-    assert_eq!(range_keys(&map, (Included(size), Included(size + 1))), last);
-    assert_eq!(range_keys(&map, (Included(size), Included(size))), last);
-    assert_eq!(range_keys(&map, (Included(size), Unbounded)), last);
-    assert_eq!(range_keys(&map, (Excluded(size), Excluded(size + 1))), vec![]);
-    assert_eq!(range_keys(&map, (Excluded(size), Included(size))), vec![]);
-    assert_eq!(range_keys(&map, (Excluded(size), Unbounded)), vec![]);
-    assert_eq!(range_keys(&map, (Included(size + 1), Excluded(size + 1))), vec![]);
-    assert_eq!(range_keys(&map, (Included(size + 1), Included(size + 1))), vec![]);
-    assert_eq!(range_keys(&map, (Included(size + 1), Unbounded)), vec![]);
-
-    assert_eq!(range_keys(&map, ..3), vec![1, 2]);
-    assert_eq!(range_keys(&map, 3..), vec![3, 4]);
-    assert_eq!(range_keys(&map, 2..=3), vec![2, 3]);
-}
+fn test_range_small() {}
 
 #[test]
-fn test_range_height_1() {
-    // Tests tree with a root and 2 leaves. The single key in the root node is
-    // close to the middle among the keys.
-
-    let map: BTreeMap<_, _> = (0..MIN_INSERTS_HEIGHT_1 as i32).map(|i| (i, i)).collect();
-    let middle = MIN_INSERTS_HEIGHT_1 as i32 / 2;
-    for root in middle - 2..=middle + 2 {
-        assert_eq!(range_keys(&map, (Excluded(root), Excluded(root + 1))), vec![]);
-        assert_eq!(range_keys(&map, (Excluded(root), Included(root + 1))), vec![root + 1]);
-        assert_eq!(range_keys(&map, (Included(root), Excluded(root + 1))), vec![root]);
-        assert_eq!(range_keys(&map, (Included(root), Included(root + 1))), vec![root, root + 1]);
-
-        assert_eq!(range_keys(&map, (Excluded(root - 1), Excluded(root))), vec![]);
-        assert_eq!(range_keys(&map, (Included(root - 1), Excluded(root))), vec![root - 1]);
-        assert_eq!(range_keys(&map, (Excluded(root - 1), Included(root))), vec![root]);
-        assert_eq!(range_keys(&map, (Included(root - 1), Included(root))), vec![root - 1, root]);
-    }
-}
+fn test_range_height_1() {}
 
 #[test]
-fn test_range_large() {
-    let size = 200;
-
-    let map: BTreeMap<_, _> = (1..=size).map(|i| (i, i)).collect();
-    let all: Vec<_> = (1..=size).collect();
-    let (first, last) = (vec![all[0]], vec![all[size as usize - 1]]);
-
-    assert_eq!(range_keys(&map, (Excluded(0), Excluded(size + 1))), all);
-    assert_eq!(range_keys(&map, (Excluded(0), Included(size + 1))), all);
-    assert_eq!(range_keys(&map, (Excluded(0), Included(size))), all);
-    assert_eq!(range_keys(&map, (Excluded(0), Unbounded)), all);
-    assert_eq!(range_keys(&map, (Included(0), Excluded(size + 1))), all);
-    assert_eq!(range_keys(&map, (Included(0), Included(size + 1))), all);
-    assert_eq!(range_keys(&map, (Included(0), Included(size))), all);
-    assert_eq!(range_keys(&map, (Included(0), Unbounded)), all);
-    assert_eq!(range_keys(&map, (Included(1), Excluded(size + 1))), all);
-    assert_eq!(range_keys(&map, (Included(1), Included(size + 1))), all);
-    assert_eq!(range_keys(&map, (Included(1), Included(size))), all);
-    assert_eq!(range_keys(&map, (Included(1), Unbounded)), all);
-    assert_eq!(range_keys(&map, (Unbounded, Excluded(size + 1))), all);
-    assert_eq!(range_keys(&map, (Unbounded, Included(size + 1))), all);
-    assert_eq!(range_keys(&map, (Unbounded, Included(size))), all);
-    assert_eq!(range_keys(&map, ..), all);
-
-    assert_eq!(range_keys(&map, (Excluded(0), Excluded(1))), vec![]);
-    assert_eq!(range_keys(&map, (Excluded(0), Included(0))), vec![]);
-    assert_eq!(range_keys(&map, (Included(0), Included(0))), vec![]);
-    assert_eq!(range_keys(&map, (Included(0), Excluded(1))), vec![]);
-    assert_eq!(range_keys(&map, (Unbounded, Excluded(1))), vec![]);
-    assert_eq!(range_keys(&map, (Unbounded, Included(0))), vec![]);
-    assert_eq!(range_keys(&map, (Excluded(0), Excluded(2))), first);
-    assert_eq!(range_keys(&map, (Excluded(0), Included(1))), first);
-    assert_eq!(range_keys(&map, (Included(0), Excluded(2))), first);
-    assert_eq!(range_keys(&map, (Included(0), Included(1))), first);
-    assert_eq!(range_keys(&map, (Included(1), Excluded(2))), first);
-    assert_eq!(range_keys(&map, (Included(1), Included(1))), first);
-    assert_eq!(range_keys(&map, (Unbounded, Excluded(2))), first);
-    assert_eq!(range_keys(&map, (Unbounded, Included(1))), first);
-    assert_eq!(range_keys(&map, (Excluded(size - 1), Excluded(size + 1))), last);
-    assert_eq!(range_keys(&map, (Excluded(size - 1), Included(size + 1))), last);
-    assert_eq!(range_keys(&map, (Excluded(size - 1), Included(size))), last);
-    assert_eq!(range_keys(&map, (Excluded(size - 1), Unbounded)), last);
-    assert_eq!(range_keys(&map, (Included(size), Excluded(size + 1))), last);
-    assert_eq!(range_keys(&map, (Included(size), Included(size + 1))), last);
-    assert_eq!(range_keys(&map, (Included(size), Included(size))), last);
-    assert_eq!(range_keys(&map, (Included(size), Unbounded)), last);
-    assert_eq!(range_keys(&map, (Excluded(size), Excluded(size + 1))), vec![]);
-    assert_eq!(range_keys(&map, (Excluded(size), Included(size))), vec![]);
-    assert_eq!(range_keys(&map, (Excluded(size), Unbounded)), vec![]);
-    assert_eq!(range_keys(&map, (Included(size + 1), Excluded(size + 1))), vec![]);
-    assert_eq!(range_keys(&map, (Included(size + 1), Included(size + 1))), vec![]);
-    assert_eq!(range_keys(&map, (Included(size + 1), Unbounded)), vec![]);
-
-    fn check<'a, L, R>(lhs: L, rhs: R)
-    where
-        L: IntoIterator<Item = (&'a i32, &'a i32)>,
-        R: IntoIterator<Item = (&'a i32, &'a i32)>,
-    {
-        let lhs: Vec<_> = lhs.into_iter().collect();
-        let rhs: Vec<_> = rhs.into_iter().collect();
-        assert_eq!(lhs, rhs);
-    }
-
-    check(map.range(..=100), map.range(..101));
-    check(map.range(5..=8), vec![(&5, &5), (&6, &6), (&7, &7), (&8, &8)]);
-    check(map.range(-1..=2), vec![(&1, &1), (&2, &2)]);
-}
+fn test_range_large() {}
 
 #[test]
-fn test_range_inclusive_max_value() {
-    let max = usize::MAX;
-    let map: BTreeMap<_, _> = vec![(max, 0)].into_iter().collect();
-
-    assert_eq!(map.range(max..=max).collect::<Vec<_>>(), &[(&max, &0)]);
-}
+fn test_range_inclusive_max_value() {}
 
 #[test]
-fn test_range_equal_empty_cases() {
-    let map: BTreeMap<_, _> = (0..5).map(|i| (i, i)).collect();
-    assert_eq!(map.range((Included(2), Excluded(2))).next(), None);
-    assert_eq!(map.range((Excluded(2), Included(2))).next(), None);
-}
+fn test_range_equal_empty_cases() {}
 
 #[test]
 #[should_panic]
-fn test_range_equal_excluded() {
-    let map: BTreeMap<_, _> = (0..5).map(|i| (i, i)).collect();
-    let _ = map.range((Excluded(2), Excluded(2)));
-}
+fn test_range_equal_excluded() {}
 
 #[test]
 #[should_panic]
-fn test_range_backwards_1() {
-    let map: BTreeMap<_, _> = (0..5).map(|i| (i, i)).collect();
-    let _ = map.range((Included(3), Included(2)));
-}
+fn test_range_backwards_1() {}
 
 #[test]
 #[should_panic]
-fn test_range_backwards_2() {
-    let map: BTreeMap<_, _> = (0..5).map(|i| (i, i)).collect();
-    let _ = map.range((Included(3), Excluded(2)));
-}
+fn test_range_backwards_2() {}
 
 #[test]
 #[should_panic]
-fn test_range_backwards_3() {
-    let map: BTreeMap<_, _> = (0..5).map(|i| (i, i)).collect();
-    let _ = map.range((Excluded(3), Included(2)));
-}
+fn test_range_backwards_3() {}
 
 #[test]
 #[should_panic]
-fn test_range_backwards_4() {
-    let map: BTreeMap<_, _> = (0..5).map(|i| (i, i)).collect();
-    let _ = map.range((Excluded(3), Excluded(2)));
-}
+fn test_range_backwards_4() {}
 
 #[test]
-fn test_range_finding_ill_order_in_map() {
-    let mut map = BTreeMap::new();
-    map.insert(Cyclic3::B, ());
-    // Lacking static_assert, call `range` conditionally, to emphasise that
-    // we cause a different panic than `test_range_backwards_1` does.
-    // A more refined `should_panic` would be welcome.
-    if Cyclic3::C < Cyclic3::A {
-        let _ = map.range(Cyclic3::C..=Cyclic3::A);
-    }
-}
+fn test_range_finding_ill_order_in_map() {}
 
 #[test]
-fn test_range_finding_ill_order_in_range_ord() {
-    // Has proper order the first time asked, then flips around.
-    struct EvilTwin(i32);
-
-    impl PartialOrd for EvilTwin {
-        fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-            Some(self.cmp(other))
-        }
-    }
-
-    static COMPARES: AtomicUsize = AtomicUsize::new(0);
-    impl Ord for EvilTwin {
-        fn cmp(&self, other: &Self) -> Ordering {
-            let ord = self.0.cmp(&other.0);
-            if COMPARES.fetch_add(1, SeqCst) > 0 { ord.reverse() } else { ord }
-        }
-    }
-
-    impl PartialEq for EvilTwin {
-        fn eq(&self, other: &Self) -> bool {
-            self.0.eq(&other.0)
-        }
-    }
-
-    impl Eq for EvilTwin {}
-
-    #[derive(PartialEq, Eq, PartialOrd, Ord)]
-    struct CompositeKey(i32, EvilTwin);
-
-    impl Borrow<EvilTwin> for CompositeKey {
-        fn borrow(&self) -> &EvilTwin {
-            &self.1
-        }
-    }
-
-    let map = (0..12).map(|i| (CompositeKey(i, EvilTwin(i)), ())).collect::<BTreeMap<_, _>>();
-    let _ = map.range(EvilTwin(5)..=EvilTwin(7));
-}
+fn test_range_finding_ill_order_in_range_ord() {}
 
 #[test]
-fn test_range_1000() {
-    // Miri is too slow
-    let size = if cfg!(miri) { MIN_INSERTS_HEIGHT_2 as u32 } else { 1000 };
-    let map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
-
-    fn test(map: &BTreeMap<u32, u32>, size: u32, min: Bound<&u32>, max: Bound<&u32>) {
-        let mut kvs = map.range((min, max)).map(|(&k, &v)| (k, v));
-        let mut pairs = (0..size).map(|i| (i, i));
-
-        for (kv, pair) in kvs.by_ref().zip(pairs.by_ref()) {
-            assert_eq!(kv, pair);
-        }
-        assert_eq!(kvs.next(), None);
-        assert_eq!(pairs.next(), None);
-    }
-    test(&map, size, Included(&0), Excluded(&size));
-    test(&map, size, Unbounded, Excluded(&size));
-    test(&map, size, Included(&0), Included(&(size - 1)));
-    test(&map, size, Unbounded, Included(&(size - 1)));
-    test(&map, size, Included(&0), Unbounded);
-    test(&map, size, Unbounded, Unbounded);
-}
+fn test_range_1000() {}
 
 #[test]
-fn test_range_borrowed_key() {
-    let mut map = BTreeMap::new();
-    map.insert("aardvark".to_string(), 1);
-    map.insert("baboon".to_string(), 2);
-    map.insert("coyote".to_string(), 3);
-    map.insert("dingo".to_string(), 4);
-    // NOTE: would like to use simply "b".."d" here...
-    let mut iter = map.range::<str, _>((Included("b"), Excluded("d")));
-    assert_eq!(iter.next(), Some((&"baboon".to_string(), &2)));
-    assert_eq!(iter.next(), Some((&"coyote".to_string(), &3)));
-    assert_eq!(iter.next(), None);
-}
+fn test_range_borrowed_key() {}
 
 #[test]
-fn test_range() {
-    let size = 200;
-    // Miri is too slow
-    let step = if cfg!(miri) { 66 } else { 1 };
-    let map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
-
-    for i in (0..size).step_by(step) {
-        for j in (i..size).step_by(step) {
-            let mut kvs = map.range((Included(&i), Included(&j))).map(|(&k, &v)| (k, v));
-            let mut pairs = (i..=j).map(|i| (i, i));
-
-            for (kv, pair) in kvs.by_ref().zip(pairs.by_ref()) {
-                assert_eq!(kv, pair);
-            }
-            assert_eq!(kvs.next(), None);
-            assert_eq!(pairs.next(), None);
-        }
-    }
-}
+fn test_range() {}
 
 #[test]
-fn test_range_mut() {
-    let size = 200;
-    // Miri is too slow
-    let step = if cfg!(miri) { 66 } else { 1 };
-    let mut map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
-
-    for i in (0..size).step_by(step) {
-        for j in (i..size).step_by(step) {
-            let mut kvs = map.range_mut((Included(&i), Included(&j))).map(|(&k, &mut v)| (k, v));
-            let mut pairs = (i..=j).map(|i| (i, i));
-
-            for (kv, pair) in kvs.by_ref().zip(pairs.by_ref()) {
-                assert_eq!(kv, pair);
-            }
-            assert_eq!(kvs.next(), None);
-            assert_eq!(pairs.next(), None);
-        }
-    }
-    map.check();
-}
+fn test_range_mut() {}
 
 #[test]
-fn test_retain() {
-    let mut map: BTreeMap<i32, i32> = (0..100).map(|x| (x, x * 10)).collect();
-
-    map.retain(|&k, _| k % 2 == 0);
-    assert_eq!(map.len(), 50);
-    assert_eq!(map[&2], 20);
-    assert_eq!(map[&4], 40);
-    assert_eq!(map[&6], 60);
-}
+fn test_retain() {}
 
 mod test_drain_filter {
     use super::*;
 
     #[test]
-    fn empty() {
-        let mut map: BTreeMap<i32, i32> = BTreeMap::new();
-        map.drain_filter(|_, _| unreachable!("there's nothing to decide on"));
-        assert!(map.is_empty());
-        map.check();
-    }
+    fn empty() {}
 
     // Explicitly consumes the iterator, where most test cases drop it instantly.
     #[test]
-    fn consumed_keeping_all() {
-        let pairs = (0..3).map(|i| (i, i));
-        let mut map: BTreeMap<_, _> = pairs.collect();
-        assert!(map.drain_filter(|_, _| false).eq(iter::empty()));
-        map.check();
-    }
+    fn consumed_keeping_all() {}
 
     // Explicitly consumes the iterator, where most test cases drop it instantly.
     #[test]
-    fn consumed_removing_all() {
-        let pairs = (0..3).map(|i| (i, i));
-        let mut map: BTreeMap<_, _> = pairs.clone().collect();
-        assert!(map.drain_filter(|_, _| true).eq(pairs));
-        assert!(map.is_empty());
-        map.check();
-    }
+    fn consumed_removing_all() {}
 
     // Explicitly consumes the iterator and modifies values through it.
     #[test]
-    fn mutating_and_keeping() {
-        let pairs = (0..3).map(|i| (i, i));
-        let mut map: BTreeMap<_, _> = pairs.collect();
-        assert!(
-            map.drain_filter(|_, v| {
-                *v += 6;
-                false
-            })
-            .eq(iter::empty())
-        );
-        assert!(map.keys().copied().eq(0..3));
-        assert!(map.values().copied().eq(6..9));
-        map.check();
-    }
+    fn mutating_and_keeping() {}
 
     // Explicitly consumes the iterator and modifies values through it.
     #[test]
-    fn mutating_and_removing() {
-        let pairs = (0..3).map(|i| (i, i));
-        let mut map: BTreeMap<_, _> = pairs.collect();
-        assert!(
-            map.drain_filter(|_, v| {
-                *v += 6;
-                true
-            })
-            .eq((0..3).map(|i| (i, i + 6)))
-        );
-        assert!(map.is_empty());
-        map.check();
-    }
+    fn mutating_and_removing() {}
 
     #[test]
-    fn underfull_keeping_all() {
-        let pairs = (0..3).map(|i| (i, i));
-        let mut map: BTreeMap<_, _> = pairs.collect();
-        map.drain_filter(|_, _| false);
-        assert!(map.keys().copied().eq(0..3));
-        map.check();
-    }
+    fn underfull_keeping_all() {}
 
     #[test]
-    fn underfull_removing_one() {
-        let pairs = (0..3).map(|i| (i, i));
-        for doomed in 0..3 {
-            let mut map: BTreeMap<_, _> = pairs.clone().collect();
-            map.drain_filter(|i, _| *i == doomed);
-            assert_eq!(map.len(), 2);
-            map.check();
-        }
-    }
+    fn underfull_removing_one() {}
 
     #[test]
-    fn underfull_keeping_one() {
-        let pairs = (0..3).map(|i| (i, i));
-        for sacred in 0..3 {
-            let mut map: BTreeMap<_, _> = pairs.clone().collect();
-            map.drain_filter(|i, _| *i != sacred);
-            assert!(map.keys().copied().eq(sacred..=sacred));
-            map.check();
-        }
-    }
+    fn underfull_keeping_one() {}
 
     #[test]
-    fn underfull_removing_all() {
-        let pairs = (0..3).map(|i| (i, i));
-        let mut map: BTreeMap<_, _> = pairs.collect();
-        map.drain_filter(|_, _| true);
-        assert!(map.is_empty());
-        map.check();
-    }
+    fn underfull_removing_all() {}
 
     #[test]
-    fn height_0_keeping_all() {
-        let pairs = (0..NODE_CAPACITY).map(|i| (i, i));
-        let mut map: BTreeMap<_, _> = pairs.collect();
-        map.drain_filter(|_, _| false);
-        assert!(map.keys().copied().eq(0..NODE_CAPACITY));
-        map.check();
-    }
+    fn height_0_keeping_all() {}
 
     #[test]
-    fn height_0_removing_one() {
-        let pairs = (0..NODE_CAPACITY).map(|i| (i, i));
-        for doomed in 0..NODE_CAPACITY {
-            let mut map: BTreeMap<_, _> = pairs.clone().collect();
-            map.drain_filter(|i, _| *i == doomed);
-            assert_eq!(map.len(), NODE_CAPACITY - 1);
-            map.check();
-        }
-    }
+    fn height_0_removing_one() {}
 
     #[test]
-    fn height_0_keeping_one() {
-        let pairs = (0..NODE_CAPACITY).map(|i| (i, i));
-        for sacred in 0..NODE_CAPACITY {
-            let mut map: BTreeMap<_, _> = pairs.clone().collect();
-            map.drain_filter(|i, _| *i != sacred);
-            assert!(map.keys().copied().eq(sacred..=sacred));
-            map.check();
-        }
-    }
+    fn height_0_keeping_one() {}
 
     #[test]
-    fn height_0_removing_all() {
-        let pairs = (0..NODE_CAPACITY).map(|i| (i, i));
-        let mut map: BTreeMap<_, _> = pairs.collect();
-        map.drain_filter(|_, _| true);
-        assert!(map.is_empty());
-        map.check();
-    }
+    fn height_0_removing_all() {}
 
     #[test]
-    fn height_0_keeping_half() {
-        let mut map: BTreeMap<_, _> = (0..16).map(|i| (i, i)).collect();
-        assert_eq!(map.drain_filter(|i, _| *i % 2 == 0).count(), 8);
-        assert_eq!(map.len(), 8);
-        map.check();
-    }
+    fn height_0_keeping_half() {}
 
     #[test]
-    fn height_1_removing_all() {
-        let pairs = (0..MIN_INSERTS_HEIGHT_1).map(|i| (i, i));
-        let mut map: BTreeMap<_, _> = pairs.collect();
-        map.drain_filter(|_, _| true);
-        assert!(map.is_empty());
-        map.check();
-    }
+    fn height_1_removing_all() {}
 
     #[test]
-    fn height_1_removing_one() {
-        let pairs = (0..MIN_INSERTS_HEIGHT_1).map(|i| (i, i));
-        for doomed in 0..MIN_INSERTS_HEIGHT_1 {
-            let mut map: BTreeMap<_, _> = pairs.clone().collect();
-            map.drain_filter(|i, _| *i == doomed);
-            assert_eq!(map.len(), MIN_INSERTS_HEIGHT_1 - 1);
-            map.check();
-        }
-    }
+    fn height_1_removing_one() {}
 
     #[test]
-    fn height_1_keeping_one() {
-        let pairs = (0..MIN_INSERTS_HEIGHT_1).map(|i| (i, i));
-        for sacred in 0..MIN_INSERTS_HEIGHT_1 {
-            let mut map: BTreeMap<_, _> = pairs.clone().collect();
-            map.drain_filter(|i, _| *i != sacred);
-            assert!(map.keys().copied().eq(sacred..=sacred));
-            map.check();
-        }
-    }
+    fn height_1_keeping_one() {}
 
     #[test]
-    fn height_2_removing_one() {
-        let pairs = (0..MIN_INSERTS_HEIGHT_2).map(|i| (i, i));
-        for doomed in (0..MIN_INSERTS_HEIGHT_2).step_by(12) {
-            let mut map: BTreeMap<_, _> = pairs.clone().collect();
-            map.drain_filter(|i, _| *i == doomed);
-            assert_eq!(map.len(), MIN_INSERTS_HEIGHT_2 - 1);
-            map.check();
-        }
-    }
+    fn height_2_removing_one() {}
 
     #[test]
-    fn height_2_keeping_one() {
-        let pairs = (0..MIN_INSERTS_HEIGHT_2).map(|i| (i, i));
-        for sacred in (0..MIN_INSERTS_HEIGHT_2).step_by(12) {
-            let mut map: BTreeMap<_, _> = pairs.clone().collect();
-            map.drain_filter(|i, _| *i != sacred);
-            assert!(map.keys().copied().eq(sacred..=sacred));
-            map.check();
-        }
-    }
+    fn height_2_keeping_one() {}
 
     #[test]
-    fn height_2_removing_all() {
-        let pairs = (0..MIN_INSERTS_HEIGHT_2).map(|i| (i, i));
-        let mut map: BTreeMap<_, _> = pairs.collect();
-        map.drain_filter(|_, _| true);
-        assert!(map.is_empty());
-        map.check();
-    }
+    fn height_2_removing_all() {}
 
     #[test]
-    fn drop_panic_leak() {
-        let a = CrashTestDummy::new(0);
-        let b = CrashTestDummy::new(1);
-        let c = CrashTestDummy::new(2);
-        let mut map = BTreeMap::new();
-        map.insert(a.spawn(Panic::Never), ());
-        map.insert(b.spawn(Panic::InDrop), ());
-        map.insert(c.spawn(Panic::Never), ());
-
-        catch_unwind(move || drop(map.drain_filter(|dummy, _| dummy.query(true)))).unwrap_err();
-
-        assert_eq!(a.queried(), 1);
-        assert_eq!(b.queried(), 1);
-        assert_eq!(c.queried(), 0);
-        assert_eq!(a.dropped(), 1);
-        assert_eq!(b.dropped(), 1);
-        assert_eq!(c.dropped(), 1);
-    }
+    fn drop_panic_leak() {}
 
     #[test]
-    fn pred_panic_leak() {
-        let a = CrashTestDummy::new(0);
-        let b = CrashTestDummy::new(1);
-        let c = CrashTestDummy::new(2);
-        let mut map = BTreeMap::new();
-        map.insert(a.spawn(Panic::Never), ());
-        map.insert(b.spawn(Panic::InQuery), ());
-        map.insert(c.spawn(Panic::InQuery), ());
-
-        catch_unwind(AssertUnwindSafe(|| drop(map.drain_filter(|dummy, _| dummy.query(true)))))
-            .unwrap_err();
-
-        assert_eq!(a.queried(), 1);
-        assert_eq!(b.queried(), 1);
-        assert_eq!(c.queried(), 0);
-        assert_eq!(a.dropped(), 1);
-        assert_eq!(b.dropped(), 0);
-        assert_eq!(c.dropped(), 0);
-        assert_eq!(map.len(), 2);
-        assert_eq!(map.first_entry().unwrap().key().id(), 1);
-        assert_eq!(map.last_entry().unwrap().key().id(), 2);
-        map.check();
-    }
+    fn pred_panic_leak() {}
 
     // Same as above, but attempt to use the iterator again after the panic in the predicate
     #[test]
-    fn pred_panic_reuse() {
-        let a = CrashTestDummy::new(0);
-        let b = CrashTestDummy::new(1);
-        let c = CrashTestDummy::new(2);
-        let mut map = BTreeMap::new();
-        map.insert(a.spawn(Panic::Never), ());
-        map.insert(b.spawn(Panic::InQuery), ());
-        map.insert(c.spawn(Panic::InQuery), ());
-
-        {
-            let mut it = map.drain_filter(|dummy, _| dummy.query(true));
-            catch_unwind(AssertUnwindSafe(|| while it.next().is_some() {})).unwrap_err();
-            // Iterator behaviour after a panic is explicitly unspecified,
-            // so this is just the current implementation:
-            let result = catch_unwind(AssertUnwindSafe(|| it.next()));
-            assert!(matches!(result, Ok(None)));
-        }
-
-        assert_eq!(a.queried(), 1);
-        assert_eq!(b.queried(), 1);
-        assert_eq!(c.queried(), 0);
-        assert_eq!(a.dropped(), 1);
-        assert_eq!(b.dropped(), 0);
-        assert_eq!(c.dropped(), 0);
-        assert_eq!(map.len(), 2);
-        assert_eq!(map.first_entry().unwrap().key().id(), 1);
-        assert_eq!(map.last_entry().unwrap().key().id(), 2);
-        map.check();
-    }
+    fn pred_panic_reuse() {}
 }
 
 #[test]
-fn test_borrow() {
-    // make sure these compile -- using the Borrow trait
-    {
-        let mut map = BTreeMap::new();
-        map.insert("0".to_string(), 1);
-        assert_eq!(map["0"], 1);
-    }
-
-    {
-        let mut map = BTreeMap::new();
-        map.insert(Box::new(0), 1);
-        assert_eq!(map[&0], 1);
-    }
-
-    {
-        let mut map = BTreeMap::new();
-        map.insert(Box::new([0, 1]) as Box<[i32]>, 1);
-        assert_eq!(map[&[0, 1][..]], 1);
-    }
-
-    {
-        let mut map = BTreeMap::new();
-        map.insert(Rc::new(0), 1);
-        assert_eq!(map[&0], 1);
-    }
-
-    #[allow(dead_code)]
-    fn get<T: Ord>(v: &BTreeMap<Box<T>, ()>, t: &T) {
-        let _ = v.get(t);
-    }
-
-    #[allow(dead_code)]
-    fn get_mut<T: Ord>(v: &mut BTreeMap<Box<T>, ()>, t: &T) {
-        let _ = v.get_mut(t);
-    }
-
-    #[allow(dead_code)]
-    fn get_key_value<T: Ord>(v: &BTreeMap<Box<T>, ()>, t: &T) {
-        let _ = v.get_key_value(t);
-    }
-
-    #[allow(dead_code)]
-    fn contains_key<T: Ord>(v: &BTreeMap<Box<T>, ()>, t: &T) {
-        let _ = v.contains_key(t);
-    }
-
-    #[allow(dead_code)]
-    fn range<T: Ord>(v: &BTreeMap<Box<T>, ()>, t: T) {
-        let _ = v.range(t..);
-    }
-
-    #[allow(dead_code)]
-    fn range_mut<T: Ord>(v: &mut BTreeMap<Box<T>, ()>, t: T) {
-        let _ = v.range_mut(t..);
-    }
-
-    #[allow(dead_code)]
-    fn remove<T: Ord>(v: &mut BTreeMap<Box<T>, ()>, t: &T) {
-        v.remove(t);
-    }
-
-    #[allow(dead_code)]
-    fn remove_entry<T: Ord>(v: &mut BTreeMap<Box<T>, ()>, t: &T) {
-        v.remove_entry(t);
-    }
-
-    #[allow(dead_code)]
-    fn split_off<T: Ord>(v: &mut BTreeMap<Box<T>, ()>, t: &T) {
-        v.split_off(t);
-    }
-}
+fn test_borrow() {}
 
 #[test]
-fn test_entry() {
-    let xs = [(1, 10), (2, 20), (3, 30), (4, 40), (5, 50), (6, 60)];
-
-    let mut map: BTreeMap<_, _> = xs.iter().cloned().collect();
-
-    // Existing key (insert)
-    match map.entry(1) {
-        Vacant(_) => unreachable!(),
-        Occupied(mut view) => {
-            assert_eq!(view.get(), &10);
-            assert_eq!(view.insert(100), 10);
-        }
-    }
-    assert_eq!(map.get(&1).unwrap(), &100);
-    assert_eq!(map.len(), 6);
-
-    // Existing key (update)
-    match map.entry(2) {
-        Vacant(_) => unreachable!(),
-        Occupied(mut view) => {
-            let v = view.get_mut();
-            *v *= 10;
-        }
-    }
-    assert_eq!(map.get(&2).unwrap(), &200);
-    assert_eq!(map.len(), 6);
-    map.check();
-
-    // Existing key (take)
-    match map.entry(3) {
-        Vacant(_) => unreachable!(),
-        Occupied(view) => {
-            assert_eq!(view.remove(), 30);
-        }
-    }
-    assert_eq!(map.get(&3), None);
-    assert_eq!(map.len(), 5);
-    map.check();
-
-    // Inexistent key (insert)
-    match map.entry(10) {
-        Occupied(_) => unreachable!(),
-        Vacant(view) => {
-            assert_eq!(*view.insert(1000), 1000);
-        }
-    }
-    assert_eq!(map.get(&10).unwrap(), &1000);
-    assert_eq!(map.len(), 6);
-    map.check();
-}
+fn test_entry() {}
 
 #[test]
-fn test_extend_ref() {
-    let mut a = BTreeMap::new();
-    a.insert(1, "one");
-    let mut b = BTreeMap::new();
-    b.insert(2, "two");
-    b.insert(3, "three");
-
-    a.extend(&b);
-
-    assert_eq!(a.len(), 3);
-    assert_eq!(a[&1], "one");
-    assert_eq!(a[&2], "two");
-    assert_eq!(a[&3], "three");
-    a.check();
-}
+fn test_extend_ref() {}
 
 #[test]
-fn test_zst() {
-    let mut m = BTreeMap::new();
-    assert_eq!(m.len(), 0);
-
-    assert_eq!(m.insert((), ()), None);
-    assert_eq!(m.len(), 1);
-
-    assert_eq!(m.insert((), ()), Some(()));
-    assert_eq!(m.len(), 1);
-    assert_eq!(m.iter().count(), 1);
-
-    m.clear();
-    assert_eq!(m.len(), 0);
-
-    for _ in 0..100 {
-        m.insert((), ());
-    }
-
-    assert_eq!(m.len(), 1);
-    assert_eq!(m.iter().count(), 1);
-    m.check();
-}
+fn test_zst() {}
 
 // This test's only purpose is to ensure that zero-sized keys with nonsensical orderings
 // do not cause segfaults when used with zero-sized values. All other map behavior is
 // undefined.
 #[test]
-fn test_bad_zst() {
-    #[derive(Clone, Copy, Debug)]
-    struct Bad;
-
-    impl PartialEq for Bad {
-        fn eq(&self, _: &Self) -> bool {
-            false
-        }
-    }
-
-    impl Eq for Bad {}
-
-    impl PartialOrd for Bad {
-        fn partial_cmp(&self, _: &Self) -> Option<Ordering> {
-            Some(Ordering::Less)
-        }
-    }
-
-    impl Ord for Bad {
-        fn cmp(&self, _: &Self) -> Ordering {
-            Ordering::Less
-        }
-    }
-
-    let mut m = BTreeMap::new();
-
-    for _ in 0..100 {
-        m.insert(Bad, Bad);
-    }
-    m.check();
-}
+fn test_bad_zst() {}
 
 #[test]
-fn test_clear() {
-    let mut map = BTreeMap::new();
-    for &len in &[MIN_INSERTS_HEIGHT_1, MIN_INSERTS_HEIGHT_2, 0, NODE_CAPACITY] {
-        for i in 0..len {
-            map.insert(i, ());
-        }
-        assert_eq!(map.len(), len);
-        map.clear();
-        map.check();
-        assert!(map.is_empty());
-    }
-}
+fn test_clear() {}
 
 #[test]
-fn test_clear_drop_panic_leak() {
-    let a = CrashTestDummy::new(0);
-    let b = CrashTestDummy::new(1);
-    let c = CrashTestDummy::new(2);
-
-    let mut map = BTreeMap::new();
-    map.insert(a.spawn(Panic::Never), ());
-    map.insert(b.spawn(Panic::InDrop), ());
-    map.insert(c.spawn(Panic::Never), ());
-
-    catch_unwind(AssertUnwindSafe(|| map.clear())).unwrap_err();
-    assert_eq!(a.dropped(), 1);
-    assert_eq!(b.dropped(), 1);
-    assert_eq!(c.dropped(), 1);
-    assert_eq!(map.len(), 0);
-
-    drop(map);
-    assert_eq!(a.dropped(), 1);
-    assert_eq!(b.dropped(), 1);
-    assert_eq!(c.dropped(), 1);
-}
+fn test_clear_drop_panic_leak() {}
 
 #[test]
-fn test_clone() {
-    let mut map = BTreeMap::new();
-    let size = MIN_INSERTS_HEIGHT_1;
-    assert_eq!(map.len(), 0);
+fn test_clone() {}
 
-    for i in 0..size {
-        assert_eq!(map.insert(i, 10 * i), None);
-        assert_eq!(map.len(), i + 1);
-        map.check();
-        assert_eq!(map, map.clone());
-    }
-
-    for i in 0..size {
-        assert_eq!(map.insert(i, 100 * i), Some(10 * i));
-        assert_eq!(map.len(), size);
-        map.check();
-        assert_eq!(map, map.clone());
-    }
-
-    for i in 0..size / 2 {
-        assert_eq!(map.remove(&(i * 2)), Some(i * 200));
-        assert_eq!(map.len(), size - i - 1);
-        map.check();
-        assert_eq!(map, map.clone());
-    }
-
-    for i in 0..size / 2 {
-        assert_eq!(map.remove(&(2 * i)), None);
-        assert_eq!(map.remove(&(2 * i + 1)), Some(i * 200 + 100));
-        assert_eq!(map.len(), size / 2 - i - 1);
-        map.check();
-        assert_eq!(map, map.clone());
-    }
-
-    // Test a tree with 2 semi-full levels and a tree with 3 levels.
-    map = (1..MIN_INSERTS_HEIGHT_2).map(|i| (i, i)).collect();
-    assert_eq!(map.len(), MIN_INSERTS_HEIGHT_2 - 1);
-    assert_eq!(map, map.clone());
-    map.insert(0, 0);
-    assert_eq!(map.len(), MIN_INSERTS_HEIGHT_2);
-    assert_eq!(map, map.clone());
-    map.check();
-}
-
-fn test_clone_panic_leak(size: usize) {
-    for i in 0..size {
-        let dummies: Vec<CrashTestDummy> = (0..size).map(|id| CrashTestDummy::new(id)).collect();
-        let map: BTreeMap<_, ()> = dummies
-            .iter()
-            .map(|dummy| {
-                let panic = if dummy.id == i { Panic::InClone } else { Panic::Never };
-                (dummy.spawn(panic), ())
-            })
-            .collect();
-
-        catch_unwind(|| map.clone()).unwrap_err();
-        for d in &dummies {
-            assert_eq!(d.cloned(), if d.id <= i { 1 } else { 0 }, "id={}/{}", d.id, i);
-            assert_eq!(d.dropped(), if d.id < i { 1 } else { 0 }, "id={}/{}", d.id, i);
-        }
-        assert_eq!(map.len(), size);
-
-        drop(map);
-        for d in &dummies {
-            assert_eq!(d.cloned(), if d.id <= i { 1 } else { 0 }, "id={}/{}", d.id, i);
-            assert_eq!(d.dropped(), if d.id < i { 2 } else { 1 }, "id={}/{}", d.id, i);
-        }
-    }
-}
+fn test_clone_panic_leak(size: usize) {}
 
 #[test]
-fn test_clone_panic_leak_height_0() {
-    test_clone_panic_leak(3)
-}
+fn test_clone_panic_leak_height_0() {}
 
 #[test]
-fn test_clone_panic_leak_height_1() {
-    test_clone_panic_leak(MIN_INSERTS_HEIGHT_1)
-}
+fn test_clone_panic_leak_height_1() {}
 
 #[test]
-fn test_clone_from() {
-    let mut map1 = BTreeMap::new();
-    let max_size = MIN_INSERTS_HEIGHT_1;
-
-    // Range to max_size inclusive, because i is the size of map1 being tested.
-    for i in 0..=max_size {
-        let mut map2 = BTreeMap::new();
-        for j in 0..i {
-            let mut map1_copy = map2.clone();
-            map1_copy.clone_from(&map1); // small cloned from large
-            assert_eq!(map1_copy, map1);
-            let mut map2_copy = map1.clone();
-            map2_copy.clone_from(&map2); // large cloned from small
-            assert_eq!(map2_copy, map2);
-            map2.insert(100 * j + 1, 2 * j + 1);
-        }
-        map2.clone_from(&map1); // same length
-        map2.check();
-        assert_eq!(map2, map1);
-        map1.insert(i, 10 * i);
-        map1.check();
-    }
-}
+fn test_clone_from() {}
 
 #[allow(dead_code)]
-fn test_variance() {
-    fn map_key<'new>(v: BTreeMap<&'static str, ()>) -> BTreeMap<&'new str, ()> {
-        v
-    }
-    fn map_val<'new>(v: BTreeMap<(), &'static str>) -> BTreeMap<(), &'new str> {
-        v
-    }
-
-    fn iter_key<'a, 'new>(v: Iter<'a, &'static str, ()>) -> Iter<'a, &'new str, ()> {
-        v
-    }
-    fn iter_val<'a, 'new>(v: Iter<'a, (), &'static str>) -> Iter<'a, (), &'new str> {
-        v
-    }
-
-    fn into_iter_key<'new>(v: IntoIter<&'static str, ()>) -> IntoIter<&'new str, ()> {
-        v
-    }
-    fn into_iter_val<'new>(v: IntoIter<(), &'static str>) -> IntoIter<(), &'new str> {
-        v
-    }
-
-    fn into_keys_key<'new>(v: IntoKeys<&'static str, ()>) -> IntoKeys<&'new str, ()> {
-        v
-    }
-    fn into_keys_val<'new>(v: IntoKeys<(), &'static str>) -> IntoKeys<(), &'new str> {
-        v
-    }
-
-    fn into_values_key<'new>(v: IntoValues<&'static str, ()>) -> IntoValues<&'new str, ()> {
-        v
-    }
-    fn into_values_val<'new>(v: IntoValues<(), &'static str>) -> IntoValues<(), &'new str> {
-        v
-    }
-
-    fn range_key<'a, 'new>(v: Range<'a, &'static str, ()>) -> Range<'a, &'new str, ()> {
-        v
-    }
-    fn range_val<'a, 'new>(v: Range<'a, (), &'static str>) -> Range<'a, (), &'new str> {
-        v
-    }
-
-    fn keys_key<'a, 'new>(v: Keys<'a, &'static str, ()>) -> Keys<'a, &'new str, ()> {
-        v
-    }
-    fn keys_val<'a, 'new>(v: Keys<'a, (), &'static str>) -> Keys<'a, (), &'new str> {
-        v
-    }
-
-    fn values_key<'a, 'new>(v: Values<'a, &'static str, ()>) -> Values<'a, &'new str, ()> {
-        v
-    }
-    fn values_val<'a, 'new>(v: Values<'a, (), &'static str>) -> Values<'a, (), &'new str> {
-        v
-    }
-}
+fn test_variance() {}
 
 #[allow(dead_code)]
-fn test_sync() {
-    fn map<T: Sync>(v: &BTreeMap<T, T>) -> impl Sync + '_ {
-        v
-    }
-
-    fn into_iter<T: Sync>(v: BTreeMap<T, T>) -> impl Sync {
-        v.into_iter()
-    }
-
-    fn into_keys<T: Sync + Ord>(v: BTreeMap<T, T>) -> impl Sync {
-        v.into_keys()
-    }
-
-    fn into_values<T: Sync + Ord>(v: BTreeMap<T, T>) -> impl Sync {
-        v.into_values()
-    }
-
-    fn drain_filter<T: Sync + Ord>(v: &mut BTreeMap<T, T>) -> impl Sync + '_ {
-        v.drain_filter(|_, _| false)
-    }
-
-    fn iter<T: Sync>(v: &BTreeMap<T, T>) -> impl Sync + '_ {
-        v.iter()
-    }
-
-    fn iter_mut<T: Sync>(v: &mut BTreeMap<T, T>) -> impl Sync + '_ {
-        v.iter_mut()
-    }
-
-    fn keys<T: Sync>(v: &BTreeMap<T, T>) -> impl Sync + '_ {
-        v.keys()
-    }
-
-    fn values<T: Sync>(v: &BTreeMap<T, T>) -> impl Sync + '_ {
-        v.values()
-    }
-
-    fn values_mut<T: Sync>(v: &mut BTreeMap<T, T>) -> impl Sync + '_ {
-        v.values_mut()
-    }
-
-    fn range<T: Sync + Ord>(v: &BTreeMap<T, T>) -> impl Sync + '_ {
-        v.range(..)
-    }
-
-    fn range_mut<T: Sync + Ord>(v: &mut BTreeMap<T, T>) -> impl Sync + '_ {
-        v.range_mut(..)
-    }
-
-    fn entry<T: Sync + Ord + Default>(v: &mut BTreeMap<T, T>) -> impl Sync + '_ {
-        v.entry(Default::default())
-    }
-
-    fn occupied_entry<T: Sync + Ord + Default>(v: &mut BTreeMap<T, T>) -> impl Sync + '_ {
-        match v.entry(Default::default()) {
-            Occupied(entry) => entry,
-            _ => unreachable!(),
-        }
-    }
-
-    fn vacant_entry<T: Sync + Ord + Default>(v: &mut BTreeMap<T, T>) -> impl Sync + '_ {
-        match v.entry(Default::default()) {
-            Vacant(entry) => entry,
-            _ => unreachable!(),
-        }
-    }
-}
+fn test_sync() {}
 
 #[allow(dead_code)]
-fn test_send() {
-    fn map<T: Send>(v: BTreeMap<T, T>) -> impl Send {
-        v
-    }
-
-    fn into_iter<T: Send>(v: BTreeMap<T, T>) -> impl Send {
-        v.into_iter()
-    }
-
-    fn into_keys<T: Send + Ord>(v: BTreeMap<T, T>) -> impl Send {
-        v.into_keys()
-    }
-
-    fn into_values<T: Send + Ord>(v: BTreeMap<T, T>) -> impl Send {
-        v.into_values()
-    }
-
-    fn drain_filter<T: Send + Ord>(v: &mut BTreeMap<T, T>) -> impl Send + '_ {
-        v.drain_filter(|_, _| false)
-    }
-
-    fn iter<T: Send + Sync>(v: &BTreeMap<T, T>) -> impl Send + '_ {
-        v.iter()
-    }
-
-    fn iter_mut<T: Send>(v: &mut BTreeMap<T, T>) -> impl Send + '_ {
-        v.iter_mut()
-    }
-
-    fn keys<T: Send + Sync>(v: &BTreeMap<T, T>) -> impl Send + '_ {
-        v.keys()
-    }
-
-    fn values<T: Send + Sync>(v: &BTreeMap<T, T>) -> impl Send + '_ {
-        v.values()
-    }
-
-    fn values_mut<T: Send>(v: &mut BTreeMap<T, T>) -> impl Send + '_ {
-        v.values_mut()
-    }
-
-    fn range<T: Send + Sync + Ord>(v: &BTreeMap<T, T>) -> impl Send + '_ {
-        v.range(..)
-    }
-
-    fn range_mut<T: Send + Ord>(v: &mut BTreeMap<T, T>) -> impl Send + '_ {
-        v.range_mut(..)
-    }
-
-    fn entry<T: Send + Ord + Default>(v: &mut BTreeMap<T, T>) -> impl Send + '_ {
-        v.entry(Default::default())
-    }
-
-    fn occupied_entry<T: Send + Ord + Default>(v: &mut BTreeMap<T, T>) -> impl Send + '_ {
-        match v.entry(Default::default()) {
-            Occupied(entry) => entry,
-            _ => unreachable!(),
-        }
-    }
-
-    fn vacant_entry<T: Send + Ord + Default>(v: &mut BTreeMap<T, T>) -> impl Send + '_ {
-        match v.entry(Default::default()) {
-            Vacant(entry) => entry,
-            _ => unreachable!(),
-        }
-    }
-}
+fn test_send() {}
 
 #[test]
-fn test_ord_absence() {
-    fn map<K>(mut map: BTreeMap<K, ()>) {
-        let _ = map.is_empty();
-        let _ = map.len();
-        map.clear();
-        let _ = map.iter();
-        let _ = map.iter_mut();
-        let _ = map.keys();
-        let _ = map.values();
-        let _ = map.values_mut();
-        if true {
-            let _ = map.into_values();
-        } else if true {
-            let _ = map.into_iter();
-        } else {
-            let _ = map.into_keys();
-        }
-    }
-
-    fn map_debug<K: Debug>(mut map: BTreeMap<K, ()>) {
-        format!("{:?}", map);
-        format!("{:?}", map.iter());
-        format!("{:?}", map.iter_mut());
-        format!("{:?}", map.keys());
-        format!("{:?}", map.values());
-        format!("{:?}", map.values_mut());
-        if true {
-            format!("{:?}", map.into_iter());
-        } else if true {
-            format!("{:?}", map.into_keys());
-        } else {
-            format!("{:?}", map.into_values());
-        }
-    }
-
-    fn map_clone<K: Clone>(mut map: BTreeMap<K, ()>) {
-        map.clone_from(&map.clone());
-    }
-
-    #[derive(Debug, Clone)]
-    struct NonOrd;
-    map(BTreeMap::<NonOrd, _>::new());
-    map_debug(BTreeMap::<NonOrd, _>::new());
-    map_clone(BTreeMap::<NonOrd, _>::default());
-}
+fn test_ord_absence() {}
 
 #[test]
-fn test_occupied_entry_key() {
-    let mut a = BTreeMap::new();
-    let key = "hello there";
-    let value = "value goes here";
-    assert!(a.is_empty());
-    a.insert(key, value);
-    assert_eq!(a.len(), 1);
-    assert_eq!(a[key], value);
-
-    match a.entry(key) {
-        Vacant(_) => panic!(),
-        Occupied(e) => assert_eq!(key, *e.key()),
-    }
-    assert_eq!(a.len(), 1);
-    assert_eq!(a[key], value);
-    a.check();
-}
+fn test_occupied_entry_key() {}
 
 #[test]
-fn test_vacant_entry_key() {
-    let mut a = BTreeMap::new();
-    let key = "hello there";
-    let value = "value goes here";
-
-    assert!(a.is_empty());
-    match a.entry(key) {
-        Occupied(_) => panic!(),
-        Vacant(e) => {
-            assert_eq!(key, *e.key());
-            e.insert(value);
-        }
-    }
-    assert_eq!(a.len(), 1);
-    assert_eq!(a[key], value);
-    a.check();
-}
+fn test_vacant_entry_key() {}
 
 #[test]
-fn test_first_last_entry() {
-    let mut a = BTreeMap::new();
-    assert!(a.first_entry().is_none());
-    assert!(a.last_entry().is_none());
-    a.insert(1, 42);
-    assert_eq!(a.first_entry().unwrap().key(), &1);
-    assert_eq!(a.last_entry().unwrap().key(), &1);
-    a.insert(2, 24);
-    assert_eq!(a.first_entry().unwrap().key(), &1);
-    assert_eq!(a.last_entry().unwrap().key(), &2);
-    a.insert(0, 6);
-    assert_eq!(a.first_entry().unwrap().key(), &0);
-    assert_eq!(a.last_entry().unwrap().key(), &2);
-    let (k1, v1) = a.first_entry().unwrap().remove_entry();
-    assert_eq!(k1, 0);
-    assert_eq!(v1, 6);
-    let (k2, v2) = a.last_entry().unwrap().remove_entry();
-    assert_eq!(k2, 2);
-    assert_eq!(v2, 24);
-    assert_eq!(a.first_entry().unwrap().key(), &1);
-    assert_eq!(a.last_entry().unwrap().key(), &1);
-    a.check();
-}
+fn test_first_last_entry() {}
 
 #[test]
-fn test_insert_into_full_height_0() {
-    let size = NODE_CAPACITY;
-    for pos in 0..=size {
-        let mut map: BTreeMap<_, _> = (0..size).map(|i| (i * 2 + 1, ())).collect();
-        assert!(map.insert(pos * 2, ()).is_none());
-        map.check();
-    }
-}
+fn test_insert_into_full_height_0() {}
 
 #[test]
-fn test_insert_into_full_height_1() {
-    let size = NODE_CAPACITY + 1 + NODE_CAPACITY;
-    for pos in 0..=size {
-        let mut map: BTreeMap<_, _> = (0..size).map(|i| (i * 2 + 1, ())).collect();
-        map.compact();
-        let root_node = map.root.as_ref().unwrap().reborrow();
-        assert_eq!(root_node.len(), 1);
-        assert_eq!(root_node.first_leaf_edge().into_node().len(), NODE_CAPACITY);
-        assert_eq!(root_node.last_leaf_edge().into_node().len(), NODE_CAPACITY);
-
-        assert!(map.insert(pos * 2, ()).is_none());
-        map.check();
-    }
-}
+fn test_insert_into_full_height_1() {}
 
 macro_rules! create_append_test {
     ($name:ident, $len:expr) => {
         #[test]
-        fn $name() {
-            let mut a = BTreeMap::new();
-            for i in 0..8 {
-                a.insert(i, i);
-            }
-
-            let mut b = BTreeMap::new();
-            for i in 5..$len {
-                b.insert(i, 2 * i);
-            }
-
-            a.append(&mut b);
-
-            assert_eq!(a.len(), $len);
-            assert_eq!(b.len(), 0);
-
-            for i in 0..$len {
-                if i < 5 {
-                    assert_eq!(a[&i], i);
-                } else {
-                    assert_eq!(a[&i], 2 * i);
-                }
-            }
-
-            a.check();
-            assert_eq!(a.remove(&($len - 1)), Some(2 * ($len - 1)));
-            assert_eq!(a.insert($len - 1, 20), None);
-            a.check();
-        }
+        fn $name() {}
     };
 }
 
@@ -9850,247 +6192,55 @@ create_append_test!(test_append_239, 239);
 create_append_test!(test_append_1700, 1700);
 
 #[test]
-fn test_append_drop_leak() {
-    let a = CrashTestDummy::new(0);
-    let b = CrashTestDummy::new(1);
-    let c = CrashTestDummy::new(2);
-    let mut left = BTreeMap::new();
-    let mut right = BTreeMap::new();
-    left.insert(a.spawn(Panic::Never), ());
-    left.insert(b.spawn(Panic::InDrop), ()); // first duplicate key, dropped during append
-    left.insert(c.spawn(Panic::Never), ());
-    right.insert(b.spawn(Panic::Never), ());
-    right.insert(c.spawn(Panic::Never), ());
-
-    catch_unwind(move || left.append(&mut right)).unwrap_err();
-    assert_eq!(a.dropped(), 1);
-    assert_eq!(b.dropped(), 1); // should be 2 were it not for Rust issue #47949
-    assert_eq!(c.dropped(), 2);
-}
+fn test_append_drop_leak() {}
 
 #[test]
-fn test_append_ord_chaos() {
-    let mut map1 = BTreeMap::new();
-    map1.insert(Cyclic3::A, ());
-    map1.insert(Cyclic3::B, ());
-    let mut map2 = BTreeMap::new();
-    map2.insert(Cyclic3::A, ());
-    map2.insert(Cyclic3::B, ());
-    map2.insert(Cyclic3::C, ()); // lands first, before A
-    map2.insert(Cyclic3::B, ()); // lands first, before C
-    map1.check();
-    map2.check(); // keys are not unique but still strictly ascending
-    assert_eq!(map1.len(), 2);
-    assert_eq!(map2.len(), 4);
-    map1.append(&mut map2);
-    assert_eq!(map1.len(), 5);
-    assert_eq!(map2.len(), 0);
-    map1.check();
-    map2.check();
-}
+fn test_append_ord_chaos() {}
 
-fn rand_data(len: usize) -> Vec<(u32, u32)> {
-    let mut rng = DeterministicRng::new();
-    Vec::from_iter((0..len).map(|_| (rng.next(), rng.next())))
-}
+fn rand_data(len: usize) -> Vec<(u32, u32)> {}
 
 #[test]
-fn test_split_off_empty_right() {
-    let mut data = rand_data(173);
-
-    let mut map = BTreeMap::from_iter(data.clone());
-    let right = map.split_off(&(data.iter().max().unwrap().0 + 1));
-    map.check();
-    right.check();
-
-    data.sort();
-    assert!(map.into_iter().eq(data));
-    assert!(right.into_iter().eq(None));
-}
+fn test_split_off_empty_right() {}
 
 #[test]
-fn test_split_off_empty_left() {
-    let mut data = rand_data(314);
-
-    let mut map = BTreeMap::from_iter(data.clone());
-    let right = map.split_off(&data.iter().min().unwrap().0);
-    map.check();
-    right.check();
-
-    data.sort();
-    assert!(map.into_iter().eq(None));
-    assert!(right.into_iter().eq(data));
-}
+fn test_split_off_empty_left() {}
 
 // In a tree with 3 levels, if all but a part of the first leaf node is split off,
 // make sure fix_top eliminates both top levels.
 #[test]
-fn test_split_off_tiny_left_height_2() {
-    let pairs = (0..MIN_INSERTS_HEIGHT_2).map(|i| (i, i));
-    let mut left: BTreeMap<_, _> = pairs.clone().collect();
-    let right = left.split_off(&1);
-    left.check();
-    right.check();
-    assert_eq!(left.len(), 1);
-    assert_eq!(right.len(), MIN_INSERTS_HEIGHT_2 - 1);
-    assert_eq!(*left.first_key_value().unwrap().0, 0);
-    assert_eq!(*right.first_key_value().unwrap().0, 1);
-}
+fn test_split_off_tiny_left_height_2() {}
 
 // In a tree with 3 levels, if only part of the last leaf node is split off,
 // make sure fix_top eliminates both top levels.
 #[test]
-fn test_split_off_tiny_right_height_2() {
-    let pairs = (0..MIN_INSERTS_HEIGHT_2).map(|i| (i, i));
-    let last = MIN_INSERTS_HEIGHT_2 - 1;
-    let mut left: BTreeMap<_, _> = pairs.clone().collect();
-    assert_eq!(*left.last_key_value().unwrap().0, last);
-    let right = left.split_off(&last);
-    left.check();
-    right.check();
-    assert_eq!(left.len(), MIN_INSERTS_HEIGHT_2 - 1);
-    assert_eq!(right.len(), 1);
-    assert_eq!(*left.last_key_value().unwrap().0, last - 1);
-    assert_eq!(*right.last_key_value().unwrap().0, last);
-}
+fn test_split_off_tiny_right_height_2() {}
 
 #[test]
-fn test_split_off_halfway() {
-    let mut rng = DeterministicRng::new();
-    for &len in &[NODE_CAPACITY, 25, 50, 75, 100] {
-        let mut data = Vec::from_iter((0..len).map(|_| (rng.next(), ())));
-        // Insertion in non-ascending order creates some variation in node length.
-        let mut map = BTreeMap::from_iter(data.iter().copied());
-        data.sort();
-        let small_keys = data.iter().take(len / 2).map(|kv| kv.0);
-        let large_keys = data.iter().skip(len / 2).map(|kv| kv.0);
-        let split_key = large_keys.clone().next().unwrap();
-        let right = map.split_off(&split_key);
-        map.check();
-        right.check();
-        assert!(map.keys().copied().eq(small_keys));
-        assert!(right.keys().copied().eq(large_keys));
-    }
-}
+fn test_split_off_halfway() {}
 
 #[test]
-fn test_split_off_large_random_sorted() {
-    // Miri is too slow
-    let mut data = if cfg!(miri) { rand_data(529) } else { rand_data(1529) };
-    // special case with maximum height.
-    data.sort();
-
-    let mut map = BTreeMap::from_iter(data.clone());
-    let key = data[data.len() / 2].0;
-    let right = map.split_off(&key);
-    map.check();
-    right.check();
-
-    assert!(map.into_iter().eq(data.clone().into_iter().filter(|x| x.0 < key)));
-    assert!(right.into_iter().eq(data.into_iter().filter(|x| x.0 >= key)));
-}
+fn test_split_off_large_random_sorted() {}
 
 #[test]
-fn test_into_iter_drop_leak_height_0() {
-    let a = CrashTestDummy::new(0);
-    let b = CrashTestDummy::new(1);
-    let c = CrashTestDummy::new(2);
-    let d = CrashTestDummy::new(3);
-    let e = CrashTestDummy::new(4);
-    let mut map = BTreeMap::new();
-    map.insert("a", a.spawn(Panic::Never));
-    map.insert("b", b.spawn(Panic::Never));
-    map.insert("c", c.spawn(Panic::Never));
-    map.insert("d", d.spawn(Panic::InDrop));
-    map.insert("e", e.spawn(Panic::Never));
-
-    catch_unwind(move || drop(map.into_iter())).unwrap_err();
-
-    assert_eq!(a.dropped(), 1);
-    assert_eq!(b.dropped(), 1);
-    assert_eq!(c.dropped(), 1);
-    assert_eq!(d.dropped(), 1);
-    assert_eq!(e.dropped(), 1);
-}
+fn test_into_iter_drop_leak_height_0() {}
 
 #[test]
-fn test_into_iter_drop_leak_height_1() {
-    let size = MIN_INSERTS_HEIGHT_1;
-    for panic_point in vec![0, 1, size - 2, size - 1] {
-        let dummies: Vec<_> = (0..size).map(|i| CrashTestDummy::new(i)).collect();
-        let map: BTreeMap<_, _> = (0..size)
-            .map(|i| {
-                let panic = if i == panic_point { Panic::InDrop } else { Panic::Never };
-                (dummies[i].spawn(Panic::Never), dummies[i].spawn(panic))
-            })
-            .collect();
-        catch_unwind(move || drop(map.into_iter())).unwrap_err();
-        for i in 0..size {
-            assert_eq!(dummies[i].dropped(), 2);
-        }
-    }
-}
+fn test_into_iter_drop_leak_height_1() {}
 
 #[test]
-fn test_into_keys() {
-    let vec = vec![(1, 'a'), (2, 'b'), (3, 'c')];
-    let map: BTreeMap<_, _> = vec.into_iter().collect();
-    let keys: Vec<_> = map.into_keys().collect();
-
-    assert_eq!(keys.len(), 3);
-    assert!(keys.contains(&1));
-    assert!(keys.contains(&2));
-    assert!(keys.contains(&3));
-}
+fn test_into_keys() {}
 
 #[test]
-fn test_into_values() {
-    let vec = vec![(1, 'a'), (2, 'b'), (3, 'c')];
-    let map: BTreeMap<_, _> = vec.into_iter().collect();
-    let values: Vec<_> = map.into_values().collect();
-
-    assert_eq!(values.len(), 3);
-    assert!(values.contains(&'a'));
-    assert!(values.contains(&'b'));
-    assert!(values.contains(&'c'));
-}
+fn test_into_values() {}
 
 #[test]
-fn test_insert_remove_intertwined() {
-    let loops = if cfg!(miri) { 100 } else { 1_000_000 };
-    let mut map = BTreeMap::new();
-    let mut i = 1;
-    let offset = 165; // somewhat arbitrarily chosen to cover some code paths
-    for _ in 0..loops {
-        i = (i + offset) & 0xFF;
-        map.insert(i, i);
-        map.remove(&(0xFF - i));
-    }
-    map.check();
-}
+fn test_insert_remove_intertwined() {}
 
 #[test]
-fn test_insert_remove_intertwined_ord_chaos() {
-    let loops = if cfg!(miri) { 100 } else { 1_000_000 };
-    let gov = Governor::new();
-    let mut map = BTreeMap::new();
-    let mut i = 1;
-    let offset = 165; // more arbitrarily copied from above
-    for _ in 0..loops {
-        i = (i + offset) & 0xFF;
-        map.insert(Governed(i, &gov), ());
-        map.remove(&Governed(0xFF - i, &gov));
-        gov.flip();
-    }
-    map.check_invariants();
-}
+fn test_insert_remove_intertwined_ord_chaos() {}
 
 #[test]
-fn from_array() {
-    let map = BTreeMap::from([(1, 2), (3, 4)]);
-    let unordered_duplicates = BTreeMap::from([(3, 4), (1, 2), (1, 2)]);
-    assert_eq!(map, unordered_duplicates);
-}
+fn from_array() {}
 }
 }
 mod mem {
@@ -10104,31 +6254,14 @@ use core::ptr;
 /// If a panic occurs in the `change` closure, the entire process will be aborted.
 #[allow(dead_code)] // keep as illustration and for future use
 #[inline]
-pub fn take_mut<T>(v: &mut T, change: impl FnOnce(T) -> T) {
-    replace(v, |value| (change(value), ()))
-}
+pub fn take_mut<T>(v: &mut T, change: impl FnOnce(T) -> T) {}
 
 /// This replaces the value behind the `v` unique reference by calling the
 /// relevant function, and returns a result obtained along the way.
 ///
 /// If a panic occurs in the `change` closure, the entire process will be aborted.
 #[inline]
-pub fn replace<T, R>(v: &mut T, change: impl FnOnce(T) -> (T, R)) -> R {
-    struct PanicGuard;
-    impl Drop for PanicGuard {
-        fn drop(&mut self) {
-            intrinsics::abort()
-        }
-    }
-    let guard = PanicGuard;
-    let value = unsafe { ptr::read(v) };
-    let (new_value, ret) = change(value);
-    unsafe {
-        ptr::write(v, new_value);
-    }
-    mem::forget(guard);
-    ret
-}
+pub fn replace<T, R>(v: &mut T, change: impl FnOnce(T) -> (T, R)) -> R {}
 }
 mod merge_iter {
 use core::cmp::Ordering;
@@ -10156,9 +6289,7 @@ where
     I: Clone,
     I::Item: Clone,
 {
-    fn clone(&self) -> Self {
-        Self { a: self.a.clone(), b: self.b.clone(), peeked: self.peeked.clone() }
-    }
+    fn clone(&self) -> Self {}
 }
 
 impl<I: Iterator> Debug for MergeIterInner<I>
@@ -10166,16 +6297,12 @@ where
     I: Debug,
     I::Item: Debug,
 {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("MergeIterInner").field(&self.a).field(&self.b).field(&self.peeked).finish()
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
 }
 
 impl<I: Iterator> MergeIterInner<I> {
     /// Creates a new core for an iterator merging a pair of sources.
-    pub fn new(a: I, b: I) -> Self {
-        MergeIterInner { a, b, peeked: None }
-    }
+    pub fn new(a: I, b: I) -> Self {}
 
     /// Returns the next pair of items stemming from the pair of sources
     /// being merged. If both returned options contain a value, that value
@@ -10190,44 +6317,13 @@ impl<I: Iterator> MergeIterInner<I> {
     ) -> (Option<I::Item>, Option<I::Item>)
     where
         I: FusedIterator,
-    {
-        let mut a_next;
-        let mut b_next;
-        match self.peeked.take() {
-            Some(Peeked::A(next)) => {
-                a_next = Some(next);
-                b_next = self.b.next();
-            }
-            Some(Peeked::B(next)) => {
-                b_next = Some(next);
-                a_next = self.a.next();
-            }
-            None => {
-                a_next = self.a.next();
-                b_next = self.b.next();
-            }
-        }
-        if let (Some(ref a1), Some(ref b1)) = (&a_next, &b_next) {
-            match cmp(a1, b1) {
-                Ordering::Less => self.peeked = b_next.take().map(Peeked::B),
-                Ordering::Greater => self.peeked = a_next.take().map(Peeked::A),
-                Ordering::Equal => (),
-            }
-        }
-        (a_next, b_next)
-    }
+    {}
 
     /// Returns a pair of upper bounds for the `size_hint` of the final iterator.
     pub fn lens(&self) -> (usize, usize)
     where
         I: ExactSizeIterator,
-    {
-        match self.peeked {
-            Some(Peeked::A(_)) => (1 + self.a.len(), self.b.len()),
-            Some(Peeked::B(_)) => (self.a.len(), 1 + self.b.len()),
-            _ => (self.a.len(), self.b.len()),
-        }
-    }
+    {}
 }
 }
 mod navigate {
@@ -10245,51 +6341,32 @@ pub struct LeafRange<BorrowType, K, V> {
 }
 
 impl<'a, K: 'a, V: 'a> Clone for LeafRange<marker::Immut<'a>, K, V> {
-    fn clone(&self) -> Self {
-        LeafRange { front: self.front.clone(), back: self.back.clone() }
-    }
+    fn clone(&self) -> Self {}
 }
 
 impl<BorrowType, K, V> LeafRange<BorrowType, K, V> {
-    pub fn none() -> Self {
-        LeafRange { front: None, back: None }
-    }
+    pub fn none() -> Self {}
 
-    fn is_empty(&self) -> bool {
-        self.front == self.back
-    }
+    fn is_empty(&self) -> bool {}
 
     /// Temporarily takes out another, immutable equivalent of the same range.
-    pub fn reborrow(&self) -> LeafRange<marker::Immut<'_>, K, V> {
-        LeafRange {
-            front: self.front.as_ref().map(|f| f.reborrow()),
-            back: self.back.as_ref().map(|b| b.reborrow()),
-        }
-    }
+    pub fn reborrow(&self) -> LeafRange<marker::Immut<'_>, K, V> {}
 }
 
 impl<'a, K, V> LeafRange<marker::Immut<'a>, K, V> {
     #[inline]
-    pub fn next_checked(&mut self) -> Option<(&'a K, &'a V)> {
-        self.perform_next_checked(|kv| kv.into_kv())
-    }
+    pub fn next_checked(&mut self) -> Option<(&'a K, &'a V)> {}
 
     #[inline]
-    pub fn next_back_checked(&mut self) -> Option<(&'a K, &'a V)> {
-        self.perform_next_back_checked(|kv| kv.into_kv())
-    }
+    pub fn next_back_checked(&mut self) -> Option<(&'a K, &'a V)> {}
 }
 
 impl<'a, K, V> LeafRange<marker::ValMut<'a>, K, V> {
     #[inline]
-    pub fn next_checked(&mut self) -> Option<(&'a K, &'a mut V)> {
-        self.perform_next_checked(|kv| unsafe { ptr::read(kv) }.into_kv_valmut())
-    }
+    pub fn next_checked(&mut self) -> Option<(&'a K, &'a mut V)> {}
 
     #[inline]
-    pub fn next_back_checked(&mut self) -> Option<(&'a K, &'a mut V)> {
-        self.perform_next_back_checked(|kv| unsafe { ptr::read(kv) }.into_kv_valmut())
-    }
+    pub fn next_back_checked(&mut self) -> Option<(&'a K, &'a mut V)> {}
 }
 
 impl<BorrowType: marker::BorrowType, K, V> LeafRange<BorrowType, K, V> {
@@ -10297,33 +6374,13 @@ impl<BorrowType: marker::BorrowType, K, V> LeafRange<BorrowType, K, V> {
     fn perform_next_checked<F, R>(&mut self, f: F) -> Option<R>
     where
         F: Fn(&Handle<NodeRef<BorrowType, K, V, marker::LeafOrInternal>, marker::KV>) -> R,
-    {
-        if self.is_empty() {
-            None
-        } else {
-            super::mem::replace(self.front.as_mut().unwrap(), |front| {
-                let kv = front.next_kv().ok().unwrap();
-                let result = f(&kv);
-                (kv.next_leaf_edge(), Some(result))
-            })
-        }
-    }
+    {}
 
     /// If possible, extract some result from the preceding KV and move to the edge beyond it.
     fn perform_next_back_checked<F, R>(&mut self, f: F) -> Option<R>
     where
         F: Fn(&Handle<NodeRef<BorrowType, K, V, marker::LeafOrInternal>, marker::KV>) -> R,
-    {
-        if self.is_empty() {
-            None
-        } else {
-            super::mem::replace(self.back.as_mut().unwrap(), |back| {
-                let kv = back.next_back_kv().ok().unwrap();
-                let result = f(&kv);
-                (kv.next_back_leaf_edge(), Some(result))
-            })
-        }
-    }
+    {}
 }
 
 enum LazyLeafHandle<BorrowType, K, V> {
@@ -10332,21 +6389,11 @@ enum LazyLeafHandle<BorrowType, K, V> {
 }
 
 impl<'a, K: 'a, V: 'a> Clone for LazyLeafHandle<marker::Immut<'a>, K, V> {
-    fn clone(&self) -> Self {
-        match self {
-            LazyLeafHandle::Root(root) => LazyLeafHandle::Root(*root),
-            LazyLeafHandle::Edge(edge) => LazyLeafHandle::Edge(*edge),
-        }
-    }
+    fn clone(&self) -> Self {}
 }
 
 impl<BorrowType, K, V> LazyLeafHandle<BorrowType, K, V> {
-    fn reborrow(&self) -> LazyLeafHandle<marker::Immut<'_>, K, V> {
-        match self {
-            LazyLeafHandle::Root(root) => LazyLeafHandle::Root(root.reborrow()),
-            LazyLeafHandle::Edge(edge) => LazyLeafHandle::Edge(edge.reborrow()),
-        }
-    }
+    fn reborrow(&self) -> LazyLeafHandle<marker::Immut<'_>, K, V> {}
 }
 
 // `front` and `back` are always both `None` or both `Some`.
@@ -10356,113 +6403,59 @@ pub struct LazyLeafRange<BorrowType, K, V> {
 }
 
 impl<'a, K: 'a, V: 'a> Clone for LazyLeafRange<marker::Immut<'a>, K, V> {
-    fn clone(&self) -> Self {
-        LazyLeafRange { front: self.front.clone(), back: self.back.clone() }
-    }
+    fn clone(&self) -> Self {}
 }
 
 impl<BorrowType, K, V> LazyLeafRange<BorrowType, K, V> {
-    pub fn none() -> Self {
-        LazyLeafRange { front: None, back: None }
-    }
+    pub fn none() -> Self {}
 
     /// Temporarily takes out another, immutable equivalent of the same range.
-    pub fn reborrow(&self) -> LazyLeafRange<marker::Immut<'_>, K, V> {
-        LazyLeafRange {
-            front: self.front.as_ref().map(|f| f.reborrow()),
-            back: self.back.as_ref().map(|b| b.reborrow()),
-        }
-    }
+    pub fn reborrow(&self) -> LazyLeafRange<marker::Immut<'_>, K, V> {}
 }
 
 impl<'a, K, V> LazyLeafRange<marker::Immut<'a>, K, V> {
     #[inline]
-    pub unsafe fn next_unchecked(&mut self) -> (&'a K, &'a V) {
-        unsafe { self.init_front().unwrap().next_unchecked() }
-    }
+    pub unsafe fn next_unchecked(&mut self) -> (&'a K, &'a V) {}
 
     #[inline]
-    pub unsafe fn next_back_unchecked(&mut self) -> (&'a K, &'a V) {
-        unsafe { self.init_back().unwrap().next_back_unchecked() }
-    }
+    pub unsafe fn next_back_unchecked(&mut self) -> (&'a K, &'a V) {}
 }
 
 impl<'a, K, V> LazyLeafRange<marker::ValMut<'a>, K, V> {
     #[inline]
-    pub unsafe fn next_unchecked(&mut self) -> (&'a K, &'a mut V) {
-        unsafe { self.init_front().unwrap().next_unchecked() }
-    }
+    pub unsafe fn next_unchecked(&mut self) -> (&'a K, &'a mut V) {}
 
     #[inline]
-    pub unsafe fn next_back_unchecked(&mut self) -> (&'a K, &'a mut V) {
-        unsafe { self.init_back().unwrap().next_back_unchecked() }
-    }
+    pub unsafe fn next_back_unchecked(&mut self) -> (&'a K, &'a mut V) {}
 }
 
 impl<K, V> LazyLeafRange<marker::Dying, K, V> {
     fn take_front(
         &mut self,
-    ) -> Option<Handle<NodeRef<marker::Dying, K, V, marker::Leaf>, marker::Edge>> {
-        match self.front.take()? {
-            LazyLeafHandle::Root(root) => Some(root.first_leaf_edge()),
-            LazyLeafHandle::Edge(edge) => Some(edge),
-        }
-    }
+    ) -> Option<Handle<NodeRef<marker::Dying, K, V, marker::Leaf>, marker::Edge>> {}
 
     #[inline]
     pub unsafe fn deallocating_next_unchecked(
         &mut self,
-    ) -> Handle<NodeRef<marker::Dying, K, V, marker::LeafOrInternal>, marker::KV> {
-        debug_assert!(self.front.is_some());
-        let front = self.init_front().unwrap();
-        unsafe { front.deallocating_next_unchecked() }
-    }
+    ) -> Handle<NodeRef<marker::Dying, K, V, marker::LeafOrInternal>, marker::KV> {}
 
     #[inline]
     pub unsafe fn deallocating_next_back_unchecked(
         &mut self,
-    ) -> Handle<NodeRef<marker::Dying, K, V, marker::LeafOrInternal>, marker::KV> {
-        debug_assert!(self.back.is_some());
-        let back = self.init_back().unwrap();
-        unsafe { back.deallocating_next_back_unchecked() }
-    }
+    ) -> Handle<NodeRef<marker::Dying, K, V, marker::LeafOrInternal>, marker::KV> {}
 
     #[inline]
-    pub fn deallocating_end(&mut self) {
-        if let Some(front) = self.take_front() {
-            front.deallocating_end()
-        }
-    }
+    pub fn deallocating_end(&mut self) {}
 }
 
 impl<BorrowType: marker::BorrowType, K, V> LazyLeafRange<BorrowType, K, V> {
     fn init_front(
         &mut self,
-    ) -> Option<&mut Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge>> {
-        if let Some(LazyLeafHandle::Root(root)) = &self.front {
-            self.front = Some(LazyLeafHandle::Edge(unsafe { ptr::read(root) }.first_leaf_edge()));
-        }
-        match &mut self.front {
-            None => None,
-            Some(LazyLeafHandle::Edge(edge)) => Some(edge),
-            // SAFETY: the code above would have replaced it.
-            Some(LazyLeafHandle::Root(_)) => unsafe { hint::unreachable_unchecked() },
-        }
-    }
+    ) -> Option<&mut Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge>> {}
 
     fn init_back(
         &mut self,
-    ) -> Option<&mut Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge>> {
-        if let Some(LazyLeafHandle::Root(root)) = &self.back {
-            self.back = Some(LazyLeafHandle::Edge(unsafe { ptr::read(root) }.last_leaf_edge()));
-        }
-        match &mut self.back {
-            None => None,
-            Some(LazyLeafHandle::Edge(edge)) => Some(edge),
-            // SAFETY: the code above would have replaced it.
-            Some(LazyLeafHandle::Root(_)) => unsafe { hint::unreachable_unchecked() },
-        }
-    }
+    ) -> Option<&mut Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge>> {}
 }
 
 impl<BorrowType: marker::BorrowType, K, V> NodeRef<BorrowType, K, V, marker::LeafOrInternal> {
@@ -10487,44 +6480,13 @@ impl<BorrowType: marker::BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Lea
         Q: Ord,
         K: Borrow<Q>,
         R: RangeBounds<Q>,
-    {
-        match self.search_tree_for_bifurcation(&range) {
-            Err(_) => LeafRange::none(),
-            Ok((
-                node,
-                lower_edge_idx,
-                upper_edge_idx,
-                mut lower_child_bound,
-                mut upper_child_bound,
-            )) => {
-                let mut lower_edge = unsafe { Handle::new_edge(ptr::read(&node), lower_edge_idx) };
-                let mut upper_edge = unsafe { Handle::new_edge(node, upper_edge_idx) };
-                loop {
-                    match (lower_edge.force(), upper_edge.force()) {
-                        (Leaf(f), Leaf(b)) => return LeafRange { front: Some(f), back: Some(b) },
-                        (Internal(f), Internal(b)) => {
-                            (lower_edge, lower_child_bound) =
-                                f.descend().find_lower_bound_edge(lower_child_bound);
-                            (upper_edge, upper_child_bound) =
-                                b.descend().find_upper_bound_edge(upper_child_bound);
-                        }
-                        _ => unreachable!("BTreeMap has different depths"),
-                    }
-                }
-            }
-        }
-    }
+    {}
 }
 
 fn full_range<BorrowType: marker::BorrowType, K, V>(
     root1: NodeRef<BorrowType, K, V, marker::LeafOrInternal>,
     root2: NodeRef<BorrowType, K, V, marker::LeafOrInternal>,
-) -> LazyLeafRange<BorrowType, K, V> {
-    LazyLeafRange {
-        front: Some(LazyLeafHandle::Root(root1)),
-        back: Some(LazyLeafHandle::Root(root2)),
-    }
-}
+) -> LazyLeafRange<BorrowType, K, V> {}
 
 impl<'a, K: 'a, V: 'a> NodeRef<marker::Immut<'a>, K, V, marker::LeafOrInternal> {
     /// Finds the pair of leaf edges delimiting a specific range in a tree.
@@ -10536,15 +6498,10 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Immut<'a>, K, V, marker::LeafOrInternal> 
         Q: ?Sized + Ord,
         K: Borrow<Q>,
         R: RangeBounds<Q>,
-    {
-        // SAFETY: our borrow type is immutable.
-        unsafe { self.find_leaf_edges_spanning_range(range) }
-    }
+    {}
 
     /// Finds the pair of leaf edges delimiting an entire tree.
-    pub fn full_range(self) -> LazyLeafRange<marker::Immut<'a>, K, V> {
-        full_range(self, self)
-    }
+    pub fn full_range(self) -> LazyLeafRange<marker::Immut<'a>, K, V> {}
 }
 
 impl<'a, K: 'a, V: 'a> NodeRef<marker::ValMut<'a>, K, V, marker::LeafOrInternal> {
@@ -10562,31 +6519,19 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::ValMut<'a>, K, V, marker::LeafOrInternal>
         Q: ?Sized + Ord,
         K: Borrow<Q>,
         R: RangeBounds<Q>,
-    {
-        unsafe { self.find_leaf_edges_spanning_range(range) }
-    }
+    {}
 
     /// Splits a unique reference into a pair of leaf edges delimiting the full range of the tree.
     /// The results are non-unique references allowing mutation (of values only), so must be used
     /// with care.
-    pub fn full_range(self) -> LazyLeafRange<marker::ValMut<'a>, K, V> {
-        // We duplicate the root NodeRef here -- we will never visit the same KV
-        // twice, and never end up with overlapping value references.
-        let self2 = unsafe { ptr::read(&self) };
-        full_range(self, self2)
-    }
+    pub fn full_range(self) -> LazyLeafRange<marker::ValMut<'a>, K, V> {}
 }
 
 impl<K, V> NodeRef<marker::Dying, K, V, marker::LeafOrInternal> {
     /// Splits a unique reference into a pair of leaf edges delimiting the full range of the tree.
     /// The results are non-unique references allowing massively destructive mutation, so must be
     /// used with the utmost care.
-    pub fn full_range(self) -> LazyLeafRange<marker::Dying, K, V> {
-        // We duplicate the root NodeRef here -- we will never access it in a way
-        // that overlaps references obtained from the root.
-        let self2 = unsafe { ptr::read(&self) };
-        full_range(self, self2)
-    }
+    pub fn full_range(self) -> LazyLeafRange<marker::Dying, K, V> {}
 }
 
 impl<BorrowType: marker::BorrowType, K, V>
@@ -10600,18 +6545,7 @@ impl<BorrowType: marker::BorrowType, K, V>
     ) -> Result<
         Handle<NodeRef<BorrowType, K, V, marker::LeafOrInternal>, marker::KV>,
         NodeRef<BorrowType, K, V, marker::LeafOrInternal>,
-    > {
-        let mut edge = self.forget_node_type();
-        loop {
-            edge = match edge.right_kv() {
-                Ok(kv) => return Ok(kv),
-                Err(last_edge) => match last_edge.into_node().ascend() {
-                    Ok(parent_edge) => parent_edge.forget_node_type(),
-                    Err(root) => return Err(root),
-                },
-            }
-        }
-    }
+    > {}
 
     /// Given a leaf edge handle, returns [`Result::Ok`] with a handle to the neighboring KV
     /// on the left side, which is either in the same leaf node or in an ancestor node.
@@ -10621,18 +6555,7 @@ impl<BorrowType: marker::BorrowType, K, V>
     ) -> Result<
         Handle<NodeRef<BorrowType, K, V, marker::LeafOrInternal>, marker::KV>,
         NodeRef<BorrowType, K, V, marker::LeafOrInternal>,
-    > {
-        let mut edge = self.forget_node_type();
-        loop {
-            edge = match edge.left_kv() {
-                Ok(kv) => return Ok(kv),
-                Err(last_edge) => match last_edge.into_node().ascend() {
-                    Ok(parent_edge) => parent_edge.forget_node_type(),
-                    Err(root) => return Err(root),
-                },
-            }
-        }
-    }
+    > {}
 }
 
 impl<BorrowType: marker::BorrowType, K, V>
@@ -10646,18 +6569,7 @@ impl<BorrowType: marker::BorrowType, K, V>
     ) -> Result<
         Handle<NodeRef<BorrowType, K, V, marker::Internal>, marker::KV>,
         NodeRef<BorrowType, K, V, marker::Internal>,
-    > {
-        let mut edge = self;
-        loop {
-            edge = match edge.right_kv() {
-                Ok(internal_kv) => return Ok(internal_kv),
-                Err(last_edge) => match last_edge.into_node().ascend() {
-                    Ok(parent_edge) => parent_edge,
-                    Err(root) => return Err(root),
-                },
-            }
-        }
-    }
+    > {}
 }
 
 impl<K, V> Handle<NodeRef<marker::Dying, K, V, marker::Leaf>, marker::Edge> {
@@ -10677,18 +6589,7 @@ impl<K, V> Handle<NodeRef<marker::Dying, K, V, marker::Leaf>, marker::Edge> {
     unsafe fn deallocating_next(
         self,
     ) -> Option<(Self, Handle<NodeRef<marker::Dying, K, V, marker::LeafOrInternal>, marker::KV>)>
-    {
-        let mut edge = self.forget_node_type();
-        loop {
-            edge = match edge.right_kv() {
-                Ok(kv) => return Some((unsafe { ptr::read(&kv) }.next_leaf_edge(), kv)),
-                Err(last_edge) => match unsafe { last_edge.into_node().deallocate_and_ascend() } {
-                    Some(parent_edge) => parent_edge.forget_node_type(),
-                    None => return None,
-                },
-            }
-        }
-    }
+    {}
 
     /// Given a leaf edge handle into a dying tree, returns the next leaf edge
     /// on the left side, and the key-value pair in between, if they exist.
@@ -10706,18 +6607,7 @@ impl<K, V> Handle<NodeRef<marker::Dying, K, V, marker::Leaf>, marker::Edge> {
     unsafe fn deallocating_next_back(
         self,
     ) -> Option<(Self, Handle<NodeRef<marker::Dying, K, V, marker::LeafOrInternal>, marker::KV>)>
-    {
-        let mut edge = self.forget_node_type();
-        loop {
-            edge = match edge.left_kv() {
-                Ok(kv) => return Some((unsafe { ptr::read(&kv) }.next_back_leaf_edge(), kv)),
-                Err(last_edge) => match unsafe { last_edge.into_node().deallocate_and_ascend() } {
-                    Some(parent_edge) => parent_edge.forget_node_type(),
-                    None => return None,
-                },
-            }
-        }
-    }
+    {}
 
     /// Deallocates a pile of nodes from the leaf up to the root.
     /// This is the only way to deallocate the remainder of a tree after
@@ -10725,12 +6615,7 @@ impl<K, V> Handle<NodeRef<marker::Dying, K, V, marker::Leaf>, marker::Edge> {
     /// both sides of the tree, and have hit the same edge. As it is intended
     /// only to be called when all keys and values have been returned,
     /// no cleanup is done on any of the keys or values.
-    fn deallocating_end(self) {
-        let mut edge = self.forget_node_type();
-        while let Some(parent_edge) = unsafe { edge.into_node().deallocate_and_ascend() } {
-            edge = parent_edge.forget_node_type();
-        }
-    }
+    fn deallocating_end(self) {}
 }
 
 impl<'a, K, V> Handle<NodeRef<marker::Immut<'a>, K, V, marker::Leaf>, marker::Edge> {
@@ -10739,24 +6624,14 @@ impl<'a, K, V> Handle<NodeRef<marker::Immut<'a>, K, V, marker::Leaf>, marker::Ed
     ///
     /// # Safety
     /// There must be another KV in the direction travelled.
-    unsafe fn next_unchecked(&mut self) -> (&'a K, &'a V) {
-        super::mem::replace(self, |leaf_edge| {
-            let kv = leaf_edge.next_kv().ok().unwrap();
-            (kv.next_leaf_edge(), kv.into_kv())
-        })
-    }
+    unsafe fn next_unchecked(&mut self) -> (&'a K, &'a V) {}
 
     /// Moves the leaf edge handle to the previous leaf edge and returns references to the
     /// key and value in between.
     ///
     /// # Safety
     /// There must be another KV in the direction travelled.
-    unsafe fn next_back_unchecked(&mut self) -> (&'a K, &'a V) {
-        super::mem::replace(self, |leaf_edge| {
-            let kv = leaf_edge.next_back_kv().ok().unwrap();
-            (kv.next_back_leaf_edge(), kv.into_kv())
-        })
-    }
+    unsafe fn next_back_unchecked(&mut self) -> (&'a K, &'a V) {}
 }
 
 impl<'a, K, V> Handle<NodeRef<marker::ValMut<'a>, K, V, marker::Leaf>, marker::Edge> {
@@ -10765,28 +6640,14 @@ impl<'a, K, V> Handle<NodeRef<marker::ValMut<'a>, K, V, marker::Leaf>, marker::E
     ///
     /// # Safety
     /// There must be another KV in the direction travelled.
-    unsafe fn next_unchecked(&mut self) -> (&'a K, &'a mut V) {
-        let kv = super::mem::replace(self, |leaf_edge| {
-            let kv = leaf_edge.next_kv().ok().unwrap();
-            (unsafe { ptr::read(&kv) }.next_leaf_edge(), kv)
-        });
-        // Doing this last is faster, according to benchmarks.
-        kv.into_kv_valmut()
-    }
+    unsafe fn next_unchecked(&mut self) -> (&'a K, &'a mut V) {}
 
     /// Moves the leaf edge handle to the previous leaf and returns references to the
     /// key and value in between.
     ///
     /// # Safety
     /// There must be another KV in the direction travelled.
-    unsafe fn next_back_unchecked(&mut self) -> (&'a K, &'a mut V) {
-        let kv = super::mem::replace(self, |leaf_edge| {
-            let kv = leaf_edge.next_back_kv().ok().unwrap();
-            (unsafe { ptr::read(&kv) }.next_back_leaf_edge(), kv)
-        });
-        // Doing this last is faster, according to benchmarks.
-        kv.into_kv_valmut()
-    }
+    unsafe fn next_back_unchecked(&mut self) -> (&'a K, &'a mut V) {}
 }
 
 impl<K, V> Handle<NodeRef<marker::Dying, K, V, marker::Leaf>, marker::Edge> {
@@ -10804,9 +6665,7 @@ impl<K, V> Handle<NodeRef<marker::Dying, K, V, marker::Leaf>, marker::Edge> {
     /// or call this method or counterpart `deallocating_next_back_unchecked` again.
     unsafe fn deallocating_next_unchecked(
         &mut self,
-    ) -> Handle<NodeRef<marker::Dying, K, V, marker::LeafOrInternal>, marker::KV> {
-        super::mem::replace(self, |leaf_edge| unsafe { leaf_edge.deallocating_next().unwrap() })
-    }
+    ) -> Handle<NodeRef<marker::Dying, K, V, marker::LeafOrInternal>, marker::KV> {}
 
     /// Moves the leaf edge handle to the previous leaf edge and returns the key and value
     /// in between, deallocating any node left behind while leaving the corresponding
@@ -10822,39 +6681,19 @@ impl<K, V> Handle<NodeRef<marker::Dying, K, V, marker::Leaf>, marker::Edge> {
     /// or call this method or counterpart `deallocating_next_unchecked` again.
     unsafe fn deallocating_next_back_unchecked(
         &mut self,
-    ) -> Handle<NodeRef<marker::Dying, K, V, marker::LeafOrInternal>, marker::KV> {
-        super::mem::replace(self, |leaf_edge| unsafe {
-            leaf_edge.deallocating_next_back().unwrap()
-        })
-    }
+    ) -> Handle<NodeRef<marker::Dying, K, V, marker::LeafOrInternal>, marker::KV> {}
 }
 
 impl<BorrowType: marker::BorrowType, K, V> NodeRef<BorrowType, K, V, marker::LeafOrInternal> {
     /// Returns the leftmost leaf edge in or underneath a node - in other words, the edge
     /// you need first when navigating forward (or last when navigating backward).
     #[inline]
-    pub fn first_leaf_edge(self) -> Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge> {
-        let mut node = self;
-        loop {
-            match node.force() {
-                Leaf(leaf) => return leaf.first_edge(),
-                Internal(internal) => node = internal.first_edge().descend(),
-            }
-        }
-    }
+    pub fn first_leaf_edge(self) -> Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge> {}
 
     /// Returns the rightmost leaf edge in or underneath a node - in other words, the edge
     /// you need last when navigating forward (or first when navigating backward).
     #[inline]
-    pub fn last_leaf_edge(self) -> Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge> {
-        let mut node = self;
-        loop {
-            match node.force() {
-                Leaf(leaf) => return leaf.last_edge(),
-                Internal(internal) => node = internal.last_edge().descend(),
-            }
-        }
-    }
+    pub fn last_leaf_edge(self) -> Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge> {}
 }
 
 pub enum Position<BorrowType, K, V> {
@@ -10870,70 +6709,20 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Immut<'a>, K, V, marker::LeafOrInternal> 
     pub fn visit_nodes_in_order<F>(self, mut visit: F)
     where
         F: FnMut(Position<marker::Immut<'a>, K, V>),
-    {
-        match self.force() {
-            Leaf(leaf) => visit(Position::Leaf(leaf)),
-            Internal(internal) => {
-                visit(Position::Internal(internal));
-                let mut edge = internal.first_edge();
-                loop {
-                    edge = match edge.descend().force() {
-                        Leaf(leaf) => {
-                            visit(Position::Leaf(leaf));
-                            match edge.next_kv() {
-                                Ok(kv) => {
-                                    visit(Position::InternalKV(kv));
-                                    kv.right_edge()
-                                }
-                                Err(_) => return,
-                            }
-                        }
-                        Internal(internal) => {
-                            visit(Position::Internal(internal));
-                            internal.first_edge()
-                        }
-                    }
-                }
-            }
-        }
-    }
+    {}
 
     /// Calculates the number of elements in a (sub)tree.
-    pub fn calc_length(self) -> usize {
-        let mut result = 0;
-        self.visit_nodes_in_order(|pos| match pos {
-            Position::Leaf(node) => result += node.len(),
-            Position::Internal(node) => result += node.len(),
-            Position::InternalKV(_) => (),
-        });
-        result
-    }
+    pub fn calc_length(self) -> usize {}
 }
 
 impl<BorrowType: marker::BorrowType, K, V>
     Handle<NodeRef<BorrowType, K, V, marker::LeafOrInternal>, marker::KV>
 {
     /// Returns the leaf edge closest to a KV for forward navigation.
-    pub fn next_leaf_edge(self) -> Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge> {
-        match self.force() {
-            Leaf(leaf_kv) => leaf_kv.right_edge(),
-            Internal(internal_kv) => {
-                let next_internal_edge = internal_kv.right_edge();
-                next_internal_edge.descend().first_leaf_edge()
-            }
-        }
-    }
+    pub fn next_leaf_edge(self) -> Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge> {}
 
     /// Returns the leaf edge closest to a KV for backward navigation.
-    fn next_back_leaf_edge(self) -> Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge> {
-        match self.force() {
-            Leaf(leaf_kv) => leaf_kv.left_edge(),
-            Internal(internal_kv) => {
-                let next_internal_edge = internal_kv.left_edge();
-                next_internal_edge.descend().last_leaf_edge()
-            }
-        }
-    }
+    fn next_back_leaf_edge(self) -> Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge> {}
 }
 }
 mod node {
@@ -11006,24 +6795,10 @@ struct LeafNode<K, V> {
 
 impl<K, V> LeafNode<K, V> {
     /// Initializes a new `LeafNode` in-place.
-    unsafe fn init(this: *mut Self) {
-        // As a general policy, we leave fields uninitialized if they can be, as this should
-        // be both slightly faster and easier to track in Valgrind.
-        unsafe {
-            // parent_idx, keys, and vals are all MaybeUninit
-            ptr::addr_of_mut!((*this).parent).write(None);
-            ptr::addr_of_mut!((*this).len).write(0);
-        }
-    }
+    unsafe fn init(this: *mut Self) {}
 
     /// Creates a new boxed `LeafNode`.
-    fn new() -> Box<Self> {
-        unsafe {
-            let mut leaf = Box::new_uninit();
-            LeafNode::init(leaf.as_mut_ptr());
-            leaf.assume_init()
-        }
-    }
+    fn new() -> Box<Self> {}
 }
 
 /// The underlying representation of internal nodes. As with `LeafNode`s, these should be hidden
@@ -11049,14 +6824,7 @@ impl<K, V> InternalNode<K, V> {
     /// An invariant of internal nodes is that they have at least one
     /// initialized and valid edge. This function does not set up
     /// such an edge.
-    unsafe fn new() -> Box<Self> {
-        unsafe {
-            let mut node = Box::<Self>::new_uninit();
-            // We only need to initialize the data; the edges are MaybeUninit.
-            LeafNode::init(ptr::addr_of_mut!((*node.as_mut_ptr()).data));
-            node.assume_init()
-        }
-    }
+    unsafe fn new() -> Box<Self> {}
 }
 
 /// A managed, non-null pointer to a node. This is either an owned pointer to
@@ -11138,9 +6906,7 @@ pub type Root<K, V> = NodeRef<marker::Owned, K, V, marker::LeafOrInternal>;
 
 impl<'a, K: 'a, V: 'a, Type> Copy for NodeRef<marker::Immut<'a>, K, V, Type> {}
 impl<'a, K: 'a, V: 'a, Type> Clone for NodeRef<marker::Immut<'a>, K, V, Type> {
-    fn clone(&self) -> Self {
-        *self
-    }
+    fn clone(&self) -> Self {}
 }
 
 unsafe impl<BorrowType, K: Sync, V: Sync, Type> Sync for NodeRef<BorrowType, K, V, Type> {}
@@ -11152,57 +6918,34 @@ unsafe impl<K: Send, V: Send, Type> Send for NodeRef<marker::Owned, K, V, Type> 
 unsafe impl<K: Send, V: Send, Type> Send for NodeRef<marker::Dying, K, V, Type> {}
 
 impl<K, V> NodeRef<marker::Owned, K, V, marker::Leaf> {
-    fn new_leaf() -> Self {
-        Self::from_new_leaf(LeafNode::new())
-    }
+    fn new_leaf() -> Self {}
 
-    fn from_new_leaf(leaf: Box<LeafNode<K, V>>) -> Self {
-        NodeRef { height: 0, node: NonNull::from(Box::leak(leaf)), _marker: PhantomData }
-    }
+    fn from_new_leaf(leaf: Box<LeafNode<K, V>>) -> Self {}
 }
 
 impl<K, V> NodeRef<marker::Owned, K, V, marker::Internal> {
-    fn new_internal(child: Root<K, V>) -> Self {
-        let mut new_node = unsafe { InternalNode::new() };
-        new_node.edges[0].write(child.node);
-        unsafe { NodeRef::from_new_internal(new_node, child.height + 1) }
-    }
+    fn new_internal(child: Root<K, V>) -> Self {}
 
     /// # Safety
     /// `height` must not be zero.
-    unsafe fn from_new_internal(internal: Box<InternalNode<K, V>>, height: usize) -> Self {
-        debug_assert!(height > 0);
-        let node = NonNull::from(Box::leak(internal)).cast();
-        let mut this = NodeRef { height, node, _marker: PhantomData };
-        this.borrow_mut().correct_all_childrens_parent_links();
-        this
-    }
+    unsafe fn from_new_internal(internal: Box<InternalNode<K, V>>, height: usize) -> Self {}
 }
 
 impl<BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Internal> {
     /// Unpack a node reference that was packed as `NodeRef::parent`.
-    fn from_internal(node: NonNull<InternalNode<K, V>>, height: usize) -> Self {
-        debug_assert!(height > 0);
-        NodeRef { height, node: node.cast(), _marker: PhantomData }
-    }
+    fn from_internal(node: NonNull<InternalNode<K, V>>, height: usize) -> Self {}
 }
 
 impl<BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Internal> {
     /// Exposes the data of an internal node.
     ///
     /// Returns a raw ptr to avoid invalidating other references to this node.
-    fn as_internal_ptr(this: &Self) -> *mut InternalNode<K, V> {
-        // SAFETY: the static node type is `Internal`.
-        this.node.as_ptr() as *mut InternalNode<K, V>
-    }
+    fn as_internal_ptr(this: &Self) -> *mut InternalNode<K, V> {}
 }
 
 impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
     /// Borrows exclusive access to the data of an internal node.
-    fn as_internal_mut(&mut self) -> &mut InternalNode<K, V> {
-        let ptr = Self::as_internal_ptr(self);
-        unsafe { &mut *ptr }
-    }
+    fn as_internal_mut(&mut self) -> &mut InternalNode<K, V> {}
 }
 
 impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
@@ -11210,35 +6953,22 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
     /// The number of edges is `len() + 1`.
     /// Note that, despite being safe, calling this function can have the side effect
     /// of invalidating mutable references that unsafe code has created.
-    pub fn len(&self) -> usize {
-        // Crucially, we only access the `len` field here. If BorrowType is marker::ValMut,
-        // there might be outstanding mutable references to values that we must not invalidate.
-        unsafe { usize::from((*Self::as_leaf_ptr(self)).len) }
-    }
+    pub fn len(&self) -> usize {}
 
     /// Returns the number of levels that the node and leaves are apart. Zero
     /// height means the node is a leaf itself. If you picture trees with the
     /// root on top, the number says at which elevation the node appears.
     /// If you picture trees with leaves on top, the number says how high
     /// the tree extends above the node.
-    pub fn height(&self) -> usize {
-        self.height
-    }
+    pub fn height(&self) -> usize {}
 
     /// Temporarily takes out another, immutable reference to the same node.
-    pub fn reborrow(&self) -> NodeRef<marker::Immut<'_>, K, V, Type> {
-        NodeRef { height: self.height, node: self.node, _marker: PhantomData }
-    }
+    pub fn reborrow(&self) -> NodeRef<marker::Immut<'_>, K, V, Type> {}
 
     /// Exposes the leaf portion of any leaf or internal node.
     ///
     /// Returns a raw ptr to avoid invalidating other references to this node.
-    fn as_leaf_ptr(this: &Self) -> *mut LeafNode<K, V> {
-        // The node must be valid for at least the LeafNode portion.
-        // This is not a reference in the NodeRef type because we don't know if
-        // it should be unique or shared.
-        this.node.as_ptr()
-    }
+    fn as_leaf_ptr(this: &Self) -> *mut LeafNode<K, V> {}
 }
 
 impl<BorrowType: marker::BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
@@ -11253,73 +6983,30 @@ impl<BorrowType: marker::BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type>
     /// both, upon success, do nothing.
     pub fn ascend(
         self,
-    ) -> Result<Handle<NodeRef<BorrowType, K, V, marker::Internal>, marker::Edge>, Self> {
-        assert!(BorrowType::PERMITS_TRAVERSAL);
-        // We need to use raw pointers to nodes because, if BorrowType is marker::ValMut,
-        // there might be outstanding mutable references to values that we must not invalidate.
-        let leaf_ptr: *const _ = Self::as_leaf_ptr(&self);
-        unsafe { (*leaf_ptr).parent }
-            .as_ref()
-            .map(|parent| Handle {
-                node: NodeRef::from_internal(*parent, self.height + 1),
-                idx: unsafe { usize::from((*leaf_ptr).parent_idx.assume_init()) },
-                _marker: PhantomData,
-            })
-            .ok_or(self)
-    }
+    ) -> Result<Handle<NodeRef<BorrowType, K, V, marker::Internal>, marker::Edge>, Self> {}
 
-    pub fn first_edge(self) -> Handle<Self, marker::Edge> {
-        unsafe { Handle::new_edge(self, 0) }
-    }
+    pub fn first_edge(self) -> Handle<Self, marker::Edge> {}
 
-    pub fn last_edge(self) -> Handle<Self, marker::Edge> {
-        let len = self.len();
-        unsafe { Handle::new_edge(self, len) }
-    }
+    pub fn last_edge(self) -> Handle<Self, marker::Edge> {}
 
     /// Note that `self` must be nonempty.
-    pub fn first_kv(self) -> Handle<Self, marker::KV> {
-        let len = self.len();
-        assert!(len > 0);
-        unsafe { Handle::new_kv(self, 0) }
-    }
+    pub fn first_kv(self) -> Handle<Self, marker::KV> {}
 
     /// Note that `self` must be nonempty.
-    pub fn last_kv(self) -> Handle<Self, marker::KV> {
-        let len = self.len();
-        assert!(len > 0);
-        unsafe { Handle::new_kv(self, len - 1) }
-    }
+    pub fn last_kv(self) -> Handle<Self, marker::KV> {}
 }
 
 impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
     /// Could be a public implementation of PartialEq, but only used in this module.
-    fn eq(&self, other: &Self) -> bool {
-        let Self { node, height, _marker } = self;
-        if node.eq(&other.node) {
-            debug_assert_eq!(*height, other.height);
-            true
-        } else {
-            false
-        }
-    }
+    fn eq(&self, other: &Self) -> bool {}
 }
 
 impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Immut<'a>, K, V, Type> {
     /// Exposes the leaf portion of any leaf or internal node in an immutable tree.
-    fn into_leaf(self) -> &'a LeafNode<K, V> {
-        let ptr = Self::as_leaf_ptr(&self);
-        // SAFETY: there can be no mutable references into this tree borrowed as `Immut`.
-        unsafe { &*ptr }
-    }
+    fn into_leaf(self) -> &'a LeafNode<K, V> {}
 
     /// Borrows a view into the keys stored in the node.
-    pub fn keys(&self) -> &[K] {
-        let leaf = self.into_leaf();
-        unsafe {
-            MaybeUninit::slice_assume_init_ref(leaf.keys.get_unchecked(..usize::from(leaf.len)))
-        }
-    }
+    pub fn keys(&self) -> &[K] {}
 }
 
 impl<K, V> NodeRef<marker::Dying, K, V, marker::LeafOrInternal> {
@@ -11328,22 +7015,7 @@ impl<K, V> NodeRef<marker::Dying, K, V, marker::LeafOrInternal> {
     /// current node will still be accessible despite being deallocated.
     pub unsafe fn deallocate_and_ascend(
         self,
-    ) -> Option<Handle<NodeRef<marker::Dying, K, V, marker::Internal>, marker::Edge>> {
-        let height = self.height;
-        let node = self.node;
-        let ret = self.ascend().ok();
-        unsafe {
-            Global.deallocate(
-                node.cast(),
-                if height > 0 {
-                    Layout::new::<InternalNode<K, V>>()
-                } else {
-                    Layout::new::<LeafNode<K, V>>()
-                },
-            );
-        }
-        ret
-    }
+    ) -> Option<Handle<NodeRef<marker::Dying, K, V, marker::Internal>, marker::Edge>> {}
 }
 
 impl<'a, K, V, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
@@ -11357,32 +7029,18 @@ impl<'a, K, V, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
     // FIXME(@gereeter) consider adding yet another type parameter to `NodeRef`
     // that restricts the use of navigation methods on reborrowed pointers,
     // preventing this unsafety.
-    unsafe fn reborrow_mut(&mut self) -> NodeRef<marker::Mut<'_>, K, V, Type> {
-        NodeRef { height: self.height, node: self.node, _marker: PhantomData }
-    }
+    unsafe fn reborrow_mut(&mut self) -> NodeRef<marker::Mut<'_>, K, V, Type> {}
 
     /// Borrows exclusive access to the leaf portion of a leaf or internal node.
-    fn as_leaf_mut(&mut self) -> &mut LeafNode<K, V> {
-        let ptr = Self::as_leaf_ptr(self);
-        // SAFETY: we have exclusive access to the entire node.
-        unsafe { &mut *ptr }
-    }
+    fn as_leaf_mut(&mut self) -> &mut LeafNode<K, V> {}
 
     /// Offers exclusive access to the leaf portion of a leaf or internal node.
-    fn into_leaf_mut(mut self) -> &'a mut LeafNode<K, V> {
-        let ptr = Self::as_leaf_ptr(&mut self);
-        // SAFETY: we have exclusive access to the entire node.
-        unsafe { &mut *ptr }
-    }
+    fn into_leaf_mut(mut self) -> &'a mut LeafNode<K, V> {}
 }
 
 impl<K, V, Type> NodeRef<marker::Dying, K, V, Type> {
     /// Borrows exclusive access to the leaf portion of a dying leaf or internal node.
-    fn as_leaf_dying(&mut self) -> &mut LeafNode<K, V> {
-        let ptr = Self::as_leaf_ptr(self);
-        // SAFETY: we have exclusive access to the entire node.
-        unsafe { &mut *ptr }
-    }
+    fn as_leaf_dying(&mut self) -> &mut LeafNode<K, V> {}
 }
 
 impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
@@ -11393,12 +7051,7 @@ impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
     unsafe fn key_area_mut<I, Output: ?Sized>(&mut self, index: I) -> &mut Output
     where
         I: SliceIndex<[MaybeUninit<K>], Output = Output>,
-    {
-        // SAFETY: the caller will not be able to call further methods on self
-        // until the key slice reference is dropped, as we have unique access
-        // for the lifetime of the borrow.
-        unsafe { self.as_leaf_mut().keys.as_mut_slice().get_unchecked_mut(index) }
-    }
+    {}
 
     /// Borrows exclusive access to an element or slice of the node's value storage area.
     ///
@@ -11407,12 +7060,7 @@ impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
     unsafe fn val_area_mut<I, Output: ?Sized>(&mut self, index: I) -> &mut Output
     where
         I: SliceIndex<[MaybeUninit<V>], Output = Output>,
-    {
-        // SAFETY: the caller will not be able to call further methods on self
-        // until the value slice reference is dropped, as we have unique access
-        // for the lifetime of the borrow.
-        unsafe { self.as_leaf_mut().vals.as_mut_slice().get_unchecked_mut(index) }
-    }
+    {}
 }
 
 impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
@@ -11423,90 +7071,47 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
     unsafe fn edge_area_mut<I, Output: ?Sized>(&mut self, index: I) -> &mut Output
     where
         I: SliceIndex<[MaybeUninit<BoxedNode<K, V>>], Output = Output>,
-    {
-        // SAFETY: the caller will not be able to call further methods on self
-        // until the edge slice reference is dropped, as we have unique access
-        // for the lifetime of the borrow.
-        unsafe { self.as_internal_mut().edges.as_mut_slice().get_unchecked_mut(index) }
-    }
+    {}
 }
 
 impl<'a, K, V, Type> NodeRef<marker::ValMut<'a>, K, V, Type> {
     /// # Safety
     /// - The node has more than `idx` initialized elements.
-    unsafe fn into_key_val_mut_at(mut self, idx: usize) -> (&'a K, &'a mut V) {
-        // We only create a reference to the one element we are interested in,
-        // to avoid aliasing with outstanding references to other elements,
-        // in particular, those returned to the caller in earlier iterations.
-        let leaf = Self::as_leaf_ptr(&mut self);
-        let keys = unsafe { ptr::addr_of!((*leaf).keys) };
-        let vals = unsafe { ptr::addr_of_mut!((*leaf).vals) };
-        // We must coerce to unsized array pointers because of Rust issue #74679.
-        let keys: *const [_] = keys;
-        let vals: *mut [_] = vals;
-        let key = unsafe { (&*keys.get_unchecked(idx)).assume_init_ref() };
-        let val = unsafe { (&mut *vals.get_unchecked_mut(idx)).assume_init_mut() };
-        (key, val)
-    }
+    unsafe fn into_key_val_mut_at(mut self, idx: usize) -> (&'a K, &'a mut V) {}
 }
 
 impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
     /// Borrows exclusive access to the length of the node.
-    pub fn len_mut(&mut self) -> &mut u16 {
-        &mut self.as_leaf_mut().len
-    }
+    pub fn len_mut(&mut self) -> &mut u16 {}
 }
 
 impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
     /// # Safety
     /// Every item returned by `range` is a valid edge index for the node.
-    unsafe fn correct_childrens_parent_links<R: Iterator<Item = usize>>(&mut self, range: R) {
-        for i in range {
-            debug_assert!(i <= self.len());
-            unsafe { Handle::new_edge(self.reborrow_mut(), i) }.correct_parent_link();
-        }
-    }
+    unsafe fn correct_childrens_parent_links<R: Iterator<Item = usize>>(&mut self, range: R) {}
 
-    fn correct_all_childrens_parent_links(&mut self) {
-        let len = self.len();
-        unsafe { self.correct_childrens_parent_links(0..=len) };
-    }
+    fn correct_all_childrens_parent_links(&mut self) {}
 }
 
 impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
     /// Sets the node's link to its parent edge,
     /// without invalidating other references to the node.
-    fn set_parent_link(&mut self, parent: NonNull<InternalNode<K, V>>, parent_idx: usize) {
-        let leaf = Self::as_leaf_ptr(self);
-        unsafe { (*leaf).parent = Some(parent) };
-        unsafe { (*leaf).parent_idx.write(parent_idx as u16) };
-    }
+    fn set_parent_link(&mut self, parent: NonNull<InternalNode<K, V>>, parent_idx: usize) {}
 }
 
 impl<K, V> NodeRef<marker::Owned, K, V, marker::LeafOrInternal> {
     /// Clears the root's link to its parent edge.
-    fn clear_parent_link(&mut self) {
-        let mut root_node = self.borrow_mut();
-        let leaf = root_node.as_leaf_mut();
-        leaf.parent = None;
-    }
+    fn clear_parent_link(&mut self) {}
 }
 
 impl<K, V> NodeRef<marker::Owned, K, V, marker::LeafOrInternal> {
     /// Returns a new owned tree, with its own root node that is initially empty.
-    pub fn new() -> Self {
-        NodeRef::new_leaf().forget_type()
-    }
+    pub fn new() -> Self {}
 
     /// Adds a new internal node with a single edge pointing to the previous root node,
     /// make that new node the root node, and return it. This increases the height by 1
     /// and is the opposite of `pop_internal_level`.
-    pub fn push_internal_level(&mut self) -> NodeRef<marker::Mut<'_>, K, V, marker::Internal> {
-        super::mem::take_mut(self, |old_root| NodeRef::new_internal(old_root).forget_type());
-
-        // `self.borrow_mut()`, except that we just forgot we're internal now:
-        NodeRef { height: self.height, node: self.node, _marker: PhantomData }
-    }
+    pub fn push_internal_level(&mut self) -> NodeRef<marker::Mut<'_>, K, V, marker::Internal> {}
 
     /// Removes the internal root node, using its first child as the new root node.
     /// As it is intended only to be called when the root node has only one child,
@@ -11517,91 +7122,42 @@ impl<K, V> NodeRef<marker::Owned, K, V, marker::LeafOrInternal> {
     /// it will not invalidate other handles or references to the root node.
     ///
     /// Panics if there is no internal level, i.e., if the root node is a leaf.
-    pub fn pop_internal_level(&mut self) {
-        assert!(self.height > 0);
-
-        let top = self.node;
-
-        // SAFETY: we asserted to be internal.
-        let internal_self = unsafe { self.borrow_mut().cast_to_internal_unchecked() };
-        // SAFETY: we borrowed `self` exclusively and its borrow type is exclusive.
-        let internal_node = unsafe { &mut *NodeRef::as_internal_ptr(&internal_self) };
-        // SAFETY: the first edge is always initialized.
-        self.node = unsafe { internal_node.edges[0].assume_init_read() };
-        self.height -= 1;
-        self.clear_parent_link();
-
-        unsafe {
-            Global.deallocate(top.cast(), Layout::new::<InternalNode<K, V>>());
-        }
-    }
+    pub fn pop_internal_level(&mut self) {}
 }
 
 impl<K, V, Type> NodeRef<marker::Owned, K, V, Type> {
     /// Mutably borrows the owned root node. Unlike `reborrow_mut`, this is safe
     /// because the return value cannot be used to destroy the root, and there
     /// cannot be other references to the tree.
-    pub fn borrow_mut(&mut self) -> NodeRef<marker::Mut<'_>, K, V, Type> {
-        NodeRef { height: self.height, node: self.node, _marker: PhantomData }
-    }
+    pub fn borrow_mut(&mut self) -> NodeRef<marker::Mut<'_>, K, V, Type> {}
 
     /// Slightly mutably borrows the owned root node.
-    pub fn borrow_valmut(&mut self) -> NodeRef<marker::ValMut<'_>, K, V, Type> {
-        NodeRef { height: self.height, node: self.node, _marker: PhantomData }
-    }
+    pub fn borrow_valmut(&mut self) -> NodeRef<marker::ValMut<'_>, K, V, Type> {}
 
     /// Irreversibly transitions to a reference that permits traversal and offers
     /// destructive methods and little else.
-    pub fn into_dying(self) -> NodeRef<marker::Dying, K, V, Type> {
-        NodeRef { height: self.height, node: self.node, _marker: PhantomData }
-    }
+    pub fn into_dying(self) -> NodeRef<marker::Dying, K, V, Type> {}
 }
 
 impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::Leaf> {
     /// Adds a key-value pair to the end of the node.
-    pub fn push(&mut self, key: K, val: V) {
-        let len = self.len_mut();
-        let idx = usize::from(*len);
-        assert!(idx < CAPACITY);
-        *len += 1;
-        unsafe {
-            self.key_area_mut(idx).write(key);
-            self.val_area_mut(idx).write(val);
-        }
-    }
+    pub fn push(&mut self, key: K, val: V) {}
 }
 
 impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
     /// Adds a key-value pair, and an edge to go to the right of that pair,
     /// to the end of the node.
-    pub fn push(&mut self, key: K, val: V, edge: Root<K, V>) {
-        assert!(edge.height == self.height - 1);
-
-        let len = self.len_mut();
-        let idx = usize::from(*len);
-        assert!(idx < CAPACITY);
-        *len += 1;
-        unsafe {
-            self.key_area_mut(idx).write(key);
-            self.val_area_mut(idx).write(val);
-            self.edge_area_mut(idx + 1).write(edge.node);
-            Handle::new_edge(self.reborrow_mut(), idx + 1).correct_parent_link();
-        }
-    }
+    pub fn push(&mut self, key: K, val: V, edge: Root<K, V>) {}
 }
 
 impl<BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Leaf> {
     /// Removes any static information asserting that this node is a `Leaf` node.
-    pub fn forget_type(self) -> NodeRef<BorrowType, K, V, marker::LeafOrInternal> {
-        NodeRef { height: self.height, node: self.node, _marker: PhantomData }
-    }
+    pub fn forget_type(self) -> NodeRef<BorrowType, K, V, marker::LeafOrInternal> {}
 }
 
 impl<BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Internal> {
     /// Removes any static information asserting that this node is an `Internal` node.
-    pub fn forget_type(self) -> NodeRef<BorrowType, K, V, marker::LeafOrInternal> {
-        NodeRef { height: self.height, node: self.node, _marker: PhantomData }
-    }
+    pub fn forget_type(self) -> NodeRef<BorrowType, K, V, marker::LeafOrInternal> {}
 }
 
 impl<BorrowType, K, V> NodeRef<BorrowType, K, V, marker::LeafOrInternal> {
@@ -11611,35 +7167,15 @@ impl<BorrowType, K, V> NodeRef<BorrowType, K, V, marker::LeafOrInternal> {
     ) -> ForceResult<
         NodeRef<BorrowType, K, V, marker::Leaf>,
         NodeRef<BorrowType, K, V, marker::Internal>,
-    > {
-        if self.height == 0 {
-            ForceResult::Leaf(NodeRef {
-                height: self.height,
-                node: self.node,
-                _marker: PhantomData,
-            })
-        } else {
-            ForceResult::Internal(NodeRef {
-                height: self.height,
-                node: self.node,
-                _marker: PhantomData,
-            })
-        }
-    }
+    > {}
 }
 
 impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
     /// Unsafely asserts to the compiler the static information that this node is a `Leaf`.
-    unsafe fn cast_to_leaf_unchecked(self) -> NodeRef<marker::Mut<'a>, K, V, marker::Leaf> {
-        debug_assert!(self.height == 0);
-        NodeRef { height: self.height, node: self.node, _marker: PhantomData }
-    }
+    unsafe fn cast_to_leaf_unchecked(self) -> NodeRef<marker::Mut<'a>, K, V, marker::Leaf> {}
 
     /// Unsafely asserts to the compiler the static information that this node is an `Internal`.
-    unsafe fn cast_to_internal_unchecked(self) -> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
-        debug_assert!(self.height > 0);
-        NodeRef { height: self.height, node: self.node, _marker: PhantomData }
-    }
+    unsafe fn cast_to_internal_unchecked(self) -> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {}
 }
 
 /// A reference to a specific key-value pair or edge within a node. The `Node` parameter
@@ -11660,58 +7196,38 @@ impl<Node: Copy, Type> Copy for Handle<Node, Type> {}
 // We don't need the full generality of `#[derive(Clone)]`, as the only time `Node` will be
 // `Clone`able is when it is an immutable reference and therefore `Copy`.
 impl<Node: Copy, Type> Clone for Handle<Node, Type> {
-    fn clone(&self) -> Self {
-        *self
-    }
+    fn clone(&self) -> Self {}
 }
 
 impl<Node, Type> Handle<Node, Type> {
     /// Retrieves the node that contains the edge or key-value pair this handle points to.
-    pub fn into_node(self) -> Node {
-        self.node
-    }
+    pub fn into_node(self) -> Node {}
 
     /// Returns the position of this handle in the node.
-    pub fn idx(&self) -> usize {
-        self.idx
-    }
+    pub fn idx(&self) -> usize {}
 }
 
 impl<BorrowType, K, V, NodeType> Handle<NodeRef<BorrowType, K, V, NodeType>, marker::KV> {
     /// Creates a new handle to a key-value pair in `node`.
     /// Unsafe because the caller must ensure that `idx < node.len()`.
-    pub unsafe fn new_kv(node: NodeRef<BorrowType, K, V, NodeType>, idx: usize) -> Self {
-        debug_assert!(idx < node.len());
+    pub unsafe fn new_kv(node: NodeRef<BorrowType, K, V, NodeType>, idx: usize) -> Self {}
 
-        Handle { node, idx, _marker: PhantomData }
-    }
+    pub fn left_edge(self) -> Handle<NodeRef<BorrowType, K, V, NodeType>, marker::Edge> {}
 
-    pub fn left_edge(self) -> Handle<NodeRef<BorrowType, K, V, NodeType>, marker::Edge> {
-        unsafe { Handle::new_edge(self.node, self.idx) }
-    }
-
-    pub fn right_edge(self) -> Handle<NodeRef<BorrowType, K, V, NodeType>, marker::Edge> {
-        unsafe { Handle::new_edge(self.node, self.idx + 1) }
-    }
+    pub fn right_edge(self) -> Handle<NodeRef<BorrowType, K, V, NodeType>, marker::Edge> {}
 }
 
 impl<BorrowType, K, V, NodeType, HandleType> PartialEq
     for Handle<NodeRef<BorrowType, K, V, NodeType>, HandleType>
 {
-    fn eq(&self, other: &Self) -> bool {
-        let Self { node, idx, _marker } = self;
-        node.eq(&other.node) && *idx == other.idx
-    }
+    fn eq(&self, other: &Self) -> bool {}
 }
 
 impl<BorrowType, K, V, NodeType, HandleType>
     Handle<NodeRef<BorrowType, K, V, NodeType>, HandleType>
 {
     /// Temporarily takes out another immutable handle on the same location.
-    pub fn reborrow(&self) -> Handle<NodeRef<marker::Immut<'_>, K, V, NodeType>, HandleType> {
-        // We can't use Handle::new_kv or Handle::new_edge because we don't know our type
-        Handle { node: self.node.reborrow(), idx: self.idx, _marker: PhantomData }
-    }
+    pub fn reborrow(&self) -> Handle<NodeRef<marker::Immut<'_>, K, V, NodeType>, HandleType> {}
 }
 
 impl<'a, K, V, NodeType, HandleType> Handle<NodeRef<marker::Mut<'a>, K, V, NodeType>, HandleType> {
@@ -11722,36 +7238,17 @@ impl<'a, K, V, NodeType, HandleType> Handle<NodeRef<marker::Mut<'a>, K, V, NodeT
     /// For details, see `NodeRef::reborrow_mut`.
     pub unsafe fn reborrow_mut(
         &mut self,
-    ) -> Handle<NodeRef<marker::Mut<'_>, K, V, NodeType>, HandleType> {
-        // We can't use Handle::new_kv or Handle::new_edge because we don't know our type
-        Handle { node: unsafe { self.node.reborrow_mut() }, idx: self.idx, _marker: PhantomData }
-    }
+    ) -> Handle<NodeRef<marker::Mut<'_>, K, V, NodeType>, HandleType> {}
 }
 
 impl<BorrowType, K, V, NodeType> Handle<NodeRef<BorrowType, K, V, NodeType>, marker::Edge> {
     /// Creates a new handle to an edge in `node`.
     /// Unsafe because the caller must ensure that `idx <= node.len()`.
-    pub unsafe fn new_edge(node: NodeRef<BorrowType, K, V, NodeType>, idx: usize) -> Self {
-        debug_assert!(idx <= node.len());
+    pub unsafe fn new_edge(node: NodeRef<BorrowType, K, V, NodeType>, idx: usize) -> Self {}
 
-        Handle { node, idx, _marker: PhantomData }
-    }
+    pub fn left_kv(self) -> Result<Handle<NodeRef<BorrowType, K, V, NodeType>, marker::KV>, Self> {}
 
-    pub fn left_kv(self) -> Result<Handle<NodeRef<BorrowType, K, V, NodeType>, marker::KV>, Self> {
-        if self.idx > 0 {
-            Ok(unsafe { Handle::new_kv(self.node, self.idx - 1) })
-        } else {
-            Err(self)
-        }
-    }
-
-    pub fn right_kv(self) -> Result<Handle<NodeRef<BorrowType, K, V, NodeType>, marker::KV>, Self> {
-        if self.idx < self.node.len() {
-            Ok(unsafe { Handle::new_kv(self.node, self.idx) })
-        } else {
-            Err(self)
-        }
-    }
+    pub fn right_kv(self) -> Result<Handle<NodeRef<BorrowType, K, V, NodeType>, marker::KV>, Self> {}
 }
 
 pub enum LeftOrRight<T> {
@@ -11764,16 +7261,7 @@ pub enum LeftOrRight<T> {
 /// The goal of the split point is for its key and value to end up in a parent node;
 /// the keys, values and edges to the left of the split point become the left child;
 /// the keys, values and edges to the right of the split point become the right child.
-fn splitpoint(edge_idx: usize) -> (usize, LeftOrRight<usize>) {
-    debug_assert!(edge_idx <= CAPACITY);
-    // Rust issue #74834 tries to explain these symmetric rules.
-    match edge_idx {
-        0..EDGE_IDX_LEFT_OF_CENTER => (KV_IDX_CENTER - 1, LeftOrRight::Left(edge_idx)),
-        EDGE_IDX_LEFT_OF_CENTER => (KV_IDX_CENTER, LeftOrRight::Left(edge_idx)),
-        EDGE_IDX_RIGHT_OF_CENTER => (KV_IDX_CENTER, LeftOrRight::Right(0)),
-        _ => (KV_IDX_CENTER + 1, LeftOrRight::Right(edge_idx - (KV_IDX_CENTER + 1 + 1))),
-    }
-}
+fn splitpoint(edge_idx: usize) -> (usize, LeftOrRight<usize>) {}
 
 impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge> {
     /// Inserts a new key-value pair between the key-value pairs to the right and left of
@@ -11781,18 +7269,7 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, mark
     /// pair to fit.
     ///
     /// The returned pointer points to the inserted value.
-    fn insert_fit(&mut self, key: K, val: V) -> *mut V {
-        debug_assert!(self.node.len() < CAPACITY);
-        let new_len = self.node.len() + 1;
-
-        unsafe {
-            slice_insert(self.node.key_area_mut(..new_len), self.idx, key);
-            slice_insert(self.node.val_area_mut(..new_len), self.idx, val);
-            *self.node.len_mut() = new_len as u16;
-
-            self.node.val_area_mut(self.idx).assume_init_mut()
-        }
-    }
+    fn insert_fit(&mut self, key: K, val: V) -> *mut V {}
 }
 
 impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge> {
@@ -11800,59 +7277,20 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, mark
     /// this edge. This method splits the node if there isn't enough room.
     ///
     /// The returned pointer points to the inserted value.
-    fn insert(mut self, key: K, val: V) -> (InsertResult<'a, K, V, marker::Leaf>, *mut V) {
-        if self.node.len() < CAPACITY {
-            let val_ptr = self.insert_fit(key, val);
-            let kv = unsafe { Handle::new_kv(self.node, self.idx) };
-            (InsertResult::Fit(kv), val_ptr)
-        } else {
-            let (middle_kv_idx, insertion) = splitpoint(self.idx);
-            let middle = unsafe { Handle::new_kv(self.node, middle_kv_idx) };
-            let mut result = middle.split();
-            let mut insertion_edge = match insertion {
-                LeftOrRight::Left(insert_idx) => unsafe {
-                    Handle::new_edge(result.left.reborrow_mut(), insert_idx)
-                },
-                LeftOrRight::Right(insert_idx) => unsafe {
-                    Handle::new_edge(result.right.borrow_mut(), insert_idx)
-                },
-            };
-            let val_ptr = insertion_edge.insert_fit(key, val);
-            (InsertResult::Split(result), val_ptr)
-        }
-    }
+    fn insert(mut self, key: K, val: V) -> (InsertResult<'a, K, V, marker::Leaf>, *mut V) {}
 }
 
 impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::Edge> {
     /// Fixes the parent pointer and index in the child node that this edge
     /// links to. This is useful when the ordering of edges has been changed,
-    fn correct_parent_link(self) {
-        // Create backpointer without invalidating other references to the node.
-        let ptr = unsafe { NonNull::new_unchecked(NodeRef::as_internal_ptr(&self.node)) };
-        let idx = self.idx;
-        let mut child = self.descend();
-        child.set_parent_link(ptr, idx);
-    }
+    fn correct_parent_link(self) {}
 }
 
 impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::Edge> {
     /// Inserts a new key-value pair and an edge that will go to the right of that new pair
     /// between this edge and the key-value pair to the right of this edge. This method assumes
     /// that there is enough space in the node for the new pair to fit.
-    fn insert_fit(&mut self, key: K, val: V, edge: Root<K, V>) {
-        debug_assert!(self.node.len() < CAPACITY);
-        debug_assert!(edge.height == self.node.height - 1);
-        let new_len = self.node.len() + 1;
-
-        unsafe {
-            slice_insert(self.node.key_area_mut(..new_len), self.idx, key);
-            slice_insert(self.node.val_area_mut(..new_len), self.idx, val);
-            slice_insert(self.node.edge_area_mut(..new_len + 1), self.idx + 1, edge.node);
-            *self.node.len_mut() = new_len as u16;
-
-            self.node.correct_childrens_parent_links(self.idx + 1..new_len + 1);
-        }
-    }
+    fn insert_fit(&mut self, key: K, val: V, edge: Root<K, V>) {}
 
     /// Inserts a new key-value pair and an edge that will go to the right of that new pair
     /// between this edge and the key-value pair to the right of this edge. This method splits
@@ -11862,29 +7300,7 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, 
         key: K,
         val: V,
         edge: Root<K, V>,
-    ) -> InsertResult<'a, K, V, marker::Internal> {
-        assert!(edge.height == self.node.height - 1);
-
-        if self.node.len() < CAPACITY {
-            self.insert_fit(key, val, edge);
-            let kv = unsafe { Handle::new_kv(self.node, self.idx) };
-            InsertResult::Fit(kv)
-        } else {
-            let (middle_kv_idx, insertion) = splitpoint(self.idx);
-            let middle = unsafe { Handle::new_kv(self.node, middle_kv_idx) };
-            let mut result = middle.split();
-            let mut insertion_edge = match insertion {
-                LeftOrRight::Left(insert_idx) => unsafe {
-                    Handle::new_edge(result.left.reborrow_mut(), insert_idx)
-                },
-                LeftOrRight::Right(insert_idx) => unsafe {
-                    Handle::new_edge(result.right.borrow_mut(), insert_idx)
-                },
-            };
-            insertion_edge.insert_fit(key, val, edge);
-            InsertResult::Split(result)
-        }
-    }
+    ) -> InsertResult<'a, K, V, marker::Internal> {}
 }
 
 impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge> {
@@ -11899,28 +7315,7 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, mark
         self,
         key: K,
         value: V,
-    ) -> (InsertResult<'a, K, V, marker::LeafOrInternal>, *mut V) {
-        let (mut split, val_ptr) = match self.insert(key, value) {
-            (InsertResult::Fit(handle), ptr) => {
-                return (InsertResult::Fit(handle.forget_node_type()), ptr);
-            }
-            (InsertResult::Split(split), val_ptr) => (split.forget_node_type(), val_ptr),
-        };
-
-        loop {
-            split = match split.left.ascend() {
-                Ok(parent) => match parent.insert(split.kv.0, split.kv.1, split.right) {
-                    InsertResult::Fit(handle) => {
-                        return (InsertResult::Fit(handle.forget_node_type()), val_ptr);
-                    }
-                    InsertResult::Split(split) => split.forget_node_type(),
-                },
-                Err(root) => {
-                    return (InsertResult::Split(SplitResult { left: root, ..split }), val_ptr);
-                }
-            };
-        }
-    }
+    ) -> (InsertResult<'a, K, V, marker::LeafOrInternal>, *mut V) {}
 }
 
 impl<BorrowType: marker::BorrowType, K, V>
@@ -11932,122 +7327,47 @@ impl<BorrowType: marker::BorrowType, K, V>
     ///
     /// `edge.descend().ascend().unwrap()` and `node.ascend().unwrap().descend()` should
     /// both, upon success, do nothing.
-    pub fn descend(self) -> NodeRef<BorrowType, K, V, marker::LeafOrInternal> {
-        assert!(BorrowType::PERMITS_TRAVERSAL);
-        // We need to use raw pointers to nodes because, if BorrowType is
-        // marker::ValMut, there might be outstanding mutable references to
-        // values that we must not invalidate. There's no worry accessing the
-        // height field because that value is copied. Beware that, once the
-        // node pointer is dereferenced, we access the edges array with a
-        // reference (Rust issue #73987) and invalidate any other references
-        // to or inside the array, should any be around.
-        let parent_ptr = NodeRef::as_internal_ptr(&self.node);
-        let node = unsafe { (*parent_ptr).edges.get_unchecked(self.idx).assume_init_read() };
-        NodeRef { node, height: self.node.height - 1, _marker: PhantomData }
-    }
+    pub fn descend(self) -> NodeRef<BorrowType, K, V, marker::LeafOrInternal> {}
 }
 
 impl<'a, K: 'a, V: 'a, NodeType> Handle<NodeRef<marker::Immut<'a>, K, V, NodeType>, marker::KV> {
-    pub fn into_kv(self) -> (&'a K, &'a V) {
-        debug_assert!(self.idx < self.node.len());
-        let leaf = self.node.into_leaf();
-        let k = unsafe { leaf.keys.get_unchecked(self.idx).assume_init_ref() };
-        let v = unsafe { leaf.vals.get_unchecked(self.idx).assume_init_ref() };
-        (k, v)
-    }
+    pub fn into_kv(self) -> (&'a K, &'a V) {}
 }
 
 impl<'a, K: 'a, V: 'a, NodeType> Handle<NodeRef<marker::Mut<'a>, K, V, NodeType>, marker::KV> {
-    pub fn key_mut(&mut self) -> &mut K {
-        unsafe { self.node.key_area_mut(self.idx).assume_init_mut() }
-    }
+    pub fn key_mut(&mut self) -> &mut K {}
 
-    pub fn into_val_mut(self) -> &'a mut V {
-        debug_assert!(self.idx < self.node.len());
-        let leaf = self.node.into_leaf_mut();
-        unsafe { leaf.vals.get_unchecked_mut(self.idx).assume_init_mut() }
-    }
+    pub fn into_val_mut(self) -> &'a mut V {}
 }
 
 impl<'a, K, V, NodeType> Handle<NodeRef<marker::ValMut<'a>, K, V, NodeType>, marker::KV> {
-    pub fn into_kv_valmut(self) -> (&'a K, &'a mut V) {
-        unsafe { self.node.into_key_val_mut_at(self.idx) }
-    }
+    pub fn into_kv_valmut(self) -> (&'a K, &'a mut V) {}
 }
 
 impl<'a, K: 'a, V: 'a, NodeType> Handle<NodeRef<marker::Mut<'a>, K, V, NodeType>, marker::KV> {
-    pub fn kv_mut(&mut self) -> (&mut K, &mut V) {
-        debug_assert!(self.idx < self.node.len());
-        // We cannot call separate key and value methods, because calling the second one
-        // invalidates the reference returned by the first.
-        unsafe {
-            let leaf = self.node.as_leaf_mut();
-            let key = leaf.keys.get_unchecked_mut(self.idx).assume_init_mut();
-            let val = leaf.vals.get_unchecked_mut(self.idx).assume_init_mut();
-            (key, val)
-        }
-    }
+    pub fn kv_mut(&mut self) -> (&mut K, &mut V) {}
 
     /// Replaces the key and value that the KV handle refers to.
-    pub fn replace_kv(&mut self, k: K, v: V) -> (K, V) {
-        let (key, val) = self.kv_mut();
-        (mem::replace(key, k), mem::replace(val, v))
-    }
+    pub fn replace_kv(&mut self, k: K, v: V) -> (K, V) {}
 }
 
 impl<K, V, NodeType> Handle<NodeRef<marker::Dying, K, V, NodeType>, marker::KV> {
     /// Extracts the key and value that the KV handle refers to.
     /// # Safety
     /// The node that the handle refers to must not yet have been deallocated.
-    pub unsafe fn into_key_val(mut self) -> (K, V) {
-        debug_assert!(self.idx < self.node.len());
-        let leaf = self.node.as_leaf_dying();
-        unsafe {
-            let key = leaf.keys.get_unchecked_mut(self.idx).assume_init_read();
-            let val = leaf.vals.get_unchecked_mut(self.idx).assume_init_read();
-            (key, val)
-        }
-    }
+    pub unsafe fn into_key_val(mut self) -> (K, V) {}
 
     /// Drops the key and value that the KV handle refers to.
     /// # Safety
     /// The node that the handle refers to must not yet have been deallocated.
     #[inline]
-    pub unsafe fn drop_key_val(mut self) {
-        debug_assert!(self.idx < self.node.len());
-        let leaf = self.node.as_leaf_dying();
-        unsafe {
-            leaf.keys.get_unchecked_mut(self.idx).assume_init_drop();
-            leaf.vals.get_unchecked_mut(self.idx).assume_init_drop();
-        }
-    }
+    pub unsafe fn drop_key_val(mut self) {}
 }
 
 impl<'a, K: 'a, V: 'a, NodeType> Handle<NodeRef<marker::Mut<'a>, K, V, NodeType>, marker::KV> {
     /// Helps implementations of `split` for a particular `NodeType`,
     /// by taking care of leaf data.
-    fn split_leaf_data(&mut self, new_node: &mut LeafNode<K, V>) -> (K, V) {
-        debug_assert!(self.idx < self.node.len());
-        let old_len = self.node.len();
-        let new_len = old_len - self.idx - 1;
-        new_node.len = new_len as u16;
-        unsafe {
-            let k = self.node.key_area_mut(self.idx).assume_init_read();
-            let v = self.node.val_area_mut(self.idx).assume_init_read();
-
-            move_to_slice(
-                self.node.key_area_mut(self.idx + 1..old_len),
-                &mut new_node.keys[..new_len],
-            );
-            move_to_slice(
-                self.node.val_area_mut(self.idx + 1..old_len),
-                &mut new_node.vals[..new_len],
-            );
-
-            *self.node.len_mut() = self.idx as u16;
-            (k, v)
-        }
-    }
+    fn split_leaf_data(&mut self, new_node: &mut LeafNode<K, V>) -> (K, V) {}
 }
 
 impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::KV> {
@@ -12058,28 +7378,13 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, mark
     /// - The key and value pointed to by this handle are extracted.
     /// - All the key-value pairs to the right of this handle are put into a newly
     ///   allocated node.
-    pub fn split(mut self) -> SplitResult<'a, K, V, marker::Leaf> {
-        let mut new_node = LeafNode::new();
-
-        let kv = self.split_leaf_data(&mut new_node);
-
-        let right = NodeRef::from_new_leaf(new_node);
-        SplitResult { left: self.node, kv, right }
-    }
+    pub fn split(mut self) -> SplitResult<'a, K, V, marker::Leaf> {}
 
     /// Removes the key-value pair pointed to by this handle and returns it, along with the edge
     /// that the key-value pair collapsed into.
     pub fn remove(
         mut self,
-    ) -> ((K, V), Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>) {
-        let old_len = self.node.len();
-        unsafe {
-            let k = slice_remove(self.node.key_area_mut(..old_len), self.idx);
-            let v = slice_remove(self.node.val_area_mut(..old_len), self.idx);
-            *self.node.len_mut() = (old_len - 1) as u16;
-            ((k, v), self.left_edge())
-        }
-    }
+    ) -> ((K, V), Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>) {}
 }
 
 impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::KV> {
@@ -12090,23 +7395,7 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, 
     /// - The key and value pointed to by this handle are extracted.
     /// - All the edges and key-value pairs to the right of this handle are put into
     ///   a newly allocated node.
-    pub fn split(mut self) -> SplitResult<'a, K, V, marker::Internal> {
-        let old_len = self.node.len();
-        unsafe {
-            let mut new_node = InternalNode::new();
-            let kv = self.split_leaf_data(&mut new_node.data);
-            let new_len = usize::from(new_node.data.len);
-            move_to_slice(
-                self.node.edge_area_mut(self.idx + 1..old_len + 1),
-                &mut new_node.edges[..new_len + 1],
-            );
-
-            let height = self.node.height;
-            let right = NodeRef::from_new_internal(new_node, height);
-
-            SplitResult { left: self.node, kv, right }
-        }
-    }
+    pub fn split(mut self) -> SplitResult<'a, K, V, marker::Internal> {}
 }
 
 /// Represents a session for evaluating and performing a balancing operation
@@ -12118,15 +7407,7 @@ pub struct BalancingContext<'a, K, V> {
 }
 
 impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::KV> {
-    pub fn consider_for_balancing(self) -> BalancingContext<'a, K, V> {
-        let self1 = unsafe { ptr::read(&self) };
-        let self2 = unsafe { ptr::read(&self) };
-        BalancingContext {
-            parent: self,
-            left_child: self1.left_edge().descend(),
-            right_child: self2.right_edge().descend(),
-        }
-    }
+    pub fn consider_for_balancing(self) -> BalancingContext<'a, K, V> {}
 }
 
 impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
@@ -12144,50 +7425,21 @@ impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
     /// typically faster, since we only need to shift the node's N elements to
     /// the right, instead of shifting at least N of the sibling's elements to
     /// the left.
-    pub fn choose_parent_kv(self) -> Result<LeftOrRight<BalancingContext<'a, K, V>>, Self> {
-        match unsafe { ptr::read(&self) }.ascend() {
-            Ok(parent_edge) => match parent_edge.left_kv() {
-                Ok(left_parent_kv) => Ok(LeftOrRight::Left(BalancingContext {
-                    parent: unsafe { ptr::read(&left_parent_kv) },
-                    left_child: left_parent_kv.left_edge().descend(),
-                    right_child: self,
-                })),
-                Err(parent_edge) => match parent_edge.right_kv() {
-                    Ok(right_parent_kv) => Ok(LeftOrRight::Right(BalancingContext {
-                        parent: unsafe { ptr::read(&right_parent_kv) },
-                        left_child: self,
-                        right_child: right_parent_kv.right_edge().descend(),
-                    })),
-                    Err(_) => unreachable!("empty internal node"),
-                },
-            },
-            Err(root) => Err(root),
-        }
-    }
+    pub fn choose_parent_kv(self) -> Result<LeftOrRight<BalancingContext<'a, K, V>>, Self> {}
 }
 
 impl<'a, K, V> BalancingContext<'a, K, V> {
-    pub fn left_child_len(&self) -> usize {
-        self.left_child.len()
-    }
+    pub fn left_child_len(&self) -> usize {}
 
-    pub fn right_child_len(&self) -> usize {
-        self.right_child.len()
-    }
+    pub fn right_child_len(&self) -> usize {}
 
-    pub fn into_left_child(self) -> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
-        self.left_child
-    }
+    pub fn into_left_child(self) -> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {}
 
-    pub fn into_right_child(self) -> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
-        self.right_child
-    }
+    pub fn into_right_child(self) -> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {}
 
     /// Returns whether merging is possible, i.e., whether there is enough room
     /// in a node to combine the central KV with both adjacent child nodes.
-    pub fn can_merge(&self) -> bool {
-        self.left_child.len() + 1 + self.right_child.len() <= CAPACITY
-    }
+    pub fn can_merge(&self) -> bool {}
 }
 
 impl<'a, K: 'a, V: 'a> BalancingContext<'a, K, V> {
@@ -12201,73 +7453,19 @@ impl<'a, K: 'a, V: 'a> BalancingContext<'a, K, V> {
     >(
         self,
         result: F,
-    ) -> R {
-        let Handle { node: mut parent_node, idx: parent_idx, _marker } = self.parent;
-        let old_parent_len = parent_node.len();
-        let mut left_node = self.left_child;
-        let old_left_len = left_node.len();
-        let mut right_node = self.right_child;
-        let right_len = right_node.len();
-        let new_left_len = old_left_len + 1 + right_len;
-
-        assert!(new_left_len <= CAPACITY);
-
-        unsafe {
-            *left_node.len_mut() = new_left_len as u16;
-
-            let parent_key = slice_remove(parent_node.key_area_mut(..old_parent_len), parent_idx);
-            left_node.key_area_mut(old_left_len).write(parent_key);
-            move_to_slice(
-                right_node.key_area_mut(..right_len),
-                left_node.key_area_mut(old_left_len + 1..new_left_len),
-            );
-
-            let parent_val = slice_remove(parent_node.val_area_mut(..old_parent_len), parent_idx);
-            left_node.val_area_mut(old_left_len).write(parent_val);
-            move_to_slice(
-                right_node.val_area_mut(..right_len),
-                left_node.val_area_mut(old_left_len + 1..new_left_len),
-            );
-
-            slice_remove(&mut parent_node.edge_area_mut(..old_parent_len + 1), parent_idx + 1);
-            parent_node.correct_childrens_parent_links(parent_idx + 1..old_parent_len);
-            *parent_node.len_mut() -= 1;
-
-            if parent_node.height > 1 {
-                // SAFETY: the height of the nodes being merged is one below the height
-                // of the node of this edge, thus above zero, so they are internal.
-                let mut left_node = left_node.reborrow_mut().cast_to_internal_unchecked();
-                let mut right_node = right_node.cast_to_internal_unchecked();
-                move_to_slice(
-                    right_node.edge_area_mut(..right_len + 1),
-                    left_node.edge_area_mut(old_left_len + 1..new_left_len + 1),
-                );
-
-                left_node.correct_childrens_parent_links(old_left_len + 1..new_left_len + 1);
-
-                Global.deallocate(right_node.node.cast(), Layout::new::<InternalNode<K, V>>());
-            } else {
-                Global.deallocate(right_node.node.cast(), Layout::new::<LeafNode<K, V>>());
-            }
-        }
-        result(parent_node, left_node)
-    }
+    ) -> R {}
 
     /// Merges the parent's key-value pair and both adjacent child nodes into
     /// the left child node and returns the shrunk parent node.
     ///
     /// Panics unless we `.can_merge()`.
-    pub fn merge_tracking_parent(self) -> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
-        self.do_merge(|parent, _child| parent)
-    }
+    pub fn merge_tracking_parent(self) -> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {}
 
     /// Merges the parent's key-value pair and both adjacent child nodes into
     /// the left child node and returns that child node.
     ///
     /// Panics unless we `.can_merge()`.
-    pub fn merge_tracking_child(self) -> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
-        self.do_merge(|_parent, child| child)
-    }
+    pub fn merge_tracking_child(self) -> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {}
 
     /// Merges the parent's key-value pair and both adjacent child nodes into
     /// the left child node and returns the edge handle in that child node
@@ -12277,20 +7475,7 @@ impl<'a, K: 'a, V: 'a> BalancingContext<'a, K, V> {
     pub fn merge_tracking_child_edge(
         self,
         track_edge_idx: LeftOrRight<usize>,
-    ) -> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, marker::Edge> {
-        let old_left_len = self.left_child.len();
-        let right_len = self.right_child.len();
-        assert!(match track_edge_idx {
-            LeftOrRight::Left(idx) => idx <= old_left_len,
-            LeftOrRight::Right(idx) => idx <= right_len,
-        });
-        let child = self.merge_tracking_child();
-        let new_idx = match track_edge_idx {
-            LeftOrRight::Left(idx) => idx,
-            LeftOrRight::Right(idx) => old_left_len + 1 + idx,
-        };
-        unsafe { Handle::new_edge(child, new_idx) }
-    }
+    ) -> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, marker::Edge> {}
 
     /// Removes a key-value pair from the left child and places it in the key-value storage
     /// of the parent, while pushing the old parent key-value pair into the right child.
@@ -12299,10 +7484,7 @@ impl<'a, K: 'a, V: 'a> BalancingContext<'a, K, V> {
     pub fn steal_left(
         mut self,
         track_right_edge_idx: usize,
-    ) -> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, marker::Edge> {
-        self.bulk_steal_left(1);
-        unsafe { Handle::new_edge(self.right_child, 1 + track_right_edge_idx) }
-    }
+    ) -> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, marker::Edge> {}
 
     /// Removes a key-value pair from the right child and places it in the key-value storage
     /// of the parent, while pushing the old parent key-value pair onto the left child.
@@ -12311,169 +7493,37 @@ impl<'a, K: 'a, V: 'a> BalancingContext<'a, K, V> {
     pub fn steal_right(
         mut self,
         track_left_edge_idx: usize,
-    ) -> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, marker::Edge> {
-        self.bulk_steal_right(1);
-        unsafe { Handle::new_edge(self.left_child, track_left_edge_idx) }
-    }
+    ) -> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, marker::Edge> {}
 
     /// This does stealing similar to `steal_left` but steals multiple elements at once.
-    pub fn bulk_steal_left(&mut self, count: usize) {
-        assert!(count > 0);
-        unsafe {
-            let left_node = &mut self.left_child;
-            let old_left_len = left_node.len();
-            let right_node = &mut self.right_child;
-            let old_right_len = right_node.len();
-
-            // Make sure that we may steal safely.
-            assert!(old_right_len + count <= CAPACITY);
-            assert!(old_left_len >= count);
-
-            let new_left_len = old_left_len - count;
-            let new_right_len = old_right_len + count;
-            *left_node.len_mut() = new_left_len as u16;
-            *right_node.len_mut() = new_right_len as u16;
-
-            // Move leaf data.
-            {
-                // Make room for stolen elements in the right child.
-                slice_shr(right_node.key_area_mut(..new_right_len), count);
-                slice_shr(right_node.val_area_mut(..new_right_len), count);
-
-                // Move elements from the left child to the right one.
-                move_to_slice(
-                    left_node.key_area_mut(new_left_len + 1..old_left_len),
-                    right_node.key_area_mut(..count - 1),
-                );
-                move_to_slice(
-                    left_node.val_area_mut(new_left_len + 1..old_left_len),
-                    right_node.val_area_mut(..count - 1),
-                );
-
-                // Move the left-most stolen pair to the parent.
-                let k = left_node.key_area_mut(new_left_len).assume_init_read();
-                let v = left_node.val_area_mut(new_left_len).assume_init_read();
-                let (k, v) = self.parent.replace_kv(k, v);
-
-                // Move parent's key-value pair to the right child.
-                right_node.key_area_mut(count - 1).write(k);
-                right_node.val_area_mut(count - 1).write(v);
-            }
-
-            match (left_node.reborrow_mut().force(), right_node.reborrow_mut().force()) {
-                (ForceResult::Internal(mut left), ForceResult::Internal(mut right)) => {
-                    // Make room for stolen edges.
-                    slice_shr(right.edge_area_mut(..new_right_len + 1), count);
-
-                    // Steal edges.
-                    move_to_slice(
-                        left.edge_area_mut(new_left_len + 1..old_left_len + 1),
-                        right.edge_area_mut(..count),
-                    );
-
-                    right.correct_childrens_parent_links(0..new_right_len + 1);
-                }
-                (ForceResult::Leaf(_), ForceResult::Leaf(_)) => {}
-                _ => unreachable!(),
-            }
-        }
-    }
+    pub fn bulk_steal_left(&mut self, count: usize) {}
 
     /// The symmetric clone of `bulk_steal_left`.
-    pub fn bulk_steal_right(&mut self, count: usize) {
-        assert!(count > 0);
-        unsafe {
-            let left_node = &mut self.left_child;
-            let old_left_len = left_node.len();
-            let right_node = &mut self.right_child;
-            let old_right_len = right_node.len();
-
-            // Make sure that we may steal safely.
-            assert!(old_left_len + count <= CAPACITY);
-            assert!(old_right_len >= count);
-
-            let new_left_len = old_left_len + count;
-            let new_right_len = old_right_len - count;
-            *left_node.len_mut() = new_left_len as u16;
-            *right_node.len_mut() = new_right_len as u16;
-
-            // Move leaf data.
-            {
-                // Move the right-most stolen pair to the parent.
-                let k = right_node.key_area_mut(count - 1).assume_init_read();
-                let v = right_node.val_area_mut(count - 1).assume_init_read();
-                let (k, v) = self.parent.replace_kv(k, v);
-
-                // Move parent's key-value pair to the left child.
-                left_node.key_area_mut(old_left_len).write(k);
-                left_node.val_area_mut(old_left_len).write(v);
-
-                // Move elements from the right child to the left one.
-                move_to_slice(
-                    right_node.key_area_mut(..count - 1),
-                    left_node.key_area_mut(old_left_len + 1..new_left_len),
-                );
-                move_to_slice(
-                    right_node.val_area_mut(..count - 1),
-                    left_node.val_area_mut(old_left_len + 1..new_left_len),
-                );
-
-                // Fill gap where stolen elements used to be.
-                slice_shl(right_node.key_area_mut(..old_right_len), count);
-                slice_shl(right_node.val_area_mut(..old_right_len), count);
-            }
-
-            match (left_node.reborrow_mut().force(), right_node.reborrow_mut().force()) {
-                (ForceResult::Internal(mut left), ForceResult::Internal(mut right)) => {
-                    // Steal edges.
-                    move_to_slice(
-                        right.edge_area_mut(..count),
-                        left.edge_area_mut(old_left_len + 1..new_left_len + 1),
-                    );
-
-                    // Fill gap where stolen edges used to be.
-                    slice_shl(right.edge_area_mut(..old_right_len + 1), count);
-
-                    left.correct_childrens_parent_links(old_left_len + 1..new_left_len + 1);
-                    right.correct_childrens_parent_links(0..new_right_len + 1);
-                }
-                (ForceResult::Leaf(_), ForceResult::Leaf(_)) => {}
-                _ => unreachable!(),
-            }
-        }
-    }
+    pub fn bulk_steal_right(&mut self, count: usize) {}
 }
 
 impl<BorrowType, K, V> Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge> {
     pub fn forget_node_type(
         self,
-    ) -> Handle<NodeRef<BorrowType, K, V, marker::LeafOrInternal>, marker::Edge> {
-        unsafe { Handle::new_edge(self.node.forget_type(), self.idx) }
-    }
+    ) -> Handle<NodeRef<BorrowType, K, V, marker::LeafOrInternal>, marker::Edge> {}
 }
 
 impl<BorrowType, K, V> Handle<NodeRef<BorrowType, K, V, marker::Internal>, marker::Edge> {
     pub fn forget_node_type(
         self,
-    ) -> Handle<NodeRef<BorrowType, K, V, marker::LeafOrInternal>, marker::Edge> {
-        unsafe { Handle::new_edge(self.node.forget_type(), self.idx) }
-    }
+    ) -> Handle<NodeRef<BorrowType, K, V, marker::LeafOrInternal>, marker::Edge> {}
 }
 
 impl<BorrowType, K, V> Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::KV> {
     pub fn forget_node_type(
         self,
-    ) -> Handle<NodeRef<BorrowType, K, V, marker::LeafOrInternal>, marker::KV> {
-        unsafe { Handle::new_kv(self.node.forget_type(), self.idx) }
-    }
+    ) -> Handle<NodeRef<BorrowType, K, V, marker::LeafOrInternal>, marker::KV> {}
 }
 
 impl<BorrowType, K, V> Handle<NodeRef<BorrowType, K, V, marker::Internal>, marker::KV> {
     pub fn forget_node_type(
         self,
-    ) -> Handle<NodeRef<BorrowType, K, V, marker::LeafOrInternal>, marker::KV> {
-        unsafe { Handle::new_kv(self.node.forget_type(), self.idx) }
-    }
+    ) -> Handle<NodeRef<BorrowType, K, V, marker::LeafOrInternal>, marker::KV> {}
 }
 
 impl<BorrowType, K, V, Type> Handle<NodeRef<BorrowType, K, V, marker::LeafOrInternal>, Type> {
@@ -12483,26 +7533,14 @@ impl<BorrowType, K, V, Type> Handle<NodeRef<BorrowType, K, V, marker::LeafOrInte
     ) -> ForceResult<
         Handle<NodeRef<BorrowType, K, V, marker::Leaf>, Type>,
         Handle<NodeRef<BorrowType, K, V, marker::Internal>, Type>,
-    > {
-        match self.node.force() {
-            ForceResult::Leaf(node) => {
-                ForceResult::Leaf(Handle { node, idx: self.idx, _marker: PhantomData })
-            }
-            ForceResult::Internal(node) => {
-                ForceResult::Internal(Handle { node, idx: self.idx, _marker: PhantomData })
-            }
-        }
-    }
+    > {}
 }
 
 impl<'a, K, V, Type> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, Type> {
     /// Unsafely asserts to the compiler the static information that the handle's node is a `Leaf`.
     pub unsafe fn cast_to_leaf_unchecked(
         self,
-    ) -> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, Type> {
-        let node = unsafe { self.node.cast_to_leaf_unchecked() };
-        Handle { node, idx: self.idx, _marker: PhantomData }
-    }
+    ) -> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, Type> {}
 }
 
 impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, marker::Edge> {
@@ -12511,44 +7549,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, ma
     pub fn move_suffix(
         &mut self,
         right: &mut NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>,
-    ) {
-        unsafe {
-            let new_left_len = self.idx;
-            let mut left_node = self.reborrow_mut().into_node();
-            let old_left_len = left_node.len();
-
-            let new_right_len = old_left_len - new_left_len;
-            let mut right_node = right.reborrow_mut();
-
-            assert!(right_node.len() == 0);
-            assert!(left_node.height == right_node.height);
-
-            if new_right_len > 0 {
-                *left_node.len_mut() = new_left_len as u16;
-                *right_node.len_mut() = new_right_len as u16;
-
-                move_to_slice(
-                    left_node.key_area_mut(new_left_len..old_left_len),
-                    right_node.key_area_mut(..new_right_len),
-                );
-                move_to_slice(
-                    left_node.val_area_mut(new_left_len..old_left_len),
-                    right_node.val_area_mut(..new_right_len),
-                );
-                match (left_node.force(), right_node.force()) {
-                    (ForceResult::Internal(mut left), ForceResult::Internal(mut right)) => {
-                        move_to_slice(
-                            left.edge_area_mut(new_left_len + 1..old_left_len + 1),
-                            right.edge_area_mut(1..new_right_len + 1),
-                        );
-                        right.correct_childrens_parent_links(1..new_right_len + 1);
-                    }
-                    (ForceResult::Leaf(_), ForceResult::Leaf(_)) => {}
-                    _ => unreachable!(),
-                }
-            }
-        }
-    }
+    ) {}
 }
 
 pub enum ForceResult<Leaf, Internal> {
@@ -12567,15 +7568,11 @@ pub struct SplitResult<'a, K, V, NodeType> {
 }
 
 impl<'a, K, V> SplitResult<'a, K, V, marker::Leaf> {
-    pub fn forget_node_type(self) -> SplitResult<'a, K, V, marker::LeafOrInternal> {
-        SplitResult { left: self.left.forget_type(), kv: self.kv, right: self.right.forget_type() }
-    }
+    pub fn forget_node_type(self) -> SplitResult<'a, K, V, marker::LeafOrInternal> {}
 }
 
 impl<'a, K, V> SplitResult<'a, K, V, marker::Internal> {
-    pub fn forget_node_type(self) -> SplitResult<'a, K, V, marker::LeafOrInternal> {
-        SplitResult { left: self.left.forget_type(), kv: self.kv, right: self.right.forget_type() }
-    }
+    pub fn forget_node_type(self) -> SplitResult<'a, K, V, marker::LeafOrInternal> {}
 }
 
 pub enum InsertResult<'a, K, V, NodeType> {
@@ -12620,65 +7617,31 @@ pub mod marker {
 ///
 /// # Safety
 /// The slice has more than `idx` elements.
-unsafe fn slice_insert<T>(slice: &mut [MaybeUninit<T>], idx: usize, val: T) {
-    unsafe {
-        let len = slice.len();
-        debug_assert!(len > idx);
-        let slice_ptr = slice.as_mut_ptr();
-        if len > idx + 1 {
-            ptr::copy(slice_ptr.add(idx), slice_ptr.add(idx + 1), len - idx - 1);
-        }
-        (*slice_ptr.add(idx)).write(val);
-    }
-}
+unsafe fn slice_insert<T>(slice: &mut [MaybeUninit<T>], idx: usize, val: T) {}
 
 /// Removes and returns a value from a slice of all initialized elements, leaving behind one
 /// trailing uninitialized element.
 ///
 /// # Safety
 /// The slice has more than `idx` elements.
-unsafe fn slice_remove<T>(slice: &mut [MaybeUninit<T>], idx: usize) -> T {
-    unsafe {
-        let len = slice.len();
-        debug_assert!(idx < len);
-        let slice_ptr = slice.as_mut_ptr();
-        let ret = (*slice_ptr.add(idx)).assume_init_read();
-        ptr::copy(slice_ptr.add(idx + 1), slice_ptr.add(idx), len - idx - 1);
-        ret
-    }
-}
+unsafe fn slice_remove<T>(slice: &mut [MaybeUninit<T>], idx: usize) -> T {}
 
 /// Shifts the elements in a slice `distance` positions to the left.
 ///
 /// # Safety
 /// The slice has at least `distance` elements.
-unsafe fn slice_shl<T>(slice: &mut [MaybeUninit<T>], distance: usize) {
-    unsafe {
-        let slice_ptr = slice.as_mut_ptr();
-        ptr::copy(slice_ptr.add(distance), slice_ptr, slice.len() - distance);
-    }
-}
+unsafe fn slice_shl<T>(slice: &mut [MaybeUninit<T>], distance: usize) {}
 
 /// Shifts the elements in a slice `distance` positions to the right.
 ///
 /// # Safety
 /// The slice has at least `distance` elements.
-unsafe fn slice_shr<T>(slice: &mut [MaybeUninit<T>], distance: usize) {
-    unsafe {
-        let slice_ptr = slice.as_mut_ptr();
-        ptr::copy(slice_ptr, slice_ptr.add(distance), slice.len() - distance);
-    }
-}
+unsafe fn slice_shr<T>(slice: &mut [MaybeUninit<T>], distance: usize) {}
 
 /// Moves all values from a slice of initialized elements to a slice
 /// of uninitialized elements, leaving behind `src` as all uninitialized.
 /// Works like `dst.copy_from_slice(src)` but does not require `T` to be `Copy`.
-fn move_to_slice<T>(src: &mut [MaybeUninit<T>], dst: &mut [MaybeUninit<T>]) {
-    assert!(src.len() == dst.len());
-    unsafe {
-        ptr::copy_nonoverlapping(src.as_ptr(), dst.as_mut_ptr(), src.len());
-    }
-}
+fn move_to_slice<T>(src: &mut [MaybeUninit<T>], dst: &mut [MaybeUninit<T>]) {}
 
 #[cfg(test)]
 mod tests {
@@ -12689,16 +7652,7 @@ use crate::string::String;
 
 impl<'a, K: 'a, V: 'a> NodeRef<marker::Immut<'a>, K, V, marker::LeafOrInternal> {
     // Asserts that the back pointer in each reachable node points to its parent.
-    pub fn assert_back_pointers(self) {
-        if let ForceResult::Internal(node) = self.force() {
-            for idx in 0..=node.len() {
-                let edge = unsafe { Handle::new_edge(node, idx) };
-                let child = edge.descend();
-                assert!(child.ascend().ok() == Some(edge));
-                child.assert_back_pointers();
-            }
-        }
-    }
+    pub fn assert_back_pointers(self) {}
 
     // Renders a multi-line display of the keys in order and in tree hierarchy,
     // picturing the tree growing sideways from its root on the left to its
@@ -12706,83 +7660,18 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Immut<'a>, K, V, marker::LeafOrInternal> 
     pub fn dump_keys(self) -> String
     where
         K: Debug,
-    {
-        let mut result = String::new();
-        self.visit_nodes_in_order(|pos| match pos {
-            navigate::Position::Leaf(leaf) => {
-                let depth = self.height();
-                let indent = "  ".repeat(depth);
-                result += &format!("\n{}{:?}", indent, leaf.keys());
-            }
-            navigate::Position::Internal(_) => {}
-            navigate::Position::InternalKV(kv) => {
-                let depth = self.height() - kv.into_node().height();
-                let indent = "  ".repeat(depth);
-                result += &format!("\n{}{:?}", indent, kv.into_kv().0);
-            }
-        });
-        result
-    }
+    {}
 }
 
 #[test]
-fn test_splitpoint() {
-    for idx in 0..=CAPACITY {
-        let (middle_kv_idx, insertion) = splitpoint(idx);
-
-        // Simulate performing the split:
-        let mut left_len = middle_kv_idx;
-        let mut right_len = CAPACITY - middle_kv_idx - 1;
-        match insertion {
-            LeftOrRight::Left(edge_idx) => {
-                assert!(edge_idx <= left_len);
-                left_len += 1;
-            }
-            LeftOrRight::Right(edge_idx) => {
-                assert!(edge_idx <= right_len);
-                right_len += 1;
-            }
-        }
-        assert!(left_len >= MIN_LEN_AFTER_SPLIT);
-        assert!(right_len >= MIN_LEN_AFTER_SPLIT);
-        assert!(left_len + right_len == CAPACITY);
-    }
-}
+fn test_splitpoint() {}
 
 #[test]
-fn test_partial_eq() {
-    let mut root1 = NodeRef::new_leaf();
-    root1.borrow_mut().push(1, ());
-    let mut root1 = NodeRef::new_internal(root1.forget_type()).forget_type();
-    let root2 = Root::new();
-    root1.reborrow().assert_back_pointers();
-    root2.reborrow().assert_back_pointers();
-
-    let leaf_edge_1a = root1.reborrow().first_leaf_edge().forget_node_type();
-    let leaf_edge_1b = root1.reborrow().last_leaf_edge().forget_node_type();
-    let top_edge_1 = root1.reborrow().first_edge();
-    let top_edge_2 = root2.reborrow().first_edge();
-
-    assert!(leaf_edge_1a == leaf_edge_1a);
-    assert!(leaf_edge_1a != leaf_edge_1b);
-    assert!(leaf_edge_1a != top_edge_1);
-    assert!(leaf_edge_1a != top_edge_2);
-    assert!(top_edge_1 == top_edge_1);
-    assert!(top_edge_1 != top_edge_2);
-
-    root1.pop_internal_level();
-    unsafe { root1.into_dying().deallocate_and_ascend() };
-    unsafe { root2.into_dying().deallocate_and_ascend() };
-}
+fn test_partial_eq() {}
 
 #[test]
 #[cfg(target_arch = "x86_64")]
-fn test_sizes() {
-    assert_eq!(core::mem::size_of::<LeafNode<(), ()>>(), 16);
-    assert_eq!(core::mem::size_of::<LeafNode<i64, i64>>(), 16 + CAPACITY * 2 * 8);
-    assert_eq!(core::mem::size_of::<InternalNode<(), ()>>(), 16 + (CAPACITY + 1) * 8);
-    assert_eq!(core::mem::size_of::<InternalNode<i64, i64>>(), 16 + (CAPACITY * 3 + 1) * 8);
-}
+fn test_sizes() {}
 }
 }
 mod remove {
@@ -12797,85 +7686,21 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInter
     pub fn remove_kv_tracking<F: FnOnce()>(
         self,
         handle_emptied_internal_root: F,
-    ) -> ((K, V), Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>) {
-        match self.force() {
-            Leaf(node) => node.remove_leaf_kv(handle_emptied_internal_root),
-            Internal(node) => node.remove_internal_kv(handle_emptied_internal_root),
-        }
-    }
+    ) -> ((K, V), Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>) {}
 }
 
 impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::KV> {
     fn remove_leaf_kv<F: FnOnce()>(
         self,
         handle_emptied_internal_root: F,
-    ) -> ((K, V), Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>) {
-        let (old_kv, mut pos) = self.remove();
-        let len = pos.reborrow().into_node().len();
-        if len < MIN_LEN {
-            let idx = pos.idx();
-            // We have to temporarily forget the child type, because there is no
-            // distinct node type for the immediate parents of a leaf.
-            let new_pos = match pos.into_node().forget_type().choose_parent_kv() {
-                Ok(Left(left_parent_kv)) => {
-                    debug_assert!(left_parent_kv.right_child_len() == MIN_LEN - 1);
-                    if left_parent_kv.can_merge() {
-                        left_parent_kv.merge_tracking_child_edge(Right(idx))
-                    } else {
-                        debug_assert!(left_parent_kv.left_child_len() > MIN_LEN);
-                        left_parent_kv.steal_left(idx)
-                    }
-                }
-                Ok(Right(right_parent_kv)) => {
-                    debug_assert!(right_parent_kv.left_child_len() == MIN_LEN - 1);
-                    if right_parent_kv.can_merge() {
-                        right_parent_kv.merge_tracking_child_edge(Left(idx))
-                    } else {
-                        debug_assert!(right_parent_kv.right_child_len() > MIN_LEN);
-                        right_parent_kv.steal_right(idx)
-                    }
-                }
-                Err(pos) => unsafe { Handle::new_edge(pos, idx) },
-            };
-            // SAFETY: `new_pos` is the leaf we started from or a sibling.
-            pos = unsafe { new_pos.cast_to_leaf_unchecked() };
-
-            // Only if we merged, the parent (if any) has shrunk, but skipping
-            // the following step otherwise does not pay off in benchmarks.
-            //
-            // SAFETY: We won't destroy or rearrange the leaf where `pos` is at
-            // by handling its parent recursively; at worst we will destroy or
-            // rearrange the parent through the grandparent, thus change the
-            // link to the parent inside the leaf.
-            if let Ok(parent) = unsafe { pos.reborrow_mut() }.into_node().ascend() {
-                if !parent.into_node().forget_type().fix_node_and_affected_ancestors() {
-                    handle_emptied_internal_root();
-                }
-            }
-        }
-        (old_kv, pos)
-    }
+    ) -> ((K, V), Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>) {}
 }
 
 impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::KV> {
     fn remove_internal_kv<F: FnOnce()>(
         self,
         handle_emptied_internal_root: F,
-    ) -> ((K, V), Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>) {
-        // Remove an adjacent KV from its leaf and then put it back in place of
-        // the element we were asked to remove. Prefer the left adjacent KV,
-        // for the reasons listed in `choose_parent_kv`.
-        let left_leaf_kv = self.left_edge().descend().last_leaf_edge().left_kv();
-        let left_leaf_kv = unsafe { left_leaf_kv.ok().unwrap_unchecked() };
-        let (left_kv, left_hole) = left_leaf_kv.remove_leaf_kv(handle_emptied_internal_root);
-
-        // The internal node may have been stolen from or merged. Go back right
-        // to find where the original KV ended up.
-        let mut internal = unsafe { left_hole.next_kv().ok().unwrap_unchecked() };
-        let old_kv = internal.replace_kv(left_kv.0, left_kv.1);
-        let pos = internal.next_leaf_edge();
-        (old_kv, pos)
-    }
+    ) -> ((K, V), Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>) {}
 }
 }
 mod search {
@@ -12900,13 +7725,7 @@ pub enum SearchBound<T> {
 }
 
 impl<T> SearchBound<T> {
-    pub fn from_range(range_bound: Bound<T>) -> Self {
-        match range_bound {
-            Bound::Included(t) => Included(t),
-            Bound::Excluded(t) => Excluded(t),
-            Bound::Unbounded => AllIncluded,
-        }
-    }
+    pub fn from_range(range_bound: Bound<T>) -> Self {}
 }
 
 pub enum SearchResult<BorrowType, K, V, FoundType, GoDownType> {
@@ -12933,17 +7752,7 @@ impl<BorrowType: marker::BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Lea
     where
         Q: Ord,
         K: Borrow<Q>,
-    {
-        loop {
-            self = match self.search_node(key) {
-                Found(handle) => return Found(handle),
-                GoDown(handle) => match handle.force() {
-                    Leaf(leaf) => return GoDown(leaf),
-                    Internal(internal) => internal.descend(),
-                },
-            }
-        }
-    }
+    {}
 
     /// Descends to the nearest node where the edge matching the lower bound
     /// of the range is different from the edge matching the upper bound, i.e.,
@@ -12977,48 +7786,7 @@ impl<BorrowType: marker::BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Lea
         Q: Ord,
         K: Borrow<Q>,
         R: RangeBounds<Q>,
-    {
-        // Inlining these variables should be avoided. We assume the bounds reported by `range`
-        // remain the same, but an adversarial implementation could change between calls (#81138).
-        let (start, end) = (range.start_bound(), range.end_bound());
-        match (start, end) {
-            (Bound::Excluded(s), Bound::Excluded(e)) if s == e => {
-                panic!("range start and end are equal and excluded in BTreeMap")
-            }
-            (Bound::Included(s) | Bound::Excluded(s), Bound::Included(e) | Bound::Excluded(e))
-                if s > e =>
-            {
-                panic!("range start is greater than range end in BTreeMap")
-            }
-            _ => {}
-        }
-        let mut lower_bound = SearchBound::from_range(start);
-        let mut upper_bound = SearchBound::from_range(end);
-        loop {
-            let (lower_edge_idx, lower_child_bound) = self.find_lower_bound_index(lower_bound);
-            let (upper_edge_idx, upper_child_bound) =
-                unsafe { self.find_upper_bound_index(upper_bound, lower_edge_idx) };
-            if lower_edge_idx < upper_edge_idx {
-                return Ok((
-                    self,
-                    lower_edge_idx,
-                    upper_edge_idx,
-                    lower_child_bound,
-                    upper_child_bound,
-                ));
-            }
-            debug_assert_eq!(lower_edge_idx, upper_edge_idx);
-            let common_edge = unsafe { Handle::new_edge(self, lower_edge_idx) };
-            match common_edge.force() {
-                Leaf(common_edge) => return Err(common_edge),
-                Internal(common_edge) => {
-                    self = common_edge.descend();
-                    lower_bound = lower_child_bound;
-                    upper_bound = upper_child_bound;
-                }
-            }
-        }
-    }
+    {}
 
     /// Finds an edge in the node delimiting the lower bound of a range.
     /// Also returns the lower bound to be used for continuing the search in
@@ -13032,11 +7800,7 @@ impl<BorrowType: marker::BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Lea
     where
         Q: ?Sized + Ord,
         K: Borrow<Q>,
-    {
-        let (edge_idx, bound) = self.find_lower_bound_index(bound);
-        let edge = unsafe { Handle::new_edge(self, edge_idx) };
-        (edge, bound)
-    }
+    {}
 
     /// Clone of `find_lower_bound_edge` for the upper bound.
     pub fn find_upper_bound_edge<'r, Q>(
@@ -13046,11 +7810,7 @@ impl<BorrowType: marker::BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Lea
     where
         Q: ?Sized + Ord,
         K: Borrow<Q>,
-    {
-        let (edge_idx, bound) = unsafe { self.find_upper_bound_index(bound, 0) };
-        let edge = unsafe { Handle::new_edge(self, edge_idx) };
-        (edge, bound)
-    }
+    {}
 }
 
 impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
@@ -13065,12 +7825,7 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
     where
         Q: Ord,
         K: Borrow<Q>,
-    {
-        match unsafe { self.find_key_index(key, 0) } {
-            IndexResult::KV(idx) => Found(unsafe { Handle::new_kv(self, idx) }),
-            IndexResult::Edge(idx) => GoDown(unsafe { Handle::new_edge(self, idx) }),
-        }
-    }
+    {}
 
     /// Returns either the KV index in the node at which the key (or an equivalent)
     /// exists, or the edge index where the key belongs, starting from a particular index.
@@ -13084,19 +7839,7 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
     where
         Q: Ord,
         K: Borrow<Q>,
-    {
-        let node = self.reborrow();
-        let keys = node.keys();
-        debug_assert!(start_index <= keys.len());
-        for (offset, k) in unsafe { keys.get_unchecked(start_index..) }.iter().enumerate() {
-            match key.cmp(k.borrow()) {
-                Ordering::Greater => {}
-                Ordering::Equal => return IndexResult::KV(start_index + offset),
-                Ordering::Less => return IndexResult::Edge(start_index + offset),
-            }
-        }
-        IndexResult::Edge(keys.len())
-    }
+    {}
 
     /// Finds an edge index in the node delimiting the lower bound of a range.
     /// Also returns the lower bound to be used for continuing the search in
@@ -13110,20 +7853,7 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
     where
         Q: ?Sized + Ord,
         K: Borrow<Q>,
-    {
-        match bound {
-            Included(key) => match unsafe { self.find_key_index(key, 0) } {
-                IndexResult::KV(idx) => (idx, AllExcluded),
-                IndexResult::Edge(idx) => (idx, bound),
-            },
-            Excluded(key) => match unsafe { self.find_key_index(key, 0) } {
-                IndexResult::KV(idx) => (idx + 1, AllIncluded),
-                IndexResult::Edge(idx) => (idx, bound),
-            },
-            AllIncluded => (0, AllIncluded),
-            AllExcluded => (self.len(), AllExcluded),
-        }
-    }
+    {}
 
     /// Mirror image of `find_lower_bound_index` for the upper bound,
     /// with an additional parameter to skip part of the key array.
@@ -13138,20 +7868,7 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
     where
         Q: ?Sized + Ord,
         K: Borrow<Q>,
-    {
-        match bound {
-            Included(key) => match unsafe { self.find_key_index(key, start_index) } {
-                IndexResult::KV(idx) => (idx + 1, AllExcluded),
-                IndexResult::Edge(idx) => (idx, bound),
-            },
-            Excluded(key) => match unsafe { self.find_key_index(key, start_index) } {
-                IndexResult::KV(idx) => (idx, AllIncluded),
-                IndexResult::Edge(idx) => (idx, bound),
-            },
-            AllIncluded => (self.len(), AllIncluded),
-            AllExcluded => (start_index, AllExcluded),
-        }
-    }
+    {}
 }
 }
 pub mod set {
@@ -13234,13 +7951,9 @@ pub struct BTreeSet<T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Clone> Clone for BTreeSet<T> {
-    fn clone(&self) -> Self {
-        BTreeSet { map: self.map.clone() }
-    }
+    fn clone(&self) -> Self {}
 
-    fn clone_from(&mut self, other: &Self) {
-        self.map.clone_from(&other.map);
-    }
+    fn clone_from(&mut self, other: &Self) {}
 }
 
 /// An iterator over the items of a `BTreeSet`.
@@ -13257,9 +7970,7 @@ pub struct Iter<'a, T: 'a> {
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<T: fmt::Debug> fmt::Debug for Iter<'_, T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("Iter").field(&self.iter.clone()).finish()
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
 }
 
 /// An owning iterator over the items of a `BTreeSet`.
@@ -13317,9 +8028,7 @@ enum DifferenceInner<'a, T: 'a> {
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<T: fmt::Debug> fmt::Debug for Difference<'_, T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("Difference").field(&self.inner).finish()
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
 }
 
 /// A lazy iterator producing elements in the symmetric difference of `BTreeSet`s.
@@ -13335,9 +8044,7 @@ pub struct SymmetricDifference<'a, T: 'a>(MergeIterInner<Iter<'a, T>>);
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<T: fmt::Debug> fmt::Debug for SymmetricDifference<'_, T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("SymmetricDifference").field(&self.0).finish()
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
 }
 
 /// A lazy iterator producing elements in the intersection of `BTreeSet`s.
@@ -13369,9 +8076,7 @@ enum IntersectionInner<'a, T: 'a> {
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<T: fmt::Debug> fmt::Debug for Intersection<'_, T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("Intersection").field(&self.inner).finish()
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
 }
 
 /// A lazy iterator producing elements in the union of `BTreeSet`s.
@@ -13387,9 +8092,7 @@ pub struct Union<'a, T: 'a>(MergeIterInner<Iter<'a, T>>);
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<T: fmt::Debug> fmt::Debug for Union<'_, T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("Union").field(&self.0).finish()
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
 }
 
 // This constant is used by functions that compare two sets.
@@ -13416,9 +8119,7 @@ impl<T> BTreeSet<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_btree_new", issue = "71835")]
     #[must_use]
-    pub const fn new() -> BTreeSet<T> {
-        BTreeSet { map: BTreeMap::new() }
-    }
+    pub const fn new() -> BTreeSet<T> {}
 
     /// Constructs a double-ended iterator over a sub-range of elements in the set.
     /// The simplest way is to use the range syntax `min..max`, thus `range(min..max)` will
@@ -13448,9 +8149,7 @@ impl<T> BTreeSet<T> {
         K: Ord,
         T: Borrow<K> + Ord,
         R: RangeBounds<K>,
-    {
-        Range { iter: self.map.range(range) }
-    }
+    {}
 
     /// Visits the values representing the difference,
     /// i.e., the values that are in `self` but not in `other`,
@@ -13476,42 +8175,7 @@ impl<T> BTreeSet<T> {
     pub fn difference<'a>(&'a self, other: &'a BTreeSet<T>) -> Difference<'a, T>
     where
         T: Ord,
-    {
-        let (self_min, self_max) =
-            if let (Some(self_min), Some(self_max)) = (self.first(), self.last()) {
-                (self_min, self_max)
-            } else {
-                return Difference { inner: DifferenceInner::Iterate(self.iter()) };
-            };
-        let (other_min, other_max) =
-            if let (Some(other_min), Some(other_max)) = (other.first(), other.last()) {
-                (other_min, other_max)
-            } else {
-                return Difference { inner: DifferenceInner::Iterate(self.iter()) };
-            };
-        Difference {
-            inner: match (self_min.cmp(other_max), self_max.cmp(other_min)) {
-                (Greater, _) | (_, Less) => DifferenceInner::Iterate(self.iter()),
-                (Equal, _) => {
-                    let mut self_iter = self.iter();
-                    self_iter.next();
-                    DifferenceInner::Iterate(self_iter)
-                }
-                (_, Equal) => {
-                    let mut self_iter = self.iter();
-                    self_iter.next_back();
-                    DifferenceInner::Iterate(self_iter)
-                }
-                _ if self.len() <= other.len() / ITER_PERFORMANCE_TIPPING_SIZE_DIFF => {
-                    DifferenceInner::Search { self_iter: self.iter(), other_set: other }
-                }
-                _ => DifferenceInner::Stitch {
-                    self_iter: self.iter(),
-                    other_iter: other.iter().peekable(),
-                },
-            },
-        }
-    }
+    {}
 
     /// Visits the values representing the symmetric difference,
     /// i.e., the values that are in `self` or in `other` but not in both,
@@ -13537,9 +8201,7 @@ impl<T> BTreeSet<T> {
     pub fn symmetric_difference<'a>(&'a self, other: &'a BTreeSet<T>) -> SymmetricDifference<'a, T>
     where
         T: Ord,
-    {
-        SymmetricDifference(MergeIterInner::new(self.iter(), other.iter()))
-    }
+    {}
 
     /// Visits the values representing the intersection,
     /// i.e., the values that are both in `self` and `other`,
@@ -13565,34 +8227,7 @@ impl<T> BTreeSet<T> {
     pub fn intersection<'a>(&'a self, other: &'a BTreeSet<T>) -> Intersection<'a, T>
     where
         T: Ord,
-    {
-        let (self_min, self_max) =
-            if let (Some(self_min), Some(self_max)) = (self.first(), self.last()) {
-                (self_min, self_max)
-            } else {
-                return Intersection { inner: IntersectionInner::Answer(None) };
-            };
-        let (other_min, other_max) =
-            if let (Some(other_min), Some(other_max)) = (other.first(), other.last()) {
-                (other_min, other_max)
-            } else {
-                return Intersection { inner: IntersectionInner::Answer(None) };
-            };
-        Intersection {
-            inner: match (self_min.cmp(other_max), self_max.cmp(other_min)) {
-                (Greater, _) | (_, Less) => IntersectionInner::Answer(None),
-                (Equal, _) => IntersectionInner::Answer(Some(self_min)),
-                (_, Equal) => IntersectionInner::Answer(Some(self_max)),
-                _ if self.len() <= other.len() / ITER_PERFORMANCE_TIPPING_SIZE_DIFF => {
-                    IntersectionInner::Search { small_iter: self.iter(), large_set: other }
-                }
-                _ if other.len() <= self.len() / ITER_PERFORMANCE_TIPPING_SIZE_DIFF => {
-                    IntersectionInner::Search { small_iter: other.iter(), large_set: self }
-                }
-                _ => IntersectionInner::Stitch { a: self.iter(), b: other.iter() },
-            },
-        }
-    }
+    {}
 
     /// Visits the values representing the union,
     /// i.e., all the values in `self` or `other`, without duplicates,
@@ -13616,9 +8251,7 @@ impl<T> BTreeSet<T> {
     pub fn union<'a>(&'a self, other: &'a BTreeSet<T>) -> Union<'a, T>
     where
         T: Ord,
-    {
-        Union(MergeIterInner::new(self.iter(), other.iter()))
-    }
+    {}
 
     /// Clears the set, removing all values.
     ///
@@ -13633,9 +8266,7 @@ impl<T> BTreeSet<T> {
     /// assert!(v.is_empty());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn clear(&mut self) {
-        self.map.clear()
-    }
+    pub fn clear(&mut self) {}
 
     /// Returns `true` if the set contains a value.
     ///
@@ -13657,9 +8288,7 @@ impl<T> BTreeSet<T> {
     where
         T: Borrow<Q> + Ord,
         Q: Ord,
-    {
-        self.map.contains_key(value)
-    }
+    {}
 
     /// Returns a reference to the value in the set, if any, that is equal to the given value.
     ///
@@ -13681,9 +8310,7 @@ impl<T> BTreeSet<T> {
     where
         T: Borrow<Q> + Ord,
         Q: Ord,
-    {
-        Recover::get(&self.map, value)
-    }
+    {}
 
     /// Returns `true` if `self` has no elements in common with `other`.
     /// This is equivalent to checking for an empty intersection.
@@ -13707,9 +8334,7 @@ impl<T> BTreeSet<T> {
     pub fn is_disjoint(&self, other: &BTreeSet<T>) -> bool
     where
         T: Ord,
-    {
-        self.intersection(other).next().is_none()
-    }
+    {}
 
     /// Returns `true` if the set is a subset of another,
     /// i.e., `other` contains at least all the values in `self`.
@@ -13733,60 +8358,7 @@ impl<T> BTreeSet<T> {
     pub fn is_subset(&self, other: &BTreeSet<T>) -> bool
     where
         T: Ord,
-    {
-        // Same result as self.difference(other).next().is_none()
-        // but the code below is faster (hugely in some cases).
-        if self.len() > other.len() {
-            return false;
-        }
-        let (self_min, self_max) =
-            if let (Some(self_min), Some(self_max)) = (self.first(), self.last()) {
-                (self_min, self_max)
-            } else {
-                return true; // self is empty
-            };
-        let (other_min, other_max) =
-            if let (Some(other_min), Some(other_max)) = (other.first(), other.last()) {
-                (other_min, other_max)
-            } else {
-                return false; // other is empty
-            };
-        let mut self_iter = self.iter();
-        match self_min.cmp(other_min) {
-            Less => return false,
-            Equal => {
-                self_iter.next();
-            }
-            Greater => (),
-        }
-        match self_max.cmp(other_max) {
-            Greater => return false,
-            Equal => {
-                self_iter.next_back();
-            }
-            Less => (),
-        }
-        if self_iter.len() <= other.len() / ITER_PERFORMANCE_TIPPING_SIZE_DIFF {
-            for next in self_iter {
-                if !other.contains(next) {
-                    return false;
-                }
-            }
-        } else {
-            let mut other_iter = other.iter();
-            other_iter.next();
-            other_iter.next_back();
-            let mut self_next = self_iter.next();
-            while let Some(self1) = self_next {
-                match other_iter.next().map_or(Less, |other1| self1.cmp(other1)) {
-                    Less => return false,
-                    Equal => self_next = self_iter.next(),
-                    Greater => (),
-                }
-            }
-        }
-        true
-    }
+    {}
 
     /// Returns `true` if the set is a superset of another,
     /// i.e., `self` contains at least all the values in `other`.
@@ -13813,9 +8385,7 @@ impl<T> BTreeSet<T> {
     pub fn is_superset(&self, other: &BTreeSet<T>) -> bool
     where
         T: Ord,
-    {
-        other.is_subset(self)
-    }
+    {}
 
     /// Returns a reference to the first value in the set, if any.
     /// This value is always the minimum of all values in the set.
@@ -13840,9 +8410,7 @@ impl<T> BTreeSet<T> {
     pub fn first(&self) -> Option<&T>
     where
         T: Ord,
-    {
-        self.map.first_key_value().map(|(k, _)| k)
-    }
+    {}
 
     /// Returns a reference to the last value in the set, if any.
     /// This value is always the maximum of all values in the set.
@@ -13867,9 +8435,7 @@ impl<T> BTreeSet<T> {
     pub fn last(&self) -> Option<&T>
     where
         T: Ord,
-    {
-        self.map.last_key_value().map(|(k, _)| k)
-    }
+    {}
 
     /// Removes the first value from the set and returns it, if any.
     /// The first value is always the minimum value in the set.
@@ -13892,9 +8458,7 @@ impl<T> BTreeSet<T> {
     pub fn pop_first(&mut self) -> Option<T>
     where
         T: Ord,
-    {
-        self.map.pop_first().map(|kv| kv.0)
-    }
+    {}
 
     /// Removes the last value from the set and returns it, if any.
     /// The last value is always the maximum value in the set.
@@ -13917,9 +8481,7 @@ impl<T> BTreeSet<T> {
     pub fn pop_last(&mut self) -> Option<T>
     where
         T: Ord,
-    {
-        self.map.pop_last().map(|kv| kv.0)
-    }
+    {}
 
     /// Adds a value to the set.
     ///
@@ -13945,9 +8507,7 @@ impl<T> BTreeSet<T> {
     pub fn insert(&mut self, value: T) -> bool
     where
         T: Ord,
-    {
-        self.map.insert(value, ()).is_none()
-    }
+    {}
 
     /// Adds a value to the set, replacing the existing value, if any, that is equal to the given
     /// one. Returns the replaced value.
@@ -13968,9 +8528,7 @@ impl<T> BTreeSet<T> {
     pub fn replace(&mut self, value: T) -> Option<T>
     where
         T: Ord,
-    {
-        Recover::replace(&mut self.map, value)
-    }
+    {}
 
     /// Removes a value from the set. Returns whether the value was
     /// present in the set.
@@ -13995,9 +8553,7 @@ impl<T> BTreeSet<T> {
     where
         T: Borrow<Q> + Ord,
         Q: Ord,
-    {
-        self.map.remove(value).is_some()
-    }
+    {}
 
     /// Removes and returns the value in the set, if any, that is equal to the given one.
     ///
@@ -14019,9 +8575,7 @@ impl<T> BTreeSet<T> {
     where
         T: Borrow<Q> + Ord,
         Q: Ord,
-    {
-        Recover::take(&mut self.map, value)
-    }
+    {}
 
     /// Retains only the elements specified by the predicate.
     ///
@@ -14044,9 +8598,7 @@ impl<T> BTreeSet<T> {
     where
         T: Ord,
         F: FnMut(&T) -> bool,
-    {
-        self.drain_filter(|v| !f(v));
-    }
+    {}
 
     /// Moves all elements from `other` into `Self`, leaving `other` empty.
     ///
@@ -14080,9 +8632,7 @@ impl<T> BTreeSet<T> {
     pub fn append(&mut self, other: &mut Self)
     where
         T: Ord,
-    {
-        self.map.append(&mut other.map);
-    }
+    {}
 
     /// Splits the collection into two at the given value. Returns everything after the given value,
     /// including the value.
@@ -14117,9 +8667,7 @@ impl<T> BTreeSet<T> {
     pub fn split_off<Q: ?Sized + Ord>(&mut self, value: &Q) -> Self
     where
         T: Borrow<Q> + Ord,
-    {
-        BTreeSet { map: self.map.split_off(value) }
-    }
+    {}
 
     /// Creates an iterator that visits all values in ascending order and uses a closure
     /// to determine if a value should be removed.
@@ -14155,9 +8703,7 @@ impl<T> BTreeSet<T> {
     where
         T: Ord,
         F: 'a + FnMut(&T) -> bool,
-    {
-        DrainFilter { pred, inner: self.map.drain_filter_inner() }
-    }
+    {}
 
     /// Gets an iterator that visits the values in the `BTreeSet` in ascending order.
     ///
@@ -14187,9 +8733,7 @@ impl<T> BTreeSet<T> {
     /// assert_eq!(set_iter.next(), None);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn iter(&self) -> Iter<'_, T> {
-        Iter { iter: self.map.keys() }
-    }
+    pub fn iter(&self) -> Iter<'_, T> {}
 
     /// Returns the number of elements in the set.
     ///
@@ -14206,9 +8750,7 @@ impl<T> BTreeSet<T> {
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_btree_new", issue = "71835")]
-    pub const fn len(&self) -> usize {
-        self.map.len()
-    }
+    pub const fn len(&self) -> usize {}
 
     /// Returns `true` if the set contains no elements.
     ///
@@ -14225,26 +8767,12 @@ impl<T> BTreeSet<T> {
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_btree_new", issue = "71835")]
-    pub const fn is_empty(&self) -> bool {
-        self.len() == 0
-    }
+    pub const fn is_empty(&self) -> bool {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Ord> FromIterator<T> for BTreeSet<T> {
-    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> BTreeSet<T> {
-        let mut inputs: Vec<_> = iter.into_iter().collect();
-
-        if inputs.is_empty() {
-            return BTreeSet::new();
-        }
-
-        // use stable sort to preserve the insertion order.
-        inputs.sort();
-        let iter = inputs.into_iter().map(|k| (k, ()));
-        let map = BTreeMap::bulk_build_from_sorted_iter(iter);
-        BTreeSet { map }
-    }
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> BTreeSet<T> {}
 }
 
 #[stable(feature = "std_collections_from_array", since = "1.56.0")]
@@ -14256,17 +8784,7 @@ impl<T: Ord, const N: usize> From<[T; N]> for BTreeSet<T> {
     /// let set2: BTreeSet<_> = [1, 2, 3, 4].into();
     /// assert_eq!(set1, set2);
     /// ```
-    fn from(mut arr: [T; N]) -> Self {
-        if N == 0 {
-            return BTreeSet::new();
-        }
-
-        // use stable sort to preserve the insertion order.
-        arr.sort();
-        let iter = core::array::IntoIter::new(arr).map(|k| (k, ()));
-        let map = BTreeMap::bulk_build_from_sorted_iter(iter);
-        BTreeSet { map }
-    }
+    fn from(mut arr: [T; N]) -> Self {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -14286,9 +8804,7 @@ impl<T> IntoIterator for BTreeSet<T> {
     /// let v: Vec<_> = set.into_iter().collect();
     /// assert_eq!(v, [1, 2, 3, 4]);
     /// ```
-    fn into_iter(self) -> IntoIter<T> {
-        IntoIter { iter: self.map.into_iter() }
-    }
+    fn into_iter(self) -> IntoIter<T> {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -14296,9 +8812,7 @@ impl<'a, T> IntoIterator for &'a BTreeSet<T> {
     type Item = &'a T;
     type IntoIter = Iter<'a, T>;
 
-    fn into_iter(self) -> Iter<'a, T> {
-        self.iter()
-    }
+    fn into_iter(self) -> Iter<'a, T> {}
 }
 
 /// An iterator produced by calling `drain_filter` on BTreeSet.
@@ -14317,9 +8831,7 @@ impl<T, F> Drop for DrainFilter<'_, T, F>
 where
     F: FnMut(&T) -> bool,
 {
-    fn drop(&mut self) {
-        self.for_each(drop);
-    }
+    fn drop(&mut self) {}
 }
 
 #[unstable(feature = "btree_drain_filter", issue = "70530")]
@@ -14328,9 +8840,7 @@ where
     T: fmt::Debug,
     F: FnMut(&T) -> bool,
 {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("DrainFilter").field(&self.inner.peek().map(|(k, _)| k)).finish()
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
 }
 
 #[unstable(feature = "btree_drain_filter", issue = "70530")]
@@ -14340,15 +8850,9 @@ where
 {
     type Item = T;
 
-    fn next(&mut self) -> Option<T> {
-        let pred = &mut self.pred;
-        let mut mapped_pred = |k: &T, _v: &mut ()| pred(k);
-        self.inner.next(&mut mapped_pred).map(|(k, _)| k)
-    }
+    fn next(&mut self) -> Option<T> {}
 
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.inner.size_hint()
-    }
+    fn size_hint(&self) -> (usize, Option<usize>) {}
 }
 
 #[unstable(feature = "btree_drain_filter", issue = "70530")]
@@ -14357,36 +8861,24 @@ impl<T, F> FusedIterator for DrainFilter<'_, T, F> where F: FnMut(&T) -> bool {}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Ord> Extend<T> for BTreeSet<T> {
     #[inline]
-    fn extend<Iter: IntoIterator<Item = T>>(&mut self, iter: Iter) {
-        iter.into_iter().for_each(move |elem| {
-            self.insert(elem);
-        });
-    }
+    fn extend<Iter: IntoIterator<Item = T>>(&mut self, iter: Iter) {}
 
     #[inline]
-    fn extend_one(&mut self, elem: T) {
-        self.insert(elem);
-    }
+    fn extend_one(&mut self, elem: T) {}
 }
 
 #[stable(feature = "extend_ref", since = "1.2.0")]
 impl<'a, T: 'a + Ord + Copy> Extend<&'a T> for BTreeSet<T> {
-    fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
-        self.extend(iter.into_iter().cloned());
-    }
+    fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {}
 
     #[inline]
-    fn extend_one(&mut self, &elem: &'a T) {
-        self.insert(elem);
-    }
+    fn extend_one(&mut self, &elem: &'a T) {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Default for BTreeSet<T> {
     /// Creates an empty `BTreeSet`.
-    fn default() -> BTreeSet<T> {
-        BTreeSet::new()
-    }
+    fn default() -> BTreeSet<T> {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -14407,9 +8899,7 @@ impl<T: Ord + Clone> Sub<&BTreeSet<T>> for &BTreeSet<T> {
     /// let result_vec: Vec<_> = result.into_iter().collect();
     /// assert_eq!(result_vec, [1, 2]);
     /// ```
-    fn sub(self, rhs: &BTreeSet<T>) -> BTreeSet<T> {
-        self.difference(rhs).cloned().collect()
-    }
+    fn sub(self, rhs: &BTreeSet<T>) -> BTreeSet<T> {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -14430,9 +8920,7 @@ impl<T: Ord + Clone> BitXor<&BTreeSet<T>> for &BTreeSet<T> {
     /// let result_vec: Vec<_> = result.into_iter().collect();
     /// assert_eq!(result_vec, [1, 4]);
     /// ```
-    fn bitxor(self, rhs: &BTreeSet<T>) -> BTreeSet<T> {
-        self.symmetric_difference(rhs).cloned().collect()
-    }
+    fn bitxor(self, rhs: &BTreeSet<T>) -> BTreeSet<T> {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -14453,9 +8941,7 @@ impl<T: Ord + Clone> BitAnd<&BTreeSet<T>> for &BTreeSet<T> {
     /// let result_vec: Vec<_> = result.into_iter().collect();
     /// assert_eq!(result_vec, [2, 3]);
     /// ```
-    fn bitand(self, rhs: &BTreeSet<T>) -> BTreeSet<T> {
-        self.intersection(rhs).cloned().collect()
-    }
+    fn bitand(self, rhs: &BTreeSet<T>) -> BTreeSet<T> {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -14476,59 +8962,39 @@ impl<T: Ord + Clone> BitOr<&BTreeSet<T>> for &BTreeSet<T> {
     /// let result_vec: Vec<_> = result.into_iter().collect();
     /// assert_eq!(result_vec, [1, 2, 3, 4, 5]);
     /// ```
-    fn bitor(self, rhs: &BTreeSet<T>) -> BTreeSet<T> {
-        self.union(rhs).cloned().collect()
-    }
+    fn bitor(self, rhs: &BTreeSet<T>) -> BTreeSet<T> {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Debug> Debug for BTreeSet<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_set().entries(self.iter()).finish()
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Clone for Iter<'_, T> {
-    fn clone(&self) -> Self {
-        Iter { iter: self.iter.clone() }
-    }
+    fn clone(&self) -> Self {}
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> Iterator for Iter<'a, T> {
     type Item = &'a T;
 
-    fn next(&mut self) -> Option<&'a T> {
-        self.iter.next()
-    }
+    fn next(&mut self) -> Option<&'a T> {}
 
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.iter.size_hint()
-    }
+    fn size_hint(&self) -> (usize, Option<usize>) {}
 
-    fn last(mut self) -> Option<&'a T> {
-        self.next_back()
-    }
+    fn last(mut self) -> Option<&'a T> {}
 
-    fn min(mut self) -> Option<&'a T> {
-        self.next()
-    }
+    fn min(mut self) -> Option<&'a T> {}
 
-    fn max(mut self) -> Option<&'a T> {
-        self.next_back()
-    }
+    fn max(mut self) -> Option<&'a T> {}
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> DoubleEndedIterator for Iter<'a, T> {
-    fn next_back(&mut self) -> Option<&'a T> {
-        self.iter.next_back()
-    }
+    fn next_back(&mut self) -> Option<&'a T> {}
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ExactSizeIterator for Iter<'_, T> {
-    fn len(&self) -> usize {
-        self.iter.len()
-    }
+    fn len(&self) -> usize {}
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -14538,25 +9004,17 @@ impl<T> FusedIterator for Iter<'_, T> {}
 impl<T> Iterator for IntoIter<T> {
     type Item = T;
 
-    fn next(&mut self) -> Option<T> {
-        self.iter.next().map(|(k, _)| k)
-    }
+    fn next(&mut self) -> Option<T> {}
 
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.iter.size_hint()
-    }
+    fn size_hint(&self) -> (usize, Option<usize>) {}
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> DoubleEndedIterator for IntoIter<T> {
-    fn next_back(&mut self) -> Option<T> {
-        self.iter.next_back().map(|(k, _)| k)
-    }
+    fn next_back(&mut self) -> Option<T> {}
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ExactSizeIterator for IntoIter<T> {
-    fn len(&self) -> usize {
-        self.iter.len()
-    }
+    fn len(&self) -> usize {}
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -14564,37 +9022,25 @@ impl<T> FusedIterator for IntoIter<T> {}
 
 #[stable(feature = "btree_range", since = "1.17.0")]
 impl<T> Clone for Range<'_, T> {
-    fn clone(&self) -> Self {
-        Range { iter: self.iter.clone() }
-    }
+    fn clone(&self) -> Self {}
 }
 
 #[stable(feature = "btree_range", since = "1.17.0")]
 impl<'a, T> Iterator for Range<'a, T> {
     type Item = &'a T;
 
-    fn next(&mut self) -> Option<&'a T> {
-        self.iter.next().map(|(k, _)| k)
-    }
+    fn next(&mut self) -> Option<&'a T> {}
 
-    fn last(mut self) -> Option<&'a T> {
-        self.next_back()
-    }
+    fn last(mut self) -> Option<&'a T> {}
 
-    fn min(mut self) -> Option<&'a T> {
-        self.next()
-    }
+    fn min(mut self) -> Option<&'a T> {}
 
-    fn max(mut self) -> Option<&'a T> {
-        self.next_back()
-    }
+    fn max(mut self) -> Option<&'a T> {}
 }
 
 #[stable(feature = "btree_range", since = "1.17.0")]
 impl<'a, T> DoubleEndedIterator for Range<'a, T> {
-    fn next_back(&mut self) -> Option<&'a T> {
-        self.iter.next_back().map(|(k, _)| k)
-    }
+    fn next_back(&mut self) -> Option<&'a T> {}
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -14602,66 +9048,17 @@ impl<T> FusedIterator for Range<'_, T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Clone for Difference<'_, T> {
-    fn clone(&self) -> Self {
-        Difference {
-            inner: match &self.inner {
-                DifferenceInner::Stitch { self_iter, other_iter } => DifferenceInner::Stitch {
-                    self_iter: self_iter.clone(),
-                    other_iter: other_iter.clone(),
-                },
-                DifferenceInner::Search { self_iter, other_set } => {
-                    DifferenceInner::Search { self_iter: self_iter.clone(), other_set }
-                }
-                DifferenceInner::Iterate(iter) => DifferenceInner::Iterate(iter.clone()),
-            },
-        }
-    }
+    fn clone(&self) -> Self {}
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T: Ord> Iterator for Difference<'a, T> {
     type Item = &'a T;
 
-    fn next(&mut self) -> Option<&'a T> {
-        match &mut self.inner {
-            DifferenceInner::Stitch { self_iter, other_iter } => {
-                let mut self_next = self_iter.next()?;
-                loop {
-                    match other_iter.peek().map_or(Less, |other_next| self_next.cmp(other_next)) {
-                        Less => return Some(self_next),
-                        Equal => {
-                            self_next = self_iter.next()?;
-                            other_iter.next();
-                        }
-                        Greater => {
-                            other_iter.next();
-                        }
-                    }
-                }
-            }
-            DifferenceInner::Search { self_iter, other_set } => loop {
-                let self_next = self_iter.next()?;
-                if !other_set.contains(&self_next) {
-                    return Some(self_next);
-                }
-            },
-            DifferenceInner::Iterate(iter) => iter.next(),
-        }
-    }
+    fn next(&mut self) -> Option<&'a T> {}
 
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        let (self_len, other_len) = match &self.inner {
-            DifferenceInner::Stitch { self_iter, other_iter } => {
-                (self_iter.len(), other_iter.len())
-            }
-            DifferenceInner::Search { self_iter, other_set } => (self_iter.len(), other_set.len()),
-            DifferenceInner::Iterate(iter) => (iter.len(), 0),
-        };
-        (self_len.saturating_sub(other_len), Some(self_len))
-    }
+    fn size_hint(&self) -> (usize, Option<usize>) {}
 
-    fn min(mut self) -> Option<&'a T> {
-        self.next()
-    }
+    fn min(mut self) -> Option<&'a T> {}
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -14669,34 +9066,17 @@ impl<T: Ord> FusedIterator for Difference<'_, T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Clone for SymmetricDifference<'_, T> {
-    fn clone(&self) -> Self {
-        SymmetricDifference(self.0.clone())
-    }
+    fn clone(&self) -> Self {}
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T: Ord> Iterator for SymmetricDifference<'a, T> {
     type Item = &'a T;
 
-    fn next(&mut self) -> Option<&'a T> {
-        loop {
-            let (a_next, b_next) = self.0.nexts(Self::Item::cmp);
-            if a_next.and(b_next).is_none() {
-                return a_next.or(b_next);
-            }
-        }
-    }
+    fn next(&mut self) -> Option<&'a T> {}
 
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        let (a_len, b_len) = self.0.lens();
-        // No checked_add, because even if a and b refer to the same set,
-        // and T is an empty type, the storage overhead of sets limits
-        // the number of elements to less than half the range of usize.
-        (0, Some(a_len + b_len))
-    }
+    fn size_hint(&self) -> (usize, Option<usize>) {}
 
-    fn min(mut self) -> Option<&'a T> {
-        self.next()
-    }
+    fn min(mut self) -> Option<&'a T> {}
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -14704,59 +9084,17 @@ impl<T: Ord> FusedIterator for SymmetricDifference<'_, T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Clone for Intersection<'_, T> {
-    fn clone(&self) -> Self {
-        Intersection {
-            inner: match &self.inner {
-                IntersectionInner::Stitch { a, b } => {
-                    IntersectionInner::Stitch { a: a.clone(), b: b.clone() }
-                }
-                IntersectionInner::Search { small_iter, large_set } => {
-                    IntersectionInner::Search { small_iter: small_iter.clone(), large_set }
-                }
-                IntersectionInner::Answer(answer) => IntersectionInner::Answer(*answer),
-            },
-        }
-    }
+    fn clone(&self) -> Self {}
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T: Ord> Iterator for Intersection<'a, T> {
     type Item = &'a T;
 
-    fn next(&mut self) -> Option<&'a T> {
-        match &mut self.inner {
-            IntersectionInner::Stitch { a, b } => {
-                let mut a_next = a.next()?;
-                let mut b_next = b.next()?;
-                loop {
-                    match a_next.cmp(b_next) {
-                        Less => a_next = a.next()?,
-                        Greater => b_next = b.next()?,
-                        Equal => return Some(a_next),
-                    }
-                }
-            }
-            IntersectionInner::Search { small_iter, large_set } => loop {
-                let small_next = small_iter.next()?;
-                if large_set.contains(&small_next) {
-                    return Some(small_next);
-                }
-            },
-            IntersectionInner::Answer(answer) => answer.take(),
-        }
-    }
+    fn next(&mut self) -> Option<&'a T> {}
 
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        match &self.inner {
-            IntersectionInner::Stitch { a, b } => (0, Some(min(a.len(), b.len()))),
-            IntersectionInner::Search { small_iter, .. } => (0, Some(small_iter.len())),
-            IntersectionInner::Answer(None) => (0, Some(0)),
-            IntersectionInner::Answer(Some(_)) => (1, Some(1)),
-        }
-    }
+    fn size_hint(&self) -> (usize, Option<usize>) {}
 
-    fn min(mut self) -> Option<&'a T> {
-        self.next()
-    }
+    fn min(mut self) -> Option<&'a T> {}
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -14764,28 +9102,17 @@ impl<T: Ord> FusedIterator for Intersection<'_, T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Clone for Union<'_, T> {
-    fn clone(&self) -> Self {
-        Union(self.0.clone())
-    }
+    fn clone(&self) -> Self {}
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T: Ord> Iterator for Union<'a, T> {
     type Item = &'a T;
 
-    fn next(&mut self) -> Option<&'a T> {
-        let (a_next, b_next) = self.0.nexts(Self::Item::cmp);
-        a_next.or(b_next)
-    }
+    fn next(&mut self) -> Option<&'a T> {}
 
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        let (a_len, b_len) = self.0.lens();
-        // No checked_add - see SymmetricDifference::size_hint.
-        (max(a_len, b_len), Some(a_len + b_len))
-    }
+    fn size_hint(&self) -> (usize, Option<usize>) {}
 
-    fn min(mut self) -> Option<&'a T> {
-        self.next()
-    }
+    fn min(mut self) -> Option<&'a T> {}
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -14802,743 +9129,112 @@ use std::iter::FromIterator;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 
 #[test]
-fn test_clone_eq() {
-    let mut m = BTreeSet::new();
-
-    m.insert(1);
-    m.insert(2);
-
-    assert_eq!(m.clone(), m);
-}
+fn test_clone_eq() {}
 
 #[test]
-fn test_iter_min_max() {
-    let mut a = BTreeSet::new();
-    assert_eq!(a.iter().min(), None);
-    assert_eq!(a.iter().max(), None);
-    assert_eq!(a.range(..).min(), None);
-    assert_eq!(a.range(..).max(), None);
-    assert_eq!(a.difference(&BTreeSet::new()).min(), None);
-    assert_eq!(a.difference(&BTreeSet::new()).max(), None);
-    assert_eq!(a.intersection(&a).min(), None);
-    assert_eq!(a.intersection(&a).max(), None);
-    assert_eq!(a.symmetric_difference(&BTreeSet::new()).min(), None);
-    assert_eq!(a.symmetric_difference(&BTreeSet::new()).max(), None);
-    assert_eq!(a.union(&a).min(), None);
-    assert_eq!(a.union(&a).max(), None);
-    a.insert(1);
-    a.insert(2);
-    assert_eq!(a.iter().min(), Some(&1));
-    assert_eq!(a.iter().max(), Some(&2));
-    assert_eq!(a.range(..).min(), Some(&1));
-    assert_eq!(a.range(..).max(), Some(&2));
-    assert_eq!(a.difference(&BTreeSet::new()).min(), Some(&1));
-    assert_eq!(a.difference(&BTreeSet::new()).max(), Some(&2));
-    assert_eq!(a.intersection(&a).min(), Some(&1));
-    assert_eq!(a.intersection(&a).max(), Some(&2));
-    assert_eq!(a.symmetric_difference(&BTreeSet::new()).min(), Some(&1));
-    assert_eq!(a.symmetric_difference(&BTreeSet::new()).max(), Some(&2));
-    assert_eq!(a.union(&a).min(), Some(&1));
-    assert_eq!(a.union(&a).max(), Some(&2));
-}
+fn test_iter_min_max() {}
 
 fn check<F>(a: &[i32], b: &[i32], expected: &[i32], f: F)
 where
     F: FnOnce(&BTreeSet<i32>, &BTreeSet<i32>, &mut dyn FnMut(&i32) -> bool) -> bool,
-{
-    let mut set_a = BTreeSet::new();
-    let mut set_b = BTreeSet::new();
-
-    for x in a {
-        assert!(set_a.insert(*x))
-    }
-    for y in b {
-        assert!(set_b.insert(*y))
-    }
-
-    let mut i = 0;
-    f(&set_a, &set_b, &mut |&x| {
-        if i < expected.len() {
-            assert_eq!(x, expected[i]);
-        }
-        i += 1;
-        true
-    });
-    assert_eq!(i, expected.len());
-}
+{}
 
 #[test]
-fn test_intersection() {
-    fn check_intersection(a: &[i32], b: &[i32], expected: &[i32]) {
-        check(a, b, expected, |x, y, f| x.intersection(y).all(f))
-    }
-
-    check_intersection(&[], &[], &[]);
-    check_intersection(&[1, 2, 3], &[], &[]);
-    check_intersection(&[], &[1, 2, 3], &[]);
-    check_intersection(&[2], &[1, 2, 3], &[2]);
-    check_intersection(&[1, 2, 3], &[2], &[2]);
-    check_intersection(&[11, 1, 3, 77, 103, 5, -5], &[2, 11, 77, -9, -42, 5, 3], &[3, 5, 11, 77]);
-
-    if cfg!(miri) {
-        // Miri is too slow
-        return;
-    }
-
-    let large = (0..100).collect::<Vec<_>>();
-    check_intersection(&[], &large, &[]);
-    check_intersection(&large, &[], &[]);
-    check_intersection(&[-1], &large, &[]);
-    check_intersection(&large, &[-1], &[]);
-    check_intersection(&[0], &large, &[0]);
-    check_intersection(&large, &[0], &[0]);
-    check_intersection(&[99], &large, &[99]);
-    check_intersection(&large, &[99], &[99]);
-    check_intersection(&[100], &large, &[]);
-    check_intersection(&large, &[100], &[]);
-    check_intersection(&[11, 5000, 1, 3, 77, 8924], &large, &[1, 3, 11, 77]);
-}
+fn test_intersection() {}
 
 #[test]
-fn test_intersection_size_hint() {
-    let x: BTreeSet<i32> = [3, 4].iter().copied().collect();
-    let y: BTreeSet<i32> = [1, 2, 3].iter().copied().collect();
-    let mut iter = x.intersection(&y);
-    assert_eq!(iter.size_hint(), (1, Some(1)));
-    assert_eq!(iter.next(), Some(&3));
-    assert_eq!(iter.size_hint(), (0, Some(0)));
-    assert_eq!(iter.next(), None);
-
-    iter = y.intersection(&y);
-    assert_eq!(iter.size_hint(), (0, Some(3)));
-    assert_eq!(iter.next(), Some(&1));
-    assert_eq!(iter.size_hint(), (0, Some(2)));
-}
+fn test_intersection_size_hint() {}
 
 #[test]
-fn test_difference() {
-    fn check_difference(a: &[i32], b: &[i32], expected: &[i32]) {
-        check(a, b, expected, |x, y, f| x.difference(y).all(f))
-    }
-
-    check_difference(&[], &[], &[]);
-    check_difference(&[1, 12], &[], &[1, 12]);
-    check_difference(&[], &[1, 2, 3, 9], &[]);
-    check_difference(&[1, 3, 5, 9, 11], &[3, 9], &[1, 5, 11]);
-    check_difference(&[1, 3, 5, 9, 11], &[3, 6, 9], &[1, 5, 11]);
-    check_difference(&[1, 3, 5, 9, 11], &[0, 1], &[3, 5, 9, 11]);
-    check_difference(&[1, 3, 5, 9, 11], &[11, 12], &[1, 3, 5, 9]);
-    check_difference(
-        &[-5, 11, 22, 33, 40, 42],
-        &[-12, -5, 14, 23, 34, 38, 39, 50],
-        &[11, 22, 33, 40, 42],
-    );
-
-    if cfg!(miri) {
-        // Miri is too slow
-        return;
-    }
-
-    let large = (0..100).collect::<Vec<_>>();
-    check_difference(&[], &large, &[]);
-    check_difference(&[-1], &large, &[-1]);
-    check_difference(&[0], &large, &[]);
-    check_difference(&[99], &large, &[]);
-    check_difference(&[100], &large, &[100]);
-    check_difference(&[11, 5000, 1, 3, 77, 8924], &large, &[5000, 8924]);
-    check_difference(&large, &[], &large);
-    check_difference(&large, &[-1], &large);
-    check_difference(&large, &[100], &large);
-}
+fn test_difference() {}
 
 #[test]
-fn test_difference_size_hint() {
-    let s246: BTreeSet<i32> = [2, 4, 6].iter().copied().collect();
-    let s23456: BTreeSet<i32> = (2..=6).collect();
-    let mut iter = s246.difference(&s23456);
-    assert_eq!(iter.size_hint(), (0, Some(3)));
-    assert_eq!(iter.next(), None);
-
-    let s12345: BTreeSet<i32> = (1..=5).collect();
-    iter = s246.difference(&s12345);
-    assert_eq!(iter.size_hint(), (0, Some(3)));
-    assert_eq!(iter.next(), Some(&6));
-    assert_eq!(iter.size_hint(), (0, Some(0)));
-    assert_eq!(iter.next(), None);
-
-    let s34567: BTreeSet<i32> = (3..=7).collect();
-    iter = s246.difference(&s34567);
-    assert_eq!(iter.size_hint(), (0, Some(3)));
-    assert_eq!(iter.next(), Some(&2));
-    assert_eq!(iter.size_hint(), (0, Some(2)));
-    assert_eq!(iter.next(), None);
-
-    let s1: BTreeSet<i32> = (-9..=1).collect();
-    iter = s246.difference(&s1);
-    assert_eq!(iter.size_hint(), (3, Some(3)));
-
-    let s2: BTreeSet<i32> = (-9..=2).collect();
-    iter = s246.difference(&s2);
-    assert_eq!(iter.size_hint(), (2, Some(2)));
-    assert_eq!(iter.next(), Some(&4));
-    assert_eq!(iter.size_hint(), (1, Some(1)));
-
-    let s23: BTreeSet<i32> = (2..=3).collect();
-    iter = s246.difference(&s23);
-    assert_eq!(iter.size_hint(), (1, Some(3)));
-    assert_eq!(iter.next(), Some(&4));
-    assert_eq!(iter.size_hint(), (1, Some(1)));
-
-    let s4: BTreeSet<i32> = (4..=4).collect();
-    iter = s246.difference(&s4);
-    assert_eq!(iter.size_hint(), (2, Some(3)));
-    assert_eq!(iter.next(), Some(&2));
-    assert_eq!(iter.size_hint(), (1, Some(2)));
-    assert_eq!(iter.next(), Some(&6));
-    assert_eq!(iter.size_hint(), (0, Some(0)));
-    assert_eq!(iter.next(), None);
-
-    let s56: BTreeSet<i32> = (5..=6).collect();
-    iter = s246.difference(&s56);
-    assert_eq!(iter.size_hint(), (1, Some(3)));
-    assert_eq!(iter.next(), Some(&2));
-    assert_eq!(iter.size_hint(), (0, Some(2)));
-
-    let s6: BTreeSet<i32> = (6..=19).collect();
-    iter = s246.difference(&s6);
-    assert_eq!(iter.size_hint(), (2, Some(2)));
-    assert_eq!(iter.next(), Some(&2));
-    assert_eq!(iter.size_hint(), (1, Some(1)));
-
-    let s7: BTreeSet<i32> = (7..=19).collect();
-    iter = s246.difference(&s7);
-    assert_eq!(iter.size_hint(), (3, Some(3)));
-}
+fn test_difference_size_hint() {}
 
 #[test]
-fn test_symmetric_difference() {
-    fn check_symmetric_difference(a: &[i32], b: &[i32], expected: &[i32]) {
-        check(a, b, expected, |x, y, f| x.symmetric_difference(y).all(f))
-    }
-
-    check_symmetric_difference(&[], &[], &[]);
-    check_symmetric_difference(&[1, 2, 3], &[2], &[1, 3]);
-    check_symmetric_difference(&[2], &[1, 2, 3], &[1, 3]);
-    check_symmetric_difference(&[1, 3, 5, 9, 11], &[-2, 3, 9, 14, 22], &[-2, 1, 5, 11, 14, 22]);
-}
+fn test_symmetric_difference() {}
 
 #[test]
-fn test_symmetric_difference_size_hint() {
-    let x: BTreeSet<i32> = [2, 4].iter().copied().collect();
-    let y: BTreeSet<i32> = [1, 2, 3].iter().copied().collect();
-    let mut iter = x.symmetric_difference(&y);
-    assert_eq!(iter.size_hint(), (0, Some(5)));
-    assert_eq!(iter.next(), Some(&1));
-    assert_eq!(iter.size_hint(), (0, Some(4)));
-    assert_eq!(iter.next(), Some(&3));
-    assert_eq!(iter.size_hint(), (0, Some(1)));
-}
+fn test_symmetric_difference_size_hint() {}
 
 #[test]
-fn test_union() {
-    fn check_union(a: &[i32], b: &[i32], expected: &[i32]) {
-        check(a, b, expected, |x, y, f| x.union(y).all(f))
-    }
-
-    check_union(&[], &[], &[]);
-    check_union(&[1, 2, 3], &[2], &[1, 2, 3]);
-    check_union(&[2], &[1, 2, 3], &[1, 2, 3]);
-    check_union(
-        &[1, 3, 5, 9, 11, 16, 19, 24],
-        &[-2, 1, 5, 9, 13, 19],
-        &[-2, 1, 3, 5, 9, 11, 13, 16, 19, 24],
-    );
-}
+fn test_union() {}
 
 #[test]
-fn test_union_size_hint() {
-    let x: BTreeSet<i32> = [2, 4].iter().copied().collect();
-    let y: BTreeSet<i32> = [1, 2, 3].iter().copied().collect();
-    let mut iter = x.union(&y);
-    assert_eq!(iter.size_hint(), (3, Some(5)));
-    assert_eq!(iter.next(), Some(&1));
-    assert_eq!(iter.size_hint(), (2, Some(4)));
-    assert_eq!(iter.next(), Some(&2));
-    assert_eq!(iter.size_hint(), (1, Some(2)));
-}
+fn test_union_size_hint() {}
 
 #[test]
 // Only tests the simple function definition with respect to intersection
-fn test_is_disjoint() {
-    let one = [1].iter().collect::<BTreeSet<_>>();
-    let two = [2].iter().collect::<BTreeSet<_>>();
-    assert!(one.is_disjoint(&two));
-}
+fn test_is_disjoint() {}
 
 #[test]
 // Also implicitly tests the trivial function definition of is_superset
-fn test_is_subset() {
-    fn is_subset(a: &[i32], b: &[i32]) -> bool {
-        let set_a = a.iter().collect::<BTreeSet<_>>();
-        let set_b = b.iter().collect::<BTreeSet<_>>();
-        set_a.is_subset(&set_b)
-    }
-
-    assert_eq!(is_subset(&[], &[]), true);
-    assert_eq!(is_subset(&[], &[1, 2]), true);
-    assert_eq!(is_subset(&[0], &[1, 2]), false);
-    assert_eq!(is_subset(&[1], &[1, 2]), true);
-    assert_eq!(is_subset(&[2], &[1, 2]), true);
-    assert_eq!(is_subset(&[3], &[1, 2]), false);
-    assert_eq!(is_subset(&[1, 2], &[1]), false);
-    assert_eq!(is_subset(&[1, 2], &[1, 2]), true);
-    assert_eq!(is_subset(&[1, 2], &[2, 3]), false);
-    assert_eq!(
-        is_subset(&[-5, 11, 22, 33, 40, 42], &[-12, -5, 11, 14, 22, 23, 33, 34, 38, 39, 40, 42]),
-        true
-    );
-    assert_eq!(is_subset(&[-5, 11, 22, 33, 40, 42], &[-12, -5, 11, 14, 22, 23, 34, 38]), false);
-
-    if cfg!(miri) {
-        // Miri is too slow
-        return;
-    }
-
-    let large = (0..100).collect::<Vec<_>>();
-    assert_eq!(is_subset(&[], &large), true);
-    assert_eq!(is_subset(&large, &[]), false);
-    assert_eq!(is_subset(&[-1], &large), false);
-    assert_eq!(is_subset(&[0], &large), true);
-    assert_eq!(is_subset(&[1, 2], &large), true);
-    assert_eq!(is_subset(&[99, 100], &large), false);
-}
+fn test_is_subset() {}
 
 #[test]
-fn test_retain() {
-    let xs = [1, 2, 3, 4, 5, 6];
-    let mut set: BTreeSet<i32> = xs.iter().cloned().collect();
-    set.retain(|&k| k % 2 == 0);
-    assert_eq!(set.len(), 3);
-    assert!(set.contains(&2));
-    assert!(set.contains(&4));
-    assert!(set.contains(&6));
-}
+fn test_retain() {}
 
 #[test]
-fn test_drain_filter() {
-    let mut x: BTreeSet<_> = [1].iter().copied().collect();
-    let mut y: BTreeSet<_> = [1].iter().copied().collect();
-
-    x.drain_filter(|_| true);
-    y.drain_filter(|_| false);
-    assert_eq!(x.len(), 0);
-    assert_eq!(y.len(), 1);
-}
+fn test_drain_filter() {}
 
 #[test]
-fn test_drain_filter_drop_panic_leak() {
-    let a = CrashTestDummy::new(0);
-    let b = CrashTestDummy::new(1);
-    let c = CrashTestDummy::new(2);
-    let mut set = BTreeSet::new();
-    set.insert(a.spawn(Panic::Never));
-    set.insert(b.spawn(Panic::InDrop));
-    set.insert(c.spawn(Panic::Never));
-
-    catch_unwind(move || drop(set.drain_filter(|dummy| dummy.query(true)))).ok();
-
-    assert_eq!(a.queried(), 1);
-    assert_eq!(b.queried(), 1);
-    assert_eq!(c.queried(), 0);
-    assert_eq!(a.dropped(), 1);
-    assert_eq!(b.dropped(), 1);
-    assert_eq!(c.dropped(), 1);
-}
+fn test_drain_filter_drop_panic_leak() {}
 
 #[test]
-fn test_drain_filter_pred_panic_leak() {
-    let a = CrashTestDummy::new(0);
-    let b = CrashTestDummy::new(1);
-    let c = CrashTestDummy::new(2);
-    let mut set = BTreeSet::new();
-    set.insert(a.spawn(Panic::Never));
-    set.insert(b.spawn(Panic::InQuery));
-    set.insert(c.spawn(Panic::InQuery));
-
-    catch_unwind(AssertUnwindSafe(|| drop(set.drain_filter(|dummy| dummy.query(true))))).ok();
-
-    assert_eq!(a.queried(), 1);
-    assert_eq!(b.queried(), 1);
-    assert_eq!(c.queried(), 0);
-    assert_eq!(a.dropped(), 1);
-    assert_eq!(b.dropped(), 0);
-    assert_eq!(c.dropped(), 0);
-    assert_eq!(set.len(), 2);
-    assert_eq!(set.first().unwrap().id(), 1);
-    assert_eq!(set.last().unwrap().id(), 2);
-}
+fn test_drain_filter_pred_panic_leak() {}
 
 #[test]
-fn test_clear() {
-    let mut x = BTreeSet::new();
-    x.insert(1);
-
-    x.clear();
-    assert!(x.is_empty());
-}
+fn test_clear() {}
 
 #[test]
-fn test_zip() {
-    let mut x = BTreeSet::new();
-    x.insert(5);
-    x.insert(12);
-    x.insert(11);
-
-    let mut y = BTreeSet::new();
-    y.insert("foo");
-    y.insert("bar");
-
-    let x = x;
-    let y = y;
-    let mut z = x.iter().zip(&y);
-
-    assert_eq!(z.next().unwrap(), (&5, &("bar")));
-    assert_eq!(z.next().unwrap(), (&11, &("foo")));
-    assert!(z.next().is_none());
-}
+fn test_zip() {}
 
 #[test]
-fn test_from_iter() {
-    let xs = [1, 2, 3, 4, 5, 6, 7, 8, 9];
-
-    let set: BTreeSet<_> = xs.iter().cloned().collect();
-
-    for x in &xs {
-        assert!(set.contains(x));
-    }
-}
+fn test_from_iter() {}
 
 #[test]
-fn test_show() {
-    let mut set = BTreeSet::new();
-    let empty = BTreeSet::<i32>::new();
-
-    set.insert(1);
-    set.insert(2);
-
-    let set_str = format!("{:?}", set);
-
-    assert_eq!(set_str, "{1, 2}");
-    assert_eq!(format!("{:?}", empty), "{}");
-}
+fn test_show() {}
 
 #[test]
-fn test_extend_ref() {
-    let mut a = BTreeSet::new();
-    a.insert(1);
-
-    a.extend(&[2, 3, 4]);
-
-    assert_eq!(a.len(), 4);
-    assert!(a.contains(&1));
-    assert!(a.contains(&2));
-    assert!(a.contains(&3));
-    assert!(a.contains(&4));
-
-    let mut b = BTreeSet::new();
-    b.insert(5);
-    b.insert(6);
-
-    a.extend(&b);
-
-    assert_eq!(a.len(), 6);
-    assert!(a.contains(&1));
-    assert!(a.contains(&2));
-    assert!(a.contains(&3));
-    assert!(a.contains(&4));
-    assert!(a.contains(&5));
-    assert!(a.contains(&6));
-}
+fn test_extend_ref() {}
 
 #[test]
-fn test_recovery() {
-    #[derive(Debug)]
-    struct Foo(&'static str, i32);
-
-    impl PartialEq for Foo {
-        fn eq(&self, other: &Self) -> bool {
-            self.0 == other.0
-        }
-    }
-
-    impl Eq for Foo {}
-
-    impl PartialOrd for Foo {
-        fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-            self.0.partial_cmp(&other.0)
-        }
-    }
-
-    impl Ord for Foo {
-        fn cmp(&self, other: &Self) -> Ordering {
-            self.0.cmp(&other.0)
-        }
-    }
-
-    let mut s = BTreeSet::new();
-    assert_eq!(s.replace(Foo("a", 1)), None);
-    assert_eq!(s.len(), 1);
-    assert_eq!(s.replace(Foo("a", 2)), Some(Foo("a", 1)));
-    assert_eq!(s.len(), 1);
-
-    {
-        let mut it = s.iter();
-        assert_eq!(it.next(), Some(&Foo("a", 2)));
-        assert_eq!(it.next(), None);
-    }
-
-    assert_eq!(s.get(&Foo("a", 1)), Some(&Foo("a", 2)));
-    assert_eq!(s.take(&Foo("a", 1)), Some(Foo("a", 2)));
-    assert_eq!(s.len(), 0);
-
-    assert_eq!(s.get(&Foo("a", 1)), None);
-    assert_eq!(s.take(&Foo("a", 1)), None);
-
-    assert_eq!(s.iter().next(), None);
-}
+fn test_recovery() {}
 
 #[allow(dead_code)]
-fn test_variance() {
-    fn set<'new>(v: BTreeSet<&'static str>) -> BTreeSet<&'new str> {
-        v
-    }
-    fn iter<'a, 'new>(v: Iter<'a, &'static str>) -> Iter<'a, &'new str> {
-        v
-    }
-    fn into_iter<'new>(v: IntoIter<&'static str>) -> IntoIter<&'new str> {
-        v
-    }
-    fn range<'a, 'new>(v: Range<'a, &'static str>) -> Range<'a, &'new str> {
-        v
-    }
-    // not applied to Difference, Intersection, SymmetricDifference, Union
-}
+fn test_variance() {}
 
 #[allow(dead_code)]
-fn test_sync() {
-    fn set<T: Sync>(v: &BTreeSet<T>) -> impl Sync + '_ {
-        v
-    }
-
-    fn iter<T: Sync>(v: &BTreeSet<T>) -> impl Sync + '_ {
-        v.iter()
-    }
-
-    fn into_iter<T: Sync>(v: BTreeSet<T>) -> impl Sync {
-        v.into_iter()
-    }
-
-    fn range<T: Sync + Ord>(v: &BTreeSet<T>) -> impl Sync + '_ {
-        v.range(..)
-    }
-
-    fn drain_filter<T: Sync + Ord>(v: &mut BTreeSet<T>) -> impl Sync + '_ {
-        v.drain_filter(|_| false)
-    }
-
-    fn difference<T: Sync + Ord>(v: &BTreeSet<T>) -> impl Sync + '_ {
-        v.difference(&v)
-    }
-
-    fn intersection<T: Sync + Ord>(v: &BTreeSet<T>) -> impl Sync + '_ {
-        v.intersection(&v)
-    }
-
-    fn symmetric_difference<T: Sync + Ord>(v: &BTreeSet<T>) -> impl Sync + '_ {
-        v.symmetric_difference(&v)
-    }
-
-    fn union<T: Sync + Ord>(v: &BTreeSet<T>) -> impl Sync + '_ {
-        v.union(&v)
-    }
-}
+fn test_sync() {}
 
 #[allow(dead_code)]
-fn test_send() {
-    fn set<T: Send>(v: BTreeSet<T>) -> impl Send {
-        v
-    }
-
-    fn iter<T: Send + Sync>(v: &BTreeSet<T>) -> impl Send + '_ {
-        v.iter()
-    }
-
-    fn into_iter<T: Send>(v: BTreeSet<T>) -> impl Send {
-        v.into_iter()
-    }
-
-    fn range<T: Send + Sync + Ord>(v: &BTreeSet<T>) -> impl Send + '_ {
-        v.range(..)
-    }
-
-    fn drain_filter<T: Send + Ord>(v: &mut BTreeSet<T>) -> impl Send + '_ {
-        v.drain_filter(|_| false)
-    }
-
-    fn difference<T: Send + Sync + Ord>(v: &BTreeSet<T>) -> impl Send + '_ {
-        v.difference(&v)
-    }
-
-    fn intersection<T: Send + Sync + Ord>(v: &BTreeSet<T>) -> impl Send + '_ {
-        v.intersection(&v)
-    }
-
-    fn symmetric_difference<T: Send + Sync + Ord>(v: &BTreeSet<T>) -> impl Send + '_ {
-        v.symmetric_difference(&v)
-    }
-
-    fn union<T: Send + Sync + Ord>(v: &BTreeSet<T>) -> impl Send + '_ {
-        v.union(&v)
-    }
-}
+fn test_send() {}
 
 #[test]
-fn test_ord_absence() {
-    fn set<K>(mut set: BTreeSet<K>) {
-        let _ = set.is_empty();
-        let _ = set.len();
-        set.clear();
-        let _ = set.iter();
-        let _ = set.into_iter();
-    }
-
-    fn set_debug<K: Debug>(set: BTreeSet<K>) {
-        format!("{:?}", set);
-        format!("{:?}", set.iter());
-        format!("{:?}", set.into_iter());
-    }
-
-    fn set_clone<K: Clone>(mut set: BTreeSet<K>) {
-        set.clone_from(&set.clone());
-    }
-
-    #[derive(Debug, Clone)]
-    struct NonOrd;
-    set(BTreeSet::<NonOrd>::new());
-    set_debug(BTreeSet::<NonOrd>::new());
-    set_clone(BTreeSet::<NonOrd>::default());
-}
+fn test_ord_absence() {}
 
 #[test]
-fn test_append() {
-    let mut a = BTreeSet::new();
-    a.insert(1);
-    a.insert(2);
-    a.insert(3);
-
-    let mut b = BTreeSet::new();
-    b.insert(3);
-    b.insert(4);
-    b.insert(5);
-
-    a.append(&mut b);
-
-    assert_eq!(a.len(), 5);
-    assert_eq!(b.len(), 0);
-
-    assert_eq!(a.contains(&1), true);
-    assert_eq!(a.contains(&2), true);
-    assert_eq!(a.contains(&3), true);
-    assert_eq!(a.contains(&4), true);
-    assert_eq!(a.contains(&5), true);
-}
+fn test_append() {}
 
 #[test]
-fn test_first_last() {
-    let mut a = BTreeSet::new();
-    assert_eq!(a.first(), None);
-    assert_eq!(a.last(), None);
-    a.insert(1);
-    assert_eq!(a.first(), Some(&1));
-    assert_eq!(a.last(), Some(&1));
-    a.insert(2);
-    assert_eq!(a.first(), Some(&1));
-    assert_eq!(a.last(), Some(&2));
-    for i in 3..=12 {
-        a.insert(i);
-    }
-    assert_eq!(a.first(), Some(&1));
-    assert_eq!(a.last(), Some(&12));
-    assert_eq!(a.pop_first(), Some(1));
-    assert_eq!(a.pop_last(), Some(12));
-    assert_eq!(a.pop_first(), Some(2));
-    assert_eq!(a.pop_last(), Some(11));
-    assert_eq!(a.pop_first(), Some(3));
-    assert_eq!(a.pop_last(), Some(10));
-    assert_eq!(a.pop_first(), Some(4));
-    assert_eq!(a.pop_first(), Some(5));
-    assert_eq!(a.pop_first(), Some(6));
-    assert_eq!(a.pop_first(), Some(7));
-    assert_eq!(a.pop_first(), Some(8));
-    assert_eq!(a.clone().pop_last(), Some(9));
-    assert_eq!(a.pop_first(), Some(9));
-    assert_eq!(a.pop_first(), None);
-    assert_eq!(a.pop_last(), None);
-}
+fn test_first_last() {}
 
 // Unlike the function with the same name in map/tests, returns no values.
 // Which also means it returns different predetermined pseudo-random keys,
 // and the test cases using this function explore slightly different trees.
-fn rand_data(len: usize) -> Vec<u32> {
-    let mut rng = DeterministicRng::new();
-    Vec::from_iter((0..len).map(|_| rng.next()))
-}
+fn rand_data(len: usize) -> Vec<u32> {}
 
 #[test]
-fn test_split_off_empty_right() {
-    let mut data = rand_data(173);
-
-    let mut set = BTreeSet::from_iter(data.clone());
-    let right = set.split_off(&(data.iter().max().unwrap() + 1));
-
-    data.sort();
-    assert!(set.into_iter().eq(data));
-    assert!(right.into_iter().eq(None));
-}
+fn test_split_off_empty_right() {}
 
 #[test]
-fn test_split_off_empty_left() {
-    let mut data = rand_data(314);
-
-    let mut set = BTreeSet::from_iter(data.clone());
-    let right = set.split_off(data.iter().min().unwrap());
-
-    data.sort();
-    assert!(set.into_iter().eq(None));
-    assert!(right.into_iter().eq(data));
-}
+fn test_split_off_empty_left() {}
 
 #[test]
-fn test_split_off_large_random_sorted() {
-    // Miri is too slow
-    let mut data = if cfg!(miri) { rand_data(529) } else { rand_data(1529) };
-    // special case with maximum height.
-    data.sort();
-
-    let mut set = BTreeSet::from_iter(data.clone());
-    let key = data[data.len() / 2];
-    let right = set.split_off(&key);
-
-    assert!(set.into_iter().eq(data.clone().into_iter().filter(|x| *x < key)));
-    assert!(right.into_iter().eq(data.into_iter().filter(|x| *x >= key)));
-}
+fn test_split_off_large_random_sorted() {}
 
 #[test]
-fn from_array() {
-    let set = BTreeSet::from([1, 2, 3, 4]);
-    let unordered_duplicates = BTreeSet::from([4, 1, 4, 3, 2]);
-    assert_eq!(set, unordered_duplicates);
-}
+fn from_array() {}
 }
 }
 mod split {
@@ -15553,19 +9249,7 @@ impl<K, V> Root<K, V> {
         total_num: usize,
         root_a: &Root<K, V>,
         root_b: &Root<K, V>,
-    ) -> (usize, usize) {
-        let (length_a, length_b);
-        if root_a.height() < root_b.height() {
-            length_a = root_a.reborrow().calc_length();
-            length_b = total_num - length_a;
-            debug_assert_eq!(length_b, root_b.reborrow().calc_length());
-        } else {
-            length_b = root_b.reborrow().calc_length();
-            length_a = total_num - length_b;
-            debug_assert_eq!(length_a, root_a.reborrow().calc_length());
-        }
-        (length_a, length_b)
-    }
+    ) -> (usize, usize) {}
 
     /// Split off a tree with key-value pairs at and after the given key.
     /// The result is meaningful only if the tree is ordered by key,
@@ -15575,44 +9259,10 @@ impl<K, V> Root<K, V> {
     pub fn split_off<Q: ?Sized + Ord>(&mut self, key: &Q) -> Self
     where
         K: Borrow<Q>,
-    {
-        let left_root = self;
-        let mut right_root = Root::new_pillar(left_root.height());
-        let mut left_node = left_root.borrow_mut();
-        let mut right_node = right_root.borrow_mut();
-
-        loop {
-            let mut split_edge = match left_node.search_node(key) {
-                // key is going to the right tree
-                Found(kv) => kv.left_edge(),
-                GoDown(edge) => edge,
-            };
-
-            split_edge.move_suffix(&mut right_node);
-
-            match (split_edge.force(), right_node.force()) {
-                (Internal(edge), Internal(node)) => {
-                    left_node = edge.descend();
-                    right_node = node.first_edge().descend();
-                }
-                (Leaf(_), Leaf(_)) => break,
-                _ => unreachable!(),
-            }
-        }
-
-        left_root.fix_right_border();
-        right_root.fix_left_border();
-        right_root
-    }
+    {}
 
     /// Creates a tree consisting of empty nodes.
-    fn new_pillar(height: usize) -> Self {
-        let mut root = Root::new();
-        for _ in 0..height {
-            root.push_internal_level();
-        }
-        root
-    }
+    fn new_pillar(height: usize) -> Self {}
 }
 }
 
@@ -15649,35 +9299,20 @@ pub struct CrashTestDummy {
 
 impl CrashTestDummy {
     /// Creates a crash test dummy design. The `id` determines order and equality of instances.
-    pub fn new(id: usize) -> CrashTestDummy {
-        CrashTestDummy {
-            id,
-            cloned: AtomicUsize::new(0),
-            dropped: AtomicUsize::new(0),
-            queried: AtomicUsize::new(0),
-        }
-    }
+    pub fn new(id: usize) -> CrashTestDummy {}
 
     /// Creates an instance of a crash test dummy that records what events it experiences
     /// and optionally panics.
-    pub fn spawn(&self, panic: Panic) -> Instance<'_> {
-        Instance { origin: self, panic }
-    }
+    pub fn spawn(&self, panic: Panic) -> Instance<'_> {}
 
     /// Returns how many times instances of the dummy have been cloned.
-    pub fn cloned(&self) -> usize {
-        self.cloned.load(SeqCst)
-    }
+    pub fn cloned(&self) -> usize {}
 
     /// Returns how many times instances of the dummy have been dropped.
-    pub fn dropped(&self) -> usize {
-        self.dropped.load(SeqCst)
-    }
+    pub fn dropped(&self) -> usize {}
 
     /// Returns how many times instances of the dummy have had their `query` member invoked.
-    pub fn queried(&self) -> usize {
-        self.queried.load(SeqCst)
-    }
+    pub fn queried(&self) -> usize {}
 }
 
 #[derive(Debug)]
@@ -15695,55 +9330,30 @@ pub enum Panic {
 }
 
 impl Instance<'_> {
-    pub fn id(&self) -> usize {
-        self.origin.id
-    }
+    pub fn id(&self) -> usize {}
 
     /// Some anonymous query, the result of which is already given.
-    pub fn query<R>(&self, result: R) -> R {
-        self.origin.queried.fetch_add(1, SeqCst);
-        if self.panic == Panic::InQuery {
-            panic!("panic in `query`");
-        }
-        result
-    }
+    pub fn query<R>(&self, result: R) -> R {}
 }
 
 impl Clone for Instance<'_> {
-    fn clone(&self) -> Self {
-        self.origin.cloned.fetch_add(1, SeqCst);
-        if self.panic == Panic::InClone {
-            panic!("panic in `clone`");
-        }
-        Self { origin: self.origin, panic: Panic::Never }
-    }
+    fn clone(&self) -> Self {}
 }
 
 impl Drop for Instance<'_> {
-    fn drop(&mut self) {
-        self.origin.dropped.fetch_add(1, SeqCst);
-        if self.panic == Panic::InDrop {
-            panic!("panic in `drop`");
-        }
-    }
+    fn drop(&mut self) {}
 }
 
 impl PartialOrd for Instance<'_> {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.id().partial_cmp(&other.id())
-    }
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {}
 }
 
 impl Ord for Instance<'_> {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.id().cmp(&other.id())
-    }
+    fn cmp(&self, other: &Self) -> Ordering {}
 }
 
 impl PartialEq for Instance<'_> {
-    fn eq(&self, other: &Self) -> bool {
-        self.id().eq(&other.id())
-    }
+    fn eq(&self, other: &Self) -> bool {}
 }
 
 impl Eq for Instance<'_> {}
@@ -15763,25 +9373,15 @@ pub enum Cyclic3 {
 use Cyclic3::*;
 
 impl PartialOrd for Cyclic3 {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {}
 }
 
 impl Ord for Cyclic3 {
-    fn cmp(&self, other: &Self) -> Ordering {
-        match (self, other) {
-            (A, A) | (B, B) | (C, C) => Equal,
-            (A, B) | (B, C) | (C, A) => Less,
-            (A, C) | (B, A) | (C, B) => Greater,
-        }
-    }
+    fn cmp(&self, other: &Self) -> Ordering {}
 }
 
 impl PartialEq for Cyclic3 {
-    fn eq(&self, other: &Self) -> bool {
-        self.cmp(&other) == Equal
-    }
+    fn eq(&self, other: &Self) -> bool {}
 }
 
 impl Eq for Cyclic3 {}
@@ -15793,13 +9393,9 @@ pub struct Governor {
 }
 
 impl Governor {
-    pub fn new() -> Self {
-        Governor { flipped: Cell::new(false) }
-    }
+    pub fn new() -> Self {}
 
-    pub fn flip(&self) {
-        self.flipped.set(!self.flipped.get());
-    }
+    pub fn flip(&self) {}
 }
 
 // Type with an `Ord` implementation that forms a total order at any moment
@@ -15809,24 +9405,15 @@ impl Governor {
 pub struct Governed<'a, T>(pub T, pub &'a Governor);
 
 impl<T: Ord> PartialOrd for Governed<'_, T> {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {}
 }
 
 impl<T: Ord> Ord for Governed<'_, T> {
-    fn cmp(&self, other: &Self) -> Ordering {
-        assert!(ptr::eq(self.1, other.1));
-        let ord = self.0.cmp(&other.0);
-        if self.1.flipped.get() { ord.reverse() } else { ord }
-    }
+    fn cmp(&self, other: &Self) -> Ordering {}
 }
 
 impl<T: PartialEq> PartialEq for Governed<'_, T> {
-    fn eq(&self, other: &Self) -> bool {
-        assert!(ptr::eq(self.1, other.1));
-        self.0.eq(&other.0)
-    }
+    fn eq(&self, other: &Self) -> bool {}
 }
 
 impl<T: Eq> Eq for Governed<'_, T> {}
@@ -15842,23 +9429,10 @@ pub struct DeterministicRng {
 }
 
 impl DeterministicRng {
-    pub fn new() -> Self {
-        DeterministicRng { count: 0, x: 0x193a6754, y: 0xa8a7d469, z: 0x97830e05, w: 0x113ba7bb }
-    }
+    pub fn new() -> Self {}
 
     /// Guarantees that each returned number is unique.
-    pub fn next(&mut self) -> u32 {
-        self.count += 1;
-        assert!(self.count <= 70029);
-        let x = self.x;
-        let t = x ^ (x << 11);
-        self.x = self.y;
-        self.y = self.z;
-        self.z = self.w;
-        let w_ = self.w;
-        self.w = w_ ^ (w_ >> 19) ^ (t ^ (t >> 8));
-        self.w
-    }
+    pub fn next(&mut self) -> u32 {}
 }
 }
 }
@@ -15899,476 +9473,48 @@ use std::vec::Vec;
 
 use rand::{thread_rng, RngCore};
 
-fn list_from<T: Clone>(v: &[T]) -> LinkedList<T> {
-    v.iter().cloned().collect()
-}
+fn list_from<T: Clone>(v: &[T]) -> LinkedList<T> {}
 
-pub fn check_links<T>(list: &LinkedList<T>) {
-    unsafe {
-        let mut len = 0;
-        let mut last_ptr: Option<&Node<T>> = None;
-        let mut node_ptr: &Node<T>;
-        match list.head {
-            None => {
-                // tail node should also be None.
-                assert!(list.tail.is_none());
-                assert_eq!(0, list.len);
-                return;
-            }
-            Some(node) => node_ptr = &*node.as_ptr(),
-        }
-        loop {
-            match (last_ptr, node_ptr.prev) {
-                (None, None) => {}
-                (None, _) => panic!("prev link for head"),
-                (Some(p), Some(pptr)) => {
-                    assert_eq!(p as *const Node<T>, pptr.as_ptr() as *const Node<T>);
-                }
-                _ => panic!("prev link is none, not good"),
-            }
-            match node_ptr.next {
-                Some(next) => {
-                    last_ptr = Some(node_ptr);
-                    node_ptr = &*next.as_ptr();
-                    len += 1;
-                }
-                None => {
-                    len += 1;
-                    break;
-                }
-            }
-        }
-
-        // verify that the tail node points to the last node.
-        let tail = list.tail.as_ref().expect("some tail node").as_ref();
-        assert_eq!(tail as *const Node<T>, node_ptr as *const Node<T>);
-        // check that len matches interior links.
-        assert_eq!(len, list.len);
-    }
-}
+pub fn check_links<T>(list: &LinkedList<T>) {}
 
 #[test]
-fn test_append() {
-    // Empty to empty
-    {
-        let mut m = LinkedList::<i32>::new();
-        let mut n = LinkedList::new();
-        m.append(&mut n);
-        check_links(&m);
-        assert_eq!(m.len(), 0);
-        assert_eq!(n.len(), 0);
-    }
-    // Non-empty to empty
-    {
-        let mut m = LinkedList::new();
-        let mut n = LinkedList::new();
-        n.push_back(2);
-        m.append(&mut n);
-        check_links(&m);
-        assert_eq!(m.len(), 1);
-        assert_eq!(m.pop_back(), Some(2));
-        assert_eq!(n.len(), 0);
-        check_links(&m);
-    }
-    // Empty to non-empty
-    {
-        let mut m = LinkedList::new();
-        let mut n = LinkedList::new();
-        m.push_back(2);
-        m.append(&mut n);
-        check_links(&m);
-        assert_eq!(m.len(), 1);
-        assert_eq!(m.pop_back(), Some(2));
-        check_links(&m);
-    }
-
-    // Non-empty to non-empty
-    let v = vec![1, 2, 3, 4, 5];
-    let u = vec![9, 8, 1, 2, 3, 4, 5];
-    let mut m = list_from(&v);
-    let mut n = list_from(&u);
-    m.append(&mut n);
-    check_links(&m);
-    let mut sum = v;
-    sum.extend_from_slice(&u);
-    assert_eq!(sum.len(), m.len());
-    for elt in sum {
-        assert_eq!(m.pop_front(), Some(elt))
-    }
-    assert_eq!(n.len(), 0);
-    // Let's make sure it's working properly, since we
-    // did some direct changes to private members.
-    n.push_back(3);
-    assert_eq!(n.len(), 1);
-    assert_eq!(n.pop_front(), Some(3));
-    check_links(&n);
-}
+fn test_append() {}
 
 #[test]
-fn test_clone_from() {
-    // Short cloned from long
-    {
-        let v = vec![1, 2, 3, 4, 5];
-        let u = vec![8, 7, 6, 2, 3, 4, 5];
-        let mut m = list_from(&v);
-        let n = list_from(&u);
-        m.clone_from(&n);
-        check_links(&m);
-        assert_eq!(m, n);
-        for elt in u {
-            assert_eq!(m.pop_front(), Some(elt))
-        }
-    }
-    // Long cloned from short
-    {
-        let v = vec![1, 2, 3, 4, 5];
-        let u = vec![6, 7, 8];
-        let mut m = list_from(&v);
-        let n = list_from(&u);
-        m.clone_from(&n);
-        check_links(&m);
-        assert_eq!(m, n);
-        for elt in u {
-            assert_eq!(m.pop_front(), Some(elt))
-        }
-    }
-    // Two equal length lists
-    {
-        let v = vec![1, 2, 3, 4, 5];
-        let u = vec![9, 8, 1, 2, 3];
-        let mut m = list_from(&v);
-        let n = list_from(&u);
-        m.clone_from(&n);
-        check_links(&m);
-        assert_eq!(m, n);
-        for elt in u {
-            assert_eq!(m.pop_front(), Some(elt))
-        }
-    }
-}
+fn test_clone_from() {}
 
 #[test]
 #[cfg_attr(target_os = "emscripten", ignore)]
-fn test_send() {
-    let n = list_from(&[1, 2, 3]);
-    thread::spawn(move || {
-        check_links(&n);
-        let a: &[_] = &[&1, &2, &3];
-        assert_eq!(a, &*n.iter().collect::<Vec<_>>());
-    })
-    .join()
-    .ok()
-    .unwrap();
-}
+fn test_send() {}
 
 #[test]
-fn test_fuzz() {
-    for _ in 0..25 {
-        fuzz_test(3);
-        fuzz_test(16);
-        #[cfg(not(miri))] // Miri is too slow
-        fuzz_test(189);
-    }
-}
+fn test_fuzz() {}
 
 #[test]
-fn test_26021() {
-    // There was a bug in split_off that failed to null out the RHS's head's prev ptr.
-    // This caused the RHS's dtor to walk up into the LHS at drop and delete all of
-    // its nodes.
-    //
-    // https://github.com/rust-lang/rust/issues/26021
-    let mut v1 = LinkedList::new();
-    v1.push_front(1);
-    v1.push_front(1);
-    v1.push_front(1);
-    v1.push_front(1);
-    let _ = v1.split_off(3); // Dropping this now should not cause laundry consumption
-    assert_eq!(v1.len(), 3);
-
-    assert_eq!(v1.iter().len(), 3);
-    assert_eq!(v1.iter().collect::<Vec<_>>().len(), 3);
-}
+fn test_26021() {}
 
 #[test]
-fn test_split_off() {
-    let mut v1 = LinkedList::new();
-    v1.push_front(1);
-    v1.push_front(1);
-    v1.push_front(1);
-    v1.push_front(1);
+fn test_split_off() {}
 
-    // test all splits
-    for ix in 0..1 + v1.len() {
-        let mut a = v1.clone();
-        let b = a.split_off(ix);
-        check_links(&a);
-        check_links(&b);
-        a.extend(b);
-        assert_eq!(v1, a);
-    }
-}
-
-fn fuzz_test(sz: i32) {
-    let mut m: LinkedList<_> = LinkedList::new();
-    let mut v = vec![];
-    for i in 0..sz {
-        check_links(&m);
-        let r: u8 = thread_rng().next_u32() as u8;
-        match r % 6 {
-            0 => {
-                m.pop_back();
-                v.pop();
-            }
-            1 => {
-                if !v.is_empty() {
-                    m.pop_front();
-                    v.remove(0);
-                }
-            }
-            2 | 4 => {
-                m.push_front(-i);
-                v.insert(0, -i);
-            }
-            3 | 5 | _ => {
-                m.push_back(i);
-                v.push(i);
-            }
-        }
-    }
-
-    check_links(&m);
-
-    let mut i = 0;
-    for (a, &b) in m.into_iter().zip(&v) {
-        i += 1;
-        assert_eq!(a, b);
-    }
-    assert_eq!(i, v.len());
-}
+fn fuzz_test(sz: i32) {}
 
 #[test]
-fn drain_filter_test() {
-    let mut m: LinkedList<u32> = LinkedList::new();
-    m.extend(&[1, 2, 3, 4, 5, 6]);
-    let deleted = m.drain_filter(|v| *v < 4).collect::<Vec<_>>();
-
-    check_links(&m);
-
-    assert_eq!(deleted, &[1, 2, 3]);
-    assert_eq!(m.into_iter().collect::<Vec<_>>(), &[4, 5, 6]);
-}
+fn drain_filter_test() {}
 
 #[test]
-fn drain_to_empty_test() {
-    let mut m: LinkedList<u32> = LinkedList::new();
-    m.extend(&[1, 2, 3, 4, 5, 6]);
-    let deleted = m.drain_filter(|_| true).collect::<Vec<_>>();
-
-    check_links(&m);
-
-    assert_eq!(deleted, &[1, 2, 3, 4, 5, 6]);
-    assert_eq!(m.into_iter().collect::<Vec<_>>(), &[]);
-}
+fn drain_to_empty_test() {}
 
 #[test]
-fn test_cursor_move_peek() {
-    let mut m: LinkedList<u32> = LinkedList::new();
-    m.extend(&[1, 2, 3, 4, 5, 6]);
-    let mut cursor = m.cursor_front();
-    assert_eq!(cursor.current(), Some(&1));
-    assert_eq!(cursor.peek_next(), Some(&2));
-    assert_eq!(cursor.peek_prev(), None);
-    assert_eq!(cursor.index(), Some(0));
-    cursor.move_prev();
-    assert_eq!(cursor.current(), None);
-    assert_eq!(cursor.peek_next(), Some(&1));
-    assert_eq!(cursor.peek_prev(), Some(&6));
-    assert_eq!(cursor.index(), None);
-    cursor.move_next();
-    cursor.move_next();
-    assert_eq!(cursor.current(), Some(&2));
-    assert_eq!(cursor.peek_next(), Some(&3));
-    assert_eq!(cursor.peek_prev(), Some(&1));
-    assert_eq!(cursor.index(), Some(1));
-
-    let mut cursor = m.cursor_back();
-    assert_eq!(cursor.current(), Some(&6));
-    assert_eq!(cursor.peek_next(), None);
-    assert_eq!(cursor.peek_prev(), Some(&5));
-    assert_eq!(cursor.index(), Some(5));
-    cursor.move_next();
-    assert_eq!(cursor.current(), None);
-    assert_eq!(cursor.peek_next(), Some(&1));
-    assert_eq!(cursor.peek_prev(), Some(&6));
-    assert_eq!(cursor.index(), None);
-    cursor.move_prev();
-    cursor.move_prev();
-    assert_eq!(cursor.current(), Some(&5));
-    assert_eq!(cursor.peek_next(), Some(&6));
-    assert_eq!(cursor.peek_prev(), Some(&4));
-    assert_eq!(cursor.index(), Some(4));
-
-    let mut m: LinkedList<u32> = LinkedList::new();
-    m.extend(&[1, 2, 3, 4, 5, 6]);
-    let mut cursor = m.cursor_front_mut();
-    assert_eq!(cursor.current(), Some(&mut 1));
-    assert_eq!(cursor.peek_next(), Some(&mut 2));
-    assert_eq!(cursor.peek_prev(), None);
-    assert_eq!(cursor.index(), Some(0));
-    cursor.move_prev();
-    assert_eq!(cursor.current(), None);
-    assert_eq!(cursor.peek_next(), Some(&mut 1));
-    assert_eq!(cursor.peek_prev(), Some(&mut 6));
-    assert_eq!(cursor.index(), None);
-    cursor.move_next();
-    cursor.move_next();
-    assert_eq!(cursor.current(), Some(&mut 2));
-    assert_eq!(cursor.peek_next(), Some(&mut 3));
-    assert_eq!(cursor.peek_prev(), Some(&mut 1));
-    assert_eq!(cursor.index(), Some(1));
-    let mut cursor2 = cursor.as_cursor();
-    assert_eq!(cursor2.current(), Some(&2));
-    assert_eq!(cursor2.index(), Some(1));
-    cursor2.move_next();
-    assert_eq!(cursor2.current(), Some(&3));
-    assert_eq!(cursor2.index(), Some(2));
-    assert_eq!(cursor.current(), Some(&mut 2));
-    assert_eq!(cursor.index(), Some(1));
-
-    let mut m: LinkedList<u32> = LinkedList::new();
-    m.extend(&[1, 2, 3, 4, 5, 6]);
-    let mut cursor = m.cursor_back_mut();
-    assert_eq!(cursor.current(), Some(&mut 6));
-    assert_eq!(cursor.peek_next(), None);
-    assert_eq!(cursor.peek_prev(), Some(&mut 5));
-    assert_eq!(cursor.index(), Some(5));
-    cursor.move_next();
-    assert_eq!(cursor.current(), None);
-    assert_eq!(cursor.peek_next(), Some(&mut 1));
-    assert_eq!(cursor.peek_prev(), Some(&mut 6));
-    assert_eq!(cursor.index(), None);
-    cursor.move_prev();
-    cursor.move_prev();
-    assert_eq!(cursor.current(), Some(&mut 5));
-    assert_eq!(cursor.peek_next(), Some(&mut 6));
-    assert_eq!(cursor.peek_prev(), Some(&mut 4));
-    assert_eq!(cursor.index(), Some(4));
-    let mut cursor2 = cursor.as_cursor();
-    assert_eq!(cursor2.current(), Some(&5));
-    assert_eq!(cursor2.index(), Some(4));
-    cursor2.move_prev();
-    assert_eq!(cursor2.current(), Some(&4));
-    assert_eq!(cursor2.index(), Some(3));
-    assert_eq!(cursor.current(), Some(&mut 5));
-    assert_eq!(cursor.index(), Some(4));
-}
+fn test_cursor_move_peek() {}
 
 #[test]
-fn test_cursor_mut_insert() {
-    let mut m: LinkedList<u32> = LinkedList::new();
-    m.extend(&[1, 2, 3, 4, 5, 6]);
-    let mut cursor = m.cursor_front_mut();
-    cursor.insert_before(7);
-    cursor.insert_after(8);
-    check_links(&m);
-    assert_eq!(m.iter().cloned().collect::<Vec<_>>(), &[7, 1, 8, 2, 3, 4, 5, 6]);
-    let mut cursor = m.cursor_front_mut();
-    cursor.move_prev();
-    cursor.insert_before(9);
-    cursor.insert_after(10);
-    check_links(&m);
-    assert_eq!(m.iter().cloned().collect::<Vec<_>>(), &[10, 7, 1, 8, 2, 3, 4, 5, 6, 9]);
-    let mut cursor = m.cursor_front_mut();
-    cursor.move_prev();
-    assert_eq!(cursor.remove_current(), None);
-    cursor.move_next();
-    cursor.move_next();
-    assert_eq!(cursor.remove_current(), Some(7));
-    cursor.move_prev();
-    cursor.move_prev();
-    cursor.move_prev();
-    assert_eq!(cursor.remove_current(), Some(9));
-    cursor.move_next();
-    assert_eq!(cursor.remove_current(), Some(10));
-    check_links(&m);
-    assert_eq!(m.iter().cloned().collect::<Vec<_>>(), &[1, 8, 2, 3, 4, 5, 6]);
-    let mut cursor = m.cursor_front_mut();
-    let mut p: LinkedList<u32> = LinkedList::new();
-    p.extend(&[100, 101, 102, 103]);
-    let mut q: LinkedList<u32> = LinkedList::new();
-    q.extend(&[200, 201, 202, 203]);
-    cursor.splice_after(p);
-    cursor.splice_before(q);
-    check_links(&m);
-    assert_eq!(
-        m.iter().cloned().collect::<Vec<_>>(),
-        &[200, 201, 202, 203, 1, 100, 101, 102, 103, 8, 2, 3, 4, 5, 6]
-    );
-    let mut cursor = m.cursor_front_mut();
-    cursor.move_prev();
-    let tmp = cursor.split_before();
-    assert_eq!(m.into_iter().collect::<Vec<_>>(), &[]);
-    m = tmp;
-    let mut cursor = m.cursor_front_mut();
-    cursor.move_next();
-    cursor.move_next();
-    cursor.move_next();
-    cursor.move_next();
-    cursor.move_next();
-    cursor.move_next();
-    let tmp = cursor.split_after();
-    assert_eq!(tmp.into_iter().collect::<Vec<_>>(), &[102, 103, 8, 2, 3, 4, 5, 6]);
-    check_links(&m);
-    assert_eq!(m.iter().cloned().collect::<Vec<_>>(), &[200, 201, 202, 203, 1, 100, 101]);
-}
+fn test_cursor_mut_insert() {}
 
 #[test]
-fn test_cursor_push_front_back() {
-    let mut ll: LinkedList<u32> = LinkedList::new();
-    ll.extend(&[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
-    let mut c = ll.cursor_front_mut();
-    assert_eq!(c.current(), Some(&mut 1));
-    assert_eq!(c.index(), Some(0));
-    c.push_front(0);
-    assert_eq!(c.current(), Some(&mut 1));
-    assert_eq!(c.peek_prev(), Some(&mut 0));
-    assert_eq!(c.index(), Some(1));
-    c.push_back(11);
-    drop(c);
-    let p = ll.cursor_back().front().unwrap();
-    assert_eq!(p, &0);
-    assert_eq!(ll, (0..12).collect());
-    check_links(&ll);
-}
+fn test_cursor_push_front_back() {}
 
 #[test]
-fn test_cursor_pop_front_back() {
-    let mut ll: LinkedList<u32> = LinkedList::new();
-    ll.extend(&[1, 2, 3, 4, 5, 6]);
-    let mut c = ll.cursor_back_mut();
-    assert_eq!(c.pop_front(), Some(1));
-    c.move_prev();
-    c.move_prev();
-    c.move_prev();
-    assert_eq!(c.pop_back(), Some(6));
-    let c = c.as_cursor();
-    assert_eq!(c.front(), Some(&2));
-    assert_eq!(c.back(), Some(&5));
-    assert_eq!(c.index(), Some(1));
-    drop(c);
-    assert_eq!(ll, (2..6).collect());
-    check_links(&ll);
-    let mut c = ll.cursor_back_mut();
-    assert_eq!(c.current(), Some(&mut 5));
-    assert_eq!(c.index, 3);
-    assert_eq!(c.pop_back(), Some(5));
-    assert_eq!(c.current(), None);
-    assert_eq!(c.index, 3);
-    assert_eq!(c.pop_back(), Some(4));
-    assert_eq!(c.current(), None);
-    assert_eq!(c.index, 2);
-}
+fn test_cursor_pop_front_back() {}
 }
 
 /// A doubly-linked list with owned nodes.
@@ -16420,25 +9566,13 @@ pub struct Iter<'a, T: 'a> {
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<T: fmt::Debug> fmt::Debug for Iter<'_, T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("Iter")
-            .field(&*mem::ManuallyDrop::new(LinkedList {
-                head: self.head,
-                tail: self.tail,
-                len: self.len,
-                marker: PhantomData,
-            }))
-            .field(&self.len)
-            .finish()
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
 }
 
 // FIXME(#26925) Remove in favor of `#[derive(Clone)]`
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Clone for Iter<'_, T> {
-    fn clone(&self) -> Self {
-        Iter { ..*self }
-    }
+    fn clone(&self) -> Self {}
 }
 
 /// A mutable iterator over the elements of a `LinkedList`.
@@ -16456,17 +9590,7 @@ pub struct IterMut<'a, T: 'a> {
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<T: fmt::Debug> fmt::Debug for IterMut<'_, T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("IterMut")
-            .field(&*mem::ManuallyDrop::new(LinkedList {
-                head: self.head,
-                tail: self.tail,
-                len: self.len,
-                marker: PhantomData,
-            }))
-            .field(&self.len)
-            .finish()
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
 }
 
 /// An owning iterator over the elements of a `LinkedList`.
@@ -16484,104 +9608,32 @@ pub struct IntoIter<T> {
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<T: fmt::Debug> fmt::Debug for IntoIter<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("IntoIter").field(&self.list).finish()
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
 }
 
 impl<T> Node<T> {
-    fn new(element: T) -> Self {
-        Node { next: None, prev: None, element }
-    }
+    fn new(element: T) -> Self {}
 
-    fn into_element(self: Box<Self>) -> T {
-        self.element
-    }
+    fn into_element(self: Box<Self>) -> T {}
 }
 
 // private methods
 impl<T> LinkedList<T> {
     /// Adds the given node to the front of the list.
     #[inline]
-    fn push_front_node(&mut self, mut node: Box<Node<T>>) {
-        // This method takes care not to create mutable references to whole nodes,
-        // to maintain validity of aliasing pointers into `element`.
-        unsafe {
-            node.next = self.head;
-            node.prev = None;
-            let node = Some(Box::leak(node).into());
-
-            match self.head {
-                None => self.tail = node,
-                // Not creating new mutable (unique!) references overlapping `element`.
-                Some(head) => (*head.as_ptr()).prev = node,
-            }
-
-            self.head = node;
-            self.len += 1;
-        }
-    }
+    fn push_front_node(&mut self, mut node: Box<Node<T>>) {}
 
     /// Removes and returns the node at the front of the list.
     #[inline]
-    fn pop_front_node(&mut self) -> Option<Box<Node<T>>> {
-        // This method takes care not to create mutable references to whole nodes,
-        // to maintain validity of aliasing pointers into `element`.
-        self.head.map(|node| unsafe {
-            let node = Box::from_raw(node.as_ptr());
-            self.head = node.next;
-
-            match self.head {
-                None => self.tail = None,
-                // Not creating new mutable (unique!) references overlapping `element`.
-                Some(head) => (*head.as_ptr()).prev = None,
-            }
-
-            self.len -= 1;
-            node
-        })
-    }
+    fn pop_front_node(&mut self) -> Option<Box<Node<T>>> {}
 
     /// Adds the given node to the back of the list.
     #[inline]
-    fn push_back_node(&mut self, mut node: Box<Node<T>>) {
-        // This method takes care not to create mutable references to whole nodes,
-        // to maintain validity of aliasing pointers into `element`.
-        unsafe {
-            node.next = None;
-            node.prev = self.tail;
-            let node = Some(Box::leak(node).into());
-
-            match self.tail {
-                None => self.head = node,
-                // Not creating new mutable (unique!) references overlapping `element`.
-                Some(tail) => (*tail.as_ptr()).next = node,
-            }
-
-            self.tail = node;
-            self.len += 1;
-        }
-    }
+    fn push_back_node(&mut self, mut node: Box<Node<T>>) {}
 
     /// Removes and returns the node at the back of the list.
     #[inline]
-    fn pop_back_node(&mut self) -> Option<Box<Node<T>>> {
-        // This method takes care not to create mutable references to whole nodes,
-        // to maintain validity of aliasing pointers into `element`.
-        self.tail.map(|node| unsafe {
-            let node = Box::from_raw(node.as_ptr());
-            self.tail = node.prev;
-
-            match self.tail {
-                None => self.head = None,
-                // Not creating new mutable (unique!) references overlapping `element`.
-                Some(tail) => (*tail.as_ptr()).next = None,
-            }
-
-            self.len -= 1;
-            node
-        })
-    }
+    fn pop_back_node(&mut self) -> Option<Box<Node<T>>> {}
 
     /// Unlinks the specified node from the current list.
     ///
@@ -16590,24 +9642,7 @@ impl<T> LinkedList<T> {
     /// This method takes care not to create mutable references to `element`, to
     /// maintain validity of aliasing pointers.
     #[inline]
-    unsafe fn unlink_node(&mut self, mut node: NonNull<Node<T>>) {
-        let node = unsafe { node.as_mut() }; // this one is ours now, we can create an &mut.
-
-        // Not creating new mutable (unique!) references overlapping `element`.
-        match node.prev {
-            Some(prev) => unsafe { (*prev.as_ptr()).next = node.next },
-            // this node is the head node
-            None => self.head = node.next,
-        };
-
-        match node.next {
-            Some(next) => unsafe { (*next.as_ptr()).prev = node.prev },
-            // this node is the tail node
-            None => self.tail = node.prev,
-        };
-
-        self.len -= 1;
-    }
+    unsafe fn unlink_node(&mut self, mut node: NonNull<Node<T>>) {}
 
     /// Splices a series of nodes between two existing nodes.
     ///
@@ -16620,135 +9655,32 @@ impl<T> LinkedList<T> {
         mut splice_start: NonNull<Node<T>>,
         mut splice_end: NonNull<Node<T>>,
         splice_length: usize,
-    ) {
-        // This method takes care not to create multiple mutable references to whole nodes at the same time,
-        // to maintain validity of aliasing pointers into `element`.
-        if let Some(mut existing_prev) = existing_prev {
-            unsafe {
-                existing_prev.as_mut().next = Some(splice_start);
-            }
-        } else {
-            self.head = Some(splice_start);
-        }
-        if let Some(mut existing_next) = existing_next {
-            unsafe {
-                existing_next.as_mut().prev = Some(splice_end);
-            }
-        } else {
-            self.tail = Some(splice_end);
-        }
-        unsafe {
-            splice_start.as_mut().prev = existing_prev;
-            splice_end.as_mut().next = existing_next;
-        }
-
-        self.len += splice_length;
-    }
+    ) {}
 
     /// Detaches all nodes from a linked list as a series of nodes.
     #[inline]
-    fn detach_all_nodes(mut self) -> Option<(NonNull<Node<T>>, NonNull<Node<T>>, usize)> {
-        let head = self.head.take();
-        let tail = self.tail.take();
-        let len = mem::replace(&mut self.len, 0);
-        if let Some(head) = head {
-            // SAFETY: In a LinkedList, either both the head and tail are None because
-            // the list is empty, or both head and tail are Some because the list is populated.
-            // Since we have verified the head is Some, we are sure the tail is Some too.
-            let tail = unsafe { tail.unwrap_unchecked() };
-            Some((head, tail, len))
-        } else {
-            None
-        }
-    }
+    fn detach_all_nodes(mut self) -> Option<(NonNull<Node<T>>, NonNull<Node<T>>, usize)> {}
 
     #[inline]
     unsafe fn split_off_before_node(
         &mut self,
         split_node: Option<NonNull<Node<T>>>,
         at: usize,
-    ) -> Self {
-        // The split node is the new head node of the second part
-        if let Some(mut split_node) = split_node {
-            let first_part_head;
-            let first_part_tail;
-            unsafe {
-                first_part_tail = split_node.as_mut().prev.take();
-            }
-            if let Some(mut tail) = first_part_tail {
-                unsafe {
-                    tail.as_mut().next = None;
-                }
-                first_part_head = self.head;
-            } else {
-                first_part_head = None;
-            }
-
-            let first_part = LinkedList {
-                head: first_part_head,
-                tail: first_part_tail,
-                len: at,
-                marker: PhantomData,
-            };
-
-            // Fix the head ptr of the second part
-            self.head = Some(split_node);
-            self.len = self.len - at;
-
-            first_part
-        } else {
-            mem::replace(self, LinkedList::new())
-        }
-    }
+    ) -> Self {}
 
     #[inline]
     unsafe fn split_off_after_node(
         &mut self,
         split_node: Option<NonNull<Node<T>>>,
         at: usize,
-    ) -> Self {
-        // The split node is the new tail node of the first part and owns
-        // the head of the second part.
-        if let Some(mut split_node) = split_node {
-            let second_part_head;
-            let second_part_tail;
-            unsafe {
-                second_part_head = split_node.as_mut().next.take();
-            }
-            if let Some(mut head) = second_part_head {
-                unsafe {
-                    head.as_mut().prev = None;
-                }
-                second_part_tail = self.tail;
-            } else {
-                second_part_tail = None;
-            }
-
-            let second_part = LinkedList {
-                head: second_part_head,
-                tail: second_part_tail,
-                len: self.len - at,
-                marker: PhantomData,
-            };
-
-            // Fix the tail ptr of the first part
-            self.tail = Some(split_node);
-            self.len = at;
-
-            second_part
-        } else {
-            mem::replace(self, LinkedList::new())
-        }
-    }
+    ) -> Self {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Default for LinkedList<T> {
     /// Creates an empty `LinkedList<T>`.
     #[inline]
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self {}
 }
 
 impl<T> LinkedList<T> {
@@ -16765,9 +9697,7 @@ impl<T> LinkedList<T> {
     #[rustc_const_stable(feature = "const_linked_list_new", since = "1.32.0")]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
-    pub const fn new() -> Self {
-        LinkedList { head: None, tail: None, len: 0, marker: PhantomData }
-    }
+    pub const fn new() -> Self {}
 
     /// Moves all elements from `other` to the end of the list.
     ///
@@ -16799,24 +9729,7 @@ impl<T> LinkedList<T> {
     /// assert!(list2.is_empty());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn append(&mut self, other: &mut Self) {
-        match self.tail {
-            None => mem::swap(self, other),
-            Some(mut tail) => {
-                // `as_mut` is okay here because we have exclusive access to the entirety
-                // of both lists.
-                if let Some(mut other_head) = other.head.take() {
-                    unsafe {
-                        tail.as_mut().next = Some(other_head);
-                        other_head.as_mut().prev = Some(tail);
-                    }
-
-                    self.tail = other.tail.take();
-                    self.len += mem::replace(&mut other.len, 0);
-                }
-            }
-        }
-    }
+    pub fn append(&mut self, other: &mut Self) {}
 
     /// Provides a forward iterator.
     ///
@@ -16839,9 +9752,7 @@ impl<T> LinkedList<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn iter(&self) -> Iter<'_, T> {
-        Iter { head: self.head, tail: self.tail, len: self.len, marker: PhantomData }
-    }
+    pub fn iter(&self) -> Iter<'_, T> {}
 
     /// Provides a forward iterator with mutable references.
     ///
@@ -16868,9 +9779,7 @@ impl<T> LinkedList<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn iter_mut(&mut self) -> IterMut<'_, T> {
-        IterMut { head: self.head, tail: self.tail, len: self.len, marker: PhantomData }
-    }
+    pub fn iter_mut(&mut self) -> IterMut<'_, T> {}
 
     /// Provides a cursor at the front element.
     ///
@@ -16878,9 +9787,7 @@ impl<T> LinkedList<T> {
     #[inline]
     #[must_use]
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn cursor_front(&self) -> Cursor<'_, T> {
-        Cursor { index: 0, current: self.head, list: self }
-    }
+    pub fn cursor_front(&self) -> Cursor<'_, T> {}
 
     /// Provides a cursor with editing operations at the front element.
     ///
@@ -16888,9 +9795,7 @@ impl<T> LinkedList<T> {
     #[inline]
     #[must_use]
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn cursor_front_mut(&mut self) -> CursorMut<'_, T> {
-        CursorMut { index: 0, current: self.head, list: self }
-    }
+    pub fn cursor_front_mut(&mut self) -> CursorMut<'_, T> {}
 
     /// Provides a cursor at the back element.
     ///
@@ -16898,9 +9803,7 @@ impl<T> LinkedList<T> {
     #[inline]
     #[must_use]
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn cursor_back(&self) -> Cursor<'_, T> {
-        Cursor { index: self.len.checked_sub(1).unwrap_or(0), current: self.tail, list: self }
-    }
+    pub fn cursor_back(&self) -> Cursor<'_, T> {}
 
     /// Provides a cursor with editing operations at the back element.
     ///
@@ -16908,9 +9811,7 @@ impl<T> LinkedList<T> {
     #[inline]
     #[must_use]
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn cursor_back_mut(&mut self) -> CursorMut<'_, T> {
-        CursorMut { index: self.len.checked_sub(1).unwrap_or(0), current: self.tail, list: self }
-    }
+    pub fn cursor_back_mut(&mut self) -> CursorMut<'_, T> {}
 
     /// Returns `true` if the `LinkedList` is empty.
     ///
@@ -16930,9 +9831,7 @@ impl<T> LinkedList<T> {
     #[inline]
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn is_empty(&self) -> bool {
-        self.head.is_none()
-    }
+    pub fn is_empty(&self) -> bool {}
 
     /// Returns the length of the `LinkedList`.
     ///
@@ -16957,9 +9856,7 @@ impl<T> LinkedList<T> {
     #[inline]
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn len(&self) -> usize {
-        self.len
-    }
+    pub fn len(&self) -> usize {}
 
     /// Removes all elements from the `LinkedList`.
     ///
@@ -16983,9 +9880,7 @@ impl<T> LinkedList<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn clear(&mut self) {
-        *self = Self::new();
-    }
+    pub fn clear(&mut self) {}
 
     /// Returns `true` if the `LinkedList` contains an element equal to the
     /// given value.
@@ -17010,9 +9905,7 @@ impl<T> LinkedList<T> {
     pub fn contains(&self, x: &T) -> bool
     where
         T: PartialEq<T>,
-    {
-        self.iter().any(|e| e == x)
-    }
+    {}
 
     /// Provides a reference to the front element, or `None` if the list is
     /// empty.
@@ -17033,9 +9926,7 @@ impl<T> LinkedList<T> {
     #[inline]
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn front(&self) -> Option<&T> {
-        unsafe { self.head.as_ref().map(|node| &node.as_ref().element) }
-    }
+    pub fn front(&self) -> Option<&T> {}
 
     /// Provides a mutable reference to the front element, or `None` if the list
     /// is empty.
@@ -17062,9 +9953,7 @@ impl<T> LinkedList<T> {
     #[inline]
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn front_mut(&mut self) -> Option<&mut T> {
-        unsafe { self.head.as_mut().map(|node| &mut node.as_mut().element) }
-    }
+    pub fn front_mut(&mut self) -> Option<&mut T> {}
 
     /// Provides a reference to the back element, or `None` if the list is
     /// empty.
@@ -17085,9 +9974,7 @@ impl<T> LinkedList<T> {
     #[inline]
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn back(&self) -> Option<&T> {
-        unsafe { self.tail.as_ref().map(|node| &node.as_ref().element) }
-    }
+    pub fn back(&self) -> Option<&T> {}
 
     /// Provides a mutable reference to the back element, or `None` if the list
     /// is empty.
@@ -17113,9 +10000,7 @@ impl<T> LinkedList<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn back_mut(&mut self) -> Option<&mut T> {
-        unsafe { self.tail.as_mut().map(|node| &mut node.as_mut().element) }
-    }
+    pub fn back_mut(&mut self) -> Option<&mut T> {}
 
     /// Adds an element first in the list.
     ///
@@ -17135,9 +10020,7 @@ impl<T> LinkedList<T> {
     /// assert_eq!(dl.front().unwrap(), &1);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn push_front(&mut self, elt: T) {
-        self.push_front_node(box Node::new(elt));
-    }
+    pub fn push_front(&mut self, elt: T) {}
 
     /// Removes the first element and returns it, or `None` if the list is
     /// empty.
@@ -17159,9 +10042,7 @@ impl<T> LinkedList<T> {
     /// assert_eq!(d.pop_front(), None);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn pop_front(&mut self) -> Option<T> {
-        self.pop_front_node().map(Node::into_element)
-    }
+    pub fn pop_front(&mut self) -> Option<T> {}
 
     /// Appends an element to the back of a list.
     ///
@@ -17178,9 +10059,7 @@ impl<T> LinkedList<T> {
     /// assert_eq!(3, *d.back().unwrap());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn push_back(&mut self, elt: T) {
-        self.push_back_node(box Node::new(elt));
-    }
+    pub fn push_back(&mut self, elt: T) {}
 
     /// Removes the last element from a list and returns it, or `None` if
     /// it is empty.
@@ -17199,9 +10078,7 @@ impl<T> LinkedList<T> {
     /// assert_eq!(d.pop_back(), Some(3));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn pop_back(&mut self) -> Option<T> {
-        self.pop_back_node().map(Node::into_element)
-    }
+    pub fn pop_back(&mut self) -> Option<T> {}
 
     /// Splits the list into two at the given index. Returns everything after the given index,
     /// including the index.
@@ -17229,36 +10106,7 @@ impl<T> LinkedList<T> {
     /// assert_eq!(split.pop_front(), None);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn split_off(&mut self, at: usize) -> LinkedList<T> {
-        let len = self.len();
-        assert!(at <= len, "Cannot split off at a nonexistent index");
-        if at == 0 {
-            return mem::take(self);
-        } else if at == len {
-            return Self::new();
-        }
-
-        // Below, we iterate towards the `i-1`th node, either from the start or the end,
-        // depending on which would be faster.
-        let split_node = if at - 1 <= len - 1 - (at - 1) {
-            let mut iter = self.iter_mut();
-            // instead of skipping using .skip() (which creates a new struct),
-            // we skip manually so we can access the head field without
-            // depending on implementation details of Skip
-            for _ in 0..at - 1 {
-                iter.next();
-            }
-            iter.head
-        } else {
-            // better off starting from the end
-            let mut iter = self.iter_mut();
-            for _ in 0..len - 1 - (at - 1) {
-                iter.next_back();
-            }
-            iter.tail
-        };
-        unsafe { self.split_off_after_node(split_node, at) }
-    }
+    pub fn split_off(&mut self, at: usize) -> LinkedList<T> {}
 
     /// Removes the element at the given index and returns it.
     ///
@@ -17284,27 +10132,7 @@ impl<T> LinkedList<T> {
     /// assert_eq!(d.remove(0), 1);
     /// ```
     #[unstable(feature = "linked_list_remove", issue = "69210")]
-    pub fn remove(&mut self, at: usize) -> T {
-        let len = self.len();
-        assert!(at < len, "Cannot remove at an index outside of the list bounds");
-
-        // Below, we iterate towards the node at the given index, either from
-        // the start or the end, depending on which would be faster.
-        let offset_from_end = len - at - 1;
-        if at <= offset_from_end {
-            let mut cursor = self.cursor_front_mut();
-            for _ in 0..at {
-                cursor.move_next();
-            }
-            cursor.remove_current().unwrap()
-        } else {
-            let mut cursor = self.cursor_back_mut();
-            for _ in 0..offset_from_end {
-                cursor.move_prev();
-            }
-            cursor.remove_current().unwrap()
-        }
-    }
+    pub fn remove(&mut self, at: usize) -> T {}
 
     /// Creates an iterator which uses a closure to determine if an element should be removed.
     ///
@@ -17336,34 +10164,12 @@ impl<T> LinkedList<T> {
     pub fn drain_filter<F>(&mut self, filter: F) -> DrainFilter<'_, T, F>
     where
         F: FnMut(&mut T) -> bool,
-    {
-        // avoid borrow issues.
-        let it = self.head;
-        let old_len = self.len;
-
-        DrainFilter { list: self, it, pred: filter, idx: 0, old_len }
-    }
+    {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<#[may_dangle] T> Drop for LinkedList<T> {
-    fn drop(&mut self) {
-        struct DropGuard<'a, T>(&'a mut LinkedList<T>);
-
-        impl<'a, T> Drop for DropGuard<'a, T> {
-            fn drop(&mut self) {
-                // Continue the same loop we do below. This only runs when a destructor has
-                // panicked. If another one panics this will abort.
-                while self.0.pop_front_node().is_some() {}
-            }
-        }
-
-        while let Some(node) = self.pop_front_node() {
-            let guard = DropGuard(self);
-            drop(node);
-            mem::forget(guard);
-        }
-    }
+    fn drop(&mut self) {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -17371,47 +10177,19 @@ impl<'a, T> Iterator for Iter<'a, T> {
     type Item = &'a T;
 
     #[inline]
-    fn next(&mut self) -> Option<&'a T> {
-        if self.len == 0 {
-            None
-        } else {
-            self.head.map(|node| unsafe {
-                // Need an unbound lifetime to get 'a
-                let node = &*node.as_ptr();
-                self.len -= 1;
-                self.head = node.next;
-                &node.element
-            })
-        }
-    }
+    fn next(&mut self) -> Option<&'a T> {}
 
     #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        (self.len, Some(self.len))
-    }
+    fn size_hint(&self) -> (usize, Option<usize>) {}
 
     #[inline]
-    fn last(mut self) -> Option<&'a T> {
-        self.next_back()
-    }
+    fn last(mut self) -> Option<&'a T> {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> DoubleEndedIterator for Iter<'a, T> {
     #[inline]
-    fn next_back(&mut self) -> Option<&'a T> {
-        if self.len == 0 {
-            None
-        } else {
-            self.tail.map(|node| unsafe {
-                // Need an unbound lifetime to get 'a
-                let node = &*node.as_ptr();
-                self.len -= 1;
-                self.tail = node.prev;
-                &node.element
-            })
-        }
-    }
+    fn next_back(&mut self) -> Option<&'a T> {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -17425,47 +10203,19 @@ impl<'a, T> Iterator for IterMut<'a, T> {
     type Item = &'a mut T;
 
     #[inline]
-    fn next(&mut self) -> Option<&'a mut T> {
-        if self.len == 0 {
-            None
-        } else {
-            self.head.map(|node| unsafe {
-                // Need an unbound lifetime to get 'a
-                let node = &mut *node.as_ptr();
-                self.len -= 1;
-                self.head = node.next;
-                &mut node.element
-            })
-        }
-    }
+    fn next(&mut self) -> Option<&'a mut T> {}
 
     #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        (self.len, Some(self.len))
-    }
+    fn size_hint(&self) -> (usize, Option<usize>) {}
 
     #[inline]
-    fn last(mut self) -> Option<&'a mut T> {
-        self.next_back()
-    }
+    fn last(mut self) -> Option<&'a mut T> {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> DoubleEndedIterator for IterMut<'a, T> {
     #[inline]
-    fn next_back(&mut self) -> Option<&'a mut T> {
-        if self.len == 0 {
-            None
-        } else {
-            self.tail.map(|node| unsafe {
-                // Need an unbound lifetime to get 'a
-                let node = &mut *node.as_ptr();
-                self.len -= 1;
-                self.tail = node.prev;
-                &mut node.element
-            })
-        }
-    }
+    fn next_back(&mut self) -> Option<&'a mut T> {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -17492,17 +10242,12 @@ pub struct Cursor<'a, T: 'a> {
 
 #[unstable(feature = "linked_list_cursors", issue = "58533")]
 impl<T> Clone for Cursor<'_, T> {
-    fn clone(&self) -> Self {
-        let Cursor { index, current, list } = *self;
-        Cursor { index, current, list }
-    }
+    fn clone(&self) -> Self {}
 }
 
 #[unstable(feature = "linked_list_cursors", issue = "58533")]
 impl<T: fmt::Debug> fmt::Debug for Cursor<'_, T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("Cursor").field(&self.list).field(&self.index()).finish()
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
 }
 
 /// A cursor over a `LinkedList` with editing operations.
@@ -17524,9 +10269,7 @@ pub struct CursorMut<'a, T: 'a> {
 
 #[unstable(feature = "linked_list_cursors", issue = "58533")]
 impl<T: fmt::Debug> fmt::Debug for CursorMut<'_, T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("CursorMut").field(&self.list).field(&self.index()).finish()
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
 }
 
 impl<'a, T> Cursor<'a, T> {
@@ -17536,10 +10279,7 @@ impl<'a, T> Cursor<'a, T> {
     /// "ghost" non-element.
     #[must_use]
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn index(&self) -> Option<usize> {
-        let _ = self.current?;
-        Some(self.index)
-    }
+    pub fn index(&self) -> Option<usize> {}
 
     /// Moves the cursor to the next element of the `LinkedList`.
     ///
@@ -17547,21 +10287,7 @@ impl<'a, T> Cursor<'a, T> {
     /// the first element of the `LinkedList`. If it is pointing to the last
     /// element of the `LinkedList` then this will move it to the "ghost" non-element.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn move_next(&mut self) {
-        match self.current.take() {
-            // We had no current element; the cursor was sitting at the start position
-            // Next element should be the head of the list
-            None => {
-                self.current = self.list.head;
-                self.index = 0;
-            }
-            // We had a previous element, so let's go to its next
-            Some(current) => unsafe {
-                self.current = current.as_ref().next;
-                self.index += 1;
-            },
-        }
-    }
+    pub fn move_next(&mut self) {}
 
     /// Moves the cursor to the previous element of the `LinkedList`.
     ///
@@ -17569,20 +10295,7 @@ impl<'a, T> Cursor<'a, T> {
     /// the last element of the `LinkedList`. If it is pointing to the first
     /// element of the `LinkedList` then this will move it to the "ghost" non-element.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn move_prev(&mut self) {
-        match self.current.take() {
-            // No current. We're at the start of the list. Yield None and jump to the end.
-            None => {
-                self.current = self.list.tail;
-                self.index = self.list.len().checked_sub(1).unwrap_or(0);
-            }
-            // Have a prev. Yield it and go to the previous element.
-            Some(current) => unsafe {
-                self.current = current.as_ref().prev;
-                self.index = self.index.checked_sub(1).unwrap_or_else(|| self.list.len());
-            },
-        }
-    }
+    pub fn move_prev(&mut self) {}
 
     /// Returns a reference to the element that the cursor is currently
     /// pointing to.
@@ -17591,9 +10304,7 @@ impl<'a, T> Cursor<'a, T> {
     /// "ghost" non-element.
     #[must_use]
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn current(&self) -> Option<&'a T> {
-        unsafe { self.current.map(|current| &(*current.as_ptr()).element) }
-    }
+    pub fn current(&self) -> Option<&'a T> {}
 
     /// Returns a reference to the next element.
     ///
@@ -17602,15 +10313,7 @@ impl<'a, T> Cursor<'a, T> {
     /// element of the `LinkedList` then this returns `None`.
     #[must_use]
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn peek_next(&self) -> Option<&'a T> {
-        unsafe {
-            let next = match self.current {
-                None => self.list.head,
-                Some(current) => current.as_ref().next,
-            };
-            next.map(|next| &(*next.as_ptr()).element)
-        }
-    }
+    pub fn peek_next(&self) -> Option<&'a T> {}
 
     /// Returns a reference to the previous element.
     ///
@@ -17619,31 +10322,19 @@ impl<'a, T> Cursor<'a, T> {
     /// element of the `LinkedList` then this returns `None`.
     #[must_use]
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn peek_prev(&self) -> Option<&'a T> {
-        unsafe {
-            let prev = match self.current {
-                None => self.list.tail,
-                Some(current) => current.as_ref().prev,
-            };
-            prev.map(|prev| &(*prev.as_ptr()).element)
-        }
-    }
+    pub fn peek_prev(&self) -> Option<&'a T> {}
 
     /// Provides a reference to the front element of the cursor's parent list,
     /// or None if the list is empty.
     #[must_use]
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn front(&self) -> Option<&'a T> {
-        self.list.front()
-    }
+    pub fn front(&self) -> Option<&'a T> {}
 
     /// Provides a reference to the back element of the cursor's parent list,
     /// or None if the list is empty.
     #[must_use]
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn back(&self) -> Option<&'a T> {
-        self.list.back()
-    }
+    pub fn back(&self) -> Option<&'a T> {}
 }
 
 impl<'a, T> CursorMut<'a, T> {
@@ -17653,10 +10344,7 @@ impl<'a, T> CursorMut<'a, T> {
     /// "ghost" non-element.
     #[must_use]
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn index(&self) -> Option<usize> {
-        let _ = self.current?;
-        Some(self.index)
-    }
+    pub fn index(&self) -> Option<usize> {}
 
     /// Moves the cursor to the next element of the `LinkedList`.
     ///
@@ -17664,21 +10352,7 @@ impl<'a, T> CursorMut<'a, T> {
     /// the first element of the `LinkedList`. If it is pointing to the last
     /// element of the `LinkedList` then this will move it to the "ghost" non-element.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn move_next(&mut self) {
-        match self.current.take() {
-            // We had no current element; the cursor was sitting at the start position
-            // Next element should be the head of the list
-            None => {
-                self.current = self.list.head;
-                self.index = 0;
-            }
-            // We had a previous element, so let's go to its next
-            Some(current) => unsafe {
-                self.current = current.as_ref().next;
-                self.index += 1;
-            },
-        }
-    }
+    pub fn move_next(&mut self) {}
 
     /// Moves the cursor to the previous element of the `LinkedList`.
     ///
@@ -17686,20 +10360,7 @@ impl<'a, T> CursorMut<'a, T> {
     /// the last element of the `LinkedList`. If it is pointing to the first
     /// element of the `LinkedList` then this will move it to the "ghost" non-element.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn move_prev(&mut self) {
-        match self.current.take() {
-            // No current. We're at the start of the list. Yield None and jump to the end.
-            None => {
-                self.current = self.list.tail;
-                self.index = self.list.len().checked_sub(1).unwrap_or(0);
-            }
-            // Have a prev. Yield it and go to the previous element.
-            Some(current) => unsafe {
-                self.current = current.as_ref().prev;
-                self.index = self.index.checked_sub(1).unwrap_or_else(|| self.list.len());
-            },
-        }
-    }
+    pub fn move_prev(&mut self) {}
 
     /// Returns a reference to the element that the cursor is currently
     /// pointing to.
@@ -17708,9 +10369,7 @@ impl<'a, T> CursorMut<'a, T> {
     /// "ghost" non-element.
     #[must_use]
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn current(&mut self) -> Option<&mut T> {
-        unsafe { self.current.map(|current| &mut (*current.as_ptr()).element) }
-    }
+    pub fn current(&mut self) -> Option<&mut T> {}
 
     /// Returns a reference to the next element.
     ///
@@ -17718,15 +10377,7 @@ impl<'a, T> CursorMut<'a, T> {
     /// the first element of the `LinkedList`. If it is pointing to the last
     /// element of the `LinkedList` then this returns `None`.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn peek_next(&mut self) -> Option<&mut T> {
-        unsafe {
-            let next = match self.current {
-                None => self.list.head,
-                Some(current) => current.as_ref().next,
-            };
-            next.map(|next| &mut (*next.as_ptr()).element)
-        }
-    }
+    pub fn peek_next(&mut self) -> Option<&mut T> {}
 
     /// Returns a reference to the previous element.
     ///
@@ -17734,15 +10385,7 @@ impl<'a, T> CursorMut<'a, T> {
     /// the last element of the `LinkedList`. If it is pointing to the first
     /// element of the `LinkedList` then this returns `None`.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn peek_prev(&mut self) -> Option<&mut T> {
-        unsafe {
-            let prev = match self.current {
-                None => self.list.tail,
-                Some(current) => current.as_ref().prev,
-            };
-            prev.map(|prev| &mut (*prev.as_ptr()).element)
-        }
-    }
+    pub fn peek_prev(&mut self) -> Option<&mut T> {}
 
     /// Returns a read-only cursor pointing to the current element.
     ///
@@ -17751,9 +10394,7 @@ impl<'a, T> CursorMut<'a, T> {
     /// `CursorMut` is frozen for the lifetime of the `Cursor`.
     #[must_use]
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn as_cursor(&self) -> Cursor<'_, T> {
-        Cursor { list: self.list, current: self.current, index: self.index }
-    }
+    pub fn as_cursor(&self) -> Cursor<'_, T> {}
 }
 
 // Now the list editing operations
@@ -17764,37 +10405,14 @@ impl<'a, T> CursorMut<'a, T> {
     /// If the cursor is pointing at the "ghost" non-element then the new element is
     /// inserted at the front of the `LinkedList`.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn insert_after(&mut self, item: T) {
-        unsafe {
-            let spliced_node = Box::leak(Box::new(Node::new(item))).into();
-            let node_next = match self.current {
-                None => self.list.head,
-                Some(node) => node.as_ref().next,
-            };
-            self.list.splice_nodes(self.current, node_next, spliced_node, spliced_node, 1);
-            if self.current.is_none() {
-                // The "ghost" non-element's index has changed.
-                self.index = self.list.len;
-            }
-        }
-    }
+    pub fn insert_after(&mut self, item: T) {}
 
     /// Inserts a new element into the `LinkedList` before the current one.
     ///
     /// If the cursor is pointing at the "ghost" non-element then the new element is
     /// inserted at the end of the `LinkedList`.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn insert_before(&mut self, item: T) {
-        unsafe {
-            let spliced_node = Box::leak(Box::new(Node::new(item))).into();
-            let node_prev = match self.current {
-                None => self.list.tail,
-                Some(node) => node.as_ref().prev,
-            };
-            self.list.splice_nodes(node_prev, self.current, spliced_node, spliced_node, 1);
-            self.index += 1;
-        }
-    }
+    pub fn insert_before(&mut self, item: T) {}
 
     /// Removes the current element from the `LinkedList`.
     ///
@@ -17804,15 +10422,7 @@ impl<'a, T> CursorMut<'a, T> {
     /// If the cursor is currently pointing to the "ghost" non-element then no element
     /// is removed and `None` is returned.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn remove_current(&mut self) -> Option<T> {
-        let unlinked_node = self.current?;
-        unsafe {
-            self.current = unlinked_node.as_ref().next;
-            self.list.unlink_node(unlinked_node);
-            let unlinked_node = Box::from_raw(unlinked_node.as_ptr());
-            Some(unlinked_node.element)
-        }
-    }
+    pub fn remove_current(&mut self) -> Option<T> {}
 
     /// Removes the current element from the `LinkedList` without deallocating the list node.
     ///
@@ -17822,65 +10432,21 @@ impl<'a, T> CursorMut<'a, T> {
     /// If the cursor is currently pointing to the "ghost" non-element then no element
     /// is removed and `None` is returned.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn remove_current_as_list(&mut self) -> Option<LinkedList<T>> {
-        let mut unlinked_node = self.current?;
-        unsafe {
-            self.current = unlinked_node.as_ref().next;
-            self.list.unlink_node(unlinked_node);
-
-            unlinked_node.as_mut().prev = None;
-            unlinked_node.as_mut().next = None;
-            Some(LinkedList {
-                head: Some(unlinked_node),
-                tail: Some(unlinked_node),
-                len: 1,
-                marker: PhantomData,
-            })
-        }
-    }
+    pub fn remove_current_as_list(&mut self) -> Option<LinkedList<T>> {}
 
     /// Inserts the elements from the given `LinkedList` after the current one.
     ///
     /// If the cursor is pointing at the "ghost" non-element then the new elements are
     /// inserted at the start of the `LinkedList`.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn splice_after(&mut self, list: LinkedList<T>) {
-        unsafe {
-            let (splice_head, splice_tail, splice_len) = match list.detach_all_nodes() {
-                Some(parts) => parts,
-                _ => return,
-            };
-            let node_next = match self.current {
-                None => self.list.head,
-                Some(node) => node.as_ref().next,
-            };
-            self.list.splice_nodes(self.current, node_next, splice_head, splice_tail, splice_len);
-            if self.current.is_none() {
-                // The "ghost" non-element's index has changed.
-                self.index = self.list.len;
-            }
-        }
-    }
+    pub fn splice_after(&mut self, list: LinkedList<T>) {}
 
     /// Inserts the elements from the given `LinkedList` before the current one.
     ///
     /// If the cursor is pointing at the "ghost" non-element then the new elements are
     /// inserted at the end of the `LinkedList`.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn splice_before(&mut self, list: LinkedList<T>) {
-        unsafe {
-            let (splice_head, splice_tail, splice_len) = match list.detach_all_nodes() {
-                Some(parts) => parts,
-                _ => return,
-            };
-            let node_prev = match self.current {
-                None => self.list.tail,
-                Some(node) => node.as_ref().prev,
-            };
-            self.list.splice_nodes(node_prev, self.current, splice_head, splice_tail, splice_len);
-            self.index += splice_len;
-        }
-    }
+    pub fn splice_before(&mut self, list: LinkedList<T>) {}
 
     /// Splits the list into two after the current element. This will return a
     /// new list consisting of everything after the cursor, with the original
@@ -17889,14 +10455,7 @@ impl<'a, T> CursorMut<'a, T> {
     /// If the cursor is pointing at the "ghost" non-element then the entire contents
     /// of the `LinkedList` are moved.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn split_after(&mut self) -> LinkedList<T> {
-        let split_off_idx = if self.index == self.list.len { 0 } else { self.index + 1 };
-        if self.index == self.list.len {
-            // The "ghost" non-element's index has changed to 0.
-            self.index = 0;
-        }
-        unsafe { self.list.split_off_after_node(self.current, split_off_idx) }
-    }
+    pub fn split_after(&mut self) -> LinkedList<T> {}
 
     /// Splits the list into two before the current element. This will return a
     /// new list consisting of everything before the cursor, with the original
@@ -17905,11 +10464,7 @@ impl<'a, T> CursorMut<'a, T> {
     /// If the cursor is pointing at the "ghost" non-element then the entire contents
     /// of the `LinkedList` are moved.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn split_before(&mut self) -> LinkedList<T> {
-        let split_off_idx = self.index;
-        self.index = 0;
-        unsafe { self.list.split_off_before_node(self.current, split_off_idx) }
-    }
+    pub fn split_before(&mut self) -> LinkedList<T> {}
 
     /// Appends an element to the front of the cursor's parent list. The node
     /// that the cursor points to is unchanged, even if it is the "ghost" node.
@@ -17918,30 +10473,14 @@ impl<'a, T> CursorMut<'a, T> {
     // `push_front` continues to point to "ghost" when it addes a node to mimic
     // the behavior of `insert_before` on an empty list.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn push_front(&mut self, elt: T) {
-        // Safety: We know that `push_front` does not change the position in
-        // memory of other nodes. This ensures that `self.current` remains
-        // valid.
-        self.list.push_front(elt);
-        self.index += 1;
-    }
+    pub fn push_front(&mut self, elt: T) {}
 
     /// Appends an element to the back of the cursor's parent list. The node
     /// that the cursor points to is unchanged, even if it is the "ghost" node.
     ///
     /// This operation should compute in O(1) time.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn push_back(&mut self, elt: T) {
-        // Safety: We know that `push_back` does not change the position in
-        // memory of other nodes. This ensures that `self.current` remains
-        // valid.
-        self.list.push_back(elt);
-        if self.current().is_none() {
-            // The index of "ghost" is the length of the list, so we just need
-            // to increment self.index to reflect the new length of the list.
-            self.index += 1;
-        }
-    }
+    pub fn push_back(&mut self, elt: T) {}
 
     /// Removes the first element from the cursor's parent list and returns it,
     /// or None if the list is empty. The element the cursor points to remains
@@ -17950,25 +10489,7 @@ impl<'a, T> CursorMut<'a, T> {
     ///
     /// This operation should compute in O(1) time.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn pop_front(&mut self) -> Option<T> {
-        // We can't check if current is empty, we must check the list directly.
-        // It is possible for `self.current == None` and the list to be
-        // non-empty.
-        if self.list.is_empty() {
-            None
-        } else {
-            // We can't point to the node that we pop. Copying the behavior of
-            // `remove_current`, we move on the the next node in the sequence.
-            // If the list is of length 1 then we end pointing to the "ghost"
-            // node at index 0, which is expected.
-            if self.list.head == self.current {
-                self.move_next();
-            } else {
-                self.index -= 1;
-            }
-            self.list.pop_front()
-        }
-    }
+    pub fn pop_front(&mut self) -> Option<T> {}
 
     /// Removes the last element from the cursor's parent list and returns it,
     /// or None if the list is empty. The element the cursor points to remains
@@ -17977,45 +10498,25 @@ impl<'a, T> CursorMut<'a, T> {
     ///
     /// This operation should compute in O(1) time.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn pop_back(&mut self) -> Option<T> {
-        if self.list.is_empty() {
-            None
-        } else {
-            if self.list.tail == self.current {
-                // The index now reflects the length of the list. It was the
-                // length of the list minus 1, but now the list is 1 smaller. No
-                // change is needed for `index`.
-                self.current = None;
-            } else if self.current.is_none() {
-                self.index = self.list.len - 1;
-            }
-            self.list.pop_back()
-        }
-    }
+    pub fn pop_back(&mut self) -> Option<T> {}
 
     /// Provides a reference to the front element of the cursor's parent list,
     /// or None if the list is empty.
     #[must_use]
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn front(&self) -> Option<&T> {
-        self.list.front()
-    }
+    pub fn front(&self) -> Option<&T> {}
 
     /// Provides a mutable reference to the front element of the cursor's
     /// parent list, or None if the list is empty.
     #[must_use]
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn front_mut(&mut self) -> Option<&mut T> {
-        self.list.front_mut()
-    }
+    pub fn front_mut(&mut self) -> Option<&mut T> {}
 
     /// Provides a reference to the back element of the cursor's parent list,
     /// or None if the list is empty.
     #[must_use]
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn back(&self) -> Option<&T> {
-        self.list.back()
-    }
+    pub fn back(&self) -> Option<&T> {}
 
     /// Provides a mutable reference to back element of the cursor's parent
     /// list, or `None` if the list is empty.
@@ -18040,9 +10541,7 @@ impl<'a, T> CursorMut<'a, T> {
     /// ```
     #[must_use]
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn back_mut(&mut self) -> Option<&mut T> {
-        self.list.back_mut()
-    }
+    pub fn back_mut(&mut self) -> Option<&mut T> {}
 }
 
 /// An iterator produced by calling `drain_filter` on LinkedList.
@@ -18065,26 +10564,9 @@ where
 {
     type Item = T;
 
-    fn next(&mut self) -> Option<T> {
-        while let Some(mut node) = self.it {
-            unsafe {
-                self.it = node.as_ref().next;
-                self.idx += 1;
+    fn next(&mut self) -> Option<T> {}
 
-                if (self.pred)(&mut node.as_mut().element) {
-                    // `unlink_node` is okay with aliasing `element` references.
-                    self.list.unlink_node(node);
-                    return Some(Box::from_raw(node.as_ptr()).element);
-                }
-            }
-        }
-
-        None
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        (0, Some(self.old_len - self.idx))
-    }
+    fn size_hint(&self) -> (usize, Option<usize>) {}
 }
 
 #[unstable(feature = "drain_filter", reason = "recently added", issue = "43244")]
@@ -18092,26 +10574,7 @@ impl<T, F> Drop for DrainFilter<'_, T, F>
 where
     F: FnMut(&mut T) -> bool,
 {
-    fn drop(&mut self) {
-        struct DropGuard<'r, 'a, T, F>(&'r mut DrainFilter<'a, T, F>)
-        where
-            F: FnMut(&mut T) -> bool;
-
-        impl<'r, 'a, T, F> Drop for DropGuard<'r, 'a, T, F>
-        where
-            F: FnMut(&mut T) -> bool,
-        {
-            fn drop(&mut self) {
-                self.0.for_each(drop);
-            }
-        }
-
-        while let Some(item) = self.next() {
-            let guard = DropGuard(self);
-            drop(item);
-            mem::forget(guard);
-        }
-    }
+    fn drop(&mut self) {}
 }
 
 #[unstable(feature = "drain_filter", reason = "recently added", issue = "43244")]
@@ -18119,9 +10582,7 @@ impl<T: fmt::Debug, F> fmt::Debug for DrainFilter<'_, T, F>
 where
     F: FnMut(&mut T) -> bool,
 {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("DrainFilter").field(&self.list).finish()
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -18129,22 +10590,16 @@ impl<T> Iterator for IntoIter<T> {
     type Item = T;
 
     #[inline]
-    fn next(&mut self) -> Option<T> {
-        self.list.pop_front()
-    }
+    fn next(&mut self) -> Option<T> {}
 
     #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        (self.list.len, Some(self.list.len))
-    }
+    fn size_hint(&self) -> (usize, Option<usize>) {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> DoubleEndedIterator for IntoIter<T> {
     #[inline]
-    fn next_back(&mut self) -> Option<T> {
-        self.list.pop_back()
-    }
+    fn next_back(&mut self) -> Option<T> {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -18155,11 +10610,7 @@ impl<T> FusedIterator for IntoIter<T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> FromIterator<T> for LinkedList<T> {
-    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
-        let mut list = Self::new();
-        list.extend(iter);
-        list
-    }
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -18169,9 +10620,7 @@ impl<T> IntoIterator for LinkedList<T> {
 
     /// Consumes the list into an iterator yielding elements by value.
     #[inline]
-    fn into_iter(self) -> IntoIter<T> {
-        IntoIter { list: self }
-    }
+    fn into_iter(self) -> IntoIter<T> {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -18179,9 +10628,7 @@ impl<'a, T> IntoIterator for &'a LinkedList<T> {
     type Item = &'a T;
     type IntoIter = Iter<'a, T>;
 
-    fn into_iter(self) -> Iter<'a, T> {
-        self.iter()
-    }
+    fn into_iter(self) -> Iter<'a, T> {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -18189,56 +10636,38 @@ impl<'a, T> IntoIterator for &'a mut LinkedList<T> {
     type Item = &'a mut T;
     type IntoIter = IterMut<'a, T>;
 
-    fn into_iter(self) -> IterMut<'a, T> {
-        self.iter_mut()
-    }
+    fn into_iter(self) -> IterMut<'a, T> {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Extend<T> for LinkedList<T> {
-    fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
-        <Self as SpecExtend<I>>::spec_extend(self, iter);
-    }
+    fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {}
 
     #[inline]
-    fn extend_one(&mut self, elem: T) {
-        self.push_back(elem);
-    }
+    fn extend_one(&mut self, elem: T) {}
 }
 
 impl<I: IntoIterator> SpecExtend<I> for LinkedList<I::Item> {
-    default fn spec_extend(&mut self, iter: I) {
-        iter.into_iter().for_each(move |elt| self.push_back(elt));
-    }
+    default fn spec_extend(&mut self, iter: I) {}
 }
 
 impl<T> SpecExtend<LinkedList<T>> for LinkedList<T> {
-    fn spec_extend(&mut self, ref mut other: LinkedList<T>) {
-        self.append(other);
-    }
+    fn spec_extend(&mut self, ref mut other: LinkedList<T>) {}
 }
 
 #[stable(feature = "extend_ref", since = "1.2.0")]
 impl<'a, T: 'a + Copy> Extend<&'a T> for LinkedList<T> {
-    fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
-        self.extend(iter.into_iter().cloned());
-    }
+    fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {}
 
     #[inline]
-    fn extend_one(&mut self, &elem: &'a T) {
-        self.push_back(elem);
-    }
+    fn extend_one(&mut self, &elem: &'a T) {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: PartialEq> PartialEq for LinkedList<T> {
-    fn eq(&self, other: &Self) -> bool {
-        self.len() == other.len() && self.iter().eq(other)
-    }
+    fn eq(&self, other: &Self) -> bool {}
 
-    fn ne(&self, other: &Self) -> bool {
-        self.len() != other.len() || self.iter().ne(other)
-    }
+    fn ne(&self, other: &Self) -> bool {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -18246,54 +10675,30 @@ impl<T: Eq> Eq for LinkedList<T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: PartialOrd> PartialOrd for LinkedList<T> {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.iter().partial_cmp(other)
-    }
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Ord> Ord for LinkedList<T> {
     #[inline]
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.iter().cmp(other)
-    }
+    fn cmp(&self, other: &Self) -> Ordering {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Clone> Clone for LinkedList<T> {
-    fn clone(&self) -> Self {
-        self.iter().cloned().collect()
-    }
+    fn clone(&self) -> Self {}
 
-    fn clone_from(&mut self, other: &Self) {
-        let mut iter_other = other.iter();
-        if self.len() > other.len() {
-            self.split_off(other.len());
-        }
-        for (elem, elem_other) in self.iter_mut().zip(&mut iter_other) {
-            elem.clone_from(elem_other);
-        }
-        if !iter_other.is_empty() {
-            self.extend(iter_other.cloned());
-        }
-    }
+    fn clone_from(&mut self, other: &Self) {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: fmt::Debug> fmt::Debug for LinkedList<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_list().entries(self).finish()
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Hash> Hash for LinkedList<T> {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.len().hash(state);
-        for elt in self {
-            elt.hash(state);
-        }
-    }
+    fn hash<H: Hasher>(&self, state: &mut H) {}
 }
 
 #[stable(feature = "std_collections_from_array", since = "1.56.0")]
@@ -18305,24 +10710,12 @@ impl<T, const N: usize> From<[T; N]> for LinkedList<T> {
     /// let list2: LinkedList<_> = [1, 2, 3, 4].into();
     /// assert_eq!(list1, list2);
     /// ```
-    fn from(arr: [T; N]) -> Self {
-        core::array::IntoIter::new(arr).collect()
-    }
+    fn from(arr: [T; N]) -> Self {}
 }
 
 // Ensure that `LinkedList` and its read-only iterators are covariant in their type parameters.
 #[allow(dead_code)]
-fn assert_covariance() {
-    fn a<'a>(x: LinkedList<&'static str>) -> LinkedList<&'a str> {
-        x
-    }
-    fn b<'i, 'a>(x: Iter<'i, &'static str>) -> Iter<'i, &'a str> {
-        x
-    }
-    fn c<'a>(x: IntoIter<&'static str>) -> IntoIter<&'a str> {
-        x
-    }
-}
+fn assert_covariance() {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<T: Send> Send for LinkedList<T> {}
@@ -18391,14 +10784,7 @@ macro_rules! __impl_slice_eq1 {
             T: PartialEq<U>,
             $($constraints)*
         {
-            fn eq(&self, other: &$rhs) -> bool {
-                if self.len() != other.len() {
-                    return false;
-                }
-                let (sa, sb) = self.as_slices();
-                let (oa, ob) = other[..].split_at(sa.len());
-                sa == oa && sb == ob
-            }
+            fn eq(&self, other: &$rhs) -> bool {}
         }
     }
 }
@@ -18440,20 +10826,12 @@ impl<'a, T, A: Allocator> Drain<'a, T, A> {
         after_head: usize,
         iter: Iter<'a, T>,
         deque: NonNull<VecDeque<T, A>>,
-    ) -> Self {
-        Drain { after_tail, after_head, iter, deque }
-    }
+    ) -> Self {}
 }
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<T: fmt::Debug, A: Allocator> fmt::Debug for Drain<'_, T, A> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("Drain")
-            .field(&self.after_tail)
-            .field(&self.after_head)
-            .field(&self.iter)
-            .finish()
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
@@ -18463,63 +10841,7 @@ unsafe impl<T: Send, A: Allocator + Send> Send for Drain<'_, T, A> {}
 
 #[stable(feature = "drain", since = "1.6.0")]
 impl<T, A: Allocator> Drop for Drain<'_, T, A> {
-    fn drop(&mut self) {
-        struct DropGuard<'r, 'a, T, A: Allocator>(&'r mut Drain<'a, T, A>);
-
-        impl<'r, 'a, T, A: Allocator> Drop for DropGuard<'r, 'a, T, A> {
-            fn drop(&mut self) {
-                self.0.for_each(drop);
-
-                let source_deque = unsafe { self.0.deque.as_mut() };
-
-                // T = source_deque_tail; H = source_deque_head; t = drain_tail; h = drain_head
-                //
-                //        T   t   h   H
-                // [. . . o o x x o o . . .]
-                //
-                let orig_tail = source_deque.tail;
-                let drain_tail = source_deque.head;
-                let drain_head = self.0.after_tail;
-                let orig_head = self.0.after_head;
-
-                let tail_len = count(orig_tail, drain_tail, source_deque.cap());
-                let head_len = count(drain_head, orig_head, source_deque.cap());
-
-                // Restore the original head value
-                source_deque.head = orig_head;
-
-                match (tail_len, head_len) {
-                    (0, 0) => {
-                        source_deque.head = 0;
-                        source_deque.tail = 0;
-                    }
-                    (0, _) => {
-                        source_deque.tail = drain_head;
-                    }
-                    (_, 0) => {
-                        source_deque.head = drain_tail;
-                    }
-                    _ => unsafe {
-                        if tail_len <= head_len {
-                            source_deque.tail = source_deque.wrap_sub(drain_head, tail_len);
-                            source_deque.wrap_copy(source_deque.tail, orig_tail, tail_len);
-                        } else {
-                            source_deque.head = source_deque.wrap_add(drain_tail, head_len);
-                            source_deque.wrap_copy(drain_tail, drain_head, head_len);
-                        }
-                    },
-                }
-            }
-        }
-
-        while let Some(item) = self.next() {
-            let guard = DropGuard(self);
-            drop(item);
-            mem::forget(guard);
-        }
-
-        DropGuard(self);
-    }
+    fn drop(&mut self) {}
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
@@ -18527,22 +10849,16 @@ impl<T, A: Allocator> Iterator for Drain<'_, T, A> {
     type Item = T;
 
     #[inline]
-    fn next(&mut self) -> Option<T> {
-        self.iter.next().map(|elt| unsafe { ptr::read(elt) })
-    }
+    fn next(&mut self) -> Option<T> {}
 
     #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.iter.size_hint()
-    }
+    fn size_hint(&self) -> (usize, Option<usize>) {}
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
 impl<T, A: Allocator> DoubleEndedIterator for Drain<'_, T, A> {
     #[inline]
-    fn next_back(&mut self) -> Option<T> {
-        self.iter.next_back().map(|elt| unsafe { ptr::read(elt) })
-    }
+    fn next_back(&mut self) -> Option<T> {}
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
@@ -18583,9 +10899,7 @@ impl<'a, T> IterMut<'a, T> {
         tail: usize,
         head: usize,
         phantom: PhantomData<&'a mut [T]>,
-    ) -> Self {
-        IterMut { ring, tail, head, phantom }
-    }
+    ) -> Self {}
 }
 
 // SAFETY: we do nothing thread-local and there is no interior mutability,
@@ -18597,13 +10911,7 @@ unsafe impl<T: Sync> Sync for IterMut<'_, T> {}
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<T: fmt::Debug> fmt::Debug for IterMut<'_, T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let (front, back) = RingSlices::ring_slices(self.ring, self.head, self.tail);
-        // SAFETY: these are the elements we have not handed out yet, so aliasing is fine.
-        // The `IterMut` invariant also ensures everything is dereferencable.
-        let (front, back) = unsafe { (&*front, &*back) };
-        f.debug_tuple("IterMut").field(&front).field(&back).finish()
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -18611,97 +10919,40 @@ impl<'a, T> Iterator for IterMut<'a, T> {
     type Item = &'a mut T;
 
     #[inline]
-    fn next(&mut self) -> Option<&'a mut T> {
-        if self.tail == self.head {
-            return None;
-        }
-        let tail = self.tail;
-        self.tail = wrap_index(self.tail.wrapping_add(1), self.ring.len());
-
-        unsafe {
-            let elem = self.ring.get_unchecked_mut(tail);
-            Some(&mut *elem)
-        }
-    }
+    fn next(&mut self) -> Option<&'a mut T> {}
 
     #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        let len = count(self.tail, self.head, self.ring.len());
-        (len, Some(len))
-    }
+    fn size_hint(&self) -> (usize, Option<usize>) {}
 
     fn fold<Acc, F>(self, mut accum: Acc, mut f: F) -> Acc
     where
         F: FnMut(Acc, Self::Item) -> Acc,
-    {
-        let (front, back) = RingSlices::ring_slices(self.ring, self.head, self.tail);
-        // SAFETY: these are the elements we have not handed out yet, so aliasing is fine.
-        // The `IterMut` invariant also ensures everything is dereferencable.
-        let (front, back) = unsafe { (&mut *front, &mut *back) };
-        accum = front.iter_mut().fold(accum, &mut f);
-        back.iter_mut().fold(accum, &mut f)
-    }
+    {}
 
-    fn nth(&mut self, n: usize) -> Option<Self::Item> {
-        if n >= count(self.tail, self.head, self.ring.len()) {
-            self.tail = self.head;
-            None
-        } else {
-            self.tail = wrap_index(self.tail.wrapping_add(n), self.ring.len());
-            self.next()
-        }
-    }
+    fn nth(&mut self, n: usize) -> Option<Self::Item> {}
 
     #[inline]
-    fn last(mut self) -> Option<&'a mut T> {
-        self.next_back()
-    }
+    fn last(mut self) -> Option<&'a mut T> {}
 
     #[inline]
     #[doc(hidden)]
-    unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item {
-        // Safety: The TrustedRandomAccess contract requires that callers only pass an index
-        // that is in bounds.
-        unsafe {
-            let idx = wrap_index(self.tail.wrapping_add(idx), self.ring.len());
-            &mut *self.ring.get_unchecked_mut(idx)
-        }
-    }
+    unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> DoubleEndedIterator for IterMut<'a, T> {
     #[inline]
-    fn next_back(&mut self) -> Option<&'a mut T> {
-        if self.tail == self.head {
-            return None;
-        }
-        self.head = wrap_index(self.head.wrapping_sub(1), self.ring.len());
-
-        unsafe {
-            let elem = self.ring.get_unchecked_mut(self.head);
-            Some(&mut *elem)
-        }
-    }
+    fn next_back(&mut self) -> Option<&'a mut T> {}
 
     fn rfold<Acc, F>(self, mut accum: Acc, mut f: F) -> Acc
     where
         F: FnMut(Acc, Self::Item) -> Acc,
-    {
-        let (front, back) = RingSlices::ring_slices(self.ring, self.head, self.tail);
-        // SAFETY: these are the elements we have not handed out yet, so aliasing is fine.
-        // The `IterMut` invariant also ensures everything is dereferencable.
-        let (front, back) = unsafe { (&mut *front, &mut *back) };
-        accum = back.iter_mut().rfold(accum, &mut f);
-        front.iter_mut().rfold(accum, &mut f)
-    }
+    {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ExactSizeIterator for IterMut<'_, T> {
-    fn is_empty(&self) -> bool {
-        self.head == self.tail
-    }
+    fn is_empty(&self) -> bool {}
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -18749,16 +11000,12 @@ pub struct IntoIter<
 }
 
 impl<T, A: Allocator> IntoIter<T, A> {
-    pub(super) fn new(inner: VecDeque<T, A>) -> Self {
-        IntoIter { inner }
-    }
+    pub(super) fn new(inner: VecDeque<T, A>) -> Self {}
 }
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<T: fmt::Debug, A: Allocator> fmt::Debug for IntoIter<T, A> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("IntoIter").field(&self.inner).finish()
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -18766,30 +11013,21 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
     type Item = T;
 
     #[inline]
-    fn next(&mut self) -> Option<T> {
-        self.inner.pop_front()
-    }
+    fn next(&mut self) -> Option<T> {}
 
     #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        let len = self.inner.len();
-        (len, Some(len))
-    }
+    fn size_hint(&self) -> (usize, Option<usize>) {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, A: Allocator> DoubleEndedIterator for IntoIter<T, A> {
     #[inline]
-    fn next_back(&mut self) -> Option<T> {
-        self.inner.pop_back()
-    }
+    fn next_back(&mut self) -> Option<T> {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, A: Allocator> ExactSizeIterator for IntoIter<T, A> {
-    fn is_empty(&self) -> bool {
-        self.inner.is_empty()
-    }
+    fn is_empty(&self) -> bool {}
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -18824,18 +11062,13 @@ pub struct Iter<'a, T: 'a> {
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<T: fmt::Debug> fmt::Debug for Iter<'_, T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let (front, back) = RingSlices::ring_slices(self.ring, self.head, self.tail);
-        f.debug_tuple("Iter").field(&front).field(&back).finish()
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
 }
 
 // FIXME(#26925) Remove in favor of `#[derive(Clone)]`
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Clone for Iter<'_, T> {
-    fn clone(&self) -> Self {
-        Iter { ring: self.ring, tail: self.tail, head: self.head }
-    }
+    fn clone(&self) -> Self {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -18843,132 +11076,54 @@ impl<'a, T> Iterator for Iter<'a, T> {
     type Item = &'a T;
 
     #[inline]
-    fn next(&mut self) -> Option<&'a T> {
-        if self.tail == self.head {
-            return None;
-        }
-        let tail = self.tail;
-        self.tail = wrap_index(self.tail.wrapping_add(1), self.ring.len());
-        unsafe { Some(self.ring.get_unchecked(tail)) }
-    }
+    fn next(&mut self) -> Option<&'a T> {}
 
     #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        let len = count(self.tail, self.head, self.ring.len());
-        (len, Some(len))
-    }
+    fn size_hint(&self) -> (usize, Option<usize>) {}
 
     fn fold<Acc, F>(self, mut accum: Acc, mut f: F) -> Acc
     where
         F: FnMut(Acc, Self::Item) -> Acc,
-    {
-        let (front, back) = RingSlices::ring_slices(self.ring, self.head, self.tail);
-        accum = front.iter().fold(accum, &mut f);
-        back.iter().fold(accum, &mut f)
-    }
+    {}
 
     fn try_fold<B, F, R>(&mut self, init: B, mut f: F) -> R
     where
         Self: Sized,
         F: FnMut(B, Self::Item) -> R,
         R: Try<Output = B>,
-    {
-        let (mut iter, final_res);
-        if self.tail <= self.head {
-            // single slice self.ring[self.tail..self.head]
-            iter = self.ring[self.tail..self.head].iter();
-            final_res = iter.try_fold(init, &mut f);
-        } else {
-            // two slices: self.ring[self.tail..], self.ring[..self.head]
-            let (front, back) = self.ring.split_at(self.tail);
-            let mut back_iter = back.iter();
-            let res = back_iter.try_fold(init, &mut f);
-            let len = self.ring.len();
-            self.tail = (self.ring.len() - back_iter.len()) & (len - 1);
-            iter = front[..self.head].iter();
-            final_res = iter.try_fold(res?, &mut f);
-        }
-        self.tail = self.head - iter.len();
-        final_res
-    }
+    {}
 
-    fn nth(&mut self, n: usize) -> Option<Self::Item> {
-        if n >= count(self.tail, self.head, self.ring.len()) {
-            self.tail = self.head;
-            None
-        } else {
-            self.tail = wrap_index(self.tail.wrapping_add(n), self.ring.len());
-            self.next()
-        }
-    }
+    fn nth(&mut self, n: usize) -> Option<Self::Item> {}
 
     #[inline]
-    fn last(mut self) -> Option<&'a T> {
-        self.next_back()
-    }
+    fn last(mut self) -> Option<&'a T> {}
 
     #[inline]
     #[doc(hidden)]
-    unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item {
-        // Safety: The TrustedRandomAccess contract requires that callers only pass an index
-        // that is in bounds.
-        unsafe {
-            let idx = wrap_index(self.tail.wrapping_add(idx), self.ring.len());
-            self.ring.get_unchecked(idx)
-        }
-    }
+    unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> DoubleEndedIterator for Iter<'a, T> {
     #[inline]
-    fn next_back(&mut self) -> Option<&'a T> {
-        if self.tail == self.head {
-            return None;
-        }
-        self.head = wrap_index(self.head.wrapping_sub(1), self.ring.len());
-        unsafe { Some(self.ring.get_unchecked(self.head)) }
-    }
+    fn next_back(&mut self) -> Option<&'a T> {}
 
     fn rfold<Acc, F>(self, mut accum: Acc, mut f: F) -> Acc
     where
         F: FnMut(Acc, Self::Item) -> Acc,
-    {
-        let (front, back) = RingSlices::ring_slices(self.ring, self.head, self.tail);
-        accum = back.iter().rfold(accum, &mut f);
-        front.iter().rfold(accum, &mut f)
-    }
+    {}
 
     fn try_rfold<B, F, R>(&mut self, init: B, mut f: F) -> R
     where
         Self: Sized,
         F: FnMut(B, Self::Item) -> R,
         R: Try<Output = B>,
-    {
-        let (mut iter, final_res);
-        if self.tail <= self.head {
-            // single slice self.ring[self.tail..self.head]
-            iter = self.ring[self.tail..self.head].iter();
-            final_res = iter.try_rfold(init, &mut f);
-        } else {
-            // two slices: self.ring[self.tail..], self.ring[..self.head]
-            let (front, back) = self.ring.split_at(self.tail);
-            let mut front_iter = front[..self.head].iter();
-            let res = front_iter.try_rfold(init, &mut f);
-            self.head = front_iter.len();
-            iter = back.iter();
-            final_res = iter.try_rfold(res?, &mut f);
-        }
-        self.head = self.tail + iter.len();
-        final_res
-    }
+    {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ExactSizeIterator for Iter<'_, T> {
-    fn is_empty(&self) -> bool {
-        self.head == self.tail
-    }
+    fn is_empty(&self) -> bool {}
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -19020,43 +11175,16 @@ pub struct PairSlices<'a, 'b, T> {
 }
 
 impl<'a, 'b, T> PairSlices<'a, 'b, T> {
-    pub fn from<A: Allocator>(to: &'a mut VecDeque<T, A>, from: &'b VecDeque<T, A>) -> Self {
-        let (a0, a1) = to.as_mut_slices();
-        let (b0, b1) = from.as_slices();
-        PairSlices { a0, a1, b0, b1 }
-    }
+    pub fn from<A: Allocator>(to: &'a mut VecDeque<T, A>, from: &'b VecDeque<T, A>) -> Self {}
 
-    pub fn has_remainder(&self) -> bool {
-        !self.b0.is_empty()
-    }
+    pub fn has_remainder(&self) -> bool {}
 
-    pub fn remainder(self) -> impl Iterator<Item = &'b [T]> {
-        IntoIterator::into_iter([self.b0, self.b1])
-    }
+    pub fn remainder(self) -> impl Iterator<Item = &'b [T]> {}
 }
 
 impl<'a, 'b, T> Iterator for PairSlices<'a, 'b, T> {
     type Item = (&'a mut [T], &'b [T]);
-    fn next(&mut self) -> Option<Self::Item> {
-        // Get next part length
-        let part = cmp::min(self.a0.len(), self.b0.len());
-        if part == 0 {
-            return None;
-        }
-        let (p0, p1) = replace(&mut self.a0, &mut []).split_at_mut(part);
-        let (q0, q1) = self.b0.split_at(part);
-
-        // Move a1 into a0, if it's empty (and b1, b0 the same way).
-        self.a0 = p1;
-        self.b0 = q1;
-        if self.a0.is_empty() {
-            self.a0 = replace(&mut self.a1, &mut []);
-        }
-        if self.b0.is_empty() {
-            self.b0 = replace(&mut self.b1, &[]);
-        }
-        Some((p0, q0))
-    }
+    fn next(&mut self) -> Option<Self::Item> {}
 }
 }
 
@@ -19070,54 +11198,23 @@ pub trait RingSlices: Sized {
     fn slice(self, from: usize, to: usize) -> Self;
     fn split_at(self, i: usize) -> (Self, Self);
 
-    fn ring_slices(buf: Self, head: usize, tail: usize) -> (Self, Self) {
-        let contiguous = tail <= head;
-        if contiguous {
-            let (empty, buf) = buf.split_at(0);
-            (buf.slice(tail, head), empty)
-        } else {
-            let (mid, right) = buf.split_at(tail);
-            let (left, _) = mid.split_at(head);
-            (right, left)
-        }
-    }
+    fn ring_slices(buf: Self, head: usize, tail: usize) -> (Self, Self) {}
 }
 
 impl<T> RingSlices for &[T] {
-    fn slice(self, from: usize, to: usize) -> Self {
-        &self[from..to]
-    }
-    fn split_at(self, i: usize) -> (Self, Self) {
-        (*self).split_at(i)
-    }
+    fn slice(self, from: usize, to: usize) -> Self {}
+    fn split_at(self, i: usize) -> (Self, Self) {}
 }
 
 impl<T> RingSlices for &mut [T] {
-    fn slice(self, from: usize, to: usize) -> Self {
-        &mut self[from..to]
-    }
-    fn split_at(self, i: usize) -> (Self, Self) {
-        (*self).split_at_mut(i)
-    }
+    fn slice(self, from: usize, to: usize) -> Self {}
+    fn split_at(self, i: usize) -> (Self, Self) {}
 }
 
 impl<T> RingSlices for *mut [T] {
-    fn slice(self, from: usize, to: usize) -> Self {
-        assert!(from <= to && to < self.len());
-        // Not using `get_unchecked_mut` to keep this a safe operation.
-        let len = to - from;
-        ptr::slice_from_raw_parts_mut(self.as_mut_ptr().wrapping_add(from), len)
-    }
+    fn slice(self, from: usize, to: usize) -> Self {}
 
-    fn split_at(self, mid: usize) -> (Self, Self) {
-        let len = self.len();
-        let ptr = self.as_mut_ptr();
-        assert!(mid <= len);
-        (
-            ptr::slice_from_raw_parts_mut(ptr, mid),
-            ptr::slice_from_raw_parts_mut(ptr.wrapping_add(mid), len - mid),
-        )
-    }
+    fn split_at(self, mid: usize) -> (Self, Self) {}
 }
 }
 
@@ -19127,721 +11224,95 @@ use super::*;
 
 #[bench]
 #[cfg_attr(miri, ignore)] // isolated Miri does not support benchmarks
-fn bench_push_back_100(b: &mut test::Bencher) {
-    let mut deq = VecDeque::with_capacity(101);
-    b.iter(|| {
-        for i in 0..100 {
-            deq.push_back(i);
-        }
-        deq.head = 0;
-        deq.tail = 0;
-    })
-}
+fn bench_push_back_100(b: &mut test::Bencher) {}
 
 #[bench]
 #[cfg_attr(miri, ignore)] // isolated Miri does not support benchmarks
-fn bench_push_front_100(b: &mut test::Bencher) {
-    let mut deq = VecDeque::with_capacity(101);
-    b.iter(|| {
-        for i in 0..100 {
-            deq.push_front(i);
-        }
-        deq.head = 0;
-        deq.tail = 0;
-    })
-}
+fn bench_push_front_100(b: &mut test::Bencher) {}
 
 #[bench]
 #[cfg_attr(miri, ignore)] // isolated Miri does not support benchmarks
-fn bench_pop_back_100(b: &mut test::Bencher) {
-    let mut deq = VecDeque::<i32>::with_capacity(101);
-
-    b.iter(|| {
-        deq.head = 100;
-        deq.tail = 0;
-        while !deq.is_empty() {
-            test::black_box(deq.pop_back());
-        }
-    })
-}
+fn bench_pop_back_100(b: &mut test::Bencher) {}
 
 #[bench]
 #[cfg_attr(miri, ignore)] // isolated Miri does not support benchmarks
-fn bench_retain_whole_10000(b: &mut test::Bencher) {
-    let v = (1..100000).collect::<VecDeque<u32>>();
-
-    b.iter(|| {
-        let mut v = v.clone();
-        v.retain(|x| *x > 0)
-    })
-}
+fn bench_retain_whole_10000(b: &mut test::Bencher) {}
 
 #[bench]
 #[cfg_attr(miri, ignore)] // isolated Miri does not support benchmarks
-fn bench_retain_odd_10000(b: &mut test::Bencher) {
-    let v = (1..100000).collect::<VecDeque<u32>>();
-
-    b.iter(|| {
-        let mut v = v.clone();
-        v.retain(|x| x & 1 == 0)
-    })
-}
+fn bench_retain_odd_10000(b: &mut test::Bencher) {}
 
 #[bench]
 #[cfg_attr(miri, ignore)] // isolated Miri does not support benchmarks
-fn bench_retain_half_10000(b: &mut test::Bencher) {
-    let v = (1..100000).collect::<VecDeque<u32>>();
-
-    b.iter(|| {
-        let mut v = v.clone();
-        v.retain(|x| *x > 50000)
-    })
-}
+fn bench_retain_half_10000(b: &mut test::Bencher) {}
 
 #[bench]
 #[cfg_attr(miri, ignore)] // isolated Miri does not support benchmarks
-fn bench_pop_front_100(b: &mut test::Bencher) {
-    let mut deq = VecDeque::<i32>::with_capacity(101);
-
-    b.iter(|| {
-        deq.head = 100;
-        deq.tail = 0;
-        while !deq.is_empty() {
-            test::black_box(deq.pop_front());
-        }
-    })
-}
+fn bench_pop_front_100(b: &mut test::Bencher) {}
 
 #[test]
-fn test_swap_front_back_remove() {
-    fn test(back: bool) {
-        // This test checks that every single combination of tail position and length is tested.
-        // Capacity 15 should be large enough to cover every case.
-        let mut tester = VecDeque::with_capacity(15);
-        let usable_cap = tester.capacity();
-        let final_len = usable_cap / 2;
-
-        for len in 0..final_len {
-            let expected: VecDeque<_> =
-                if back { (0..len).collect() } else { (0..len).rev().collect() };
-            for tail_pos in 0..usable_cap {
-                tester.tail = tail_pos;
-                tester.head = tail_pos;
-                if back {
-                    for i in 0..len * 2 {
-                        tester.push_front(i);
-                    }
-                    for i in 0..len {
-                        assert_eq!(tester.swap_remove_back(i), Some(len * 2 - 1 - i));
-                    }
-                } else {
-                    for i in 0..len * 2 {
-                        tester.push_back(i);
-                    }
-                    for i in 0..len {
-                        let idx = tester.len() - 1 - i;
-                        assert_eq!(tester.swap_remove_front(idx), Some(len * 2 - 1 - i));
-                    }
-                }
-                assert!(tester.tail < tester.cap());
-                assert!(tester.head < tester.cap());
-                assert_eq!(tester, expected);
-            }
-        }
-    }
-    test(true);
-    test(false);
-}
+fn test_swap_front_back_remove() {}
 
 #[test]
-fn test_insert() {
-    // This test checks that every single combination of tail position, length, and
-    // insertion position is tested. Capacity 15 should be large enough to cover every case.
-
-    let mut tester = VecDeque::with_capacity(15);
-    // can't guarantee we got 15, so have to get what we got.
-    // 15 would be great, but we will definitely get 2^k - 1, for k >= 4, or else
-    // this test isn't covering what it wants to
-    let cap = tester.capacity();
-
-    // len is the length *after* insertion
-    let minlen = if cfg!(miri) { cap - 1 } else { 1 }; // Miri is too slow
-    for len in minlen..cap {
-        // 0, 1, 2, .., len - 1
-        let expected = (0..).take(len).collect::<VecDeque<_>>();
-        for tail_pos in 0..cap {
-            for to_insert in 0..len {
-                tester.tail = tail_pos;
-                tester.head = tail_pos;
-                for i in 0..len {
-                    if i != to_insert {
-                        tester.push_back(i);
-                    }
-                }
-                tester.insert(to_insert, to_insert);
-                assert!(tester.tail < tester.cap());
-                assert!(tester.head < tester.cap());
-                assert_eq!(tester, expected);
-            }
-        }
-    }
-}
+fn test_insert() {}
 
 #[test]
-fn make_contiguous_big_tail() {
-    let mut tester = VecDeque::with_capacity(15);
-
-    for i in 0..3 {
-        tester.push_back(i);
-    }
-
-    for i in 3..10 {
-        tester.push_front(i);
-    }
-
-    // 012......9876543
-    assert_eq!(tester.capacity(), 15);
-    assert_eq!((&[9, 8, 7, 6, 5, 4, 3] as &[_], &[0, 1, 2] as &[_]), tester.as_slices());
-
-    let expected_start = tester.head;
-    tester.make_contiguous();
-    assert_eq!(tester.tail, expected_start);
-    assert_eq!((&[9, 8, 7, 6, 5, 4, 3, 0, 1, 2] as &[_], &[] as &[_]), tester.as_slices());
-}
+fn make_contiguous_big_tail() {}
 
 #[test]
-fn make_contiguous_big_head() {
-    let mut tester = VecDeque::with_capacity(15);
-
-    for i in 0..8 {
-        tester.push_back(i);
-    }
-
-    for i in 8..10 {
-        tester.push_front(i);
-    }
-
-    // 01234567......98
-    let expected_start = 0;
-    tester.make_contiguous();
-    assert_eq!(tester.tail, expected_start);
-    assert_eq!((&[9, 8, 0, 1, 2, 3, 4, 5, 6, 7] as &[_], &[] as &[_]), tester.as_slices());
-}
+fn make_contiguous_big_head() {}
 
 #[test]
-fn make_contiguous_small_free() {
-    let mut tester = VecDeque::with_capacity(15);
-
-    for i in 'A' as u8..'I' as u8 {
-        tester.push_back(i as char);
-    }
-
-    for i in 'I' as u8..'N' as u8 {
-        tester.push_front(i as char);
-    }
-
-    // ABCDEFGH...MLKJI
-    let expected_start = 0;
-    tester.make_contiguous();
-    assert_eq!(tester.tail, expected_start);
-    assert_eq!(
-        (&['M', 'L', 'K', 'J', 'I', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'] as &[_], &[] as &[_]),
-        tester.as_slices()
-    );
-
-    tester.clear();
-    for i in 'I' as u8..'N' as u8 {
-        tester.push_back(i as char);
-    }
-
-    for i in 'A' as u8..'I' as u8 {
-        tester.push_front(i as char);
-    }
-
-    // IJKLM...HGFEDCBA
-    let expected_start = 0;
-    tester.make_contiguous();
-    assert_eq!(tester.tail, expected_start);
-    assert_eq!(
-        (&['H', 'G', 'F', 'E', 'D', 'C', 'B', 'A', 'I', 'J', 'K', 'L', 'M'] as &[_], &[] as &[_]),
-        tester.as_slices()
-    );
-}
+fn make_contiguous_small_free() {}
 
 #[test]
-fn make_contiguous_head_to_end() {
-    let mut dq = VecDeque::with_capacity(3);
-    dq.push_front('B');
-    dq.push_front('A');
-    dq.push_back('C');
-    dq.make_contiguous();
-    let expected_tail = 0;
-    let expected_head = 3;
-    assert_eq!(expected_tail, dq.tail);
-    assert_eq!(expected_head, dq.head);
-    assert_eq!((&['A', 'B', 'C'] as &[_], &[] as &[_]), dq.as_slices());
-}
+fn make_contiguous_head_to_end() {}
 
 #[test]
-fn make_contiguous_head_to_end_2() {
-    // Another test case for #79808, taken from #80293.
-
-    let mut dq = VecDeque::from_iter(0..6);
-    dq.pop_front();
-    dq.pop_front();
-    dq.push_back(6);
-    dq.push_back(7);
-    dq.push_back(8);
-    dq.make_contiguous();
-    let collected: Vec<_> = dq.iter().copied().collect();
-    assert_eq!(dq.as_slices(), (&collected[..], &[] as &[_]));
-}
+fn make_contiguous_head_to_end_2() {}
 
 #[test]
-fn test_remove() {
-    // This test checks that every single combination of tail position, length, and
-    // removal position is tested. Capacity 15 should be large enough to cover every case.
-
-    let mut tester = VecDeque::with_capacity(15);
-    // can't guarantee we got 15, so have to get what we got.
-    // 15 would be great, but we will definitely get 2^k - 1, for k >= 4, or else
-    // this test isn't covering what it wants to
-    let cap = tester.capacity();
-
-    // len is the length *after* removal
-    let minlen = if cfg!(miri) { cap - 2 } else { 0 }; // Miri is too slow
-    for len in minlen..cap - 1 {
-        // 0, 1, 2, .., len - 1
-        let expected = (0..).take(len).collect::<VecDeque<_>>();
-        for tail_pos in 0..cap {
-            for to_remove in 0..=len {
-                tester.tail = tail_pos;
-                tester.head = tail_pos;
-                for i in 0..len {
-                    if i == to_remove {
-                        tester.push_back(1234);
-                    }
-                    tester.push_back(i);
-                }
-                if to_remove == len {
-                    tester.push_back(1234);
-                }
-                tester.remove(to_remove);
-                assert!(tester.tail < tester.cap());
-                assert!(tester.head < tester.cap());
-                assert_eq!(tester, expected);
-            }
-        }
-    }
-}
+fn test_remove() {}
 
 #[test]
-fn test_range() {
-    let mut tester: VecDeque<usize> = VecDeque::with_capacity(7);
-
-    let cap = tester.capacity();
-    let minlen = if cfg!(miri) { cap - 1 } else { 0 }; // Miri is too slow
-    for len in minlen..=cap {
-        for tail in 0..=cap {
-            for start in 0..=len {
-                for end in start..=len {
-                    tester.tail = tail;
-                    tester.head = tail;
-                    for i in 0..len {
-                        tester.push_back(i);
-                    }
-
-                    // Check that we iterate over the correct values
-                    let range: VecDeque<_> = tester.range(start..end).copied().collect();
-                    let expected: VecDeque<_> = (start..end).collect();
-                    assert_eq!(range, expected);
-                }
-            }
-        }
-    }
-}
+fn test_range() {}
 
 #[test]
-fn test_range_mut() {
-    let mut tester: VecDeque<usize> = VecDeque::with_capacity(7);
-
-    let cap = tester.capacity();
-    for len in 0..=cap {
-        for tail in 0..=cap {
-            for start in 0..=len {
-                for end in start..=len {
-                    tester.tail = tail;
-                    tester.head = tail;
-                    for i in 0..len {
-                        tester.push_back(i);
-                    }
-
-                    let head_was = tester.head;
-                    let tail_was = tester.tail;
-
-                    // Check that we iterate over the correct values
-                    let range: VecDeque<_> = tester.range_mut(start..end).map(|v| *v).collect();
-                    let expected: VecDeque<_> = (start..end).collect();
-                    assert_eq!(range, expected);
-
-                    // We shouldn't have changed the capacity or made the
-                    // head or tail out of bounds
-                    assert_eq!(tester.capacity(), cap);
-                    assert_eq!(tester.tail, tail_was);
-                    assert_eq!(tester.head, head_was);
-                }
-            }
-        }
-    }
-}
+fn test_range_mut() {}
 
 #[test]
-fn test_drain() {
-    let mut tester: VecDeque<usize> = VecDeque::with_capacity(7);
-
-    let cap = tester.capacity();
-    for len in 0..=cap {
-        for tail in 0..=cap {
-            for drain_start in 0..=len {
-                for drain_end in drain_start..=len {
-                    tester.tail = tail;
-                    tester.head = tail;
-                    for i in 0..len {
-                        tester.push_back(i);
-                    }
-
-                    // Check that we drain the correct values
-                    let drained: VecDeque<_> = tester.drain(drain_start..drain_end).collect();
-                    let drained_expected: VecDeque<_> = (drain_start..drain_end).collect();
-                    assert_eq!(drained, drained_expected);
-
-                    // We shouldn't have changed the capacity or made the
-                    // head or tail out of bounds
-                    assert_eq!(tester.capacity(), cap);
-                    assert!(tester.tail < tester.cap());
-                    assert!(tester.head < tester.cap());
-
-                    // We should see the correct values in the VecDeque
-                    let expected: VecDeque<_> = (0..drain_start).chain(drain_end..len).collect();
-                    assert_eq!(expected, tester);
-                }
-            }
-        }
-    }
-}
+fn test_drain() {}
 
 #[test]
-fn test_shrink_to_fit() {
-    // This test checks that every single combination of head and tail position,
-    // is tested. Capacity 15 should be large enough to cover every case.
-
-    let mut tester = VecDeque::with_capacity(15);
-    // can't guarantee we got 15, so have to get what we got.
-    // 15 would be great, but we will definitely get 2^k - 1, for k >= 4, or else
-    // this test isn't covering what it wants to
-    let cap = tester.capacity();
-    tester.reserve(63);
-    let max_cap = tester.capacity();
-
-    for len in 0..=cap {
-        // 0, 1, 2, .., len - 1
-        let expected = (0..).take(len).collect::<VecDeque<_>>();
-        for tail_pos in 0..=max_cap {
-            tester.tail = tail_pos;
-            tester.head = tail_pos;
-            tester.reserve(63);
-            for i in 0..len {
-                tester.push_back(i);
-            }
-            tester.shrink_to_fit();
-            assert!(tester.capacity() <= cap);
-            assert!(tester.tail < tester.cap());
-            assert!(tester.head < tester.cap());
-            assert_eq!(tester, expected);
-        }
-    }
-}
+fn test_shrink_to_fit() {}
 
 #[test]
-fn test_split_off() {
-    // This test checks that every single combination of tail position, length, and
-    // split position is tested. Capacity 15 should be large enough to cover every case.
-
-    let mut tester = VecDeque::with_capacity(15);
-    // can't guarantee we got 15, so have to get what we got.
-    // 15 would be great, but we will definitely get 2^k - 1, for k >= 4, or else
-    // this test isn't covering what it wants to
-    let cap = tester.capacity();
-
-    // len is the length *before* splitting
-    let minlen = if cfg!(miri) { cap - 1 } else { 0 }; // Miri is too slow
-    for len in minlen..cap {
-        // index to split at
-        for at in 0..=len {
-            // 0, 1, 2, .., at - 1 (may be empty)
-            let expected_self = (0..).take(at).collect::<VecDeque<_>>();
-            // at, at + 1, .., len - 1 (may be empty)
-            let expected_other = (at..).take(len - at).collect::<VecDeque<_>>();
-
-            for tail_pos in 0..cap {
-                tester.tail = tail_pos;
-                tester.head = tail_pos;
-                for i in 0..len {
-                    tester.push_back(i);
-                }
-                let result = tester.split_off(at);
-                assert!(tester.tail < tester.cap());
-                assert!(tester.head < tester.cap());
-                assert!(result.tail < result.cap());
-                assert!(result.head < result.cap());
-                assert_eq!(tester, expected_self);
-                assert_eq!(result, expected_other);
-            }
-        }
-    }
-}
+fn test_split_off() {}
 
 #[test]
-fn test_from_vec() {
-    use crate::vec::Vec;
-    for cap in 0..35 {
-        for len in 0..=cap {
-            let mut vec = Vec::with_capacity(cap);
-            vec.extend(0..len);
-
-            let vd = VecDeque::from(vec.clone());
-            assert!(vd.cap().is_power_of_two());
-            assert_eq!(vd.len(), vec.len());
-            assert!(vd.into_iter().eq(vec));
-        }
-    }
-
-    let vec = Vec::from([(); MAXIMUM_ZST_CAPACITY - 1]);
-    let vd = VecDeque::from(vec.clone());
-    assert!(vd.cap().is_power_of_two());
-    assert_eq!(vd.len(), vec.len());
-}
+fn test_from_vec() {}
 
 #[test]
 #[should_panic = "capacity overflow"]
-fn test_from_vec_zst_overflow() {
-    use crate::vec::Vec;
-    let vec = Vec::from([(); MAXIMUM_ZST_CAPACITY]);
-    let vd = VecDeque::from(vec.clone()); // no room for +1
-    assert!(vd.cap().is_power_of_two());
-    assert_eq!(vd.len(), vec.len());
-}
+fn test_from_vec_zst_overflow() {}
 
 #[test]
-fn test_from_array() {
-    fn test<const N: usize>() {
-        let mut array: [usize; N] = [0; N];
-
-        for i in 0..N {
-            array[i] = i;
-        }
-
-        let deq: VecDeque<_> = array.into();
-
-        for i in 0..N {
-            assert_eq!(deq[i], i);
-        }
-
-        assert!(deq.cap().is_power_of_two());
-        assert_eq!(deq.len(), N);
-    }
-    test::<0>();
-    test::<1>();
-    test::<2>();
-    test::<32>();
-    test::<35>();
-
-    let array = [(); MAXIMUM_ZST_CAPACITY - 1];
-    let deq = VecDeque::from(array);
-    assert!(deq.cap().is_power_of_two());
-    assert_eq!(deq.len(), MAXIMUM_ZST_CAPACITY - 1);
-}
+fn test_from_array() {}
 
 #[test]
-fn test_vec_from_vecdeque() {
-    use crate::vec::Vec;
-
-    fn create_vec_and_test_convert(capacity: usize, offset: usize, len: usize) {
-        let mut vd = VecDeque::with_capacity(capacity);
-        for _ in 0..offset {
-            vd.push_back(0);
-            vd.pop_front();
-        }
-        vd.extend(0..len);
-
-        let vec: Vec<_> = Vec::from(vd.clone());
-        assert_eq!(vec.len(), vd.len());
-        assert!(vec.into_iter().eq(vd));
-    }
-
-    // Miri is too slow
-    let max_pwr = if cfg!(miri) { 5 } else { 7 };
-
-    for cap_pwr in 0..max_pwr {
-        // Make capacity as a (2^x)-1, so that the ring size is 2^x
-        let cap = (2i32.pow(cap_pwr) - 1) as usize;
-
-        // In these cases there is enough free space to solve it with copies
-        for len in 0..((cap + 1) / 2) {
-            // Test contiguous cases
-            for offset in 0..(cap - len) {
-                create_vec_and_test_convert(cap, offset, len)
-            }
-
-            // Test cases where block at end of buffer is bigger than block at start
-            for offset in (cap - len)..(cap - (len / 2)) {
-                create_vec_and_test_convert(cap, offset, len)
-            }
-
-            // Test cases where block at start of buffer is bigger than block at end
-            for offset in (cap - (len / 2))..cap {
-                create_vec_and_test_convert(cap, offset, len)
-            }
-        }
-
-        // Now there's not (necessarily) space to straighten the ring with simple copies,
-        // the ring will use swapping when:
-        // (cap + 1 - offset) > (cap + 1 - len) && (len - (cap + 1 - offset)) > (cap + 1 - len))
-        //  right block size  >   free space    &&      left block size       >    free space
-        for len in ((cap + 1) / 2)..cap {
-            // Test contiguous cases
-            for offset in 0..(cap - len) {
-                create_vec_and_test_convert(cap, offset, len)
-            }
-
-            // Test cases where block at end of buffer is bigger than block at start
-            for offset in (cap - len)..(cap - (len / 2)) {
-                create_vec_and_test_convert(cap, offset, len)
-            }
-
-            // Test cases where block at start of buffer is bigger than block at end
-            for offset in (cap - (len / 2))..cap {
-                create_vec_and_test_convert(cap, offset, len)
-            }
-        }
-    }
-}
+fn test_vec_from_vecdeque() {}
 
 #[test]
-fn test_clone_from() {
-    let m = vec![1; 8];
-    let n = vec![2; 12];
-    let limit = if cfg!(miri) { 4 } else { 8 }; // Miri is too slow
-    for pfv in 0..limit {
-        for pfu in 0..limit {
-            for longer in 0..2 {
-                let (vr, ur) = if longer == 0 { (&m, &n) } else { (&n, &m) };
-                let mut v = VecDeque::from(vr.clone());
-                for _ in 0..pfv {
-                    v.push_front(1);
-                }
-                let mut u = VecDeque::from(ur.clone());
-                for _ in 0..pfu {
-                    u.push_front(2);
-                }
-                v.clone_from(&u);
-                assert_eq!(&v, &u);
-            }
-        }
-    }
-}
+fn test_clone_from() {}
 
 #[test]
-fn test_vec_deque_truncate_drop() {
-    static mut DROPS: u32 = 0;
-    #[derive(Clone)]
-    struct Elem(i32);
-    impl Drop for Elem {
-        fn drop(&mut self) {
-            unsafe {
-                DROPS += 1;
-            }
-        }
-    }
-
-    let v = vec![Elem(1), Elem(2), Elem(3), Elem(4), Elem(5)];
-    for push_front in 0..=v.len() {
-        let v = v.clone();
-        let mut tester = VecDeque::with_capacity(5);
-        for (index, elem) in v.into_iter().enumerate() {
-            if index < push_front {
-                tester.push_front(elem);
-            } else {
-                tester.push_back(elem);
-            }
-        }
-        assert_eq!(unsafe { DROPS }, 0);
-        tester.truncate(3);
-        assert_eq!(unsafe { DROPS }, 2);
-        tester.truncate(0);
-        assert_eq!(unsafe { DROPS }, 5);
-        unsafe {
-            DROPS = 0;
-        }
-    }
-}
+fn test_vec_deque_truncate_drop() {}
 
 #[test]
-fn issue_53529() {
-    use crate::boxed::Box;
-
-    let mut dst = VecDeque::new();
-    dst.push_front(Box::new(1));
-    dst.push_front(Box::new(2));
-    assert_eq!(*dst.pop_back().unwrap(), 1);
-
-    let mut src = VecDeque::new();
-    src.push_front(Box::new(2));
-    dst.append(&mut src);
-    for a in dst {
-        assert_eq!(*a, 2);
-    }
-}
+fn issue_53529() {}
 
 #[test]
-fn issue_80303() {
-    use core::iter;
-    use core::num::Wrapping;
-
-    // This is a valid, albeit rather bad hash function implementation.
-    struct SimpleHasher(Wrapping<u64>);
-
-    impl Hasher for SimpleHasher {
-        fn finish(&self) -> u64 {
-            self.0.0
-        }
-
-        fn write(&mut self, bytes: &[u8]) {
-            // This particular implementation hashes value 24 in addition to bytes.
-            // Such an implementation is valid as Hasher only guarantees equivalence
-            // for the exact same set of calls to its methods.
-            for &v in iter::once(&24).chain(bytes) {
-                self.0 = Wrapping(31) * self.0 + Wrapping(u64::from(v));
-            }
-        }
-    }
-
-    fn hash_code(value: impl Hash) -> u64 {
-        let mut hasher = SimpleHasher(Wrapping(1));
-        value.hash(&mut hasher);
-        hasher.finish()
-    }
-
-    // This creates two deques for which values returned by as_slices
-    // method differ.
-    let vda: VecDeque<u8> = (0..10).collect();
-    let mut vdb = VecDeque::with_capacity(10);
-    vdb.extend(5..10);
-    (0..5).rev().for_each(|elem| vdb.push_front(elem));
-    assert_ne!(vda.as_slices(), vdb.as_slices());
-    assert_eq!(vda, vdb);
-    assert_eq!(hash_code(vda), hash_code(vdb));
-}
+fn issue_80303() {}
 }
 
 const INITIAL_CAPACITY: usize = 7; // 2^3 - 1
@@ -19894,379 +11365,89 @@ pub struct VecDeque<
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Clone, A: Allocator + Clone> Clone for VecDeque<T, A> {
-    fn clone(&self) -> Self {
-        let mut deq = Self::with_capacity_in(self.len(), self.allocator().clone());
-        deq.extend(self.iter().cloned());
-        deq
-    }
+    fn clone(&self) -> Self {}
 
-    fn clone_from(&mut self, other: &Self) {
-        self.truncate(other.len());
-
-        let mut iter = PairSlices::from(self, other);
-        while let Some((dst, src)) = iter.next() {
-            dst.clone_from_slice(&src);
-        }
-
-        if iter.has_remainder() {
-            for remainder in iter.remainder() {
-                self.extend(remainder.iter().cloned());
-            }
-        }
-    }
+    fn clone_from(&mut self, other: &Self) {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<#[may_dangle] T, A: Allocator> Drop for VecDeque<T, A> {
-    fn drop(&mut self) {
-        /// Runs the destructor for all items in the slice when it gets dropped (normally or
-        /// during unwinding).
-        struct Dropper<'a, T>(&'a mut [T]);
-
-        impl<'a, T> Drop for Dropper<'a, T> {
-            fn drop(&mut self) {
-                unsafe {
-                    ptr::drop_in_place(self.0);
-                }
-            }
-        }
-
-        let (front, back) = self.as_mut_slices();
-        unsafe {
-            let _back_dropper = Dropper(back);
-            // use drop for [T]
-            ptr::drop_in_place(front);
-        }
-        // RawVec handles deallocation
-    }
+    fn drop(&mut self) {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Default for VecDeque<T> {
     /// Creates an empty `VecDeque<T>`.
     #[inline]
-    fn default() -> VecDeque<T> {
-        VecDeque::new()
-    }
+    fn default() -> VecDeque<T> {}
 }
 
 impl<T, A: Allocator> VecDeque<T, A> {
     /// Marginally more convenient
     #[inline]
-    fn ptr(&self) -> *mut T {
-        self.buf.ptr()
-    }
+    fn ptr(&self) -> *mut T {}
 
     /// Marginally more convenient
     #[inline]
-    fn cap(&self) -> usize {
-        if mem::size_of::<T>() == 0 {
-            // For zero sized types, we are always at maximum capacity
-            MAXIMUM_ZST_CAPACITY
-        } else {
-            self.buf.capacity()
-        }
-    }
+    fn cap(&self) -> usize {}
 
     /// Turn ptr into a slice
     #[inline]
-    unsafe fn buffer_as_slice(&self) -> &[T] {
-        unsafe { slice::from_raw_parts(self.ptr(), self.cap()) }
-    }
+    unsafe fn buffer_as_slice(&self) -> &[T] {}
 
     /// Turn ptr into a mut slice
     #[inline]
-    unsafe fn buffer_as_mut_slice(&mut self) -> &mut [T] {
-        unsafe { slice::from_raw_parts_mut(self.ptr(), self.cap()) }
-    }
+    unsafe fn buffer_as_mut_slice(&mut self) -> &mut [T] {}
 
     /// Moves an element out of the buffer
     #[inline]
-    unsafe fn buffer_read(&mut self, off: usize) -> T {
-        unsafe { ptr::read(self.ptr().add(off)) }
-    }
+    unsafe fn buffer_read(&mut self, off: usize) -> T {}
 
     /// Writes an element into the buffer, moving it.
     #[inline]
-    unsafe fn buffer_write(&mut self, off: usize, value: T) {
-        unsafe {
-            ptr::write(self.ptr().add(off), value);
-        }
-    }
+    unsafe fn buffer_write(&mut self, off: usize, value: T) {}
 
     /// Returns `true` if the buffer is at full capacity.
     #[inline]
-    fn is_full(&self) -> bool {
-        self.cap() - self.len() == 1
-    }
+    fn is_full(&self) -> bool {}
 
     /// Returns the index in the underlying buffer for a given logical element
     /// index.
     #[inline]
-    fn wrap_index(&self, idx: usize) -> usize {
-        wrap_index(idx, self.cap())
-    }
+    fn wrap_index(&self, idx: usize) -> usize {}
 
     /// Returns the index in the underlying buffer for a given logical element
     /// index + addend.
     #[inline]
-    fn wrap_add(&self, idx: usize, addend: usize) -> usize {
-        wrap_index(idx.wrapping_add(addend), self.cap())
-    }
+    fn wrap_add(&self, idx: usize, addend: usize) -> usize {}
 
     /// Returns the index in the underlying buffer for a given logical element
     /// index - subtrahend.
     #[inline]
-    fn wrap_sub(&self, idx: usize, subtrahend: usize) -> usize {
-        wrap_index(idx.wrapping_sub(subtrahend), self.cap())
-    }
+    fn wrap_sub(&self, idx: usize, subtrahend: usize) -> usize {}
 
     /// Copies a contiguous block of memory len long from src to dst
     #[inline]
-    unsafe fn copy(&self, dst: usize, src: usize, len: usize) {
-        debug_assert!(
-            dst + len <= self.cap(),
-            "cpy dst={} src={} len={} cap={}",
-            dst,
-            src,
-            len,
-            self.cap()
-        );
-        debug_assert!(
-            src + len <= self.cap(),
-            "cpy dst={} src={} len={} cap={}",
-            dst,
-            src,
-            len,
-            self.cap()
-        );
-        unsafe {
-            ptr::copy(self.ptr().add(src), self.ptr().add(dst), len);
-        }
-    }
+    unsafe fn copy(&self, dst: usize, src: usize, len: usize) {}
 
     /// Copies a contiguous block of memory len long from src to dst
     #[inline]
-    unsafe fn copy_nonoverlapping(&self, dst: usize, src: usize, len: usize) {
-        debug_assert!(
-            dst + len <= self.cap(),
-            "cno dst={} src={} len={} cap={}",
-            dst,
-            src,
-            len,
-            self.cap()
-        );
-        debug_assert!(
-            src + len <= self.cap(),
-            "cno dst={} src={} len={} cap={}",
-            dst,
-            src,
-            len,
-            self.cap()
-        );
-        unsafe {
-            ptr::copy_nonoverlapping(self.ptr().add(src), self.ptr().add(dst), len);
-        }
-    }
+    unsafe fn copy_nonoverlapping(&self, dst: usize, src: usize, len: usize) {}
 
     /// Copies a potentially wrapping block of memory len long from src to dest.
     /// (abs(dst - src) + len) must be no larger than cap() (There must be at
     /// most one continuous overlapping region between src and dest).
-    unsafe fn wrap_copy(&self, dst: usize, src: usize, len: usize) {
-        #[allow(dead_code)]
-        fn diff(a: usize, b: usize) -> usize {
-            if a <= b { b - a } else { a - b }
-        }
-        debug_assert!(
-            cmp::min(diff(dst, src), self.cap() - diff(dst, src)) + len <= self.cap(),
-            "wrc dst={} src={} len={} cap={}",
-            dst,
-            src,
-            len,
-            self.cap()
-        );
-
-        if src == dst || len == 0 {
-            return;
-        }
-
-        let dst_after_src = self.wrap_sub(dst, src) < len;
-
-        let src_pre_wrap_len = self.cap() - src;
-        let dst_pre_wrap_len = self.cap() - dst;
-        let src_wraps = src_pre_wrap_len < len;
-        let dst_wraps = dst_pre_wrap_len < len;
-
-        match (dst_after_src, src_wraps, dst_wraps) {
-            (_, false, false) => {
-                // src doesn't wrap, dst doesn't wrap
-                //
-                //        S . . .
-                // 1 [_ _ A A B B C C _]
-                // 2 [_ _ A A A A B B _]
-                //            D . . .
-                //
-                unsafe {
-                    self.copy(dst, src, len);
-                }
-            }
-            (false, false, true) => {
-                // dst before src, src doesn't wrap, dst wraps
-                //
-                //    S . . .
-                // 1 [A A B B _ _ _ C C]
-                // 2 [A A B B _ _ _ A A]
-                // 3 [B B B B _ _ _ A A]
-                //    . .           D .
-                //
-                unsafe {
-                    self.copy(dst, src, dst_pre_wrap_len);
-                    self.copy(0, src + dst_pre_wrap_len, len - dst_pre_wrap_len);
-                }
-            }
-            (true, false, true) => {
-                // src before dst, src doesn't wrap, dst wraps
-                //
-                //              S . . .
-                // 1 [C C _ _ _ A A B B]
-                // 2 [B B _ _ _ A A B B]
-                // 3 [B B _ _ _ A A A A]
-                //    . .           D .
-                //
-                unsafe {
-                    self.copy(0, src + dst_pre_wrap_len, len - dst_pre_wrap_len);
-                    self.copy(dst, src, dst_pre_wrap_len);
-                }
-            }
-            (false, true, false) => {
-                // dst before src, src wraps, dst doesn't wrap
-                //
-                //    . .           S .
-                // 1 [C C _ _ _ A A B B]
-                // 2 [C C _ _ _ B B B B]
-                // 3 [C C _ _ _ B B C C]
-                //              D . . .
-                //
-                unsafe {
-                    self.copy(dst, src, src_pre_wrap_len);
-                    self.copy(dst + src_pre_wrap_len, 0, len - src_pre_wrap_len);
-                }
-            }
-            (true, true, false) => {
-                // src before dst, src wraps, dst doesn't wrap
-                //
-                //    . .           S .
-                // 1 [A A B B _ _ _ C C]
-                // 2 [A A A A _ _ _ C C]
-                // 3 [C C A A _ _ _ C C]
-                //    D . . .
-                //
-                unsafe {
-                    self.copy(dst + src_pre_wrap_len, 0, len - src_pre_wrap_len);
-                    self.copy(dst, src, src_pre_wrap_len);
-                }
-            }
-            (false, true, true) => {
-                // dst before src, src wraps, dst wraps
-                //
-                //    . . .         S .
-                // 1 [A B C D _ E F G H]
-                // 2 [A B C D _ E G H H]
-                // 3 [A B C D _ E G H A]
-                // 4 [B C C D _ E G H A]
-                //    . .         D . .
-                //
-                debug_assert!(dst_pre_wrap_len > src_pre_wrap_len);
-                let delta = dst_pre_wrap_len - src_pre_wrap_len;
-                unsafe {
-                    self.copy(dst, src, src_pre_wrap_len);
-                    self.copy(dst + src_pre_wrap_len, 0, delta);
-                    self.copy(0, delta, len - dst_pre_wrap_len);
-                }
-            }
-            (true, true, true) => {
-                // src before dst, src wraps, dst wraps
-                //
-                //    . .         S . .
-                // 1 [A B C D _ E F G H]
-                // 2 [A A B D _ E F G H]
-                // 3 [H A B D _ E F G H]
-                // 4 [H A B D _ E F F G]
-                //    . . .         D .
-                //
-                debug_assert!(src_pre_wrap_len > dst_pre_wrap_len);
-                let delta = src_pre_wrap_len - dst_pre_wrap_len;
-                unsafe {
-                    self.copy(delta, 0, len - src_pre_wrap_len);
-                    self.copy(0, self.cap() - delta, delta);
-                    self.copy(dst, src, dst_pre_wrap_len);
-                }
-            }
-        }
-    }
+    unsafe fn wrap_copy(&self, dst: usize, src: usize, len: usize) {}
 
     /// Copies all values from `src` to `dst`, wrapping around if needed.
     /// Assumes capacity is sufficient.
     #[inline]
-    unsafe fn copy_slice(&mut self, dst: usize, src: &[T]) {
-        debug_assert!(src.len() <= self.cap());
-        let head_room = self.cap() - dst;
-        if src.len() <= head_room {
-            unsafe {
-                ptr::copy_nonoverlapping(src.as_ptr(), self.ptr().add(dst), src.len());
-            }
-        } else {
-            let (left, right) = src.split_at(head_room);
-            unsafe {
-                ptr::copy_nonoverlapping(left.as_ptr(), self.ptr().add(dst), left.len());
-                ptr::copy_nonoverlapping(right.as_ptr(), self.ptr(), right.len());
-            }
-        }
-    }
+    unsafe fn copy_slice(&mut self, dst: usize, src: &[T]) {}
 
     /// Frobs the head and tail sections around to handle the fact that we
     /// just reallocated. Unsafe because it trusts old_capacity.
     #[inline]
-    unsafe fn handle_capacity_increase(&mut self, old_capacity: usize) {
-        let new_capacity = self.cap();
-
-        // Move the shortest contiguous section of the ring buffer
-        //    T             H
-        //   [o o o o o o o . ]
-        //    T             H
-        // A [o o o o o o o . . . . . . . . . ]
-        //        H T
-        //   [o o . o o o o o ]
-        //          T             H
-        // B [. . . o o o o o o o . . . . . . ]
-        //              H T
-        //   [o o o o o . o o ]
-        //              H                 T
-        // C [o o o o o . . . . . . . . . o o ]
-
-        if self.tail <= self.head {
-            // A
-            // Nop
-        } else if self.head < old_capacity - self.tail {
-            // B
-            unsafe {
-                self.copy_nonoverlapping(old_capacity, 0, self.head);
-            }
-            self.head += old_capacity;
-            debug_assert!(self.head > self.tail);
-        } else {
-            // C
-            let new_tail = new_capacity - (old_capacity - self.tail);
-            unsafe {
-                self.copy_nonoverlapping(new_tail, self.tail, old_capacity - self.tail);
-            }
-            self.tail = new_tail;
-            debug_assert!(self.head < self.tail);
-        }
-        debug_assert!(self.head < self.cap());
-        debug_assert!(self.tail < self.cap());
-        debug_assert!(self.cap().count_ones() == 1);
-    }
+    unsafe fn handle_capacity_increase(&mut self, old_capacity: usize) {}
 }
 
 impl<T> VecDeque<T> {
@@ -20282,9 +11463,7 @@ impl<T> VecDeque<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
-    pub fn new() -> VecDeque<T> {
-        VecDeque::new_in(Global)
-    }
+    pub fn new() -> VecDeque<T> {}
 
     /// Creates an empty `VecDeque` with space for at least `capacity` elements.
     ///
@@ -20298,9 +11477,7 @@ impl<T> VecDeque<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
-    pub fn with_capacity(capacity: usize) -> VecDeque<T> {
-        Self::with_capacity_in(capacity, Global)
-    }
+    pub fn with_capacity(capacity: usize) -> VecDeque<T> {}
 }
 
 impl<T, A: Allocator> VecDeque<T, A> {
@@ -20315,9 +11492,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// ```
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
-    pub fn new_in(alloc: A) -> VecDeque<T, A> {
-        VecDeque::with_capacity_in(INITIAL_CAPACITY, alloc)
-    }
+    pub fn new_in(alloc: A) -> VecDeque<T, A> {}
 
     /// Creates an empty `VecDeque` with space for at least `capacity` elements.
     ///
@@ -20329,13 +11504,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// let vector: VecDeque<u32> = VecDeque::with_capacity(10);
     /// ```
     #[unstable(feature = "allocator_api", issue = "32838")]
-    pub fn with_capacity_in(capacity: usize, alloc: A) -> VecDeque<T, A> {
-        assert!(capacity < 1_usize << usize::BITS - 1, "capacity overflow");
-        // +1 since the ringbuffer always leaves one space empty
-        let cap = cmp::max(capacity + 1, MINIMUM_CAPACITY + 1).next_power_of_two();
-
-        VecDeque { tail: 0, head: 0, buf: RawVec::with_capacity_in(cap, alloc) }
-    }
+    pub fn with_capacity_in(capacity: usize, alloc: A) -> VecDeque<T, A> {}
 
     /// Provides a reference to the element at the given index.
     ///
@@ -20353,14 +11522,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(buf.get(1), Some(&4));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn get(&self, index: usize) -> Option<&T> {
-        if index < self.len() {
-            let idx = self.wrap_add(self.tail, index);
-            unsafe { Some(&*self.ptr().add(idx)) }
-        } else {
-            None
-        }
-    }
+    pub fn get(&self, index: usize) -> Option<&T> {}
 
     /// Provides a mutable reference to the element at the given index.
     ///
@@ -20382,14 +11544,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(buf[1], 7);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn get_mut(&mut self, index: usize) -> Option<&mut T> {
-        if index < self.len() {
-            let idx = self.wrap_add(self.tail, index);
-            unsafe { Some(&mut *self.ptr().add(idx)) }
-        } else {
-            None
-        }
-    }
+    pub fn get_mut(&mut self, index: usize) -> Option<&mut T> {}
 
     /// Swaps elements at indices `i` and `j`.
     ///
@@ -20415,13 +11570,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(buf, [5, 4, 3]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn swap(&mut self, i: usize, j: usize) {
-        assert!(i < self.len());
-        assert!(j < self.len());
-        let ri = self.wrap_add(self.tail, i);
-        let rj = self.wrap_add(self.tail, j);
-        unsafe { ptr::swap(self.ptr().add(ri), self.ptr().add(rj)) }
-    }
+    pub fn swap(&mut self, i: usize, j: usize) {}
 
     /// Returns the number of elements the `VecDeque` can hold without
     /// reallocating.
@@ -20436,9 +11585,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn capacity(&self) -> usize {
-        self.cap() - 1
-    }
+    pub fn capacity(&self) -> usize {}
 
     /// Reserves the minimum capacity for exactly `additional` more elements to be inserted in the
     /// given `VecDeque`. Does nothing if the capacity is already sufficient.
@@ -20463,9 +11610,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     ///
     /// [`reserve`]: VecDeque::reserve
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn reserve_exact(&mut self, additional: usize) {
-        self.reserve(additional);
-    }
+    pub fn reserve_exact(&mut self, additional: usize) {}
 
     /// Reserves capacity for at least `additional` more elements to be inserted in the given
     /// `VecDeque`. The collection may reserve more space to avoid frequent reallocations.
@@ -20484,21 +11629,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert!(buf.capacity() >= 11);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn reserve(&mut self, additional: usize) {
-        let old_cap = self.cap();
-        let used_cap = self.len() + 1;
-        let new_cap = used_cap
-            .checked_add(additional)
-            .and_then(|needed_cap| needed_cap.checked_next_power_of_two())
-            .expect("capacity overflow");
-
-        if new_cap > old_cap {
-            self.buf.reserve_exact(used_cap, new_cap - used_cap);
-            unsafe {
-                self.handle_capacity_increase(old_cap);
-            }
-        }
-    }
+    pub fn reserve(&mut self, additional: usize) {}
 
     /// Tries to reserve the minimum capacity for exactly `additional` more elements to
     /// be inserted in the given `VecDeque<T>`. After calling `try_reserve_exact`,
@@ -20522,25 +11653,11 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// use std::collections::TryReserveError;
     /// use std::collections::VecDeque;
     ///
-    /// fn process_data(data: &[u32]) -> Result<VecDeque<u32>, TryReserveError> {
-    ///     let mut output = VecDeque::new();
-    ///
-    ///     // Pre-reserve the memory, exiting if we can't
-    ///     output.try_reserve_exact(data.len())?;
-    ///
-    ///     // Now we know this can't OOM(Out-Of-Memory) in the middle of our complex work
-    ///     output.extend(data.iter().map(|&val| {
-    ///         val * 2 + 5 // very complicated
-    ///     }));
-    ///
-    ///     Ok(output)
-    /// }
+    /// fn process_data(data: &[u32]) -> Result<VecDeque<u32>, TryReserveError> {}
     /// # process_data(&[1, 2, 3]).expect("why is the test harness OOMing on 12 bytes?");
     /// ```
     #[stable(feature = "try_reserve", since = "1.57.0")]
-    pub fn try_reserve_exact(&mut self, additional: usize) -> Result<(), TryReserveError> {
-        self.try_reserve(additional)
-    }
+    pub fn try_reserve_exact(&mut self, additional: usize) -> Result<(), TryReserveError> {}
 
     /// Tries to reserve capacity for at least `additional` more elements to be inserted
     /// in the given `VecDeque<T>`. The collection may reserve more space to avoid
@@ -20559,38 +11676,11 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// use std::collections::TryReserveError;
     /// use std::collections::VecDeque;
     ///
-    /// fn process_data(data: &[u32]) -> Result<VecDeque<u32>, TryReserveError> {
-    ///     let mut output = VecDeque::new();
-    ///
-    ///     // Pre-reserve the memory, exiting if we can't
-    ///     output.try_reserve(data.len())?;
-    ///
-    ///     // Now we know this can't OOM in the middle of our complex work
-    ///     output.extend(data.iter().map(|&val| {
-    ///         val * 2 + 5 // very complicated
-    ///     }));
-    ///
-    ///     Ok(output)
-    /// }
+    /// fn process_data(data: &[u32]) -> Result<VecDeque<u32>, TryReserveError> {}
     /// # process_data(&[1, 2, 3]).expect("why is the test harness OOMing on 12 bytes?");
     /// ```
     #[stable(feature = "try_reserve", since = "1.57.0")]
-    pub fn try_reserve(&mut self, additional: usize) -> Result<(), TryReserveError> {
-        let old_cap = self.cap();
-        let used_cap = self.len() + 1;
-        let new_cap = used_cap
-            .checked_add(additional)
-            .and_then(|needed_cap| needed_cap.checked_next_power_of_two())
-            .ok_or(TryReserveErrorKind::CapacityOverflow)?;
-
-        if new_cap > old_cap {
-            self.buf.try_reserve_exact(used_cap, new_cap - used_cap)?;
-            unsafe {
-                self.handle_capacity_increase(old_cap);
-            }
-        }
-        Ok(())
-    }
+    pub fn try_reserve(&mut self, additional: usize) -> Result<(), TryReserveError> {}
 
     /// Shrinks the capacity of the `VecDeque` as much as possible.
     ///
@@ -20609,9 +11699,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert!(buf.capacity() >= 4);
     /// ```
     #[stable(feature = "deque_extras_15", since = "1.5.0")]
-    pub fn shrink_to_fit(&mut self) {
-        self.shrink_to(0);
-    }
+    pub fn shrink_to_fit(&mut self) {}
 
     /// Shrinks the capacity of the `VecDeque` with a lower bound.
     ///
@@ -20634,67 +11722,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert!(buf.capacity() >= 4);
     /// ```
     #[stable(feature = "shrink_to", since = "1.56.0")]
-    pub fn shrink_to(&mut self, min_capacity: usize) {
-        let min_capacity = cmp::min(min_capacity, self.capacity());
-        // We don't have to worry about an overflow as neither `self.len()` nor `self.capacity()`
-        // can ever be `usize::MAX`. +1 as the ringbuffer always leaves one space empty.
-        let target_cap = cmp::max(cmp::max(min_capacity, self.len()) + 1, MINIMUM_CAPACITY + 1)
-            .next_power_of_two();
-
-        if target_cap < self.cap() {
-            // There are three cases of interest:
-            //   All elements are out of desired bounds
-            //   Elements are contiguous, and head is out of desired bounds
-            //   Elements are discontiguous, and tail is out of desired bounds
-            //
-            // At all other times, element positions are unaffected.
-            //
-            // Indicates that elements at the head should be moved.
-            let head_outside = self.head == 0 || self.head >= target_cap;
-            // Move elements from out of desired bounds (positions after target_cap)
-            if self.tail >= target_cap && head_outside {
-                //                    T             H
-                //   [. . . . . . . . o o o o o o o . ]
-                //    T             H
-                //   [o o o o o o o . ]
-                unsafe {
-                    self.copy_nonoverlapping(0, self.tail, self.len());
-                }
-                self.head = self.len();
-                self.tail = 0;
-            } else if self.tail != 0 && self.tail < target_cap && head_outside {
-                //          T             H
-                //   [. . . o o o o o o o . . . . . . ]
-                //        H T
-                //   [o o . o o o o o ]
-                let len = self.wrap_sub(self.head, target_cap);
-                unsafe {
-                    self.copy_nonoverlapping(0, target_cap, len);
-                }
-                self.head = len;
-                debug_assert!(self.head < self.tail);
-            } else if self.tail >= target_cap {
-                //              H                 T
-                //   [o o o o o . . . . . . . . . o o ]
-                //              H T
-                //   [o o o o o . o o ]
-                debug_assert!(self.wrap_sub(self.head, 1) < target_cap);
-                let len = self.cap() - self.tail;
-                let new_tail = target_cap - len;
-                unsafe {
-                    self.copy_nonoverlapping(new_tail, self.tail, len);
-                }
-                self.tail = new_tail;
-                debug_assert!(self.head < self.tail);
-            }
-
-            self.buf.shrink_to_fit(target_cap);
-
-            debug_assert!(self.head < self.cap());
-            debug_assert!(self.tail < self.cap());
-            debug_assert!(self.cap().count_ones() == 1);
-        }
-    }
+    pub fn shrink_to(&mut self, min_capacity: usize) {}
 
     /// Shortens the `VecDeque`, keeping the first `len` elements and dropping
     /// the rest.
@@ -20716,56 +11744,12 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(buf, [5]);
     /// ```
     #[stable(feature = "deque_extras", since = "1.16.0")]
-    pub fn truncate(&mut self, len: usize) {
-        /// Runs the destructor for all items in the slice when it gets dropped (normally or
-        /// during unwinding).
-        struct Dropper<'a, T>(&'a mut [T]);
-
-        impl<'a, T> Drop for Dropper<'a, T> {
-            fn drop(&mut self) {
-                unsafe {
-                    ptr::drop_in_place(self.0);
-                }
-            }
-        }
-
-        // Safe because:
-        //
-        // * Any slice passed to `drop_in_place` is valid; the second case has
-        //   `len <= front.len()` and returning on `len > self.len()` ensures
-        //   `begin <= back.len()` in the first case
-        // * The head of the VecDeque is moved before calling `drop_in_place`,
-        //   so no value is dropped twice if `drop_in_place` panics
-        unsafe {
-            if len > self.len() {
-                return;
-            }
-            let num_dropped = self.len() - len;
-            let (front, back) = self.as_mut_slices();
-            if len > front.len() {
-                let begin = len - front.len();
-                let drop_back = back.get_unchecked_mut(begin..) as *mut _;
-                self.head = self.wrap_sub(self.head, num_dropped);
-                ptr::drop_in_place(drop_back);
-            } else {
-                let drop_back = back as *mut _;
-                let drop_front = front.get_unchecked_mut(len..) as *mut _;
-                self.head = self.wrap_sub(self.head, num_dropped);
-
-                // Make sure the second half is dropped even when a destructor
-                // in the first one panics.
-                let _back_dropper = Dropper(&mut *drop_back);
-                ptr::drop_in_place(drop_front);
-            }
-        }
-    }
+    pub fn truncate(&mut self, len: usize) {}
 
     /// Returns a reference to the underlying allocator.
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
-    pub fn allocator(&self) -> &A {
-        self.buf.allocator()
-    }
+    pub fn allocator(&self) -> &A {}
 
     /// Returns a front-to-back iterator.
     ///
@@ -20783,9 +11767,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(&c[..], b);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn iter(&self) -> Iter<'_, T> {
-        Iter { tail: self.tail, head: self.head, ring: unsafe { self.buffer_as_slice() } }
-    }
+    pub fn iter(&self) -> Iter<'_, T> {}
 
     /// Returns a front-to-back iterator that returns mutable references.
     ///
@@ -20805,13 +11787,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(&buf.iter_mut().collect::<Vec<&mut i32>>()[..], b);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn iter_mut(&mut self) -> IterMut<'_, T> {
-        // SAFETY: The internal `IterMut` safety invariant is established because the
-        // `ring` we create is a dereferencable slice for lifetime '_.
-        let ring = ptr::slice_from_raw_parts_mut(self.ptr(), self.cap());
-
-        unsafe { IterMut::new(ring, self.tail, self.head, PhantomData) }
-    }
+    pub fn iter_mut(&mut self) -> IterMut<'_, T> {}
 
     /// Returns a pair of slices which contain, in order, the contents of the
     /// `VecDeque`.
@@ -20841,12 +11817,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// ```
     #[inline]
     #[stable(feature = "deque_extras_15", since = "1.5.0")]
-    pub fn as_slices(&self) -> (&[T], &[T]) {
-        unsafe {
-            let buf = self.buffer_as_slice();
-            RingSlices::ring_slices(buf, self.head, self.tail)
-        }
-    }
+    pub fn as_slices(&self) -> (&[T], &[T]) {}
 
     /// Returns a pair of slices which contain, in order, the contents of the
     /// `VecDeque`.
@@ -20875,14 +11846,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// ```
     #[inline]
     #[stable(feature = "deque_extras_15", since = "1.5.0")]
-    pub fn as_mut_slices(&mut self) -> (&mut [T], &mut [T]) {
-        unsafe {
-            let head = self.head;
-            let tail = self.tail;
-            let buf = self.buffer_as_mut_slice();
-            RingSlices::ring_slices(buf, head, tail)
-        }
-    }
+    pub fn as_mut_slices(&mut self) -> (&mut [T], &mut [T]) {}
 
     /// Returns the number of elements in the `VecDeque`.
     ///
@@ -20897,9 +11861,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(v.len(), 1);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn len(&self) -> usize {
-        count(self.tail, self.head, self.cap())
-    }
+    pub fn len(&self) -> usize {}
 
     /// Returns `true` if the `VecDeque` is empty.
     ///
@@ -20914,19 +11876,12 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert!(!v.is_empty());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn is_empty(&self) -> bool {
-        self.tail == self.head
-    }
+    pub fn is_empty(&self) -> bool {}
 
     fn range_tail_head<R>(&self, range: R) -> (usize, usize)
     where
         R: RangeBounds<usize>,
-    {
-        let Range { start, end } = slice::range(range, ..self.len());
-        let tail = self.wrap_add(self.tail, start);
-        let head = self.wrap_add(self.tail, end);
-        (tail, head)
-    }
+    {}
 
     /// Creates an iterator that covers the specified range in the `VecDeque`.
     ///
@@ -20953,15 +11908,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     pub fn range<R>(&self, range: R) -> Iter<'_, T>
     where
         R: RangeBounds<usize>,
-    {
-        let (tail, head) = self.range_tail_head(range);
-        Iter {
-            tail,
-            head,
-            // The shared reference we have in &self is maintained in the '_ of Iter.
-            ring: unsafe { self.buffer_as_slice() },
-        }
-    }
+    {}
 
     /// Creates an iterator that covers the specified mutable range in the `VecDeque`.
     ///
@@ -20992,15 +11939,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     pub fn range_mut<R>(&mut self, range: R) -> IterMut<'_, T>
     where
         R: RangeBounds<usize>,
-    {
-        let (tail, head) = self.range_tail_head(range);
-
-        // SAFETY: The internal `IterMut` safety invariant is established because the
-        // `ring` we create is a dereferencable slice for lifetime '_.
-        let ring = ptr::slice_from_raw_parts_mut(self.ptr(), self.cap());
-
-        unsafe { IterMut::new(ring, tail, head, PhantomData) }
-    }
+    {}
 
     /// Creates a draining iterator that removes the specified range in the
     /// `VecDeque` and yields the removed items.
@@ -21036,53 +11975,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     pub fn drain<R>(&mut self, range: R) -> Drain<'_, T, A>
     where
         R: RangeBounds<usize>,
-    {
-        // Memory safety
-        //
-        // When the Drain is first created, the source deque is shortened to
-        // make sure no uninitialized or moved-from elements are accessible at
-        // all if the Drain's destructor never gets to run.
-        //
-        // Drain will ptr::read out the values to remove.
-        // When finished, the remaining data will be copied back to cover the hole,
-        // and the head/tail values will be restored correctly.
-        //
-        let (drain_tail, drain_head) = self.range_tail_head(range);
-
-        // The deque's elements are parted into three segments:
-        // * self.tail  -> drain_tail
-        // * drain_tail -> drain_head
-        // * drain_head -> self.head
-        //
-        // T = self.tail; H = self.head; t = drain_tail; h = drain_head
-        //
-        // We store drain_tail as self.head, and drain_head and self.head as
-        // after_tail and after_head respectively on the Drain. This also
-        // truncates the effective array such that if the Drain is leaked, we
-        // have forgotten about the potentially moved values after the start of
-        // the drain.
-        //
-        //        T   t   h   H
-        // [. . . o o x x o o . . .]
-        //
-        let head = self.head;
-
-        // "forget" about the values after the start of the drain until after
-        // the drain is complete and the Drain destructor is run.
-        self.head = drain_tail;
-
-        let deque = NonNull::from(&mut *self);
-        let iter = Iter {
-            tail: drain_tail,
-            head: drain_head,
-            // Crucially, we only create shared references from `self` here and read from
-            // it.  We do not write to `self` nor reborrow to a mutable reference.
-            // Hence the raw pointer we created above, for `deque`, remains valid.
-            ring: unsafe { self.buffer_as_slice() },
-        };
-
-        unsafe { Drain::new(drain_head, head, iter, deque) }
-    }
+    {}
 
     /// Clears the `VecDeque`, removing all values.
     ///
@@ -21098,9 +11991,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn clear(&mut self) {
-        self.truncate(0);
-    }
+    pub fn clear(&mut self) {}
 
     /// Returns `true` if the `VecDeque` contains an element equal to the
     /// given value.
@@ -21122,10 +12013,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     pub fn contains(&self, x: &T) -> bool
     where
         T: PartialEq<T>,
-    {
-        let (a, b) = self.as_slices();
-        a.contains(x) || b.contains(x)
-    }
+    {}
 
     /// Provides a reference to the front element, or `None` if the `VecDeque` is
     /// empty.
@@ -21143,9 +12031,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(d.front(), Some(&1));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn front(&self) -> Option<&T> {
-        self.get(0)
-    }
+    pub fn front(&self) -> Option<&T> {}
 
     /// Provides a mutable reference to the front element, or `None` if the
     /// `VecDeque` is empty.
@@ -21167,9 +12053,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(d.front(), Some(&9));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn front_mut(&mut self) -> Option<&mut T> {
-        self.get_mut(0)
-    }
+    pub fn front_mut(&mut self) -> Option<&mut T> {}
 
     /// Provides a reference to the back element, or `None` if the `VecDeque` is
     /// empty.
@@ -21187,9 +12071,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(d.back(), Some(&2));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn back(&self) -> Option<&T> {
-        self.get(self.len().wrapping_sub(1))
-    }
+    pub fn back(&self) -> Option<&T> {}
 
     /// Provides a mutable reference to the back element, or `None` if the
     /// `VecDeque` is empty.
@@ -21211,9 +12093,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(d.back(), Some(&9));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn back_mut(&mut self) -> Option<&mut T> {
-        self.get_mut(self.len().wrapping_sub(1))
-    }
+    pub fn back_mut(&mut self) -> Option<&mut T> {}
 
     /// Removes the first element and returns it, or `None` if the `VecDeque` is
     /// empty.
@@ -21232,15 +12112,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(d.pop_front(), None);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn pop_front(&mut self) -> Option<T> {
-        if self.is_empty() {
-            None
-        } else {
-            let tail = self.tail;
-            self.tail = self.wrap_add(self.tail, 1);
-            unsafe { Some(self.buffer_read(tail)) }
-        }
-    }
+    pub fn pop_front(&mut self) -> Option<T> {}
 
     /// Removes the last element from the `VecDeque` and returns it, or `None` if
     /// it is empty.
@@ -21257,15 +12129,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(buf.pop_back(), Some(3));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn pop_back(&mut self) -> Option<T> {
-        if self.is_empty() {
-            None
-        } else {
-            self.head = self.wrap_sub(self.head, 1);
-            let head = self.head;
-            unsafe { Some(self.buffer_read(head)) }
-        }
-    }
+    pub fn pop_back(&mut self) -> Option<T> {}
 
     /// Prepends an element to the `VecDeque`.
     ///
@@ -21280,17 +12144,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(d.front(), Some(&2));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn push_front(&mut self, value: T) {
-        if self.is_full() {
-            self.grow();
-        }
-
-        self.tail = self.wrap_sub(self.tail, 1);
-        let tail = self.tail;
-        unsafe {
-            self.buffer_write(tail, value);
-        }
-    }
+    pub fn push_front(&mut self, value: T) {}
 
     /// Appends an element to the back of the `VecDeque`.
     ///
@@ -21305,22 +12159,10 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(3, *buf.back().unwrap());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn push_back(&mut self, value: T) {
-        if self.is_full() {
-            self.grow();
-        }
-
-        let head = self.head;
-        self.head = self.wrap_add(self.head, 1);
-        unsafe { self.buffer_write(head, value) }
-    }
+    pub fn push_back(&mut self, value: T) {}
 
     #[inline]
-    fn is_contiguous(&self) -> bool {
-        // FIXME: Should we consider `head == 0` to mean
-        // that `self` is contiguous?
-        self.tail <= self.head
-    }
+    fn is_contiguous(&self) -> bool {}
 
     /// Removes an element from anywhere in the `VecDeque` and returns it,
     /// replacing it with the first element.
@@ -21347,15 +12189,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(buf, [2, 1]);
     /// ```
     #[stable(feature = "deque_extras_15", since = "1.5.0")]
-    pub fn swap_remove_front(&mut self, index: usize) -> Option<T> {
-        let length = self.len();
-        if length > 0 && index < length && index != 0 {
-            self.swap(index, 0);
-        } else if index >= length {
-            return None;
-        }
-        self.pop_front()
-    }
+    pub fn swap_remove_front(&mut self, index: usize) -> Option<T> {}
 
     /// Removes an element from anywhere in the `VecDeque` and returns it, replacing it with the
     /// last element.
@@ -21382,15 +12216,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(buf, [3, 2]);
     /// ```
     #[stable(feature = "deque_extras_15", since = "1.5.0")]
-    pub fn swap_remove_back(&mut self, index: usize) -> Option<T> {
-        let length = self.len();
-        if length > 0 && index < length - 1 {
-            self.swap(index, length - 1);
-        } else if index >= length {
-            return None;
-        }
-        self.pop_back()
-    }
+    pub fn swap_remove_back(&mut self, index: usize) -> Option<T> {}
 
     /// Inserts an element at `index` within the `VecDeque`, shifting all elements with indices
     /// greater than or equal to `index` towards the back.
@@ -21416,205 +12242,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(vec_deque, &['a', 'd', 'b', 'c']);
     /// ```
     #[stable(feature = "deque_extras_15", since = "1.5.0")]
-    pub fn insert(&mut self, index: usize, value: T) {
-        assert!(index <= self.len(), "index out of bounds");
-        if self.is_full() {
-            self.grow();
-        }
-
-        // Move the least number of elements in the ring buffer and insert
-        // the given object
-        //
-        // At most len/2 - 1 elements will be moved. O(min(n, n-i))
-        //
-        // There are three main cases:
-        //  Elements are contiguous
-        //      - special case when tail is 0
-        //  Elements are discontiguous and the insert is in the tail section
-        //  Elements are discontiguous and the insert is in the head section
-        //
-        // For each of those there are two more cases:
-        //  Insert is closer to tail
-        //  Insert is closer to head
-        //
-        // Key: H - self.head
-        //      T - self.tail
-        //      o - Valid element
-        //      I - Insertion element
-        //      A - The element that should be after the insertion point
-        //      M - Indicates element was moved
-
-        let idx = self.wrap_add(self.tail, index);
-
-        let distance_to_tail = index;
-        let distance_to_head = self.len() - index;
-
-        let contiguous = self.is_contiguous();
-
-        match (contiguous, distance_to_tail <= distance_to_head, idx >= self.tail) {
-            (true, true, _) if index == 0 => {
-                // push_front
-                //
-                //       T
-                //       I             H
-                //      [A o o o o o o . . . . . . . . .]
-                //
-                //                       H         T
-                //      [A o o o o o o o . . . . . I]
-                //
-
-                self.tail = self.wrap_sub(self.tail, 1);
-            }
-            (true, true, _) => {
-                unsafe {
-                    // contiguous, insert closer to tail:
-                    //
-                    //             T   I         H
-                    //      [. . . o o A o o o o . . . . . .]
-                    //
-                    //           T               H
-                    //      [. . o o I A o o o o . . . . . .]
-                    //           M M
-                    //
-                    // contiguous, insert closer to tail and tail is 0:
-                    //
-                    //
-                    //       T   I         H
-                    //      [o o A o o o o . . . . . . . . .]
-                    //
-                    //                       H             T
-                    //      [o I A o o o o o . . . . . . . o]
-                    //       M                             M
-
-                    let new_tail = self.wrap_sub(self.tail, 1);
-
-                    self.copy(new_tail, self.tail, 1);
-                    // Already moved the tail, so we only copy `index - 1` elements.
-                    self.copy(self.tail, self.tail + 1, index - 1);
-
-                    self.tail = new_tail;
-                }
-            }
-            (true, false, _) => {
-                unsafe {
-                    //  contiguous, insert closer to head:
-                    //
-                    //             T       I     H
-                    //      [. . . o o o o A o o . . . . . .]
-                    //
-                    //             T               H
-                    //      [. . . o o o o I A o o . . . . .]
-                    //                       M M M
-
-                    self.copy(idx + 1, idx, self.head - idx);
-                    self.head = self.wrap_add(self.head, 1);
-                }
-            }
-            (false, true, true) => {
-                unsafe {
-                    // discontiguous, insert closer to tail, tail section:
-                    //
-                    //                   H         T   I
-                    //      [o o o o o o . . . . . o o A o o]
-                    //
-                    //                   H       T
-                    //      [o o o o o o . . . . o o I A o o]
-                    //                           M M
-
-                    self.copy(self.tail - 1, self.tail, index);
-                    self.tail -= 1;
-                }
-            }
-            (false, false, true) => {
-                unsafe {
-                    // discontiguous, insert closer to head, tail section:
-                    //
-                    //           H             T         I
-                    //      [o o . . . . . . . o o o o o A o]
-                    //
-                    //             H           T
-                    //      [o o o . . . . . . o o o o o I A]
-                    //       M M M                         M
-
-                    // copy elements up to new head
-                    self.copy(1, 0, self.head);
-
-                    // copy last element into empty spot at bottom of buffer
-                    self.copy(0, self.cap() - 1, 1);
-
-                    // move elements from idx to end forward not including ^ element
-                    self.copy(idx + 1, idx, self.cap() - 1 - idx);
-
-                    self.head += 1;
-                }
-            }
-            (false, true, false) if idx == 0 => {
-                unsafe {
-                    // discontiguous, insert is closer to tail, head section,
-                    // and is at index zero in the internal buffer:
-                    //
-                    //       I                   H     T
-                    //      [A o o o o o o o o o . . . o o o]
-                    //
-                    //                           H   T
-                    //      [A o o o o o o o o o . . o o o I]
-                    //                               M M M
-
-                    // copy elements up to new tail
-                    self.copy(self.tail - 1, self.tail, self.cap() - self.tail);
-
-                    // copy last element into empty spot at bottom of buffer
-                    self.copy(self.cap() - 1, 0, 1);
-
-                    self.tail -= 1;
-                }
-            }
-            (false, true, false) => {
-                unsafe {
-                    // discontiguous, insert closer to tail, head section:
-                    //
-                    //             I             H     T
-                    //      [o o o A o o o o o o . . . o o o]
-                    //
-                    //                           H   T
-                    //      [o o I A o o o o o o . . o o o o]
-                    //       M M                     M M M M
-
-                    // copy elements up to new tail
-                    self.copy(self.tail - 1, self.tail, self.cap() - self.tail);
-
-                    // copy last element into empty spot at bottom of buffer
-                    self.copy(self.cap() - 1, 0, 1);
-
-                    // move elements from idx-1 to end forward not including ^ element
-                    self.copy(0, 1, idx - 1);
-
-                    self.tail -= 1;
-                }
-            }
-            (false, false, false) => {
-                unsafe {
-                    // discontiguous, insert closer to head, head section:
-                    //
-                    //               I     H           T
-                    //      [o o o o A o o . . . . . . o o o]
-                    //
-                    //                     H           T
-                    //      [o o o o I A o o . . . . . o o o]
-                    //                 M M M
-
-                    self.copy(idx + 1, idx, self.head - idx);
-                    self.head += 1;
-                }
-            }
-        }
-
-        // tail might've been changed so we need to recalculate
-        let new_idx = self.wrap_add(self.tail, index);
-        unsafe {
-            self.buffer_write(new_idx, value);
-        }
-    }
+    pub fn insert(&mut self, index: usize, value: T) {}
 
     /// Removes and returns the element at `index` from the `VecDeque`.
     /// Whichever end is closer to the removal point will be moved to make
@@ -21638,161 +12266,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(buf, [1, 3]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn remove(&mut self, index: usize) -> Option<T> {
-        if self.is_empty() || self.len() <= index {
-            return None;
-        }
-
-        // There are three main cases:
-        //  Elements are contiguous
-        //  Elements are discontiguous and the removal is in the tail section
-        //  Elements are discontiguous and the removal is in the head section
-        //      - special case when elements are technically contiguous,
-        //        but self.head = 0
-        //
-        // For each of those there are two more cases:
-        //  Insert is closer to tail
-        //  Insert is closer to head
-        //
-        // Key: H - self.head
-        //      T - self.tail
-        //      o - Valid element
-        //      x - Element marked for removal
-        //      R - Indicates element that is being removed
-        //      M - Indicates element was moved
-
-        let idx = self.wrap_add(self.tail, index);
-
-        let elem = unsafe { Some(self.buffer_read(idx)) };
-
-        let distance_to_tail = index;
-        let distance_to_head = self.len() - index;
-
-        let contiguous = self.is_contiguous();
-
-        match (contiguous, distance_to_tail <= distance_to_head, idx >= self.tail) {
-            (true, true, _) => {
-                unsafe {
-                    // contiguous, remove closer to tail:
-                    //
-                    //             T   R         H
-                    //      [. . . o o x o o o o . . . . . .]
-                    //
-                    //               T           H
-                    //      [. . . . o o o o o o . . . . . .]
-                    //               M M
-
-                    self.copy(self.tail + 1, self.tail, index);
-                    self.tail += 1;
-                }
-            }
-            (true, false, _) => {
-                unsafe {
-                    // contiguous, remove closer to head:
-                    //
-                    //             T       R     H
-                    //      [. . . o o o o x o o . . . . . .]
-                    //
-                    //             T           H
-                    //      [. . . o o o o o o . . . . . . .]
-                    //                     M M
-
-                    self.copy(idx, idx + 1, self.head - idx - 1);
-                    self.head -= 1;
-                }
-            }
-            (false, true, true) => {
-                unsafe {
-                    // discontiguous, remove closer to tail, tail section:
-                    //
-                    //                   H         T   R
-                    //      [o o o o o o . . . . . o o x o o]
-                    //
-                    //                   H           T
-                    //      [o o o o o o . . . . . . o o o o]
-                    //                               M M
-
-                    self.copy(self.tail + 1, self.tail, index);
-                    self.tail = self.wrap_add(self.tail, 1);
-                }
-            }
-            (false, false, false) => {
-                unsafe {
-                    // discontiguous, remove closer to head, head section:
-                    //
-                    //               R     H           T
-                    //      [o o o o x o o . . . . . . o o o]
-                    //
-                    //                   H             T
-                    //      [o o o o o o . . . . . . . o o o]
-                    //               M M
-
-                    self.copy(idx, idx + 1, self.head - idx - 1);
-                    self.head -= 1;
-                }
-            }
-            (false, false, true) => {
-                unsafe {
-                    // discontiguous, remove closer to head, tail section:
-                    //
-                    //             H           T         R
-                    //      [o o o . . . . . . o o o o o x o]
-                    //
-                    //           H             T
-                    //      [o o . . . . . . . o o o o o o o]
-                    //       M M                         M M
-                    //
-                    // or quasi-discontiguous, remove next to head, tail section:
-                    //
-                    //       H                 T         R
-                    //      [. . . . . . . . . o o o o o x o]
-                    //
-                    //                         T           H
-                    //      [. . . . . . . . . o o o o o o .]
-                    //                                   M
-
-                    // draw in elements in the tail section
-                    self.copy(idx, idx + 1, self.cap() - idx - 1);
-
-                    // Prevents underflow.
-                    if self.head != 0 {
-                        // copy first element into empty spot
-                        self.copy(self.cap() - 1, 0, 1);
-
-                        // move elements in the head section backwards
-                        self.copy(0, 1, self.head - 1);
-                    }
-
-                    self.head = self.wrap_sub(self.head, 1);
-                }
-            }
-            (false, true, false) => {
-                unsafe {
-                    // discontiguous, remove closer to tail, head section:
-                    //
-                    //           R               H     T
-                    //      [o o x o o o o o o o . . . o o o]
-                    //
-                    //                           H       T
-                    //      [o o o o o o o o o o . . . . o o]
-                    //       M M M                       M M
-
-                    // draw in elements up to idx
-                    self.copy(1, 0, idx);
-
-                    // copy last element into empty spot
-                    self.copy(0, self.cap() - 1, 1);
-
-                    // move elements from tail to end forward, excluding the last one
-                    self.copy(self.tail + 1, self.tail, self.cap() - self.tail - 1);
-
-                    self.tail = self.wrap_add(self.tail, 1);
-                }
-            }
-        }
-
-        elem
-    }
+    pub fn remove(&mut self, index: usize) -> Option<T> {}
 
     /// Splits the `VecDeque` into two at the given index.
     ///
@@ -21823,49 +12297,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     pub fn split_off(&mut self, at: usize) -> Self
     where
         A: Clone,
-    {
-        let len = self.len();
-        assert!(at <= len, "`at` out of bounds");
-
-        let other_len = len - at;
-        let mut other = VecDeque::with_capacity_in(other_len, self.allocator().clone());
-
-        unsafe {
-            let (first_half, second_half) = self.as_slices();
-
-            let first_len = first_half.len();
-            let second_len = second_half.len();
-            if at < first_len {
-                // `at` lies in the first half.
-                let amount_in_first = first_len - at;
-
-                ptr::copy_nonoverlapping(first_half.as_ptr().add(at), other.ptr(), amount_in_first);
-
-                // just take all of the second half.
-                ptr::copy_nonoverlapping(
-                    second_half.as_ptr(),
-                    other.ptr().add(amount_in_first),
-                    second_len,
-                );
-            } else {
-                // `at` lies in the second half, need to factor in the elements we skipped
-                // in the first half.
-                let offset = at - first_len;
-                let amount_in_second = second_len - offset;
-                ptr::copy_nonoverlapping(
-                    second_half.as_ptr().add(offset),
-                    other.ptr(),
-                    amount_in_second,
-                );
-            }
-        }
-
-        // Cleanup where the ends of the buffers are
-        self.head = self.wrap_sub(self.head, other_len);
-        other.head = other.wrap_index(other_len);
-
-        other
-    }
+    {}
 
     /// Moves all the elements of `other` into `self`, leaving `other` empty.
     ///
@@ -21886,19 +12318,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// ```
     #[inline]
     #[stable(feature = "append", since = "1.4.0")]
-    pub fn append(&mut self, other: &mut Self) {
-        self.reserve(other.len());
-        unsafe {
-            let (left, right) = other.as_slices();
-            self.copy_slice(self.head, left);
-            self.copy_slice(self.wrap_add(self.head, left.len()), right);
-        }
-        // SAFETY: Update pointers after copying to avoid leaving doppelganger
-        // in case of panics.
-        self.head = self.wrap_add(self.head, other.len());
-        // Silently drop values in `other`.
-        other.tail = other.head;
-    }
+    pub fn append(&mut self, other: &mut Self) {}
 
     /// Retains only the elements specified by the predicate.
     ///
@@ -21935,51 +12355,11 @@ impl<T, A: Allocator> VecDeque<T, A> {
     pub fn retain<F>(&mut self, mut f: F)
     where
         F: FnMut(&T) -> bool,
-    {
-        let len = self.len();
-        let mut idx = 0;
-        let mut cur = 0;
-
-        // Stage 1: All values are retained.
-        while cur < len {
-            if !f(&self[cur]) {
-                cur += 1;
-                break;
-            }
-            cur += 1;
-            idx += 1;
-        }
-        // Stage 2: Swap retained value into current idx.
-        while cur < len {
-            if !f(&self[cur]) {
-                cur += 1;
-                continue;
-            }
-
-            self.swap(idx, cur);
-            cur += 1;
-            idx += 1;
-        }
-        // Stage 3: Trancate all values after idx.
-        if cur != idx {
-            self.truncate(idx);
-        }
-    }
+    {}
 
     // This may panic or abort
     #[inline(never)]
-    fn grow(&mut self) {
-        if self.is_full() {
-            let old_cap = self.cap();
-            // Double the buffer size.
-            self.buf.reserve_exact(old_cap, old_cap);
-            assert!(self.cap() == old_cap * 2);
-            unsafe {
-                self.handle_capacity_increase(old_cap);
-            }
-            debug_assert!(!self.is_full());
-        }
-    }
+    fn grow(&mut self) {}
 
     /// Modifies the `VecDeque` in-place so that `len()` is equal to `new_len`,
     /// either by removing excess elements from the back or by appending
@@ -22007,15 +12387,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(buf, [5, 10, 101, 102, 103]);
     /// ```
     #[stable(feature = "vec_resize_with", since = "1.33.0")]
-    pub fn resize_with(&mut self, new_len: usize, generator: impl FnMut() -> T) {
-        let len = self.len();
-
-        if new_len > len {
-            self.extend(repeat_with(generator).take(new_len - len))
-        } else {
-            self.truncate(new_len);
-        }
-    }
+    pub fn resize_with(&mut self, new_len: usize, generator: impl FnMut() -> T) {}
 
     /// Rearranges the internal storage of this deque so it is one contiguous
     /// slice, which is then returned.
@@ -22073,98 +12445,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// }
     /// ```
     #[stable(feature = "deque_make_contiguous", since = "1.48.0")]
-    pub fn make_contiguous(&mut self) -> &mut [T] {
-        if self.is_contiguous() {
-            let tail = self.tail;
-            let head = self.head;
-            return unsafe { RingSlices::ring_slices(self.buffer_as_mut_slice(), head, tail).0 };
-        }
-
-        let buf = self.buf.ptr();
-        let cap = self.cap();
-        let len = self.len();
-
-        let free = self.tail - self.head;
-        let tail_len = cap - self.tail;
-
-        if free >= tail_len {
-            // there is enough free space to copy the tail in one go,
-            // this means that we first shift the head backwards, and then
-            // copy the tail to the correct position.
-            //
-            // from: DEFGH....ABC
-            // to:   ABCDEFGH....
-            unsafe {
-                ptr::copy(buf, buf.add(tail_len), self.head);
-                // ...DEFGH.ABC
-                ptr::copy_nonoverlapping(buf.add(self.tail), buf, tail_len);
-                // ABCDEFGH....
-
-                self.tail = 0;
-                self.head = len;
-            }
-        } else if free > self.head {
-            // FIXME: We currently do not consider ....ABCDEFGH
-            // to be contiguous because `head` would be `0` in this
-            // case. While we probably want to change this it
-            // isn't trivial as a few places expect `is_contiguous`
-            // to mean that we can just slice using `buf[tail..head]`.
-
-            // there is enough free space to copy the head in one go,
-            // this means that we first shift the tail forwards, and then
-            // copy the head to the correct position.
-            //
-            // from: FGH....ABCDE
-            // to:   ...ABCDEFGH.
-            unsafe {
-                ptr::copy(buf.add(self.tail), buf.add(self.head), tail_len);
-                // FGHABCDE....
-                ptr::copy_nonoverlapping(buf, buf.add(self.head + tail_len), self.head);
-                // ...ABCDEFGH.
-
-                self.tail = self.head;
-                self.head = self.wrap_add(self.tail, len);
-            }
-        } else {
-            // free is smaller than both head and tail,
-            // this means we have to slowly "swap" the tail and the head.
-            //
-            // from: EFGHI...ABCD or HIJK.ABCDEFG
-            // to:   ABCDEFGHI... or ABCDEFGHIJK.
-            let mut left_edge: usize = 0;
-            let mut right_edge: usize = self.tail;
-            unsafe {
-                // The general problem looks like this
-                // GHIJKLM...ABCDEF - before any swaps
-                // ABCDEFM...GHIJKL - after 1 pass of swaps
-                // ABCDEFGHIJM...KL - swap until the left edge reaches the temp store
-                //                  - then restart the algorithm with a new (smaller) store
-                // Sometimes the temp store is reached when the right edge is at the end
-                // of the buffer - this means we've hit the right order with fewer swaps!
-                // E.g
-                // EF..ABCD
-                // ABCDEF.. - after four only swaps we've finished
-                while left_edge < len && right_edge != cap {
-                    let mut right_offset = 0;
-                    for i in left_edge..right_edge {
-                        right_offset = (i - left_edge) % (cap - right_edge);
-                        let src: isize = (right_edge + right_offset) as isize;
-                        ptr::swap(buf.add(i), buf.offset(src));
-                    }
-                    let n_ops = right_edge - left_edge;
-                    left_edge += n_ops;
-                    right_edge += right_offset + 1;
-                }
-
-                self.tail = 0;
-                self.head = len;
-            }
-        }
-
-        let tail = self.tail;
-        let head = self.head;
-        unsafe { RingSlices::ring_slices(self.buffer_as_mut_slice(), head, tail).0 }
-    }
+    pub fn make_contiguous(&mut self) -> &mut [T] {}
 
     /// Rotates the double-ended queue `mid` places to the left.
     ///
@@ -22199,15 +12480,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(buf, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
     /// ```
     #[stable(feature = "vecdeque_rotate", since = "1.36.0")]
-    pub fn rotate_left(&mut self, mid: usize) {
-        assert!(mid <= self.len());
-        let k = self.len() - mid;
-        if mid <= k {
-            unsafe { self.rotate_left_inner(mid) }
-        } else {
-            unsafe { self.rotate_right_inner(k) }
-        }
-    }
+    pub fn rotate_left(&mut self, mid: usize) {}
 
     /// Rotates the double-ended queue `k` places to the right.
     ///
@@ -22242,15 +12515,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(buf, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
     /// ```
     #[stable(feature = "vecdeque_rotate", since = "1.36.0")]
-    pub fn rotate_right(&mut self, k: usize) {
-        assert!(k <= self.len());
-        let mid = self.len() - k;
-        if k <= mid {
-            unsafe { self.rotate_right_inner(k) }
-        } else {
-            unsafe { self.rotate_left_inner(mid) }
-        }
-    }
+    pub fn rotate_right(&mut self, k: usize) {}
 
     // SAFETY: the following two methods require that the rotation amount
     // be less than half the length of the deque.
@@ -22260,23 +12525,9 @@ impl<T, A: Allocator> VecDeque<T, A> {
     // so it's sound to call here because we're calling with something
     // less than half the length, which is never above half the capacity.
 
-    unsafe fn rotate_left_inner(&mut self, mid: usize) {
-        debug_assert!(mid * 2 <= self.len());
-        unsafe {
-            self.wrap_copy(self.head, self.tail, mid);
-        }
-        self.head = self.wrap_add(self.head, mid);
-        self.tail = self.wrap_add(self.tail, mid);
-    }
+    unsafe fn rotate_left_inner(&mut self, mid: usize) {}
 
-    unsafe fn rotate_right_inner(&mut self, k: usize) {
-        debug_assert!(k * 2 <= self.len());
-        self.head = self.wrap_sub(self.head, k);
-        self.tail = self.wrap_sub(self.tail, k);
-        unsafe {
-            self.wrap_copy(self.tail, self.head, k);
-        }
-    }
+    unsafe fn rotate_right_inner(&mut self, k: usize) {}
 
     /// Binary searches this sorted `VecDeque` for a given element.
     ///
@@ -22327,9 +12578,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     pub fn binary_search(&self, x: &T) -> Result<usize, usize>
     where
         T: Ord,
-    {
-        self.binary_search_by(|e| e.cmp(x))
-    }
+    {}
 
     /// Binary searches this sorted `VecDeque` with a comparator function.
     ///
@@ -22371,18 +12620,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     pub fn binary_search_by<'a, F>(&'a self, mut f: F) -> Result<usize, usize>
     where
         F: FnMut(&'a T) -> Ordering,
-    {
-        let (front, back) = self.as_slices();
-        let cmp_back = back.first().map(|elem| f(elem));
-
-        if let Some(Ordering::Equal) = cmp_back {
-            Ok(front.len())
-        } else if let Some(Ordering::Less) = cmp_back {
-            back.binary_search_by(f).map(|idx| idx + front.len()).map_err(|idx| idx + front.len())
-        } else {
-            front.binary_search_by(f)
-        }
-    }
+    {}
 
     /// Binary searches this sorted `VecDeque` with a key extraction function.
     ///
@@ -22428,9 +12666,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     where
         F: FnMut(&'a T) -> B,
         B: Ord,
-    {
-        self.binary_search_by(|k| f(k).cmp(b))
-    }
+    {}
 
     /// Returns the index of the partition point according to the given predicate
     /// (the index of the first element of the second partition).
@@ -22466,15 +12702,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     pub fn partition_point<P>(&self, mut pred: P) -> usize
     where
         P: FnMut(&T) -> bool,
-    {
-        let (front, back) = self.as_slices();
-
-        if let Some(true) = back.first().map(|v| pred(v)) {
-            back.partition_point(pred) + front.len()
-        } else {
-            front.partition_point(pred)
-        }
-    }
+    {}
 }
 
 impl<T: Clone, A: Allocator> VecDeque<T, A> {
@@ -22500,63 +12728,20 @@ impl<T: Clone, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(buf, [5, 10, 20, 20, 20]);
     /// ```
     #[stable(feature = "deque_extras", since = "1.16.0")]
-    pub fn resize(&mut self, new_len: usize, value: T) {
-        self.resize_with(new_len, || value.clone());
-    }
+    pub fn resize(&mut self, new_len: usize, value: T) {}
 }
 
 /// Returns the index in the underlying buffer for a given logical element index.
 #[inline]
-fn wrap_index(index: usize, size: usize) -> usize {
-    // size is always a power of 2
-    debug_assert!(size.is_power_of_two());
-    index & (size - 1)
-}
+fn wrap_index(index: usize, size: usize) -> usize {}
 
 /// Calculate the number of elements left to be read in the buffer
 #[inline]
-fn count(tail: usize, head: usize, size: usize) -> usize {
-    // size is always a power of 2
-    (head.wrapping_sub(tail)) & (size - 1)
-}
+fn count(tail: usize, head: usize, size: usize) -> usize {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: PartialEq, A: Allocator> PartialEq for VecDeque<T, A> {
-    fn eq(&self, other: &Self) -> bool {
-        if self.len() != other.len() {
-            return false;
-        }
-        let (sa, sb) = self.as_slices();
-        let (oa, ob) = other.as_slices();
-        if sa.len() == oa.len() {
-            sa == oa && sb == ob
-        } else if sa.len() < oa.len() {
-            // Always divisible in three sections, for example:
-            // self:  [a b c|d e f]
-            // other: [0 1 2 3|4 5]
-            // front = 3, mid = 1,
-            // [a b c] == [0 1 2] && [d] == [3] && [e f] == [4 5]
-            let front = sa.len();
-            let mid = oa.len() - front;
-
-            let (oa_front, oa_mid) = oa.split_at(front);
-            let (sb_mid, sb_back) = sb.split_at(mid);
-            debug_assert_eq!(sa.len(), oa_front.len());
-            debug_assert_eq!(sb_mid.len(), oa_mid.len());
-            debug_assert_eq!(sb_back.len(), ob.len());
-            sa == oa_front && sb_mid == oa_mid && sb_back == ob
-        } else {
-            let front = oa.len();
-            let mid = sa.len() - front;
-
-            let (sa_front, sa_mid) = sa.split_at(front);
-            let (ob_mid, ob_back) = ob.split_at(mid);
-            debug_assert_eq!(sa_front.len(), oa.len());
-            debug_assert_eq!(sa_mid.len(), ob_mid.len());
-            debug_assert_eq!(sb.len(), ob_back.len());
-            sa_front == oa && sa_mid == ob_mid && sb == ob_back
-        }
-    }
+    fn eq(&self, other: &Self) -> bool {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -22571,31 +12756,18 @@ __impl_slice_eq1! { [const N: usize] VecDeque<T, A>, &mut [U; N], }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: PartialOrd, A: Allocator> PartialOrd for VecDeque<T, A> {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.iter().partial_cmp(other.iter())
-    }
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Ord, A: Allocator> Ord for VecDeque<T, A> {
     #[inline]
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.iter().cmp(other.iter())
-    }
+    fn cmp(&self, other: &Self) -> Ordering {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Hash, A: Allocator> Hash for VecDeque<T, A> {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.len().hash(state);
-        // It's not possible to use Hash::hash_slice on slices
-        // returned by as_slices method as their length can vary
-        // in otherwise identical deques.
-        //
-        // Hasher only guarantees equivalence for the exact same
-        // set of calls to its methods.
-        self.iter().for_each(|elem| elem.hash(state));
-    }
+    fn hash<H: Hasher>(&self, state: &mut H) {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -22603,28 +12775,18 @@ impl<T, A: Allocator> Index<usize> for VecDeque<T, A> {
     type Output = T;
 
     #[inline]
-    fn index(&self, index: usize) -> &T {
-        self.get(index).expect("Out of bounds access")
-    }
+    fn index(&self, index: usize) -> &T {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, A: Allocator> IndexMut<usize> for VecDeque<T, A> {
     #[inline]
-    fn index_mut(&mut self, index: usize) -> &mut T {
-        self.get_mut(index).expect("Out of bounds access")
-    }
+    fn index_mut(&mut self, index: usize) -> &mut T {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> FromIterator<T> for VecDeque<T> {
-    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> VecDeque<T> {
-        let iterator = iter.into_iter();
-        let (lower, _) = iterator.size_hint();
-        let mut deq = VecDeque::with_capacity(lower);
-        deq.extend(iterator);
-        deq
-    }
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> VecDeque<T> {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -22634,9 +12796,7 @@ impl<T, A: Allocator> IntoIterator for VecDeque<T, A> {
 
     /// Consumes the `VecDeque` into a front-to-back iterator yielding elements by
     /// value.
-    fn into_iter(self) -> IntoIter<T, A> {
-        IntoIter::new(self)
-    }
+    fn into_iter(self) -> IntoIter<T, A> {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -22644,9 +12804,7 @@ impl<'a, T, A: Allocator> IntoIterator for &'a VecDeque<T, A> {
     type Item = &'a T;
     type IntoIter = Iter<'a, T>;
 
-    fn into_iter(self) -> Iter<'a, T> {
-        self.iter()
-    }
+    fn into_iter(self) -> Iter<'a, T> {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -22654,67 +12812,34 @@ impl<'a, T, A: Allocator> IntoIterator for &'a mut VecDeque<T, A> {
     type Item = &'a mut T;
     type IntoIter = IterMut<'a, T>;
 
-    fn into_iter(self) -> IterMut<'a, T> {
-        self.iter_mut()
-    }
+    fn into_iter(self) -> IterMut<'a, T> {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, A: Allocator> Extend<T> for VecDeque<T, A> {
-    fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
-        // This function should be the moral equivalent of:
-        //
-        //      for item in iter.into_iter() {
-        //          self.push_back(item);
-        //      }
-        let mut iter = iter.into_iter();
-        while let Some(element) = iter.next() {
-            if self.len() == self.capacity() {
-                let (lower, _) = iter.size_hint();
-                self.reserve(lower.saturating_add(1));
-            }
-
-            let head = self.head;
-            self.head = self.wrap_add(self.head, 1);
-            unsafe {
-                self.buffer_write(head, element);
-            }
-        }
-    }
+    fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {}
 
     #[inline]
-    fn extend_one(&mut self, elem: T) {
-        self.push_back(elem);
-    }
+    fn extend_one(&mut self, elem: T) {}
 
     #[inline]
-    fn extend_reserve(&mut self, additional: usize) {
-        self.reserve(additional);
-    }
+    fn extend_reserve(&mut self, additional: usize) {}
 }
 
 #[stable(feature = "extend_ref", since = "1.2.0")]
 impl<'a, T: 'a + Copy, A: Allocator> Extend<&'a T> for VecDeque<T, A> {
-    fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
-        self.extend(iter.into_iter().cloned());
-    }
+    fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {}
 
     #[inline]
-    fn extend_one(&mut self, &elem: &T) {
-        self.push_back(elem);
-    }
+    fn extend_one(&mut self, &elem: &T) {}
 
     #[inline]
-    fn extend_reserve(&mut self, additional: usize) {
-        self.reserve(additional);
-    }
+    fn extend_reserve(&mut self, additional: usize) {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: fmt::Debug, A: Allocator> fmt::Debug for VecDeque<T, A> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_list().entries(self).finish()
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
 }
 
 #[stable(feature = "vecdeque_vec_conversions", since = "1.10.0")]
@@ -22727,29 +12852,7 @@ impl<T, A: Allocator> From<Vec<T, A>> for VecDeque<T, A> {
     /// This avoids reallocating where possible, but the conditions for that are
     /// strict, and subject to change, and so shouldn't be relied upon unless the
     /// `Vec<T>` came from `From<VecDeque<T>>` and hasn't been reallocated.
-    fn from(mut other: Vec<T, A>) -> Self {
-        let len = other.len();
-        if mem::size_of::<T>() == 0 {
-            // There's no actual allocation for ZSTs to worry about capacity,
-            // but `VecDeque` can't handle as much length as `Vec`.
-            assert!(len < MAXIMUM_ZST_CAPACITY, "capacity overflow");
-        } else {
-            // We need to resize if the capacity is not a power of two, too small or
-            // doesn't have at least one free space. We do this while it's still in
-            // the `Vec` so the items will drop on panic.
-            let min_cap = cmp::max(MINIMUM_CAPACITY, len) + 1;
-            let cap = cmp::max(min_cap, other.capacity()).next_power_of_two();
-            if other.capacity() != cap {
-                other.reserve_exact(cap - len);
-            }
-        }
-
-        unsafe {
-            let (other_buf, len, capacity, alloc) = other.into_raw_parts_with_alloc();
-            let buf = RawVec::from_raw_parts_in(other_buf, capacity, alloc);
-            VecDeque { tail: 0, head: len, buf }
-        }
-    }
+    fn from(mut other: Vec<T, A>) -> Self {}
 }
 
 #[stable(feature = "vecdeque_vec_conversions", since = "1.10.0")]
@@ -22783,22 +12886,7 @@ impl<T, A: Allocator> From<VecDeque<T, A>> for Vec<T, A> {
     /// assert_eq!(vec, [8, 9, 1, 2, 3, 4]);
     /// assert_eq!(vec.as_ptr(), ptr);
     /// ```
-    fn from(mut other: VecDeque<T, A>) -> Self {
-        other.make_contiguous();
-
-        unsafe {
-            let other = ManuallyDrop::new(other);
-            let buf = other.buf.ptr();
-            let len = other.len();
-            let cap = other.cap();
-            let alloc = ptr::read(other.allocator());
-
-            if other.tail != 0 {
-                ptr::copy(buf.add(other.tail), buf, len);
-            }
-            Vec::from_raw_parts_in(buf, len, cap, alloc)
-        }
-    }
+    fn from(mut other: VecDeque<T, A>) -> Self {}
 }
 
 #[stable(feature = "std_collections_from_array", since = "1.56.0")]
@@ -22810,19 +12898,7 @@ impl<T, const N: usize> From<[T; N]> for VecDeque<T> {
     /// let deq2: VecDeque<_> = [1, 2, 3, 4].into();
     /// assert_eq!(deq1, deq2);
     /// ```
-    fn from(arr: [T; N]) -> Self {
-        let mut deq = VecDeque::with_capacity(N);
-        let arr = ManuallyDrop::new(arr);
-        if mem::size_of::<T>() != 0 {
-            // SAFETY: VecDeque::with_capacity ensures that there is enough capacity.
-            unsafe {
-                ptr::copy_nonoverlapping(arr.as_ptr(), deq.ptr(), N);
-            }
-        }
-        deq.tail = 0;
-        deq.head = N;
-        deq
-    }
+    fn from(arr: [T; N]) -> Self {}
 }
 }
 
@@ -22886,9 +12962,7 @@ impl TryReserveError {
         reason = "Uncertain how much info should be exposed",
         issue = "48043"
     )]
-    pub fn kind(&self) -> TryReserveErrorKind {
-        self.kind.clone()
-    }
+    pub fn kind(&self) -> TryReserveErrorKind {}
 }
 
 /// Details of the allocation that caused a `TryReserveError`
@@ -22928,18 +13002,14 @@ pub enum TryReserveErrorKind {
 )]
 impl From<TryReserveErrorKind> for TryReserveError {
     #[inline]
-    fn from(kind: TryReserveErrorKind) -> Self {
-        Self { kind }
-    }
+    fn from(kind: TryReserveErrorKind) -> Self {}
 }
 
 #[unstable(feature = "try_reserve_kind", reason = "new API", issue = "48043")]
 impl From<LayoutError> for TryReserveErrorKind {
     /// Always evaluates to [`TryReserveErrorKind::CapacityOverflow`].
     #[inline]
-    fn from(_: LayoutError) -> Self {
-        TryReserveErrorKind::CapacityOverflow
-    }
+    fn from(_: LayoutError) -> Self {}
 }
 
 #[stable(feature = "try_reserve", since = "1.57.0")]
@@ -22947,18 +13017,7 @@ impl Display for TryReserveError {
     fn fmt(
         &self,
         fmt: &mut core::fmt::Formatter<'_>,
-    ) -> core::result::Result<(), core::fmt::Error> {
-        fmt.write_str("memory allocation failed")?;
-        let reason = match self.kind {
-            TryReserveErrorKind::CapacityOverflow => {
-                " because the computed capacity exceeded the collection's maximum"
-            }
-            TryReserveErrorKind::AllocError { .. } => {
-                " because the memory allocator returned a error"
-            }
-        };
-        fmt.write_str(reason)
-    }
+    ) -> core::result::Result<(), core::fmt::Error> {}
 }
 
 /// An intermediate trait for specialization of `Extend`.
@@ -23306,9 +13365,7 @@ pub mod fmt {
 //! # use std::fmt;
 //! # struct Foo; // our custom type
 //! # impl fmt::Display for Foo {
-//! fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-//! # write!(f, "testing, testing")
-//! # } }
+//! fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {} }
 //! ```
 //!
 //! Your type will be passed as `self` by-reference, and then the function
@@ -23342,38 +13399,16 @@ pub mod fmt {
 //! }
 //!
 //! impl fmt::Display for Vector2D {
-//!     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-//!         // The `f` value implements the `Write` trait, which is what the
-//!         // write! macro is expecting. Note that this formatting ignores the
-//!         // various flags provided to format strings.
-//!         write!(f, "({}, {})", self.x, self.y)
-//!     }
+//!     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {}
 //! }
 //!
 //! // Different traits allow different forms of output of a type. The meaning
 //! // of this format is to print the magnitude of a vector.
 //! impl fmt::Binary for Vector2D {
-//!     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-//!         let magnitude = (self.x * self.x + self.y * self.y) as f64;
-//!         let magnitude = magnitude.sqrt();
-//!
-//!         // Respect the formatting flags by using the helper method
-//!         // `pad_integral` on the Formatter object. See the method
-//!         // documentation for details, and the function `pad` can be used
-//!         // to pad strings.
-//!         let decimals = f.precision().unwrap_or(3);
-//!         let string = format!("{:.*}", decimals, magnitude);
-//!         f.pad_integral(true, "", &string)
-//!     }
+//!     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {}
 //! }
 //!
-//! fn main() {
-//!     let myvector = Vector2D { x: 3, y: 4 };
-//!
-//!     println!("{}", myvector);       // => "(3, 4)"
-//!     println!("{:?}", myvector);     // => "Vector2D {x: 3, y:4}"
-//!     println!("{:10.3b}", myvector); // => "     5.000"
-//! }
+//! fn main() {}
 //! ```
 //!
 //! ### `fmt::Display` vs `fmt::Debug`
@@ -23460,9 +13495,7 @@ pub mod fmt {
 //! let mut some_writer = io::stdout();
 //! write!(&mut some_writer, "{}", format_args!("print with a {}", "macro"));
 //!
-//! fn my_fmt_fn(args: fmt::Arguments) {
-//!     write!(&mut io::stdout(), "{}", args);
-//! }
+//! fn my_fmt_fn(args: fmt::Arguments) {}
 //! my_fmt_fn(format_args!(", or a {} too", "function"));
 //! ```
 //!
@@ -23545,12 +13578,7 @@ use crate::string;
 #[cfg(not(no_global_oom_handling))]
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn format(args: Arguments<'_>) -> string::String {
-    let capacity = args.estimated_capacity();
-    let mut output = string::String::with_capacity(capacity);
-    output.write_fmt(args).expect("a formatting trait implementation returned an error");
-    output
-}
+pub fn format(args: Arguments<'_>) -> string::String {}
 }
 pub mod raw_vec {
 #![unstable(feature = "raw_vec_internals", reason = "implementation detail", issue = "none")]
@@ -23577,81 +13605,10 @@ use super::*;
 use std::cell::Cell;
 
 #[test]
-fn allocator_param() {
-    use crate::alloc::AllocError;
-
-    // Writing a test of integration between third-party
-    // allocators and `RawVec` is a little tricky because the `RawVec`
-    // API does not expose fallible allocation methods, so we
-    // cannot check what happens when allocator is exhausted
-    // (beyond detecting a panic).
-    //
-    // Instead, this just checks that the `RawVec` methods do at
-    // least go through the Allocator API when it reserves
-    // storage.
-
-    // A dumb allocator that consumes a fixed amount of fuel
-    // before allocation attempts start failing.
-    struct BoundedAlloc {
-        fuel: Cell<usize>,
-    }
-    unsafe impl Allocator for BoundedAlloc {
-        fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
-            let size = layout.size();
-            if size > self.fuel.get() {
-                return Err(AllocError);
-            }
-            match Global.allocate(layout) {
-                ok @ Ok(_) => {
-                    self.fuel.set(self.fuel.get() - size);
-                    ok
-                }
-                err @ Err(_) => err,
-            }
-        }
-        unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
-            unsafe { Global.deallocate(ptr, layout) }
-        }
-    }
-
-    let a = BoundedAlloc { fuel: Cell::new(500) };
-    let mut v: RawVec<u8, _> = RawVec::with_capacity_in(50, a);
-    assert_eq!(v.alloc.fuel.get(), 450);
-    v.reserve(50, 150); // (causes a realloc, thus using 50 + 150 = 200 units of fuel)
-    assert_eq!(v.alloc.fuel.get(), 250);
-}
+fn allocator_param() {}
 
 #[test]
-fn reserve_does_not_overallocate() {
-    {
-        let mut v: RawVec<u32> = RawVec::new();
-        // First, `reserve` allocates like `reserve_exact`.
-        v.reserve(0, 9);
-        assert_eq!(9, v.capacity());
-    }
-
-    {
-        let mut v: RawVec<u32> = RawVec::new();
-        v.reserve(0, 7);
-        assert_eq!(7, v.capacity());
-        // 97 is more than double of 7, so `reserve` should work
-        // like `reserve_exact`.
-        v.reserve(7, 90);
-        assert_eq!(97, v.capacity());
-    }
-
-    {
-        let mut v: RawVec<u32> = RawVec::new();
-        v.reserve(0, 12);
-        assert_eq!(12, v.capacity());
-        v.reserve(12, 3);
-        // 3 is less than half of 12, so `reserve` must grow
-        // exponentially. At the time of writing this test grow
-        // factor is 2, so new capacity is 24, however, grow factor
-        // of 1.5 is OK too. Hence `>= 18` in assert.
-        assert!(v.capacity() >= 12 + 12 / 2);
-    }
-}
+fn reserve_does_not_overallocate() {}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -23705,9 +13662,7 @@ impl<T> RawVec<T, Global> {
     /// `RawVec` with capacity `usize::MAX`. Useful for implementing
     /// delayed allocation.
     #[must_use]
-    pub const fn new() -> Self {
-        Self::new_in(Global)
-    }
+    pub const fn new() -> Self {}
 
     /// Creates a `RawVec` (on the system heap) with exactly the
     /// capacity and alignment requirements for a `[T; capacity]`. This is
@@ -23725,17 +13680,13 @@ impl<T> RawVec<T, Global> {
     #[cfg(not(no_global_oom_handling))]
     #[must_use]
     #[inline]
-    pub fn with_capacity(capacity: usize) -> Self {
-        Self::with_capacity_in(capacity, Global)
-    }
+    pub fn with_capacity(capacity: usize) -> Self {}
 
     /// Like `with_capacity`, but guarantees the buffer is zeroed.
     #[cfg(not(no_global_oom_handling))]
     #[must_use]
     #[inline]
-    pub fn with_capacity_zeroed(capacity: usize) -> Self {
-        Self::with_capacity_zeroed_in(capacity, Global)
-    }
+    pub fn with_capacity_zeroed(capacity: usize) -> Self {}
 
     /// Reconstitutes a `RawVec` from a pointer and capacity.
     ///
@@ -23746,9 +13697,7 @@ impl<T> RawVec<T, Global> {
     /// systems). ZST vectors may have a capacity up to `usize::MAX`.
     /// If the `ptr` and `capacity` come from a `RawVec`, then this is guaranteed.
     #[inline]
-    pub unsafe fn from_raw_parts(ptr: *mut T, capacity: usize) -> Self {
-        unsafe { Self::from_raw_parts_in(ptr, capacity, Global) }
-    }
+    pub unsafe fn from_raw_parts(ptr: *mut T, capacity: usize) -> Self {}
 }
 
 impl<T, A: Allocator> RawVec<T, A> {
@@ -23768,34 +13717,22 @@ impl<T, A: Allocator> RawVec<T, A> {
     /// Like `new`, but parameterized over the choice of allocator for
     /// the returned `RawVec`.
     #[rustc_allow_const_fn_unstable(const_fn)]
-    pub const fn new_in(alloc: A) -> Self {
-        // `cap: 0` means "unallocated". zero-sized types are ignored.
-        Self { ptr: Unique::dangling(), cap: 0, alloc }
-    }
+    pub const fn new_in(alloc: A) -> Self {}
 
     /// Like `with_capacity`, but parameterized over the choice of
     /// allocator for the returned `RawVec`.
     #[cfg(not(no_global_oom_handling))]
     #[inline]
-    pub fn with_capacity_in(capacity: usize, alloc: A) -> Self {
-        Self::allocate_in(capacity, AllocInit::Uninitialized, alloc)
-    }
+    pub fn with_capacity_in(capacity: usize, alloc: A) -> Self {}
 
     /// Like `with_capacity_zeroed`, but parameterized over the choice
     /// of allocator for the returned `RawVec`.
     #[cfg(not(no_global_oom_handling))]
     #[inline]
-    pub fn with_capacity_zeroed_in(capacity: usize, alloc: A) -> Self {
-        Self::allocate_in(capacity, AllocInit::Zeroed, alloc)
-    }
+    pub fn with_capacity_zeroed_in(capacity: usize, alloc: A) -> Self {}
 
     /// Converts a `Box<[T]>` into a `RawVec<T>`.
-    pub fn from_box(slice: Box<[T], A>) -> Self {
-        unsafe {
-            let (slice, alloc) = Box::into_raw_with_allocator(slice);
-            RawVec::from_raw_parts_in(slice.as_mut_ptr(), slice.len(), alloc)
-        }
-    }
+    pub fn from_box(slice: Box<[T], A>) -> Self {}
 
     /// Converts the entire buffer into `Box<[MaybeUninit<T>]>` with the specified `len`.
     ///
@@ -23809,51 +13746,10 @@ impl<T, A: Allocator> RawVec<T, A> {
     ///
     /// Note, that the requested capacity and `self.capacity()` could differ, as
     /// an allocator could overallocate and return a greater memory block than requested.
-    pub unsafe fn into_box(self, len: usize) -> Box<[MaybeUninit<T>], A> {
-        // Sanity-check one half of the safety requirement (we cannot check the other half).
-        debug_assert!(
-            len <= self.capacity(),
-            "`len` must be smaller than or equal to `self.capacity()`"
-        );
-
-        let me = ManuallyDrop::new(self);
-        unsafe {
-            let slice = slice::from_raw_parts_mut(me.ptr() as *mut MaybeUninit<T>, len);
-            Box::from_raw_in(slice, ptr::read(&me.alloc))
-        }
-    }
+    pub unsafe fn into_box(self, len: usize) -> Box<[MaybeUninit<T>], A> {}
 
     #[cfg(not(no_global_oom_handling))]
-    fn allocate_in(capacity: usize, init: AllocInit, alloc: A) -> Self {
-        if mem::size_of::<T>() == 0 {
-            Self::new_in(alloc)
-        } else {
-            // We avoid `unwrap_or_else` here because it bloats the amount of
-            // LLVM IR generated.
-            let layout = match Layout::array::<T>(capacity) {
-                Ok(layout) => layout,
-                Err(_) => capacity_overflow(),
-            };
-            match alloc_guard(layout.size()) {
-                Ok(_) => {}
-                Err(_) => capacity_overflow(),
-            }
-            let result = match init {
-                AllocInit::Uninitialized => alloc.allocate(layout),
-                AllocInit::Zeroed => alloc.allocate_zeroed(layout),
-            };
-            let ptr = match result {
-                Ok(ptr) => ptr,
-                Err(_) => handle_alloc_error(layout),
-            };
-
-            Self {
-                ptr: unsafe { Unique::new_unchecked(ptr.cast().as_ptr()) },
-                cap: Self::capacity_from_bytes(ptr.len()),
-                alloc,
-            }
-        }
-    }
+    fn allocate_in(capacity: usize, init: AllocInit, alloc: A) -> Self {}
 
     /// Reconstitutes a `RawVec` from a pointer, capacity, and allocator.
     ///
@@ -23866,45 +13762,24 @@ impl<T, A: Allocator> RawVec<T, A> {
     /// If the `ptr` and `capacity` come from a `RawVec` created via `alloc`, then this is
     /// guaranteed.
     #[inline]
-    pub unsafe fn from_raw_parts_in(ptr: *mut T, capacity: usize, alloc: A) -> Self {
-        Self { ptr: unsafe { Unique::new_unchecked(ptr) }, cap: capacity, alloc }
-    }
+    pub unsafe fn from_raw_parts_in(ptr: *mut T, capacity: usize, alloc: A) -> Self {}
 
     /// Gets a raw pointer to the start of the allocation. Note that this is
     /// `Unique::dangling()` if `capacity == 0` or `T` is zero-sized. In the former case, you must
     /// be careful.
     #[inline]
-    pub fn ptr(&self) -> *mut T {
-        self.ptr.as_ptr()
-    }
+    pub fn ptr(&self) -> *mut T {}
 
     /// Gets the capacity of the allocation.
     ///
     /// This will always be `usize::MAX` if `T` is zero-sized.
     #[inline(always)]
-    pub fn capacity(&self) -> usize {
-        if mem::size_of::<T>() == 0 { usize::MAX } else { self.cap }
-    }
+    pub fn capacity(&self) -> usize {}
 
     /// Returns a shared reference to the allocator backing this `RawVec`.
-    pub fn allocator(&self) -> &A {
-        &self.alloc
-    }
+    pub fn allocator(&self) -> &A {}
 
-    fn current_memory(&self) -> Option<(NonNull<u8>, Layout)> {
-        if mem::size_of::<T>() == 0 || self.cap == 0 {
-            None
-        } else {
-            // We have an allocated chunk of memory, so we can bypass runtime
-            // checks to get our current layout.
-            unsafe {
-                let align = mem::align_of::<T>();
-                let size = mem::size_of::<T>() * self.cap;
-                let layout = Layout::from_size_align_unchecked(size, align);
-                Some((self.ptr.cast().into(), layout))
-            }
-        }
-    }
+    fn current_memory(&self) -> Option<(NonNull<u8>, Layout)> {}
 
     /// Ensures that the buffer contains at least enough space to hold `len +
     /// additional` elements. If it doesn't already have enough capacity, will
@@ -23939,52 +13814,16 @@ impl<T, A: Allocator> RawVec<T, A> {
     /// }
     ///
     /// impl<T: Clone> MyVec<T> {
-    ///     pub fn push_all(&mut self, elems: &[T]) {
-    ///         self.buf.reserve(self.len, elems.len());
-    ///         // reserve would have aborted or panicked if the len exceeded
-    ///         // `isize::MAX` so this is safe to do unchecked now.
-    ///         for x in elems {
-    ///             unsafe {
-    ///                 ptr::write(self.buf.ptr().add(self.len), x.clone());
-    ///             }
-    ///             self.len += 1;
-    ///         }
-    ///     }
+    ///     pub fn push_all(&mut self, elems: &[T]) {}
     /// }
-    /// # fn main() {
-    /// #   let mut vector = MyVec { buf: RawVec::new(), len: 0 };
-    /// #   vector.push_all(&[1, 3, 5, 7, 9]);
-    /// # }
+    /// # fn main() {}
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[inline]
-    pub fn reserve(&mut self, len: usize, additional: usize) {
-        // Callers expect this function to be very cheap when there is already sufficient capacity.
-        // Therefore, we move all the resizing and error-handling logic from grow_amortized and
-        // handle_reserve behind a call, while making sure that this function is likely to be
-        // inlined as just a comparison and a call if the comparison fails.
-        #[cold]
-        fn do_reserve_and_handle<T, A: Allocator>(
-            slf: &mut RawVec<T, A>,
-            len: usize,
-            additional: usize,
-        ) {
-            handle_reserve(slf.grow_amortized(len, additional));
-        }
-
-        if self.needs_to_grow(len, additional) {
-            do_reserve_and_handle(self, len, additional);
-        }
-    }
+    pub fn reserve(&mut self, len: usize, additional: usize) {}
 
     /// The same as `reserve`, but returns on errors instead of panicking or aborting.
-    pub fn try_reserve(&mut self, len: usize, additional: usize) -> Result<(), TryReserveError> {
-        if self.needs_to_grow(len, additional) {
-            self.grow_amortized(len, additional)
-        } else {
-            Ok(())
-        }
-    }
+    pub fn try_reserve(&mut self, len: usize, additional: usize) -> Result<(), TryReserveError> {}
 
     /// Ensures that the buffer contains at least enough space to hold `len +
     /// additional` elements. If it doesn't already, will reallocate the
@@ -24004,18 +13843,14 @@ impl<T, A: Allocator> RawVec<T, A> {
     ///
     /// Aborts on OOM.
     #[cfg(not(no_global_oom_handling))]
-    pub fn reserve_exact(&mut self, len: usize, additional: usize) {
-        handle_reserve(self.try_reserve_exact(len, additional));
-    }
+    pub fn reserve_exact(&mut self, len: usize, additional: usize) {}
 
     /// The same as `reserve_exact`, but returns on errors instead of panicking or aborting.
     pub fn try_reserve_exact(
         &mut self,
         len: usize,
         additional: usize,
-    ) -> Result<(), TryReserveError> {
-        if self.needs_to_grow(len, additional) { self.grow_exact(len, additional) } else { Ok(()) }
-    }
+    ) -> Result<(), TryReserveError> {}
 
     /// Shrinks the allocation down to the specified amount. If the given amount
     /// is 0, actually completely deallocates.
@@ -24028,27 +13863,17 @@ impl<T, A: Allocator> RawVec<T, A> {
     ///
     /// Aborts on OOM.
     #[cfg(not(no_global_oom_handling))]
-    pub fn shrink_to_fit(&mut self, amount: usize) {
-        handle_reserve(self.shrink(amount));
-    }
+    pub fn shrink_to_fit(&mut self, amount: usize) {}
 }
 
 impl<T, A: Allocator> RawVec<T, A> {
     /// Returns if the buffer needs to grow to fulfill the needed extra capacity.
     /// Mainly used to make inlining reserve-calls possible without inlining `grow`.
-    fn needs_to_grow(&self, len: usize, additional: usize) -> bool {
-        additional > self.capacity().wrapping_sub(len)
-    }
+    fn needs_to_grow(&self, len: usize, additional: usize) -> bool {}
 
-    fn capacity_from_bytes(excess: usize) -> usize {
-        debug_assert_ne!(mem::size_of::<T>(), 0);
-        excess / mem::size_of::<T>()
-    }
+    fn capacity_from_bytes(excess: usize) -> usize {}
 
-    fn set_ptr(&mut self, ptr: NonNull<[u8]>) {
-        self.ptr = unsafe { Unique::new_unchecked(ptr.cast().as_ptr()) };
-        self.cap = Self::capacity_from_bytes(ptr.len());
-    }
+    fn set_ptr(&mut self, ptr: NonNull<[u8]>) {}
 
     // This method is usually instantiated many times. So we want it to be as
     // small as possible, to improve compile times. But we also want as much of
@@ -24057,66 +13882,14 @@ impl<T, A: Allocator> RawVec<T, A> {
     // so that all of the code that depends on `T` is within it, while as much
     // of the code that doesn't depend on `T` as possible is in functions that
     // are non-generic over `T`.
-    fn grow_amortized(&mut self, len: usize, additional: usize) -> Result<(), TryReserveError> {
-        // This is ensured by the calling contexts.
-        debug_assert!(additional > 0);
-
-        if mem::size_of::<T>() == 0 {
-            // Since we return a capacity of `usize::MAX` when `elem_size` is
-            // 0, getting to here necessarily means the `RawVec` is overfull.
-            return Err(CapacityOverflow.into());
-        }
-
-        // Nothing we can really do about these checks, sadly.
-        let required_cap = len.checked_add(additional).ok_or(CapacityOverflow)?;
-
-        // This guarantees exponential growth. The doubling cannot overflow
-        // because `cap <= isize::MAX` and the type of `cap` is `usize`.
-        let cap = cmp::max(self.cap * 2, required_cap);
-        let cap = cmp::max(Self::MIN_NON_ZERO_CAP, cap);
-
-        let new_layout = Layout::array::<T>(cap);
-
-        // `finish_grow` is non-generic over `T`.
-        let ptr = finish_grow(new_layout, self.current_memory(), &mut self.alloc)?;
-        self.set_ptr(ptr);
-        Ok(())
-    }
+    fn grow_amortized(&mut self, len: usize, additional: usize) -> Result<(), TryReserveError> {}
 
     // The constraints on this method are much the same as those on
     // `grow_amortized`, but this method is usually instantiated less often so
     // it's less critical.
-    fn grow_exact(&mut self, len: usize, additional: usize) -> Result<(), TryReserveError> {
-        if mem::size_of::<T>() == 0 {
-            // Since we return a capacity of `usize::MAX` when the type size is
-            // 0, getting to here necessarily means the `RawVec` is overfull.
-            return Err(CapacityOverflow.into());
-        }
+    fn grow_exact(&mut self, len: usize, additional: usize) -> Result<(), TryReserveError> {}
 
-        let cap = len.checked_add(additional).ok_or(CapacityOverflow)?;
-        let new_layout = Layout::array::<T>(cap);
-
-        // `finish_grow` is non-generic over `T`.
-        let ptr = finish_grow(new_layout, self.current_memory(), &mut self.alloc)?;
-        self.set_ptr(ptr);
-        Ok(())
-    }
-
-    fn shrink(&mut self, amount: usize) -> Result<(), TryReserveError> {
-        assert!(amount <= self.capacity(), "Tried to shrink to a larger capacity");
-
-        let (ptr, layout) = if let Some(mem) = self.current_memory() { mem } else { return Ok(()) };
-        let new_size = amount * mem::size_of::<T>();
-
-        let ptr = unsafe {
-            let new_layout = Layout::from_size_align_unchecked(new_size, layout.align());
-            self.alloc
-                .shrink(ptr, layout, new_layout)
-                .map_err(|_| AllocError { layout: new_layout, non_exhaustive: () })?
-        };
-        self.set_ptr(ptr);
-        Ok(())
-    }
+    fn shrink(&mut self, amount: usize) -> Result<(), TryReserveError> {}
 }
 
 // This function is outside `RawVec` to minimize compile times. See the comment
@@ -24131,45 +13904,17 @@ fn finish_grow<A>(
 ) -> Result<NonNull<[u8]>, TryReserveError>
 where
     A: Allocator,
-{
-    // Check for the error here to minimize the size of `RawVec::grow_*`.
-    let new_layout = new_layout.map_err(|_| CapacityOverflow)?;
-
-    alloc_guard(new_layout.size())?;
-
-    let memory = if let Some((ptr, old_layout)) = current_memory {
-        debug_assert_eq!(old_layout.align(), new_layout.align());
-        unsafe {
-            // The allocator checks for alignment equality
-            intrinsics::assume(old_layout.align() == new_layout.align());
-            alloc.grow(ptr, old_layout, new_layout)
-        }
-    } else {
-        alloc.allocate(new_layout)
-    };
-
-    memory.map_err(|_| AllocError { layout: new_layout, non_exhaustive: () }.into())
-}
+{}
 
 unsafe impl<#[may_dangle] T, A: Allocator> Drop for RawVec<T, A> {
     /// Frees the memory owned by the `RawVec` *without* trying to drop its contents.
-    fn drop(&mut self) {
-        if let Some((ptr, layout)) = self.current_memory() {
-            unsafe { self.alloc.deallocate(ptr, layout) }
-        }
-    }
+    fn drop(&mut self) {}
 }
 
 // Central function for reserve error handling.
 #[cfg(not(no_global_oom_handling))]
 #[inline]
-fn handle_reserve(result: Result<(), TryReserveError>) {
-    match result.map_err(|e| e.kind()) {
-        Err(CapacityOverflow) => capacity_overflow(),
-        Err(AllocError { layout, .. }) => handle_alloc_error(layout),
-        Ok(()) => { /* yay */ }
-    }
-}
+fn handle_reserve(result: Result<(), TryReserveError>) {}
 
 // We need to guarantee the following:
 // * We don't ever allocate `> isize::MAX` byte-size objects.
@@ -24181,21 +13926,13 @@ fn handle_reserve(result: Result<(), TryReserveError>) {
 // all 4GB in user-space, e.g., PAE or x32.
 
 #[inline]
-fn alloc_guard(alloc_size: usize) -> Result<(), TryReserveError> {
-    if usize::BITS < 64 && alloc_size > isize::MAX as usize {
-        Err(CapacityOverflow.into())
-    } else {
-        Ok(())
-    }
-}
+fn alloc_guard(alloc_size: usize) -> Result<(), TryReserveError> {}
 
 // One central function responsible for reporting capacity overflows. This'll
 // ensure that the code generation related to these panics is minimal as there's
 // only one location which panics rather than a bunch throughout the module.
 #[cfg(not(no_global_oom_handling))]
-fn capacity_overflow() -> ! {
-    panic!("capacity overflow");
-}
+fn capacity_overflow() -> ! {}
 }
 pub mod rc {
 //! Single-threaded reference-counting pointers. 'Rc' stands for 'Reference
@@ -24302,42 +14039,7 @@ pub mod rc {
 //!     // ...other fields
 //! }
 //!
-//! fn main() {
-//!     // Create a reference-counted `Owner`.
-//!     let gadget_owner: Rc<Owner> = Rc::new(
-//!         Owner {
-//!             name: "Gadget Man".to_string(),
-//!         }
-//!     );
-//!
-//!     // Create `Gadget`s belonging to `gadget_owner`. Cloning the `Rc<Owner>`
-//!     // gives us a new pointer to the same `Owner` allocation, incrementing
-//!     // the reference count in the process.
-//!     let gadget1 = Gadget {
-//!         id: 1,
-//!         owner: Rc::clone(&gadget_owner),
-//!     };
-//!     let gadget2 = Gadget {
-//!         id: 2,
-//!         owner: Rc::clone(&gadget_owner),
-//!     };
-//!
-//!     // Dispose of our local variable `gadget_owner`.
-//!     drop(gadget_owner);
-//!
-//!     // Despite dropping `gadget_owner`, we're still able to print out the name
-//!     // of the `Owner` of the `Gadget`s. This is because we've only dropped a
-//!     // single `Rc<Owner>`, not the `Owner` it points to. As long as there are
-//!     // other `Rc<Owner>` pointing at the same `Owner` allocation, it will remain
-//!     // live. The field projection `gadget1.owner.name` works because
-//!     // `Rc<Owner>` automatically dereferences to `Owner`.
-//!     println!("Gadget {} owned by {}", gadget1.id, gadget1.owner.name);
-//!     println!("Gadget {} owned by {}", gadget2.id, gadget2.owner.name);
-//!
-//!     // At the end of the function, `gadget1` and `gadget2` are destroyed, and
-//!     // with them the last counted references to our `Owner`. Gadget Man now
-//!     // gets destroyed as well.
-//! }
+//! fn main() {}
 //! ```
 //!
 //! If our requirements change, and we also need to be able to traverse from
@@ -24373,60 +14075,7 @@ pub mod rc {
 //!     // ...other fields
 //! }
 //!
-//! fn main() {
-//!     // Create a reference-counted `Owner`. Note that we've put the `Owner`'s
-//!     // vector of `Gadget`s inside a `RefCell` so that we can mutate it through
-//!     // a shared reference.
-//!     let gadget_owner: Rc<Owner> = Rc::new(
-//!         Owner {
-//!             name: "Gadget Man".to_string(),
-//!             gadgets: RefCell::new(vec![]),
-//!         }
-//!     );
-//!
-//!     // Create `Gadget`s belonging to `gadget_owner`, as before.
-//!     let gadget1 = Rc::new(
-//!         Gadget {
-//!             id: 1,
-//!             owner: Rc::clone(&gadget_owner),
-//!         }
-//!     );
-//!     let gadget2 = Rc::new(
-//!         Gadget {
-//!             id: 2,
-//!             owner: Rc::clone(&gadget_owner),
-//!         }
-//!     );
-//!
-//!     // Add the `Gadget`s to their `Owner`.
-//!     {
-//!         let mut gadgets = gadget_owner.gadgets.borrow_mut();
-//!         gadgets.push(Rc::downgrade(&gadget1));
-//!         gadgets.push(Rc::downgrade(&gadget2));
-//!
-//!         // `RefCell` dynamic borrow ends here.
-//!     }
-//!
-//!     // Iterate over our `Gadget`s, printing their details out.
-//!     for gadget_weak in gadget_owner.gadgets.borrow().iter() {
-//!
-//!         // `gadget_weak` is a `Weak<Gadget>`. Since `Weak` pointers can't
-//!         // guarantee the allocation still exists, we need to call
-//!         // `upgrade`, which returns an `Option<Rc<Gadget>>`.
-//!         //
-//!         // In this case we know the allocation still exists, so we simply
-//!         // `unwrap` the `Option`. In a more complicated program, you might
-//!         // need graceful error handling for a `None` result.
-//!
-//!         let gadget = gadget_weak.upgrade().unwrap();
-//!         println!("Gadget {} owned by {}", gadget.id, gadget.owner.name);
-//!     }
-//!
-//!     // At the end of the function, `gadget_owner`, `gadget1`, and `gadget2`
-//!     // are destroyed. There are now no strong (`Rc`) pointers to the
-//!     // gadgets, so they are destroyed. This zeroes the reference count on
-//!     // Gadget Man, so he gets destroyed as well.
-//! }
+//! fn main() {}
 //! ```
 //!
 //! [clone]: Clone::clone
@@ -24493,556 +14142,128 @@ use std::option::Option::{self, None, Some};
 use std::result::Result::{Err, Ok};
 
 #[test]
-fn test_clone() {
-    let x = Rc::new(RefCell::new(5));
-    let y = x.clone();
-    *x.borrow_mut() = 20;
-    assert_eq!(*y.borrow(), 20);
-}
+fn test_clone() {}
 
 #[test]
-fn test_simple() {
-    let x = Rc::new(5);
-    assert_eq!(*x, 5);
-}
+fn test_simple() {}
 
 #[test]
-fn test_simple_clone() {
-    let x = Rc::new(5);
-    let y = x.clone();
-    assert_eq!(*x, 5);
-    assert_eq!(*y, 5);
-}
+fn test_simple_clone() {}
 
 #[test]
-fn test_destructor() {
-    let x: Rc<Box<_>> = Rc::new(box 5);
-    assert_eq!(**x, 5);
-}
+fn test_destructor() {}
 
 #[test]
-fn test_live() {
-    let x = Rc::new(5);
-    let y = Rc::downgrade(&x);
-    assert!(y.upgrade().is_some());
-}
+fn test_live() {}
 
 #[test]
-fn test_dead() {
-    let x = Rc::new(5);
-    let y = Rc::downgrade(&x);
-    drop(x);
-    assert!(y.upgrade().is_none());
-}
+fn test_dead() {}
 
 #[test]
-fn weak_self_cyclic() {
-    struct Cycle {
-        x: RefCell<Option<Weak<Cycle>>>,
-    }
-
-    let a = Rc::new(Cycle { x: RefCell::new(None) });
-    let b = Rc::downgrade(&a.clone());
-    *a.x.borrow_mut() = Some(b);
-
-    // hopefully we don't double-free (or leak)...
-}
+fn weak_self_cyclic() {}
 
 #[test]
-fn is_unique() {
-    let x = Rc::new(3);
-    assert!(Rc::is_unique(&x));
-    let y = x.clone();
-    assert!(!Rc::is_unique(&x));
-    drop(y);
-    assert!(Rc::is_unique(&x));
-    let w = Rc::downgrade(&x);
-    assert!(!Rc::is_unique(&x));
-    drop(w);
-    assert!(Rc::is_unique(&x));
-}
+fn is_unique() {}
 
 #[test]
-fn test_strong_count() {
-    let a = Rc::new(0);
-    assert!(Rc::strong_count(&a) == 1);
-    let w = Rc::downgrade(&a);
-    assert!(Rc::strong_count(&a) == 1);
-    let b = w.upgrade().expect("upgrade of live rc failed");
-    assert!(Rc::strong_count(&b) == 2);
-    assert!(Rc::strong_count(&a) == 2);
-    drop(w);
-    drop(a);
-    assert!(Rc::strong_count(&b) == 1);
-    let c = b.clone();
-    assert!(Rc::strong_count(&b) == 2);
-    assert!(Rc::strong_count(&c) == 2);
-}
+fn test_strong_count() {}
 
 #[test]
-fn test_weak_count() {
-    let a = Rc::new(0);
-    assert!(Rc::strong_count(&a) == 1);
-    assert!(Rc::weak_count(&a) == 0);
-    let w = Rc::downgrade(&a);
-    assert!(Rc::strong_count(&a) == 1);
-    assert!(Rc::weak_count(&a) == 1);
-    drop(w);
-    assert!(Rc::strong_count(&a) == 1);
-    assert!(Rc::weak_count(&a) == 0);
-    let c = a.clone();
-    assert!(Rc::strong_count(&a) == 2);
-    assert!(Rc::weak_count(&a) == 0);
-    drop(c);
-}
+fn test_weak_count() {}
 
 #[test]
-fn weak_counts() {
-    assert_eq!(Weak::weak_count(&Weak::<u64>::new()), 0);
-    assert_eq!(Weak::strong_count(&Weak::<u64>::new()), 0);
-
-    let a = Rc::new(0);
-    let w = Rc::downgrade(&a);
-    assert_eq!(Weak::strong_count(&w), 1);
-    assert_eq!(Weak::weak_count(&w), 1);
-    let w2 = w.clone();
-    assert_eq!(Weak::strong_count(&w), 1);
-    assert_eq!(Weak::weak_count(&w), 2);
-    assert_eq!(Weak::strong_count(&w2), 1);
-    assert_eq!(Weak::weak_count(&w2), 2);
-    drop(w);
-    assert_eq!(Weak::strong_count(&w2), 1);
-    assert_eq!(Weak::weak_count(&w2), 1);
-    let a2 = a.clone();
-    assert_eq!(Weak::strong_count(&w2), 2);
-    assert_eq!(Weak::weak_count(&w2), 1);
-    drop(a2);
-    drop(a);
-    assert_eq!(Weak::strong_count(&w2), 0);
-    assert_eq!(Weak::weak_count(&w2), 0);
-    drop(w2);
-}
+fn weak_counts() {}
 
 #[test]
-fn try_unwrap() {
-    let x = Rc::new(3);
-    assert_eq!(Rc::try_unwrap(x), Ok(3));
-    let x = Rc::new(4);
-    let _y = x.clone();
-    assert_eq!(Rc::try_unwrap(x), Err(Rc::new(4)));
-    let x = Rc::new(5);
-    let _w = Rc::downgrade(&x);
-    assert_eq!(Rc::try_unwrap(x), Ok(5));
-}
+fn try_unwrap() {}
 
 #[test]
-fn into_from_raw() {
-    let x = Rc::new(box "hello");
-    let y = x.clone();
-
-    let x_ptr = Rc::into_raw(x);
-    drop(y);
-    unsafe {
-        assert_eq!(**x_ptr, "hello");
-
-        let x = Rc::from_raw(x_ptr);
-        assert_eq!(**x, "hello");
-
-        assert_eq!(Rc::try_unwrap(x).map(|x| *x), Ok("hello"));
-    }
-}
+fn into_from_raw() {}
 
 #[test]
-fn test_into_from_raw_unsized() {
-    use std::fmt::Display;
-    use std::string::ToString;
-
-    let rc: Rc<str> = Rc::from("foo");
-
-    let ptr = Rc::into_raw(rc.clone());
-    let rc2 = unsafe { Rc::from_raw(ptr) };
-
-    assert_eq!(unsafe { &*ptr }, "foo");
-    assert_eq!(rc, rc2);
-
-    let rc: Rc<dyn Display> = Rc::new(123);
-
-    let ptr = Rc::into_raw(rc.clone());
-    let rc2 = unsafe { Rc::from_raw(ptr) };
-
-    assert_eq!(unsafe { &*ptr }.to_string(), "123");
-    assert_eq!(rc2.to_string(), "123");
-}
+fn test_into_from_raw_unsized() {}
 
 #[test]
-fn into_from_weak_raw() {
-    let x = Rc::new(box "hello");
-    let y = Rc::downgrade(&x);
-
-    let y_ptr = Weak::into_raw(y);
-    unsafe {
-        assert_eq!(**y_ptr, "hello");
-
-        let y = Weak::from_raw(y_ptr);
-        let y_up = Weak::upgrade(&y).unwrap();
-        assert_eq!(**y_up, "hello");
-        drop(y_up);
-
-        assert_eq!(Rc::try_unwrap(x).map(|x| *x), Ok("hello"));
-    }
-}
+fn into_from_weak_raw() {}
 
 #[test]
-fn test_into_from_weak_raw_unsized() {
-    use std::fmt::Display;
-    use std::string::ToString;
-
-    let arc: Rc<str> = Rc::from("foo");
-    let weak: Weak<str> = Rc::downgrade(&arc);
-
-    let ptr = Weak::into_raw(weak.clone());
-    let weak2 = unsafe { Weak::from_raw(ptr) };
-
-    assert_eq!(unsafe { &*ptr }, "foo");
-    assert!(weak.ptr_eq(&weak2));
-
-    let arc: Rc<dyn Display> = Rc::new(123);
-    let weak: Weak<dyn Display> = Rc::downgrade(&arc);
-
-    let ptr = Weak::into_raw(weak.clone());
-    let weak2 = unsafe { Weak::from_raw(ptr) };
-
-    assert_eq!(unsafe { &*ptr }.to_string(), "123");
-    assert!(weak.ptr_eq(&weak2));
-}
+fn test_into_from_weak_raw_unsized() {}
 
 #[test]
-fn get_mut() {
-    let mut x = Rc::new(3);
-    *Rc::get_mut(&mut x).unwrap() = 4;
-    assert_eq!(*x, 4);
-    let y = x.clone();
-    assert!(Rc::get_mut(&mut x).is_none());
-    drop(y);
-    assert!(Rc::get_mut(&mut x).is_some());
-    let _w = Rc::downgrade(&x);
-    assert!(Rc::get_mut(&mut x).is_none());
-}
+fn get_mut() {}
 
 #[test]
-fn test_cowrc_clone_make_unique() {
-    let mut cow0 = Rc::new(75);
-    let mut cow1 = cow0.clone();
-    let mut cow2 = cow1.clone();
-
-    assert!(75 == *Rc::make_mut(&mut cow0));
-    assert!(75 == *Rc::make_mut(&mut cow1));
-    assert!(75 == *Rc::make_mut(&mut cow2));
-
-    *Rc::make_mut(&mut cow0) += 1;
-    *Rc::make_mut(&mut cow1) += 2;
-    *Rc::make_mut(&mut cow2) += 3;
-
-    assert!(76 == *cow0);
-    assert!(77 == *cow1);
-    assert!(78 == *cow2);
-
-    // none should point to the same backing memory
-    assert!(*cow0 != *cow1);
-    assert!(*cow0 != *cow2);
-    assert!(*cow1 != *cow2);
-}
+fn test_cowrc_clone_make_unique() {}
 
 #[test]
-fn test_cowrc_clone_unique2() {
-    let mut cow0 = Rc::new(75);
-    let cow1 = cow0.clone();
-    let cow2 = cow1.clone();
-
-    assert!(75 == *cow0);
-    assert!(75 == *cow1);
-    assert!(75 == *cow2);
-
-    *Rc::make_mut(&mut cow0) += 1;
-
-    assert!(76 == *cow0);
-    assert!(75 == *cow1);
-    assert!(75 == *cow2);
-
-    // cow1 and cow2 should share the same contents
-    // cow0 should have a unique reference
-    assert!(*cow0 != *cow1);
-    assert!(*cow0 != *cow2);
-    assert!(*cow1 == *cow2);
-}
+fn test_cowrc_clone_unique2() {}
 
 #[test]
-fn test_cowrc_clone_weak() {
-    let mut cow0 = Rc::new(75);
-    let cow1_weak = Rc::downgrade(&cow0);
-
-    assert!(75 == *cow0);
-    assert!(75 == *cow1_weak.upgrade().unwrap());
-
-    *Rc::make_mut(&mut cow0) += 1;
-
-    assert!(76 == *cow0);
-    assert!(cow1_weak.upgrade().is_none());
-}
+fn test_cowrc_clone_weak() {}
 
 #[test]
-fn test_show() {
-    let foo = Rc::new(75);
-    assert_eq!(format!("{:?}", foo), "75");
-}
+fn test_show() {}
 
 #[test]
-fn test_unsized() {
-    let foo: Rc<[i32]> = Rc::new([1, 2, 3]);
-    assert_eq!(foo, foo.clone());
-}
+fn test_unsized() {}
 
 #[test]
-fn test_maybe_thin_unsized() {
-    // If/when custom thin DSTs exist, this test should be updated to use one
-    use std::ffi::{CStr, CString};
-
-    let x: Rc<CStr> = Rc::from(CString::new("swordfish").unwrap().into_boxed_c_str());
-    assert_eq!(format!("{:?}", x), "\"swordfish\"");
-    let y: Weak<CStr> = Rc::downgrade(&x);
-    drop(x);
-
-    // At this point, the weak points to a dropped DST
-    assert!(y.upgrade().is_none());
-    // But we still need to be able to get the alloc layout to drop.
-    // CStr has no drop glue, but custom DSTs might, and need to work.
-    drop(y);
-}
+fn test_maybe_thin_unsized() {}
 
 #[test]
-fn test_from_owned() {
-    let foo = 123;
-    let foo_rc = Rc::from(foo);
-    assert!(123 == *foo_rc);
-}
+fn test_from_owned() {}
 
 #[test]
-fn test_new_weak() {
-    let foo: Weak<usize> = Weak::new();
-    assert!(foo.upgrade().is_none());
-}
+fn test_new_weak() {}
 
 #[test]
-fn test_ptr_eq() {
-    let five = Rc::new(5);
-    let same_five = five.clone();
-    let other_five = Rc::new(5);
-
-    assert!(Rc::ptr_eq(&five, &same_five));
-    assert!(!Rc::ptr_eq(&five, &other_five));
-}
+fn test_ptr_eq() {}
 
 #[test]
-fn test_from_str() {
-    let r: Rc<str> = Rc::from("foo");
-
-    assert_eq!(&r[..], "foo");
-}
+fn test_from_str() {}
 
 #[test]
-fn test_copy_from_slice() {
-    let s: &[u32] = &[1, 2, 3];
-    let r: Rc<[u32]> = Rc::from(s);
-
-    assert_eq!(&r[..], [1, 2, 3]);
-}
+fn test_copy_from_slice() {}
 
 #[test]
-fn test_clone_from_slice() {
-    #[derive(Clone, Debug, Eq, PartialEq)]
-    struct X(u32);
-
-    let s: &[X] = &[X(1), X(2), X(3)];
-    let r: Rc<[X]> = Rc::from(s);
-
-    assert_eq!(&r[..], s);
-}
+fn test_clone_from_slice() {}
 
 #[test]
 #[should_panic]
-fn test_clone_from_slice_panic() {
-    use std::string::{String, ToString};
-
-    struct Fail(u32, String);
-
-    impl Clone for Fail {
-        fn clone(&self) -> Fail {
-            if self.0 == 2 {
-                panic!();
-            }
-            Fail(self.0, self.1.clone())
-        }
-    }
-
-    let s: &[Fail] =
-        &[Fail(0, "foo".to_string()), Fail(1, "bar".to_string()), Fail(2, "baz".to_string())];
-
-    // Should panic, but not cause memory corruption
-    let _r: Rc<[Fail]> = Rc::from(s);
-}
+fn test_clone_from_slice_panic() {}
 
 #[test]
-fn test_from_box() {
-    let b: Box<u32> = box 123;
-    let r: Rc<u32> = Rc::from(b);
-
-    assert_eq!(*r, 123);
-}
+fn test_from_box() {}
 
 #[test]
-fn test_from_box_str() {
-    use std::string::String;
-
-    let s = String::from("foo").into_boxed_str();
-    let r: Rc<str> = Rc::from(s);
-
-    assert_eq!(&r[..], "foo");
-}
+fn test_from_box_str() {}
 
 #[test]
-fn test_from_box_slice() {
-    let s = vec![1, 2, 3].into_boxed_slice();
-    let r: Rc<[u32]> = Rc::from(s);
-
-    assert_eq!(&r[..], [1, 2, 3]);
-}
+fn test_from_box_slice() {}
 
 #[test]
-fn test_from_box_trait() {
-    use std::fmt::Display;
-    use std::string::ToString;
-
-    let b: Box<dyn Display> = box 123;
-    let r: Rc<dyn Display> = Rc::from(b);
-
-    assert_eq!(r.to_string(), "123");
-}
+fn test_from_box_trait() {}
 
 #[test]
-fn test_from_box_trait_zero_sized() {
-    use std::fmt::Debug;
-
-    let b: Box<dyn Debug> = box ();
-    let r: Rc<dyn Debug> = Rc::from(b);
-
-    assert_eq!(format!("{:?}", r), "()");
-}
+fn test_from_box_trait_zero_sized() {}
 
 #[test]
-fn test_from_vec() {
-    let v = vec![1, 2, 3];
-    let r: Rc<[u32]> = Rc::from(v);
-
-    assert_eq!(&r[..], [1, 2, 3]);
-}
+fn test_from_vec() {}
 
 #[test]
-fn test_downcast() {
-    use std::any::Any;
-
-    let r1: Rc<dyn Any> = Rc::new(i32::MAX);
-    let r2: Rc<dyn Any> = Rc::new("abc");
-
-    assert!(r1.clone().downcast::<u32>().is_err());
-
-    let r1i32 = r1.downcast::<i32>();
-    assert!(r1i32.is_ok());
-    assert_eq!(r1i32.unwrap(), Rc::new(i32::MAX));
-
-    assert!(r2.clone().downcast::<i32>().is_err());
-
-    let r2str = r2.downcast::<&'static str>();
-    assert!(r2str.is_ok());
-    assert_eq!(r2str.unwrap(), Rc::new("abc"));
-}
+fn test_downcast() {}
 
 #[test]
-fn test_array_from_slice() {
-    let v = vec![1, 2, 3];
-    let r: Rc<[u32]> = Rc::from(v);
-
-    let a: Result<Rc<[u32; 3]>, _> = r.clone().try_into();
-    assert!(a.is_ok());
-
-    let a: Result<Rc<[u32; 2]>, _> = r.clone().try_into();
-    assert!(a.is_err());
-}
+fn test_array_from_slice() {}
 
 #[test]
-fn test_rc_cyclic_with_zero_refs() {
-    struct ZeroRefs {
-        inner: Weak<ZeroRefs>,
-    }
-
-    let zero_refs = Rc::new_cyclic(|inner| {
-        assert_eq!(inner.strong_count(), 0);
-        assert!(inner.upgrade().is_none());
-        ZeroRefs { inner: Weak::new() }
-    });
-
-    assert_eq!(Rc::strong_count(&zero_refs), 1);
-    assert_eq!(Rc::weak_count(&zero_refs), 0);
-    assert_eq!(zero_refs.inner.strong_count(), 0);
-    assert_eq!(zero_refs.inner.weak_count(), 0);
-}
+fn test_rc_cyclic_with_zero_refs() {}
 
 #[test]
-fn test_rc_cyclic_with_one_ref() {
-    struct OneRef {
-        inner: Weak<OneRef>,
-    }
-
-    let one_ref = Rc::new_cyclic(|inner| {
-        assert_eq!(inner.strong_count(), 0);
-        assert!(inner.upgrade().is_none());
-        OneRef { inner: inner.clone() }
-    });
-
-    assert_eq!(Rc::strong_count(&one_ref), 1);
-    assert_eq!(Rc::weak_count(&one_ref), 1);
-
-    let one_ref2 = Weak::upgrade(&one_ref.inner).unwrap();
-    assert!(Rc::ptr_eq(&one_ref, &one_ref2));
-
-    assert_eq!(one_ref.inner.strong_count(), 2);
-    assert_eq!(one_ref.inner.weak_count(), 1);
-}
+fn test_rc_cyclic_with_one_ref() {}
 
 #[test]
-fn test_rc_cyclic_with_two_ref() {
-    struct TwoRefs {
-        inner: Weak<TwoRefs>,
-        inner1: Weak<TwoRefs>,
-    }
-
-    let two_refs = Rc::new_cyclic(|inner| {
-        assert_eq!(inner.strong_count(), 0);
-        assert!(inner.upgrade().is_none());
-        TwoRefs { inner: inner.clone(), inner1: inner.clone() }
-    });
-
-    assert_eq!(Rc::strong_count(&two_refs), 1);
-    assert_eq!(Rc::weak_count(&two_refs), 2);
-
-    let two_ref3 = Weak::upgrade(&two_refs.inner).unwrap();
-    assert!(Rc::ptr_eq(&two_refs, &two_ref3));
-
-    let two_ref2 = Weak::upgrade(&two_refs.inner1).unwrap();
-    assert!(Rc::ptr_eq(&two_refs, &two_ref2));
-
-    assert_eq!(Rc::strong_count(&two_refs), 3);
-    assert_eq!(Rc::weak_count(&two_refs), 2);
-}
+fn test_rc_cyclic_with_two_ref() {}
 }
 
 // This is repr(C) to future-proof against possible field-reordering, which
@@ -25089,19 +14310,11 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Rc<U>> for Rc<T> {}
 
 impl<T: ?Sized> Rc<T> {
     #[inline(always)]
-    fn inner(&self) -> &RcBox<T> {
-        // This unsafety is ok because while this Rc is alive we're guaranteed
-        // that the inner pointer is valid.
-        unsafe { self.ptr.as_ref() }
-    }
+    fn inner(&self) -> &RcBox<T> {}
 
-    fn from_inner(ptr: NonNull<RcBox<T>>) -> Self {
-        Self { ptr, phantom: PhantomData }
-    }
+    fn from_inner(ptr: NonNull<RcBox<T>>) -> Self {}
 
-    unsafe fn from_ptr(ptr: *mut RcBox<T>) -> Self {
-        Self::from_inner(unsafe { NonNull::new_unchecked(ptr) })
-    }
+    unsafe fn from_ptr(ptr: *mut RcBox<T>) -> Self {}
 }
 
 impl<T> Rc<T> {
@@ -25116,15 +14329,7 @@ impl<T> Rc<T> {
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn new(value: T) -> Rc<T> {
-        // There is an implicit weak pointer owned by all the strong
-        // pointers, which ensures that the weak destructor never frees
-        // the allocation while the strong destructor is running, even
-        // if the weak pointer is stored inside the strong one.
-        Self::from_inner(
-            Box::leak(box RcBox { strong: Cell::new(1), weak: Cell::new(1), value }).into(),
-        )
-    }
+    pub fn new(value: T) -> Rc<T> {}
 
     /// Constructs a new `Rc<T>` using a weak reference to itself. Attempting
     /// to upgrade the weak reference before this function returns will result
@@ -25143,53 +14348,12 @@ impl<T> Rc<T> {
     ///     // ... more fields
     /// }
     /// impl Gadget {
-    ///     pub fn new() -> Rc<Self> {
-    ///         Rc::new_cyclic(|self_weak| {
-    ///             Gadget { self_weak: self_weak.clone(), /* ... */ }
-    ///         })
-    ///     }
+    ///     pub fn new() -> Rc<Self> {}
     /// }
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "arc_new_cyclic", issue = "75861")]
-    pub fn new_cyclic(data_fn: impl FnOnce(&Weak<T>) -> T) -> Rc<T> {
-        // Construct the inner in the "uninitialized" state with a single
-        // weak reference.
-        let uninit_ptr: NonNull<_> = Box::leak(box RcBox {
-            strong: Cell::new(0),
-            weak: Cell::new(1),
-            value: mem::MaybeUninit::<T>::uninit(),
-        })
-        .into();
-
-        let init_ptr: NonNull<RcBox<T>> = uninit_ptr.cast();
-
-        let weak = Weak { ptr: init_ptr };
-
-        // It's important we don't give up ownership of the weak pointer, or
-        // else the memory might be freed by the time `data_fn` returns. If
-        // we really wanted to pass ownership, we could create an additional
-        // weak pointer for ourselves, but this would result in additional
-        // updates to the weak reference count which might not be necessary
-        // otherwise.
-        let data = data_fn(&weak);
-
-        unsafe {
-            let inner = init_ptr.as_ptr();
-            ptr::write(ptr::addr_of_mut!((*inner).value), data);
-
-            let prev_value = (*inner).strong.get();
-            debug_assert_eq!(prev_value, 0, "No prior strong references should exist");
-            (*inner).strong.set(1);
-        }
-
-        let strong = Rc::from_inner(init_ptr);
-
-        // Strong references should collectively own a shared weak reference,
-        // so don't run the destructor for our old weak reference.
-        mem::forget(weak);
-        strong
-    }
+    pub fn new_cyclic(data_fn: impl FnOnce(&Weak<T>) -> T) -> Rc<T> {}
 
     /// Constructs a new `Rc` with uninitialized contents.
     ///
@@ -25215,15 +14379,7 @@ impl<T> Rc<T> {
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "new_uninit", issue = "63291")]
     #[must_use]
-    pub fn new_uninit() -> Rc<mem::MaybeUninit<T>> {
-        unsafe {
-            Rc::from_ptr(Rc::allocate_for_layout(
-                Layout::new::<T>(),
-                |layout| Global.allocate(layout),
-                |mem| mem as *mut RcBox<mem::MaybeUninit<T>>,
-            ))
-        }
-    }
+    pub fn new_uninit() -> Rc<mem::MaybeUninit<T>> {}
 
     /// Constructs a new `Rc` with uninitialized contents, with the memory
     /// being filled with `0` bytes.
@@ -25248,15 +14404,7 @@ impl<T> Rc<T> {
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "new_uninit", issue = "63291")]
     #[must_use]
-    pub fn new_zeroed() -> Rc<mem::MaybeUninit<T>> {
-        unsafe {
-            Rc::from_ptr(Rc::allocate_for_layout(
-                Layout::new::<T>(),
-                |layout| Global.allocate_zeroed(layout),
-                |mem| mem as *mut RcBox<mem::MaybeUninit<T>>,
-            ))
-        }
-    }
+    pub fn new_zeroed() -> Rc<mem::MaybeUninit<T>> {}
 
     /// Constructs a new `Rc<T>`, returning an error if the allocation fails
     ///
@@ -25270,16 +14418,7 @@ impl<T> Rc<T> {
     /// # Ok::<(), std::alloc::AllocError>(())
     /// ```
     #[unstable(feature = "allocator_api", issue = "32838")]
-    pub fn try_new(value: T) -> Result<Rc<T>, AllocError> {
-        // There is an implicit weak pointer owned by all the strong
-        // pointers, which ensures that the weak destructor never frees
-        // the allocation while the strong destructor is running, even
-        // if the weak pointer is stored inside the strong one.
-        Ok(Self::from_inner(
-            Box::leak(Box::try_new(RcBox { strong: Cell::new(1), weak: Cell::new(1), value })?)
-                .into(),
-        ))
-    }
+    pub fn try_new(value: T) -> Result<Rc<T>, AllocError> {}
 
     /// Constructs a new `Rc` with uninitialized contents, returning an error if the allocation fails
     ///
@@ -25305,15 +14444,7 @@ impl<T> Rc<T> {
     /// ```
     #[unstable(feature = "allocator_api", issue = "32838")]
     // #[unstable(feature = "new_uninit", issue = "63291")]
-    pub fn try_new_uninit() -> Result<Rc<mem::MaybeUninit<T>>, AllocError> {
-        unsafe {
-            Ok(Rc::from_ptr(Rc::try_allocate_for_layout(
-                Layout::new::<T>(),
-                |layout| Global.allocate(layout),
-                |mem| mem as *mut RcBox<mem::MaybeUninit<T>>,
-            )?))
-        }
-    }
+    pub fn try_new_uninit() -> Result<Rc<mem::MaybeUninit<T>>, AllocError> {}
 
     /// Constructs a new `Rc` with uninitialized contents, with the memory
     /// being filled with `0` bytes, returning an error if the allocation fails
@@ -25338,23 +14469,13 @@ impl<T> Rc<T> {
     /// [zeroed]: mem::MaybeUninit::zeroed
     #[unstable(feature = "allocator_api", issue = "32838")]
     //#[unstable(feature = "new_uninit", issue = "63291")]
-    pub fn try_new_zeroed() -> Result<Rc<mem::MaybeUninit<T>>, AllocError> {
-        unsafe {
-            Ok(Rc::from_ptr(Rc::try_allocate_for_layout(
-                Layout::new::<T>(),
-                |layout| Global.allocate_zeroed(layout),
-                |mem| mem as *mut RcBox<mem::MaybeUninit<T>>,
-            )?))
-        }
-    }
+    pub fn try_new_zeroed() -> Result<Rc<mem::MaybeUninit<T>>, AllocError> {}
     /// Constructs a new `Pin<Rc<T>>`. If `T` does not implement `Unpin`, then
     /// `value` will be pinned in memory and unable to be moved.
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "pin", since = "1.33.0")]
     #[must_use]
-    pub fn pin(value: T) -> Pin<Rc<T>> {
-        unsafe { Pin::new_unchecked(Rc::new(value)) }
-    }
+    pub fn pin(value: T) -> Pin<Rc<T>> {}
 
     /// Returns the inner value, if the `Rc` has exactly one strong reference.
     ///
@@ -25377,24 +14498,7 @@ impl<T> Rc<T> {
     /// ```
     #[inline]
     #[stable(feature = "rc_unique", since = "1.4.0")]
-    pub fn try_unwrap(this: Self) -> Result<T, Self> {
-        if Rc::strong_count(&this) == 1 {
-            unsafe {
-                let val = ptr::read(&*this); // copy the contained object
-
-                // Indicate to Weaks that they can't be promoted by decrementing
-                // the strong count, and then remove the implicit "strong weak"
-                // pointer while also handling drop logic by just crafting a
-                // fake Weak.
-                this.inner().dec_strong();
-                let _weak = Weak { ptr: this.ptr };
-                forget(this);
-                Ok(val)
-            }
-        } else {
-            Err(this)
-        }
-    }
+    pub fn try_unwrap(this: Self) -> Result<T, Self> {}
 }
 
 impl<T> Rc<[T]> {
@@ -25424,9 +14528,7 @@ impl<T> Rc<[T]> {
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "new_uninit", issue = "63291")]
     #[must_use]
-    pub fn new_uninit_slice(len: usize) -> Rc<[mem::MaybeUninit<T>]> {
-        unsafe { Rc::from_ptr(Rc::allocate_for_slice(len)) }
-    }
+    pub fn new_uninit_slice(len: usize) -> Rc<[mem::MaybeUninit<T>]> {}
 
     /// Constructs a new reference-counted slice with uninitialized contents, with the memory being
     /// filled with `0` bytes.
@@ -25451,18 +14553,7 @@ impl<T> Rc<[T]> {
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "new_uninit", issue = "63291")]
     #[must_use]
-    pub fn new_zeroed_slice(len: usize) -> Rc<[mem::MaybeUninit<T>]> {
-        unsafe {
-            Rc::from_ptr(Rc::allocate_for_layout(
-                Layout::array::<T>(len).unwrap(),
-                |layout| Global.allocate_zeroed(layout),
-                |mem| {
-                    ptr::slice_from_raw_parts_mut(mem as *mut T, len)
-                        as *mut RcBox<[mem::MaybeUninit<T>]>
-                },
-            ))
-        }
-    }
+    pub fn new_zeroed_slice(len: usize) -> Rc<[mem::MaybeUninit<T>]> {}
 }
 
 impl<T> Rc<mem::MaybeUninit<T>> {
@@ -25499,9 +14590,7 @@ impl<T> Rc<mem::MaybeUninit<T>> {
     /// ```
     #[unstable(feature = "new_uninit", issue = "63291")]
     #[inline]
-    pub unsafe fn assume_init(self) -> Rc<T> {
-        Rc::from_inner(mem::ManuallyDrop::new(self).ptr.cast())
-    }
+    pub unsafe fn assume_init(self) -> Rc<T> {}
 }
 
 impl<T> Rc<[mem::MaybeUninit<T>]> {
@@ -25540,9 +14629,7 @@ impl<T> Rc<[mem::MaybeUninit<T>]> {
     /// ```
     #[unstable(feature = "new_uninit", issue = "63291")]
     #[inline]
-    pub unsafe fn assume_init(self) -> Rc<[T]> {
-        unsafe { Rc::from_ptr(mem::ManuallyDrop::new(self).ptr.as_ptr() as _) }
-    }
+    pub unsafe fn assume_init(self) -> Rc<[T]> {}
 }
 
 impl<T: ?Sized> Rc<T> {
@@ -25561,11 +14648,7 @@ impl<T: ?Sized> Rc<T> {
     /// assert_eq!(unsafe { &*x_ptr }, "hello");
     /// ```
     #[stable(feature = "rc_raw", since = "1.17.0")]
-    pub fn into_raw(this: Self) -> *const T {
-        let ptr = Self::as_ptr(&this);
-        mem::forget(this);
-        ptr
-    }
+    pub fn into_raw(this: Self) -> *const T {}
 
     /// Provides a raw pointer to the data.
     ///
@@ -25584,14 +14667,7 @@ impl<T: ?Sized> Rc<T> {
     /// assert_eq!(unsafe { &*x_ptr }, "hello");
     /// ```
     #[stable(feature = "weak_into_raw", since = "1.45.0")]
-    pub fn as_ptr(this: &Self) -> *const T {
-        let ptr: *mut RcBox<T> = NonNull::as_ptr(this.ptr);
-
-        // SAFETY: This cannot go through Deref::deref or Rc::inner because
-        // this is required to retain raw/mut provenance such that e.g. `get_mut` can
-        // write through the pointer after the Rc is recovered through `from_raw`.
-        unsafe { ptr::addr_of_mut!((*ptr).value) }
-    }
+    pub fn as_ptr(this: &Self) -> *const T {}
 
     /// Constructs an `Rc<T>` from a raw pointer.
     ///
@@ -25630,15 +14706,7 @@ impl<T: ?Sized> Rc<T> {
     /// // The memory was freed when `x` went out of scope above, so `x_ptr` is now dangling!
     /// ```
     #[stable(feature = "rc_raw", since = "1.17.0")]
-    pub unsafe fn from_raw(ptr: *const T) -> Self {
-        let offset = unsafe { data_offset(ptr) };
-
-        // Reverse the offset to find the original RcBox.
-        let rc_ptr =
-            unsafe { (ptr as *mut RcBox<T>).set_ptr_value((ptr as *mut u8).offset(-offset)) };
-
-        unsafe { Self::from_ptr(rc_ptr) }
-    }
+    pub unsafe fn from_raw(ptr: *const T) -> Self {}
 
     /// Creates a new [`Weak`] pointer to this allocation.
     ///
@@ -25654,12 +14722,7 @@ impl<T: ?Sized> Rc<T> {
     #[must_use = "this returns a new `Weak` pointer, \
                   without modifying the original `Rc`"]
     #[stable(feature = "rc_weak", since = "1.4.0")]
-    pub fn downgrade(this: &Self) -> Weak<T> {
-        this.inner().inc_weak();
-        // Make sure we do not create a dangling Weak
-        debug_assert!(!is_dangling(this.ptr.as_ptr()));
-        Weak { ptr: this.ptr }
-    }
+    pub fn downgrade(this: &Self) -> Weak<T> {}
 
     /// Gets the number of [`Weak`] pointers to this allocation.
     ///
@@ -25675,9 +14738,7 @@ impl<T: ?Sized> Rc<T> {
     /// ```
     #[inline]
     #[stable(feature = "rc_counts", since = "1.15.0")]
-    pub fn weak_count(this: &Self) -> usize {
-        this.inner().weak() - 1
-    }
+    pub fn weak_count(this: &Self) -> usize {}
 
     /// Gets the number of strong (`Rc`) pointers to this allocation.
     ///
@@ -25693,9 +14754,7 @@ impl<T: ?Sized> Rc<T> {
     /// ```
     #[inline]
     #[stable(feature = "rc_counts", since = "1.15.0")]
-    pub fn strong_count(this: &Self) -> usize {
-        this.inner().strong()
-    }
+    pub fn strong_count(this: &Self) -> usize {}
 
     /// Increments the strong reference count on the `Rc<T>` associated with the
     /// provided pointer by one.
@@ -25723,12 +14782,7 @@ impl<T: ?Sized> Rc<T> {
     /// ```
     #[inline]
     #[stable(feature = "rc_mutate_strong_count", since = "1.53.0")]
-    pub unsafe fn increment_strong_count(ptr: *const T) {
-        // Retain Rc, but don't touch refcount by wrapping in ManuallyDrop
-        let rc = unsafe { mem::ManuallyDrop::new(Rc::<T>::from_raw(ptr)) };
-        // Now increase refcount, but don't drop new refcount either
-        let _rc_clone: mem::ManuallyDrop<_> = rc.clone();
-    }
+    pub unsafe fn increment_strong_count(ptr: *const T) {}
 
     /// Decrements the strong reference count on the `Rc<T>` associated with the
     /// provided pointer by one.
@@ -25760,16 +14814,12 @@ impl<T: ?Sized> Rc<T> {
     /// ```
     #[inline]
     #[stable(feature = "rc_mutate_strong_count", since = "1.53.0")]
-    pub unsafe fn decrement_strong_count(ptr: *const T) {
-        unsafe { mem::drop(Rc::from_raw(ptr)) };
-    }
+    pub unsafe fn decrement_strong_count(ptr: *const T) {}
 
     /// Returns `true` if there are no other `Rc` or [`Weak`] pointers to
     /// this allocation.
     #[inline]
-    fn is_unique(this: &Self) -> bool {
-        Rc::weak_count(this) == 0 && Rc::strong_count(this) == 1
-    }
+    fn is_unique(this: &Self) -> bool {}
 
     /// Returns a mutable reference into the given `Rc`, if there are
     /// no other `Rc` or [`Weak`] pointers to the same allocation.
@@ -25797,9 +14847,7 @@ impl<T: ?Sized> Rc<T> {
     /// ```
     #[inline]
     #[stable(feature = "rc_unique", since = "1.4.0")]
-    pub fn get_mut(this: &mut Self) -> Option<&mut T> {
-        if Rc::is_unique(this) { unsafe { Some(Rc::get_mut_unchecked(this)) } } else { None }
-    }
+    pub fn get_mut(this: &mut Self) -> Option<&mut T> {}
 
     /// Returns a mutable reference into the given `Rc`,
     /// without any check.
@@ -25830,11 +14878,7 @@ impl<T: ?Sized> Rc<T> {
     /// ```
     #[inline]
     #[unstable(feature = "get_mut_unchecked", issue = "63292")]
-    pub unsafe fn get_mut_unchecked(this: &mut Self) -> &mut T {
-        // We are careful to *not* create a reference covering the "count" fields, as
-        // this would conflict with accesses to the reference counts (e.g. by `Weak`).
-        unsafe { &mut (*this.ptr.as_ptr()).value }
-    }
+    pub unsafe fn get_mut_unchecked(this: &mut Self) -> &mut T {}
 
     #[inline]
     #[stable(feature = "ptr_eq", since = "1.17.0")]
@@ -25853,9 +14897,7 @@ impl<T: ?Sized> Rc<T> {
     /// assert!(Rc::ptr_eq(&five, &same_five));
     /// assert!(!Rc::ptr_eq(&five, &other_five));
     /// ```
-    pub fn ptr_eq(this: &Self, other: &Self) -> bool {
-        this.ptr.as_ptr() == other.ptr.as_ptr()
-    }
+    pub fn ptr_eq(this: &Self, other: &Self) -> bool {}
 }
 
 impl<T: Clone> Rc<T> {
@@ -25912,37 +14954,7 @@ impl<T: Clone> Rc<T> {
     #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[stable(feature = "rc_unique", since = "1.4.0")]
-    pub fn make_mut(this: &mut Self) -> &mut T {
-        if Rc::strong_count(this) != 1 {
-            // Gotta clone the data, there are other Rcs.
-            // Pre-allocate memory to allow writing the cloned value directly.
-            let mut rc = Self::new_uninit();
-            unsafe {
-                let data = Rc::get_mut_unchecked(&mut rc);
-                (**this).write_clone_into_raw(data.as_mut_ptr());
-                *this = rc.assume_init();
-            }
-        } else if Rc::weak_count(this) != 0 {
-            // Can just steal the data, all that's left is Weaks
-            let mut rc = Self::new_uninit();
-            unsafe {
-                let data = Rc::get_mut_unchecked(&mut rc);
-                data.as_mut_ptr().copy_from_nonoverlapping(&**this, 1);
-
-                this.inner().dec_strong();
-                // Remove implicit strong-weak ref (no need to craft a fake
-                // Weak here -- we know other Weaks can clean up for us)
-                this.inner().dec_weak();
-                ptr::write(this, rc.assume_init());
-            }
-        }
-        // This unsafety is ok because we're guaranteed that the pointer
-        // returned is the *only* pointer that will ever be returned to T. Our
-        // reference count is guaranteed to be 1 at this point, and we required
-        // the `Rc<T>` itself to be `mut`, so we're returning the only possible
-        // reference to the allocation.
-        unsafe { &mut this.ptr.as_mut().value }
-    }
+    pub fn make_mut(this: &mut Self) -> &mut T {}
 }
 
 impl Rc<dyn Any> {
@@ -25956,25 +14968,13 @@ impl Rc<dyn Any> {
     /// use std::any::Any;
     /// use std::rc::Rc;
     ///
-    /// fn print_if_string(value: Rc<dyn Any>) {
-    ///     if let Ok(string) = value.downcast::<String>() {
-    ///         println!("String ({}): {}", string.len(), string);
-    ///     }
-    /// }
+    /// fn print_if_string(value: Rc<dyn Any>) {}
     ///
     /// let my_string = "Hello World".to_string();
     /// print_if_string(Rc::new(my_string));
     /// print_if_string(Rc::new(0i8));
     /// ```
-    pub fn downcast<T: Any>(self) -> Result<Rc<T>, Rc<dyn Any>> {
-        if (*self).is::<T>() {
-            let ptr = self.ptr.cast::<RcBox<T>>();
-            forget(self);
-            Ok(Rc::from_inner(ptr))
-        } else {
-            Err(self)
-        }
-    }
+    pub fn downcast<T: Any>(self) -> Result<Rc<T>, Rc<dyn Any>> {}
 }
 
 impl<T: ?Sized> Rc<T> {
@@ -25988,17 +14988,7 @@ impl<T: ?Sized> Rc<T> {
         value_layout: Layout,
         allocate: impl FnOnce(Layout) -> Result<NonNull<[u8]>, AllocError>,
         mem_to_rcbox: impl FnOnce(*mut u8) -> *mut RcBox<T>,
-    ) -> *mut RcBox<T> {
-        // Calculate layout using the given value layout.
-        // Previously, layout was calculated on the expression
-        // `&*(ptr as *const RcBox<T>)`, but this created a misaligned
-        // reference (see #54908).
-        let layout = Layout::new::<RcBox<()>>().extend(value_layout).unwrap().0.pad_to_align();
-        unsafe {
-            Rc::try_allocate_for_layout(value_layout, allocate, mem_to_rcbox)
-                .unwrap_or_else(|_| handle_alloc_error(layout))
-        }
-    }
+    ) -> *mut RcBox<T> {}
 
     /// Allocates an `RcBox<T>` with sufficient space for
     /// a possibly-unsized inner value where the value has the layout provided,
@@ -26011,138 +15001,32 @@ impl<T: ?Sized> Rc<T> {
         value_layout: Layout,
         allocate: impl FnOnce(Layout) -> Result<NonNull<[u8]>, AllocError>,
         mem_to_rcbox: impl FnOnce(*mut u8) -> *mut RcBox<T>,
-    ) -> Result<*mut RcBox<T>, AllocError> {
-        // Calculate layout using the given value layout.
-        // Previously, layout was calculated on the expression
-        // `&*(ptr as *const RcBox<T>)`, but this created a misaligned
-        // reference (see #54908).
-        let layout = Layout::new::<RcBox<()>>().extend(value_layout).unwrap().0.pad_to_align();
-
-        // Allocate for the layout.
-        let ptr = allocate(layout)?;
-
-        // Initialize the RcBox
-        let inner = mem_to_rcbox(ptr.as_non_null_ptr().as_ptr());
-        unsafe {
-            debug_assert_eq!(Layout::for_value(&*inner), layout);
-
-            ptr::write(&mut (*inner).strong, Cell::new(1));
-            ptr::write(&mut (*inner).weak, Cell::new(1));
-        }
-
-        Ok(inner)
-    }
+    ) -> Result<*mut RcBox<T>, AllocError> {}
 
     /// Allocates an `RcBox<T>` with sufficient space for an unsized inner value
     #[cfg(not(no_global_oom_handling))]
-    unsafe fn allocate_for_ptr(ptr: *const T) -> *mut RcBox<T> {
-        // Allocate for the `RcBox<T>` using the given value.
-        unsafe {
-            Self::allocate_for_layout(
-                Layout::for_value(&*ptr),
-                |layout| Global.allocate(layout),
-                |mem| (ptr as *mut RcBox<T>).set_ptr_value(mem),
-            )
-        }
-    }
+    unsafe fn allocate_for_ptr(ptr: *const T) -> *mut RcBox<T> {}
 
     #[cfg(not(no_global_oom_handling))]
-    fn from_box(v: Box<T>) -> Rc<T> {
-        unsafe {
-            let (box_unique, alloc) = Box::into_unique(v);
-            let bptr = box_unique.as_ptr();
-
-            let value_size = size_of_val(&*bptr);
-            let ptr = Self::allocate_for_ptr(bptr);
-
-            // Copy value as bytes
-            ptr::copy_nonoverlapping(
-                bptr as *const T as *const u8,
-                &mut (*ptr).value as *mut _ as *mut u8,
-                value_size,
-            );
-
-            // Free the allocation without dropping its contents
-            box_free(box_unique, alloc);
-
-            Self::from_ptr(ptr)
-        }
-    }
+    fn from_box(v: Box<T>) -> Rc<T> {}
 }
 
 impl<T> Rc<[T]> {
     /// Allocates an `RcBox<[T]>` with the given length.
     #[cfg(not(no_global_oom_handling))]
-    unsafe fn allocate_for_slice(len: usize) -> *mut RcBox<[T]> {
-        unsafe {
-            Self::allocate_for_layout(
-                Layout::array::<T>(len).unwrap(),
-                |layout| Global.allocate(layout),
-                |mem| ptr::slice_from_raw_parts_mut(mem as *mut T, len) as *mut RcBox<[T]>,
-            )
-        }
-    }
+    unsafe fn allocate_for_slice(len: usize) -> *mut RcBox<[T]> {}
 
     /// Copy elements from slice into newly allocated Rc<\[T\]>
     ///
     /// Unsafe because the caller must either take ownership or bind `T: Copy`
     #[cfg(not(no_global_oom_handling))]
-    unsafe fn copy_from_slice(v: &[T]) -> Rc<[T]> {
-        unsafe {
-            let ptr = Self::allocate_for_slice(v.len());
-            ptr::copy_nonoverlapping(v.as_ptr(), &mut (*ptr).value as *mut [T] as *mut T, v.len());
-            Self::from_ptr(ptr)
-        }
-    }
+    unsafe fn copy_from_slice(v: &[T]) -> Rc<[T]> {}
 
     /// Constructs an `Rc<[T]>` from an iterator known to be of a certain size.
     ///
     /// Behavior is undefined should the size be wrong.
     #[cfg(not(no_global_oom_handling))]
-    unsafe fn from_iter_exact(iter: impl iter::Iterator<Item = T>, len: usize) -> Rc<[T]> {
-        // Panic guard while cloning T elements.
-        // In the event of a panic, elements that have been written
-        // into the new RcBox will be dropped, then the memory freed.
-        struct Guard<T> {
-            mem: NonNull<u8>,
-            elems: *mut T,
-            layout: Layout,
-            n_elems: usize,
-        }
-
-        impl<T> Drop for Guard<T> {
-            fn drop(&mut self) {
-                unsafe {
-                    let slice = from_raw_parts_mut(self.elems, self.n_elems);
-                    ptr::drop_in_place(slice);
-
-                    Global.deallocate(self.mem, self.layout);
-                }
-            }
-        }
-
-        unsafe {
-            let ptr = Self::allocate_for_slice(len);
-
-            let mem = ptr as *mut _ as *mut u8;
-            let layout = Layout::for_value(&*ptr);
-
-            // Pointer to first element
-            let elems = &mut (*ptr).value as *mut [T] as *mut T;
-
-            let mut guard = Guard { mem: NonNull::new_unchecked(mem), elems, layout, n_elems: 0 };
-
-            for (i, item) in iter.enumerate() {
-                ptr::write(elems.add(i), item);
-                guard.n_elems += 1;
-            }
-
-            // All clear. Forget the guard so it doesn't free the new RcBox.
-            forget(guard);
-
-            Self::from_ptr(ptr)
-        }
-    }
+    unsafe fn from_iter_exact(iter: impl iter::Iterator<Item = T>, len: usize) -> Rc<[T]> {}
 }
 
 /// Specialization trait used for `From<&[T]>`.
@@ -26153,17 +15037,13 @@ trait RcFromSlice<T> {
 #[cfg(not(no_global_oom_handling))]
 impl<T: Clone> RcFromSlice<T> for Rc<[T]> {
     #[inline]
-    default fn from_slice(v: &[T]) -> Self {
-        unsafe { Self::from_iter_exact(v.iter().cloned(), v.len()) }
-    }
+    default fn from_slice(v: &[T]) -> Self {}
 }
 
 #[cfg(not(no_global_oom_handling))]
 impl<T: Copy> RcFromSlice<T> for Rc<[T]> {
     #[inline]
-    fn from_slice(v: &[T]) -> Self {
-        unsafe { Rc::copy_from_slice(v) }
-    }
+    fn from_slice(v: &[T]) -> Self {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -26171,9 +15051,7 @@ impl<T: ?Sized> Deref for Rc<T> {
     type Target = T;
 
     #[inline(always)]
-    fn deref(&self) -> &T {
-        &self.inner().value
-    }
+    fn deref(&self) -> &T {}
 }
 
 #[unstable(feature = "receiver_trait", issue = "none")]
@@ -26195,9 +15073,7 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for Rc<T> {
     /// struct Foo;
     ///
     /// impl Drop for Foo {
-    ///     fn drop(&mut self) {
-    ///         println!("dropped!");
-    ///     }
+    ///     fn drop(&mut self) {}
     /// }
     ///
     /// let foo  = Rc::new(Foo);
@@ -26206,23 +15082,7 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for Rc<T> {
     /// drop(foo);    // Doesn't print anything
     /// drop(foo2);   // Prints "dropped!"
     /// ```
-    fn drop(&mut self) {
-        unsafe {
-            self.inner().dec_strong();
-            if self.inner().strong() == 0 {
-                // destroy the contained object
-                ptr::drop_in_place(Self::get_mut_unchecked(self));
-
-                // remove the implicit "strong weak" pointer now that we've
-                // destroyed the contents.
-                self.inner().dec_weak();
-
-                if self.inner().weak() == 0 {
-                    Global.deallocate(self.ptr.cast(), Layout::for_value(self.ptr.as_ref()));
-                }
-            }
-        }
-    }
+    fn drop(&mut self) {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -26242,10 +15102,7 @@ impl<T: ?Sized> Clone for Rc<T> {
     /// let _ = Rc::clone(&five);
     /// ```
     #[inline]
-    fn clone(&self) -> Rc<T> {
-        self.inner().inc_strong();
-        Self::from_inner(self.ptr)
-    }
+    fn clone(&self) -> Rc<T> {}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -26262,9 +15119,7 @@ impl<T: Default> Default for Rc<T> {
     /// assert_eq!(*x, 0);
     /// ```
     #[inline]
-    fn default() -> Rc<T> {
-        Rc::new(Default::default())
-    }
+    fn default() -> Rc<T> {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -26276,14 +15131,10 @@ trait RcEqIdent<T: ?Sized + PartialEq> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + PartialEq> RcEqIdent<T> for Rc<T> {
     #[inline]
-    default fn eq(&self, other: &Rc<T>) -> bool {
-        **self == **other
-    }
+    default fn eq(&self, other: &Rc<T>) -> bool {}
 
     #[inline]
-    default fn ne(&self, other: &Rc<T>) -> bool {
-        **self != **other
-    }
+    default fn ne(&self, other: &Rc<T>) -> bool {}
 }
 
 // Hack to allow specializing on `Eq` even though `Eq` has a method.
@@ -26302,14 +15153,10 @@ impl<T: Eq> MarkerEq for T {}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + MarkerEq> RcEqIdent<T> for Rc<T> {
     #[inline]
-    fn eq(&self, other: &Rc<T>) -> bool {
-        Rc::ptr_eq(self, other) || **self == **other
-    }
+    fn eq(&self, other: &Rc<T>) -> bool {}
 
     #[inline]
-    fn ne(&self, other: &Rc<T>) -> bool {
-        !Rc::ptr_eq(self, other) && **self != **other
-    }
+    fn ne(&self, other: &Rc<T>) -> bool {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -26333,9 +15180,7 @@ impl<T: ?Sized + PartialEq> PartialEq for Rc<T> {
     /// assert!(five == Rc::new(5));
     /// ```
     #[inline]
-    fn eq(&self, other: &Rc<T>) -> bool {
-        RcEqIdent::eq(self, other)
-    }
+    fn eq(&self, other: &Rc<T>) -> bool {}
 
     /// Inequality for two `Rc`s.
     ///
@@ -26355,9 +15200,7 @@ impl<T: ?Sized + PartialEq> PartialEq for Rc<T> {
     /// assert!(five != Rc::new(6));
     /// ```
     #[inline]
-    fn ne(&self, other: &Rc<T>) -> bool {
-        RcEqIdent::ne(self, other)
-    }
+    fn ne(&self, other: &Rc<T>) -> bool {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -26380,9 +15223,7 @@ impl<T: ?Sized + PartialOrd> PartialOrd for Rc<T> {
     /// assert_eq!(Some(Ordering::Less), five.partial_cmp(&Rc::new(6)));
     /// ```
     #[inline(always)]
-    fn partial_cmp(&self, other: &Rc<T>) -> Option<Ordering> {
-        (**self).partial_cmp(&**other)
-    }
+    fn partial_cmp(&self, other: &Rc<T>) -> Option<Ordering> {}
 
     /// Less-than comparison for two `Rc`s.
     ///
@@ -26398,9 +15239,7 @@ impl<T: ?Sized + PartialOrd> PartialOrd for Rc<T> {
     /// assert!(five < Rc::new(6));
     /// ```
     #[inline(always)]
-    fn lt(&self, other: &Rc<T>) -> bool {
-        **self < **other
-    }
+    fn lt(&self, other: &Rc<T>) -> bool {}
 
     /// 'Less than or equal to' comparison for two `Rc`s.
     ///
@@ -26416,9 +15255,7 @@ impl<T: ?Sized + PartialOrd> PartialOrd for Rc<T> {
     /// assert!(five <= Rc::new(5));
     /// ```
     #[inline(always)]
-    fn le(&self, other: &Rc<T>) -> bool {
-        **self <= **other
-    }
+    fn le(&self, other: &Rc<T>) -> bool {}
 
     /// Greater-than comparison for two `Rc`s.
     ///
@@ -26434,9 +15271,7 @@ impl<T: ?Sized + PartialOrd> PartialOrd for Rc<T> {
     /// assert!(five > Rc::new(4));
     /// ```
     #[inline(always)]
-    fn gt(&self, other: &Rc<T>) -> bool {
-        **self > **other
-    }
+    fn gt(&self, other: &Rc<T>) -> bool {}
 
     /// 'Greater than or equal to' comparison for two `Rc`s.
     ///
@@ -26452,9 +15287,7 @@ impl<T: ?Sized + PartialOrd> PartialOrd for Rc<T> {
     /// assert!(five >= Rc::new(5));
     /// ```
     #[inline(always)]
-    fn ge(&self, other: &Rc<T>) -> bool {
-        **self >= **other
-    }
+    fn ge(&self, other: &Rc<T>) -> bool {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -26474,37 +15307,27 @@ impl<T: ?Sized + Ord> Ord for Rc<T> {
     /// assert_eq!(Ordering::Less, five.cmp(&Rc::new(6)));
     /// ```
     #[inline]
-    fn cmp(&self, other: &Rc<T>) -> Ordering {
-        (**self).cmp(&**other)
-    }
+    fn cmp(&self, other: &Rc<T>) -> Ordering {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + Hash> Hash for Rc<T> {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        (**self).hash(state);
-    }
+    fn hash<H: Hasher>(&self, state: &mut H) {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + fmt::Display> fmt::Display for Rc<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(&**self, f)
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + fmt::Debug> fmt::Debug for Rc<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Debug::fmt(&**self, f)
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> fmt::Pointer for Rc<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Pointer::fmt(&(&**self as *const T), f)
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -26523,9 +15346,7 @@ impl<T> From<T> for Rc<T> {
     ///
     /// assert_eq!(Rc::from(x), rc);
     /// ```
-    fn from(t: T) -> Self {
-        Rc::new(t)
-    }
+    fn from(t: T) -> Self {}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -26542,9 +15363,7 @@ impl<T: Clone> From<&[T]> for Rc<[T]> {
     /// assert_eq!(&[1, 2, 3], &shared[..]);
     /// ```
     #[inline]
-    fn from(v: &[T]) -> Rc<[T]> {
-        <Self as RcFromSlice<T>>::from_slice(v)
-    }
+    fn from(v: &[T]) -> Rc<[T]> {}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -26560,10 +15379,7 @@ impl From<&str> for Rc<str> {
     /// assert_eq!("statue", &shared[..]);
     /// ```
     #[inline]
-    fn from(v: &str) -> Rc<str> {
-        let rc = Rc::<[u8]>::from(v.as_bytes());
-        unsafe { Rc::from_raw(Rc::into_raw(rc) as *const str) }
-    }
+    fn from(v: &str) -> Rc<str> {}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -26580,9 +15396,7 @@ impl From<String> for Rc<str> {
     /// assert_eq!("statue", &shared[..]);
     /// ```
     #[inline]
-    fn from(v: String) -> Rc<str> {
-        Rc::from(&v[..])
-    }
+    fn from(v: String) -> Rc<str> {}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -26599,9 +15413,7 @@ impl<T: ?Sized> From<Box<T>> for Rc<T> {
     /// assert_eq!(1, *shared);
     /// ```
     #[inline]
-    fn from(v: Box<T>) -> Rc<T> {
-        Rc::from_box(v)
-    }
+    fn from(v: Box<T>) -> Rc<T> {}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -26618,16 +15430,7 @@ impl<T> From<Vec<T>> for Rc<[T]> {
     /// assert_eq!(vec![1, 2, 3], *shared);
     /// ```
     #[inline]
-    fn from(mut v: Vec<T>) -> Rc<[T]> {
-        unsafe {
-            let rc = Rc::copy_from_slice(&v);
-
-            // Allow the Vec to free its memory, but not destroy its contents
-            v.set_len(0);
-
-            rc
-        }
-    }
+    fn from(mut v: Vec<T>) -> Rc<[T]> {}
 }
 
 #[stable(feature = "shared_from_cow", since = "1.45.0")]
@@ -26649,25 +15452,14 @@ where
     /// assert_eq!("eggplant", &shared[..]);
     /// ```
     #[inline]
-    fn from(cow: Cow<'a, B>) -> Rc<B> {
-        match cow {
-            Cow::Borrowed(s) => Rc::from(s),
-            Cow::Owned(s) => Rc::from(s),
-        }
-    }
+    fn from(cow: Cow<'a, B>) -> Rc<B> {}
 }
 
 #[stable(feature = "boxed_slice_try_from", since = "1.43.0")]
 impl<T, const N: usize> TryFrom<Rc<[T]>> for Rc<[T; N]> {
     type Error = Rc<[T]>;
 
-    fn try_from(boxed_slice: Rc<[T]>) -> Result<Self, Self::Error> {
-        if boxed_slice.len() == N {
-            Ok(unsafe { Rc::from_raw(Rc::into_raw(boxed_slice) as *mut [T; N]) })
-        } else {
-            Err(boxed_slice)
-        }
-    }
+    fn try_from(boxed_slice: Rc<[T]>) -> Result<Self, Self::Error> {}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -26711,9 +15503,7 @@ impl<T> iter::FromIterator<T> for Rc<[T]> {
     /// let evens: Rc<[u8]> = (0..10).collect(); // Just a single allocation happens here.
     /// # assert_eq!(&*evens, &*(0..10).collect::<Vec<_>>());
     /// ```
-    fn from_iter<I: iter::IntoIterator<Item = T>>(iter: I) -> Self {
-        ToRcSlice::to_rc_slice(iter.into_iter())
-    }
+    fn from_iter<I: iter::IntoIterator<Item = T>>(iter: I) -> Self {}
 }
 
 /// Specialization trait used for collecting into `Rc<[T]>`.
@@ -26724,36 +15514,12 @@ trait ToRcSlice<T>: Iterator<Item = T> + Sized {
 
 #[cfg(not(no_global_oom_handling))]
 impl<T, I: Iterator<Item = T>> ToRcSlice<T> for I {
-    default fn to_rc_slice(self) -> Rc<[T]> {
-        self.collect::<Vec<T>>().into()
-    }
+    default fn to_rc_slice(self) -> Rc<[T]> {}
 }
 
 #[cfg(not(no_global_oom_handling))]
 impl<T, I: iter::TrustedLen<Item = T>> ToRcSlice<T> for I {
-    fn to_rc_slice(self) -> Rc<[T]> {
-        // This is the case for a `TrustedLen` iterator.
-        let (low, high) = self.size_hint();
-        if let Some(high) = high {
-            debug_assert_eq!(
-                low,
-                high,
-                "TrustedLen iterator's size hint is not exact: {:?}",
-                (low, high)
-            );
-
-            unsafe {
-                // SAFETY: We need to ensure that the iterator has an exact length and we have.
-                Rc::from_iter_exact(self, low)
-            }
-        } else {
-            // TrustedLen contract guarantees that `upper_bound == `None` implies an iterator
-            // length exceeding `usize::MAX`.
-            // The default implementation would collect into a vec which would panic.
-            // Thus we panic here immediately without invoking `Vec` code.
-            panic!("capacity overflow");
-        }
-    }
+    fn to_rc_slice(self) -> Rc<[T]> {}
 }
 
 /// `Weak` is a version of [`Rc`] that holds a non-owning reference to the
@@ -26814,15 +15580,10 @@ impl<T> Weak<T> {
     /// ```
     #[stable(feature = "downgraded_weak", since = "1.10.0")]
     #[must_use]
-    pub fn new() -> Weak<T> {
-        Weak { ptr: NonNull::new(usize::MAX as *mut RcBox<T>).expect("MAX is not 0") }
-    }
+    pub fn new() -> Weak<T> {}
 }
 
-pub(crate) fn is_dangling<T: ?Sized>(ptr: *mut T) -> bool {
-    let address = ptr as *mut () as usize;
-    address == usize::MAX
-}
+pub(crate) fn is_dangling<T: ?Sized>(ptr: *mut T) -> bool {}
 
 /// Helper type to allow accessing the reference counts without
 /// making any assertions about the data field.
@@ -26859,20 +15620,7 @@ impl<T: ?Sized> Weak<T> {
     /// [`null`]: ptr::null
     #[must_use]
     #[stable(feature = "rc_as_ptr", since = "1.45.0")]
-    pub fn as_ptr(&self) -> *const T {
-        let ptr: *mut RcBox<T> = NonNull::as_ptr(self.ptr);
-
-        if is_dangling(ptr) {
-            // If the pointer is dangling, we return the sentinel directly. This cannot be
-            // a valid payload address, as the payload is at least as aligned as RcBox (usize).
-            ptr as *const T
-        } else {
-            // SAFETY: if is_dangling returns false, then the pointer is dereferencable.
-            // The payload may be dropped at this point, and we have to maintain provenance,
-            // so use raw pointer manipulation.
-            unsafe { ptr::addr_of_mut!((*ptr).value) }
-        }
-    }
+    pub fn as_ptr(&self) -> *const T {}
 
     /// Consumes the `Weak<T>` and turns it into a raw pointer.
     ///
@@ -26903,11 +15651,7 @@ impl<T: ?Sized> Weak<T> {
     /// [`as_ptr`]: Weak::as_ptr
     #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "weak_into_raw", since = "1.45.0")]
-    pub fn into_raw(self) -> *const T {
-        let result = self.as_ptr();
-        mem::forget(self);
-        result
-    }
+    pub fn into_raw(self) -> *const T {}
 
     /// Converts a raw pointer previously created by [`into_raw`] back into `Weak<T>`.
     ///
@@ -26952,24 +15696,7 @@ impl<T: ?Sized> Weak<T> {
     /// [`upgrade`]: Weak::upgrade
     /// [`new`]: Weak::new
     #[stable(feature = "weak_into_raw", since = "1.45.0")]
-    pub unsafe fn from_raw(ptr: *const T) -> Self {
-        // See Weak::as_ptr for context on how the input pointer is derived.
-
-        let ptr = if is_dangling(ptr as *mut T) {
-            // This is a dangling Weak.
-            ptr as *mut RcBox<T>
-        } else {
-            // Otherwise, we're guaranteed the pointer came from a nondangling Weak.
-            // SAFETY: data_offset is safe to call, as ptr references a real (potentially dropped) T.
-            let offset = unsafe { data_offset(ptr) };
-            // Thus, we reverse the offset to get the whole RcBox.
-            // SAFETY: the pointer originated from a Weak, so this offset is safe.
-            unsafe { (ptr as *mut RcBox<T>).set_ptr_value((ptr as *mut u8).offset(-offset)) }
-        };
-
-        // SAFETY: we now have recovered the original Weak pointer, so can create the Weak.
-        Weak { ptr: unsafe { NonNull::new_unchecked(ptr) } }
-    }
+    pub unsafe fn from_raw(ptr: *const T) -> Self {}
 
     /// Attempts to upgrade the `Weak` pointer to an [`Rc`], delaying
     /// dropping of the inner value if successful.
@@ -26997,58 +15724,26 @@ impl<T: ?Sized> Weak<T> {
     #[must_use = "this returns a new `Rc`, \
                   without modifying the original weak pointer"]
     #[stable(feature = "rc_weak", since = "1.4.0")]
-    pub fn upgrade(&self) -> Option<Rc<T>> {
-        let inner = self.inner()?;
-        if inner.strong() == 0 {
-            None
-        } else {
-            inner.inc_strong();
-            Some(Rc::from_inner(self.ptr))
-        }
-    }
+    pub fn upgrade(&self) -> Option<Rc<T>> {}
 
     /// Gets the number of strong (`Rc`) pointers pointing to this allocation.
     ///
     /// If `self` was created using [`Weak::new`], this will return 0.
     #[must_use]
     #[stable(feature = "weak_counts", since = "1.41.0")]
-    pub fn strong_count(&self) -> usize {
-        if let Some(inner) = self.inner() { inner.strong() } else { 0 }
-    }
+    pub fn strong_count(&self) -> usize {}
 
     /// Gets the number of `Weak` pointers pointing to this allocation.
     ///
     /// If no strong pointers remain, this will return zero.
     #[must_use]
     #[stable(feature = "weak_counts", since = "1.41.0")]
-    pub fn weak_count(&self) -> usize {
-        self.inner()
-            .map(|inner| {
-                if inner.strong() > 0 {
-                    inner.weak() - 1 // subtract the implicit weak ptr
-                } else {
-                    0
-                }
-            })
-            .unwrap_or(0)
-    }
+    pub fn weak_count(&self) -> usize {}
 
     /// Returns `None` when the pointer is dangling and there is no allocated `RcBox`,
     /// (i.e., when this `Weak` was created by `Weak::new`).
     #[inline]
-    fn inner(&self) -> Option<WeakInner<'_>> {
-        if is_dangling(self.ptr.as_ptr()) {
-            None
-        } else {
-            // We are careful to *not* create a reference covering the "data" field, as
-            // the field may be mutated concurrently (for example, if the last `Rc`
-            // is dropped, the data field will be dropped in-place).
-            Some(unsafe {
-                let ptr = self.ptr.as_ptr();
-                WeakInner { strong: &(*ptr).strong, weak: &(*ptr).weak }
-            })
-        }
-    }
+    fn inner(&self) -> Option<WeakInner<'_>> {}
 
     /// Returns `true` if the two `Weak`s point to the same allocation (similar to
     /// [`ptr::eq`]), or if both don't point to any allocation
@@ -27092,9 +15787,7 @@ impl<T: ?Sized> Weak<T> {
     #[inline]
     #[must_use]
     #[stable(feature = "weak_ptr_eq", since = "1.39.0")]
-    pub fn ptr_eq(&self, other: &Self) -> bool {
-        self.ptr.as_ptr() == other.ptr.as_ptr()
-    }
+    pub fn ptr_eq(&self, other: &Self) -> bool {}
 }
 
 #[stable(feature = "rc_weak", since = "1.4.0")]
@@ -27109,9 +15802,7 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for Weak<T> {
     /// struct Foo;
     ///
     /// impl Drop for Foo {
-    ///     fn drop(&mut self) {
-    ///         println!("dropped!");
-    ///     }
+    ///     fn drop(&mut self) {}
     /// }
     ///
     /// let foo = Rc::new(Foo);
@@ -27123,18 +15814,7 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for Weak<T> {
     ///
     /// assert!(other_weak_foo.upgrade().is_none());
     /// ```
-    fn drop(&mut self) {
-        let inner = if let Some(inner) = self.inner() { inner } else { return };
-
-        inner.dec_weak();
-        // the weak count starts at 1, and will only go to zero if all
-        // the strong pointers have disappeared.
-        if inner.weak() == 0 {
-            unsafe {
-                Global.deallocate(self.ptr.cast(), Layout::for_value_raw(self.ptr.as_ptr()));
-            }
-        }
-    }
+    fn drop(&mut self) {}
 }
 
 #[stable(feature = "rc_weak", since = "1.4.0")]
@@ -27151,19 +15831,12 @@ impl<T: ?Sized> Clone for Weak<T> {
     /// let _ = Weak::clone(&weak_five);
     /// ```
     #[inline]
-    fn clone(&self) -> Weak<T> {
-        if let Some(inner) = self.inner() {
-            inner.inc_weak()
-        }
-        Weak { ptr: self.ptr }
-    }
+    fn clone(&self) -> Weak<T> {}
 }
 
 #[stable(feature = "rc_weak", since = "1.4.0")]
 impl<T: ?Sized + fmt::Debug> fmt::Debug for Weak<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "(Weak)")
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
 }
 
 #[stable(feature = "downgraded_weak", since = "1.10.0")]
@@ -27181,9 +15854,7 @@ impl<T> Default for Weak<T> {
     /// let empty: Weak<i64> = Default::default();
     /// assert!(empty.upgrade().is_none());
     /// ```
-    fn default() -> Weak<T> {
-        Weak::new()
-    }
+    fn default() -> Weak<T> {}
 }
 
 // NOTE: We checked_add here to deal with mem::forget safely. In particular
@@ -27201,90 +15872,48 @@ trait RcInnerPtr {
     fn strong_ref(&self) -> &Cell<usize>;
 
     #[inline]
-    fn strong(&self) -> usize {
-        self.strong_ref().get()
-    }
+    fn strong(&self) -> usize {}
 
     #[inline]
-    fn inc_strong(&self) {
-        let strong = self.strong();
-
-        // We want to abort on overflow instead of dropping the value.
-        // The reference count will never be zero when this is called;
-        // nevertheless, we insert an abort here to hint LLVM at
-        // an otherwise missed optimization.
-        if strong == 0 || strong == usize::MAX {
-            abort();
-        }
-        self.strong_ref().set(strong + 1);
-    }
+    fn inc_strong(&self) {}
 
     #[inline]
-    fn dec_strong(&self) {
-        self.strong_ref().set(self.strong() - 1);
-    }
+    fn dec_strong(&self) {}
 
     #[inline]
-    fn weak(&self) -> usize {
-        self.weak_ref().get()
-    }
+    fn weak(&self) -> usize {}
 
     #[inline]
-    fn inc_weak(&self) {
-        let weak = self.weak();
-
-        // We want to abort on overflow instead of dropping the value.
-        // The reference count will never be zero when this is called;
-        // nevertheless, we insert an abort here to hint LLVM at
-        // an otherwise missed optimization.
-        if weak == 0 || weak == usize::MAX {
-            abort();
-        }
-        self.weak_ref().set(weak + 1);
-    }
+    fn inc_weak(&self) {}
 
     #[inline]
-    fn dec_weak(&self) {
-        self.weak_ref().set(self.weak() - 1);
-    }
+    fn dec_weak(&self) {}
 }
 
 impl<T: ?Sized> RcInnerPtr for RcBox<T> {
     #[inline(always)]
-    fn weak_ref(&self) -> &Cell<usize> {
-        &self.weak
-    }
+    fn weak_ref(&self) -> &Cell<usize> {}
 
     #[inline(always)]
-    fn strong_ref(&self) -> &Cell<usize> {
-        &self.strong
-    }
+    fn strong_ref(&self) -> &Cell<usize> {}
 }
 
 impl<'a> RcInnerPtr for WeakInner<'a> {
     #[inline(always)]
-    fn weak_ref(&self) -> &Cell<usize> {
-        self.weak
-    }
+    fn weak_ref(&self) -> &Cell<usize> {}
 
     #[inline(always)]
-    fn strong_ref(&self) -> &Cell<usize> {
-        self.strong
-    }
+    fn strong_ref(&self) -> &Cell<usize> {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> borrow::Borrow<T> for Rc<T> {
-    fn borrow(&self) -> &T {
-        &**self
-    }
+    fn borrow(&self) -> &T {}
 }
 
 #[stable(since = "1.5.0", feature = "smart_ptr_as_ref")]
 impl<T: ?Sized> AsRef<T> for Rc<T> {
-    fn as_ref(&self) -> &T {
-        &**self
-    }
+    fn as_ref(&self) -> &T {}
 }
 
 #[stable(feature = "pin", since = "1.33.0")]
@@ -27296,21 +15925,10 @@ impl<T: ?Sized> Unpin for Rc<T> {}
 ///
 /// The pointer must point to (and have valid metadata for) a previously
 /// valid instance of T, but the T is allowed to be dropped.
-unsafe fn data_offset<T: ?Sized>(ptr: *const T) -> isize {
-    // Align the unsized value to the end of the RcBox.
-    // Because RcBox is repr(C), it will always be the last field in memory.
-    // SAFETY: since the only unsized types possible are slices, trait objects,
-    // and extern types, the input safety requirement is currently enough to
-    // satisfy the requirements of align_of_val_raw; this is an implementation
-    // detail of the language that must not be relied upon outside of std.
-    unsafe { data_offset_align(align_of_val_raw(ptr)) }
-}
+unsafe fn data_offset<T: ?Sized>(ptr: *const T) -> isize {}
 
 #[inline]
-fn data_offset_align(align: usize) -> isize {
-    let layout = Layout::new::<RcBox<()>>();
-    (layout.size() + layout.padding_needed_for(align)) as isize
-}
+fn data_offset_align(align: usize) -> isize {}
 }
 pub mod slice {
 //! A dynamically-sized view into a contiguous sequence, `[T]`.
@@ -27473,19 +16091,11 @@ mod hack {
     // We shouldn't add inline attribute to this since this is used in
     // `vec!` macro mostly and causes perf regression. See #71204 for
     // discussion and perf results.
-    pub fn into_vec<T, A: Allocator>(b: Box<[T], A>) -> Vec<T, A> {
-        unsafe {
-            let len = b.len();
-            let (b, alloc) = Box::into_raw_with_allocator(b);
-            Vec::from_raw_parts_in(b as *mut T, len, len, alloc)
-        }
-    }
+    pub fn into_vec<T, A: Allocator>(b: Box<[T], A>) -> Vec<T, A> {}
 
     #[cfg(not(no_global_oom_handling))]
     #[inline]
-    pub fn to_vec<T: ConvertVec, A: Allocator>(s: &[T], alloc: A) -> Vec<T, A> {
-        T::to_vec(s, alloc)
-    }
+    pub fn to_vec<T: ConvertVec, A: Allocator>(s: &[T], alloc: A) -> Vec<T, A> {}
 
     #[cfg(not(no_global_oom_handling))]
     pub trait ConvertVec {
@@ -27497,54 +16107,13 @@ mod hack {
     #[cfg(not(no_global_oom_handling))]
     impl<T: Clone> ConvertVec for T {
         #[inline]
-        default fn to_vec<A: Allocator>(s: &[Self], alloc: A) -> Vec<Self, A> {
-            struct DropGuard<'a, T, A: Allocator> {
-                vec: &'a mut Vec<T, A>,
-                num_init: usize,
-            }
-            impl<'a, T, A: Allocator> Drop for DropGuard<'a, T, A> {
-                #[inline]
-                fn drop(&mut self) {
-                    // SAFETY:
-                    // items were marked initialized in the loop below
-                    unsafe {
-                        self.vec.set_len(self.num_init);
-                    }
-                }
-            }
-            let mut vec = Vec::with_capacity_in(s.len(), alloc);
-            let mut guard = DropGuard { vec: &mut vec, num_init: 0 };
-            let slots = guard.vec.spare_capacity_mut();
-            // .take(slots.len()) is necessary for LLVM to remove bounds checks
-            // and has better codegen than zip.
-            for (i, b) in s.iter().enumerate().take(slots.len()) {
-                guard.num_init = i;
-                slots[i].write(b.clone());
-            }
-            core::mem::forget(guard);
-            // SAFETY:
-            // the vec was allocated and initialized above to at least this length.
-            unsafe {
-                vec.set_len(s.len());
-            }
-            vec
-        }
+        default fn to_vec<A: Allocator>(s: &[Self], alloc: A) -> Vec<Self, A> {}
     }
 
     #[cfg(not(no_global_oom_handling))]
     impl<T: Copy> ConvertVec for T {
         #[inline]
-        fn to_vec<A: Allocator>(s: &[Self], alloc: A) -> Vec<Self, A> {
-            let mut v = Vec::with_capacity_in(s.len(), alloc);
-            // SAFETY:
-            // allocated above with the capacity of `s`, and initialize to `s.len()` in
-            // ptr::copy_to_non_overlapping below.
-            unsafe {
-                s.as_ptr().copy_to_nonoverlapping(v.as_mut_ptr(), s.len());
-                v.set_len(s.len());
-            }
-            v
-        }
+        fn to_vec<A: Allocator>(s: &[Self], alloc: A) -> Vec<Self, A> {}
     }
 }
 
@@ -27583,9 +16152,7 @@ impl<T> [T] {
     pub fn sort(&mut self)
     where
         T: Ord,
-    {
-        merge_sort(self, |a, b| a.lt(b));
-    }
+    {}
 
     /// Sorts the slice with a comparator function.
     ///
@@ -27638,9 +16205,7 @@ impl<T> [T] {
     pub fn sort_by<F>(&mut self, mut compare: F)
     where
         F: FnMut(&T, &T) -> Ordering,
-    {
-        merge_sort(self, |a, b| compare(a, b) == Less);
-    }
+    {}
 
     /// Sorts the slice with a key extraction function.
     ///
@@ -27680,9 +16245,7 @@ impl<T> [T] {
     where
         F: FnMut(&T) -> K,
         K: Ord,
-    {
-        merge_sort(self, |a, b| f(a).lt(&f(b)));
-    }
+    {}
 
     /// Sorts the slice with a key extraction function.
     ///
@@ -27723,47 +16286,7 @@ impl<T> [T] {
     where
         F: FnMut(&T) -> K,
         K: Ord,
-    {
-        // Helper macro for indexing our vector by the smallest possible type, to reduce allocation.
-        macro_rules! sort_by_key {
-            ($t:ty, $slice:ident, $f:ident) => {{
-                let mut indices: Vec<_> =
-                    $slice.iter().map($f).enumerate().map(|(i, k)| (k, i as $t)).collect();
-                // The elements of `indices` are unique, as they are indexed, so any sort will be
-                // stable with respect to the original slice. We use `sort_unstable` here because
-                // it requires less memory allocation.
-                indices.sort_unstable();
-                for i in 0..$slice.len() {
-                    let mut index = indices[i].1;
-                    while (index as usize) < i {
-                        index = indices[index as usize].1;
-                    }
-                    indices[i].1 = index;
-                    $slice.swap(i, index as usize);
-                }
-            }};
-        }
-
-        let sz_u8 = mem::size_of::<(K, u8)>();
-        let sz_u16 = mem::size_of::<(K, u16)>();
-        let sz_u32 = mem::size_of::<(K, u32)>();
-        let sz_usize = mem::size_of::<(K, usize)>();
-
-        let len = self.len();
-        if len < 2 {
-            return;
-        }
-        if sz_u8 < sz_u16 && len <= (u8::MAX as usize) {
-            return sort_by_key!(u8, self, f);
-        }
-        if sz_u16 < sz_u32 && len <= (u16::MAX as usize) {
-            return sort_by_key!(u16, self, f);
-        }
-        if sz_u32 < sz_usize && len <= (u32::MAX as usize) {
-            return sort_by_key!(u32, self, f);
-        }
-        sort_by_key!(usize, self, f)
-    }
+    {}
 
     /// Copies `self` into a new `Vec`.
     ///
@@ -27781,9 +16304,7 @@ impl<T> [T] {
     pub fn to_vec(&self) -> Vec<T>
     where
         T: Clone,
-    {
-        self.to_vec_in(Global)
-    }
+    {}
 
     /// Copies `self` into a new `Vec` with an allocator.
     ///
@@ -27804,10 +16325,7 @@ impl<T> [T] {
     pub fn to_vec_in<A: Allocator>(&self, alloc: A) -> Vec<T, A>
     where
         T: Clone,
-    {
-        // N.B., see the `hack` module in this file for more details.
-        hack::to_vec(self, alloc)
-    }
+    {}
 
     /// Converts `self` into a vector without clones or allocation.
     ///
@@ -27825,10 +16343,7 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn into_vec<A: Allocator>(self: Box<Self, A>) -> Vec<T, A> {
-        // N.B., see the `hack` module in this file for more details.
-        hack::into_vec(self)
-    }
+    pub fn into_vec<A: Allocator>(self: Box<Self, A>) -> Vec<T, A> {}
 
     /// Creates a vector by repeating a slice `n` times.
     ///
@@ -27855,60 +16370,7 @@ impl<T> [T] {
     pub fn repeat(&self, n: usize) -> Vec<T>
     where
         T: Copy,
-    {
-        if n == 0 {
-            return Vec::new();
-        }
-
-        // If `n` is larger than zero, it can be split as
-        // `n = 2^expn + rem (2^expn > rem, expn >= 0, rem >= 0)`.
-        // `2^expn` is the number represented by the leftmost '1' bit of `n`,
-        // and `rem` is the remaining part of `n`.
-
-        // Using `Vec` to access `set_len()`.
-        let capacity = self.len().checked_mul(n).expect("capacity overflow");
-        let mut buf = Vec::with_capacity(capacity);
-
-        // `2^expn` repetition is done by doubling `buf` `expn`-times.
-        buf.extend(self);
-        {
-            let mut m = n >> 1;
-            // If `m > 0`, there are remaining bits up to the leftmost '1'.
-            while m > 0 {
-                // `buf.extend(buf)`:
-                unsafe {
-                    ptr::copy_nonoverlapping(
-                        buf.as_ptr(),
-                        (buf.as_mut_ptr() as *mut T).add(buf.len()),
-                        buf.len(),
-                    );
-                    // `buf` has capacity of `self.len() * n`.
-                    let buf_len = buf.len();
-                    buf.set_len(buf_len * 2);
-                }
-
-                m >>= 1;
-            }
-        }
-
-        // `rem` (`= n - 2^expn`) repetition is done by copying
-        // first `rem` repetitions from `buf` itself.
-        let rem_len = capacity - buf.len(); // `self.len() * rem`
-        if rem_len > 0 {
-            // `buf.extend(buf[0 .. rem_len])`:
-            unsafe {
-                // This is non-overlapping since `2^expn > rem`.
-                ptr::copy_nonoverlapping(
-                    buf.as_ptr(),
-                    (buf.as_mut_ptr() as *mut T).add(buf.len()),
-                    rem_len,
-                );
-                // `buf.len() + rem_len` equals to `buf.capacity()` (`= self.len() * n`).
-                buf.set_len(capacity);
-            }
-        }
-        buf
-    }
+    {}
 
     /// Flattens a slice of `T` into a single value `Self::Output`.
     ///
@@ -27922,9 +16384,7 @@ impl<T> [T] {
     pub fn concat<Item: ?Sized>(&self) -> <Self as Concat<Item>>::Output
     where
         Self: Concat<Item>,
-    {
-        Concat::concat(self)
-    }
+    {}
 
     /// Flattens a slice of `T` into a single value `Self::Output`, placing a
     /// given separator between each.
@@ -27940,9 +16400,7 @@ impl<T> [T] {
     pub fn join<Separator>(&self, sep: Separator) -> <Self as Join<Separator>>::Output
     where
         Self: Join<Separator>,
-    {
-        Join::join(self, sep)
-    }
+    {}
 
     /// Flattens a slice of `T` into a single value `Self::Output`, placing a
     /// given separator between each.
@@ -27959,9 +16417,7 @@ impl<T> [T] {
     pub fn connect<Separator>(&self, sep: Separator) -> <Self as Join<Separator>>::Output
     where
         Self: Join<Separator>,
-    {
-        Join::join(self, sep)
-    }
+    {}
 }
 
 #[lang = "slice_u8_alloc"]
@@ -27981,11 +16437,7 @@ impl [u8] {
                   without modifying the original"]
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
-    pub fn to_ascii_uppercase(&self) -> Vec<u8> {
-        let mut me = self.to_vec();
-        me.make_ascii_uppercase();
-        me
-    }
+    pub fn to_ascii_uppercase(&self) -> Vec<u8> {}
 
     /// Returns a vector containing a copy of this slice where each byte
     /// is mapped to its ASCII lower case equivalent.
@@ -28001,11 +16453,7 @@ impl [u8] {
                   without modifying the original"]
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
-    pub fn to_ascii_lowercase(&self) -> Vec<u8> {
-        let mut me = self.to_vec();
-        me.make_ascii_lowercase();
-        me
-    }
+    pub fn to_ascii_lowercase(&self) -> Vec<u8> {}
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -28034,11 +16482,11 @@ impl [u8] {
 /// pub struct Foo(Vec<u32>, Vec<String>);
 ///
 /// impl std::borrow::Borrow<[u32]> for Foo {
-///     fn borrow(&self) -> &[u32] { &self.0 }
+///     fn borrow(&self) -> &[u32] {}
 /// }
 ///
 /// impl std::borrow::Borrow<[String]> for Foo {
-///     fn borrow(&self) -> &[String] { &self.1 }
+///     fn borrow(&self) -> &[String] {}
 /// }
 /// ```
 #[unstable(feature = "slice_concat_trait", issue = "27747")]
@@ -28069,14 +16517,7 @@ pub trait Join<Separator> {
 impl<T: Clone, V: Borrow<[T]>> Concat<T> for [V] {
     type Output = Vec<T>;
 
-    fn concat(slice: &Self) -> Vec<T> {
-        let size = slice.iter().map(|slice| slice.borrow().len()).sum();
-        let mut result = Vec::with_capacity(size);
-        for v in slice {
-            result.extend_from_slice(v.borrow())
-        }
-        result
-    }
+    fn concat(slice: &Self) -> Vec<T> {}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -28084,22 +16525,7 @@ impl<T: Clone, V: Borrow<[T]>> Concat<T> for [V] {
 impl<T: Clone, V: Borrow<[T]>> Join<&T> for [V] {
     type Output = Vec<T>;
 
-    fn join(slice: &Self, sep: &T) -> Vec<T> {
-        let mut iter = slice.iter();
-        let first = match iter.next() {
-            Some(first) => first,
-            None => return vec![],
-        };
-        let size = slice.iter().map(|v| v.borrow().len()).sum::<usize>() + slice.len() - 1;
-        let mut result = Vec::with_capacity(size);
-        result.extend_from_slice(first.borrow());
-
-        for v in iter {
-            result.push(sep.clone());
-            result.extend_from_slice(v.borrow())
-        }
-        result
-    }
+    fn join(slice: &Self, sep: &T) -> Vec<T> {}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -28107,23 +16533,7 @@ impl<T: Clone, V: Borrow<[T]>> Join<&T> for [V] {
 impl<T: Clone, V: Borrow<[T]>> Join<&[T]> for [V] {
     type Output = Vec<T>;
 
-    fn join(slice: &Self, sep: &[T]) -> Vec<T> {
-        let mut iter = slice.iter();
-        let first = match iter.next() {
-            Some(first) => first,
-            None => return vec![],
-        };
-        let size =
-            slice.iter().map(|v| v.borrow().len()).sum::<usize>() + sep.len() * (slice.len() - 1);
-        let mut result = Vec::with_capacity(size);
-        result.extend_from_slice(first.borrow());
-
-        for v in iter {
-            result.extend_from_slice(sep);
-            result.extend_from_slice(v.borrow())
-        }
-        result
-    }
+    fn join(slice: &Self, sep: &[T]) -> Vec<T> {}
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -28132,16 +16542,12 @@ impl<T: Clone, V: Borrow<[T]>> Join<&[T]> for [V] {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Borrow<[T]> for Vec<T> {
-    fn borrow(&self) -> &[T] {
-        &self[..]
-    }
+    fn borrow(&self) -> &[T] {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> BorrowMut<[T]> for Vec<T> {
-    fn borrow_mut(&mut self) -> &mut [T] {
-        &mut self[..]
-    }
+    fn borrow_mut(&mut self) -> &mut [T] {}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -28149,27 +16555,12 @@ impl<T> BorrowMut<[T]> for Vec<T> {
 impl<T: Clone> ToOwned for [T] {
     type Owned = Vec<T>;
     #[cfg(not(test))]
-    fn to_owned(&self) -> Vec<T> {
-        self.to_vec()
-    }
+    fn to_owned(&self) -> Vec<T> {}
 
     #[cfg(test)]
-    fn to_owned(&self) -> Vec<T> {
-        hack::to_vec(self, Global)
-    }
+    fn to_owned(&self) -> Vec<T> {}
 
-    fn clone_into(&self, target: &mut Vec<T>) {
-        // drop anything in target that will not be overwritten
-        target.truncate(self.len());
-
-        // target.len <= self.len due to the truncate above, so the
-        // slices here are always in-bounds.
-        let (init, tail) = self.split_at(target.len());
-
-        // reuse the contained values' allocations/resources.
-        target.clone_from_slice(init);
-        target.extend_from_slice(tail);
-    }
+    fn clone_into(&self, target: &mut Vec<T>) {}
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -28183,66 +16574,7 @@ impl<T: Clone> ToOwned for [T] {
 fn insert_head<T, F>(v: &mut [T], is_less: &mut F)
 where
     F: FnMut(&T, &T) -> bool,
-{
-    if v.len() >= 2 && is_less(&v[1], &v[0]) {
-        unsafe {
-            // There are three ways to implement insertion here:
-            //
-            // 1. Swap adjacent elements until the first one gets to its final destination.
-            //    However, this way we copy data around more than is necessary. If elements are big
-            //    structures (costly to copy), this method will be slow.
-            //
-            // 2. Iterate until the right place for the first element is found. Then shift the
-            //    elements succeeding it to make room for it and finally place it into the
-            //    remaining hole. This is a good method.
-            //
-            // 3. Copy the first element into a temporary variable. Iterate until the right place
-            //    for it is found. As we go along, copy every traversed element into the slot
-            //    preceding it. Finally, copy data from the temporary variable into the remaining
-            //    hole. This method is very good. Benchmarks demonstrated slightly better
-            //    performance than with the 2nd method.
-            //
-            // All methods were benchmarked, and the 3rd showed best results. So we chose that one.
-            let mut tmp = mem::ManuallyDrop::new(ptr::read(&v[0]));
-
-            // Intermediate state of the insertion process is always tracked by `hole`, which
-            // serves two purposes:
-            // 1. Protects integrity of `v` from panics in `is_less`.
-            // 2. Fills the remaining hole in `v` in the end.
-            //
-            // Panic safety:
-            //
-            // If `is_less` panics at any point during the process, `hole` will get dropped and
-            // fill the hole in `v` with `tmp`, thus ensuring that `v` still holds every object it
-            // initially held exactly once.
-            let mut hole = InsertionHole { src: &mut *tmp, dest: &mut v[1] };
-            ptr::copy_nonoverlapping(&v[1], &mut v[0], 1);
-
-            for i in 2..v.len() {
-                if !is_less(&v[i], &*tmp) {
-                    break;
-                }
-                ptr::copy_nonoverlapping(&v[i], &mut v[i - 1], 1);
-                hole.dest = &mut v[i];
-            }
-            // `hole` gets dropped and thus copies `tmp` into the remaining hole in `v`.
-        }
-    }
-
-    // When dropped, copies from `src` into `dest`.
-    struct InsertionHole<T> {
-        src: *mut T,
-        dest: *mut T,
-    }
-
-    impl<T> Drop for InsertionHole<T> {
-        fn drop(&mut self) {
-            unsafe {
-                ptr::copy_nonoverlapping(self.src, self.dest, 1);
-            }
-        }
-    }
-}
+{}
 
 /// Merges non-decreasing runs `v[..mid]` and `v[mid..]` using `buf` as temporary storage, and
 /// stores the result into `v[..]`.
@@ -28255,110 +16587,7 @@ where
 unsafe fn merge<T, F>(v: &mut [T], mid: usize, buf: *mut T, is_less: &mut F)
 where
     F: FnMut(&T, &T) -> bool,
-{
-    let len = v.len();
-    let v = v.as_mut_ptr();
-    let (v_mid, v_end) = unsafe { (v.add(mid), v.add(len)) };
-
-    // The merge process first copies the shorter run into `buf`. Then it traces the newly copied
-    // run and the longer run forwards (or backwards), comparing their next unconsumed elements and
-    // copying the lesser (or greater) one into `v`.
-    //
-    // As soon as the shorter run is fully consumed, the process is done. If the longer run gets
-    // consumed first, then we must copy whatever is left of the shorter run into the remaining
-    // hole in `v`.
-    //
-    // Intermediate state of the process is always tracked by `hole`, which serves two purposes:
-    // 1. Protects integrity of `v` from panics in `is_less`.
-    // 2. Fills the remaining hole in `v` if the longer run gets consumed first.
-    //
-    // Panic safety:
-    //
-    // If `is_less` panics at any point during the process, `hole` will get dropped and fill the
-    // hole in `v` with the unconsumed range in `buf`, thus ensuring that `v` still holds every
-    // object it initially held exactly once.
-    let mut hole;
-
-    if mid <= len - mid {
-        // The left run is shorter.
-        unsafe {
-            ptr::copy_nonoverlapping(v, buf, mid);
-            hole = MergeHole { start: buf, end: buf.add(mid), dest: v };
-        }
-
-        // Initially, these pointers point to the beginnings of their arrays.
-        let left = &mut hole.start;
-        let mut right = v_mid;
-        let out = &mut hole.dest;
-
-        while *left < hole.end && right < v_end {
-            // Consume the lesser side.
-            // If equal, prefer the left run to maintain stability.
-            unsafe {
-                let to_copy = if is_less(&*right, &**left) {
-                    get_and_increment(&mut right)
-                } else {
-                    get_and_increment(left)
-                };
-                ptr::copy_nonoverlapping(to_copy, get_and_increment(out), 1);
-            }
-        }
-    } else {
-        // The right run is shorter.
-        unsafe {
-            ptr::copy_nonoverlapping(v_mid, buf, len - mid);
-            hole = MergeHole { start: buf, end: buf.add(len - mid), dest: v_mid };
-        }
-
-        // Initially, these pointers point past the ends of their arrays.
-        let left = &mut hole.dest;
-        let right = &mut hole.end;
-        let mut out = v_end;
-
-        while v < *left && buf < *right {
-            // Consume the greater side.
-            // If equal, prefer the right run to maintain stability.
-            unsafe {
-                let to_copy = if is_less(&*right.offset(-1), &*left.offset(-1)) {
-                    decrement_and_get(left)
-                } else {
-                    decrement_and_get(right)
-                };
-                ptr::copy_nonoverlapping(to_copy, decrement_and_get(&mut out), 1);
-            }
-        }
-    }
-    // Finally, `hole` gets dropped. If the shorter run was not fully consumed, whatever remains of
-    // it will now be copied into the hole in `v`.
-
-    unsafe fn get_and_increment<T>(ptr: &mut *mut T) -> *mut T {
-        let old = *ptr;
-        *ptr = unsafe { ptr.offset(1) };
-        old
-    }
-
-    unsafe fn decrement_and_get<T>(ptr: &mut *mut T) -> *mut T {
-        *ptr = unsafe { ptr.offset(-1) };
-        *ptr
-    }
-
-    // When dropped, copies the range `start..end` into `dest..`.
-    struct MergeHole<T> {
-        start: *mut T,
-        end: *mut T,
-        dest: *mut T,
-    }
-
-    impl<T> Drop for MergeHole<T> {
-        fn drop(&mut self) {
-            // `T` is not a zero-sized type, so it's okay to divide by its size.
-            let len = (self.end as usize - self.start as usize) / mem::size_of::<T>();
-            unsafe {
-                ptr::copy_nonoverlapping(self.start, self.dest, len);
-            }
-        }
-    }
-}
+{}
 
 /// This merge sort borrows some (but not all) ideas from TimSort, which is described in detail
 /// [here](https://github.com/python/cpython/blob/main/Objects/listsort.txt).
@@ -28376,127 +16605,7 @@ where
 fn merge_sort<T, F>(v: &mut [T], mut is_less: F)
 where
     F: FnMut(&T, &T) -> bool,
-{
-    // Slices of up to this length get sorted using insertion sort.
-    const MAX_INSERTION: usize = 20;
-    // Very short runs are extended using insertion sort to span at least this many elements.
-    const MIN_RUN: usize = 10;
-
-    // Sorting has no meaningful behavior on zero-sized types.
-    if size_of::<T>() == 0 {
-        return;
-    }
-
-    let len = v.len();
-
-    // Short arrays get sorted in-place via insertion sort to avoid allocations.
-    if len <= MAX_INSERTION {
-        if len >= 2 {
-            for i in (0..len - 1).rev() {
-                insert_head(&mut v[i..], &mut is_less);
-            }
-        }
-        return;
-    }
-
-    // Allocate a buffer to use as scratch memory. We keep the length 0 so we can keep in it
-    // shallow copies of the contents of `v` without risking the dtors running on copies if
-    // `is_less` panics. When merging two sorted runs, this buffer holds a copy of the shorter run,
-    // which will always have length at most `len / 2`.
-    let mut buf = Vec::with_capacity(len / 2);
-
-    // In order to identify natural runs in `v`, we traverse it backwards. That might seem like a
-    // strange decision, but consider the fact that merges more often go in the opposite direction
-    // (forwards). According to benchmarks, merging forwards is slightly faster than merging
-    // backwards. To conclude, identifying runs by traversing backwards improves performance.
-    let mut runs = vec![];
-    let mut end = len;
-    while end > 0 {
-        // Find the next natural run, and reverse it if it's strictly descending.
-        let mut start = end - 1;
-        if start > 0 {
-            start -= 1;
-            unsafe {
-                if is_less(v.get_unchecked(start + 1), v.get_unchecked(start)) {
-                    while start > 0 && is_less(v.get_unchecked(start), v.get_unchecked(start - 1)) {
-                        start -= 1;
-                    }
-                    v[start..end].reverse();
-                } else {
-                    while start > 0 && !is_less(v.get_unchecked(start), v.get_unchecked(start - 1))
-                    {
-                        start -= 1;
-                    }
-                }
-            }
-        }
-
-        // Insert some more elements into the run if it's too short. Insertion sort is faster than
-        // merge sort on short sequences, so this significantly improves performance.
-        while start > 0 && end - start < MIN_RUN {
-            start -= 1;
-            insert_head(&mut v[start..end], &mut is_less);
-        }
-
-        // Push this run onto the stack.
-        runs.push(Run { start, len: end - start });
-        end = start;
-
-        // Merge some pairs of adjacent runs to satisfy the invariants.
-        while let Some(r) = collapse(&runs) {
-            let left = runs[r + 1];
-            let right = runs[r];
-            unsafe {
-                merge(
-                    &mut v[left.start..right.start + right.len],
-                    left.len,
-                    buf.as_mut_ptr(),
-                    &mut is_less,
-                );
-            }
-            runs[r] = Run { start: left.start, len: left.len + right.len };
-            runs.remove(r + 1);
-        }
-    }
-
-    // Finally, exactly one run must remain in the stack.
-    debug_assert!(runs.len() == 1 && runs[0].start == 0 && runs[0].len == len);
-
-    // Examines the stack of runs and identifies the next pair of runs to merge. More specifically,
-    // if `Some(r)` is returned, that means `runs[r]` and `runs[r + 1]` must be merged next. If the
-    // algorithm should continue building a new run instead, `None` is returned.
-    //
-    // TimSort is infamous for its buggy implementations, as described here:
-    // http://envisage-project.eu/timsort-specification-and-verification/
-    //
-    // The gist of the story is: we must enforce the invariants on the top four runs on the stack.
-    // Enforcing them on just top three is not sufficient to ensure that the invariants will still
-    // hold for *all* runs in the stack.
-    //
-    // This function correctly checks invariants for the top four runs. Additionally, if the top
-    // run starts at index 0, it will always demand a merge operation until the stack is fully
-    // collapsed, in order to complete the sort.
-    #[inline]
-    fn collapse(runs: &[Run]) -> Option<usize> {
-        let n = runs.len();
-        if n >= 2
-            && (runs[n - 1].start == 0
-                || runs[n - 2].len <= runs[n - 1].len
-                || (n >= 3 && runs[n - 3].len <= runs[n - 2].len + runs[n - 1].len)
-                || (n >= 4 && runs[n - 4].len <= runs[n - 3].len + runs[n - 2].len))
-        {
-            if n >= 3 && runs[n - 3].len < runs[n - 1].len { Some(n - 3) } else { Some(n - 2) }
-        } else {
-            None
-        }
-    }
-
-    #[derive(Clone, Copy)]
-    struct Run {
-        start: usize,
-        len: usize,
-    }
-}
+{}
 }
 pub mod str {
 //! Unicode string slices.
@@ -28580,9 +16689,7 @@ pub use core::str::{RSplitTerminator, SplitTerminator};
 impl<S: Borrow<str>> Concat<str> for [S] {
     type Output = String;
 
-    fn concat(slice: &Self) -> String {
-        Join::join(slice, "")
-    }
+    fn concat(slice: &Self) -> String {}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -28590,9 +16697,7 @@ impl<S: Borrow<str>> Concat<str> for [S] {
 impl<S: Borrow<str>> Join<&str> for [S] {
     type Output = String;
 
-    fn join(slice: &Self, sep: &str) -> String {
-        unsafe { String::from_utf8_unchecked(join_generic_copy(slice, sep.as_bytes())) }
-    }
+    fn join(slice: &Self, sep: &str) -> String {}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -28650,65 +16755,18 @@ where
     T: Copy,
     B: AsRef<[T]> + ?Sized,
     S: Borrow<B>,
-{
-    let sep_len = sep.len();
-    let mut iter = slice.iter();
-
-    // the first slice is the only one without a separator preceding it
-    let first = match iter.next() {
-        Some(first) => first,
-        None => return vec![],
-    };
-
-    // compute the exact total length of the joined Vec
-    // if the `len` calculation overflows, we'll panic
-    // we would have run out of memory anyway and the rest of the function requires
-    // the entire Vec pre-allocated for safety
-    let reserved_len = sep_len
-        .checked_mul(iter.len())
-        .and_then(|n| {
-            slice.iter().map(|s| s.borrow().as_ref().len()).try_fold(n, usize::checked_add)
-        })
-        .expect("attempt to join into collection with len > usize::MAX");
-
-    // prepare an uninitialized buffer
-    let mut result = Vec::with_capacity(reserved_len);
-    debug_assert!(result.capacity() >= reserved_len);
-
-    result.extend_from_slice(first.borrow().as_ref());
-
-    unsafe {
-        let pos = result.len();
-        let target = result.get_unchecked_mut(pos..reserved_len);
-
-        // copy separator and slices over without bounds checks
-        // generate loops with hardcoded offsets for small separators
-        // massive improvements possible (~ x2)
-        let remain = specialize_for_lengths!(sep, target, iter; 0, 1, 2, 3, 4);
-
-        // A weird borrow implementation may return different
-        // slices for the length calculation and the actual copy.
-        // Make sure we don't expose uninitialized bytes to the caller.
-        let result_len = reserved_len - remain.len();
-        result.set_len(result_len);
-    }
-    result
-}
+{}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Borrow<str> for String {
     #[inline]
-    fn borrow(&self) -> &str {
-        &self[..]
-    }
+    fn borrow(&self) -> &str {}
 }
 
 #[stable(feature = "string_borrow_mut", since = "1.36.0")]
 impl BorrowMut<str> for String {
     #[inline]
-    fn borrow_mut(&mut self) -> &mut str {
-        &mut self[..]
-    }
+    fn borrow_mut(&mut self) -> &mut str {}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -28716,15 +16774,9 @@ impl BorrowMut<str> for String {
 impl ToOwned for str {
     type Owned = String;
     #[inline]
-    fn to_owned(&self) -> String {
-        unsafe { String::from_utf8_unchecked(self.as_bytes().to_owned()) }
-    }
+    fn to_owned(&self) -> String {}
 
-    fn clone_into(&self, target: &mut String) {
-        let mut b = mem::take(target).into_bytes();
-        self.as_bytes().clone_into(&mut b);
-        *target = unsafe { String::from_utf8_unchecked(b) }
-    }
+    fn clone_into(&self, target: &mut String) {}
 }
 
 /// Methods for string slices.
@@ -28746,9 +16798,7 @@ impl str {
     #[stable(feature = "str_box_extras", since = "1.20.0")]
     #[must_use = "`self` will be dropped if the result is not used"]
     #[inline]
-    pub fn into_boxed_bytes(self: Box<str>) -> Box<[u8]> {
-        self.into()
-    }
+    pub fn into_boxed_bytes(self: Box<str>) -> Box<[u8]> {}
 
     /// Replaces all matches of a pattern with another string.
     ///
@@ -28777,17 +16827,7 @@ impl str {
                   without modifying the original"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn replace<'a, P: Pattern<'a>>(&'a self, from: P, to: &str) -> String {
-        let mut result = String::new();
-        let mut last_end = 0;
-        for (start, part) in self.match_indices(from) {
-            result.push_str(unsafe { self.get_unchecked(last_end..start) });
-            result.push_str(to);
-            last_end = start + part.len();
-        }
-        result.push_str(unsafe { self.get_unchecked(last_end..self.len()) });
-        result
-    }
+    pub fn replace<'a, P: Pattern<'a>>(&'a self, from: P, to: &str) -> String {}
 
     /// Replaces first N matches of a pattern with another string.
     ///
@@ -28816,18 +16856,7 @@ impl str {
     #[must_use = "this returns the replaced string as a new allocation, \
                   without modifying the original"]
     #[stable(feature = "str_replacen", since = "1.16.0")]
-    pub fn replacen<'a, P: Pattern<'a>>(&'a self, pat: P, to: &str, count: usize) -> String {
-        // Hope to reduce the times of re-allocation
-        let mut result = String::with_capacity(32);
-        let mut last_end = 0;
-        for (start, part) in self.match_indices(pat).take(count) {
-            result.push_str(unsafe { self.get_unchecked(last_end..start) });
-            result.push_str(to);
-            last_end = start + part.len();
-        }
-        result.push_str(unsafe { self.get_unchecked(last_end..self.len()) });
-        result
-    }
+    pub fn replacen<'a, P: Pattern<'a>>(&'a self, pat: P, to: &str, count: usize) -> String {}
 
     /// Returns the lowercase equivalent of this string slice, as a new [`String`].
     ///
@@ -28872,50 +16901,7 @@ impl str {
     #[must_use = "this returns the lowercase string as a new String, \
                   without modifying the original"]
     #[stable(feature = "unicode_case_mapping", since = "1.2.0")]
-    pub fn to_lowercase(&self) -> String {
-        let mut s = String::with_capacity(self.len());
-        for (i, c) in self[..].char_indices() {
-            if c == 'Σ' {
-                // Σ maps to σ, except at the end of a word where it maps to ς.
-                // This is the only conditional (contextual) but language-independent mapping
-                // in `SpecialCasing.txt`,
-                // so hard-code it rather than have a generic "condition" mechanism.
-                // See https://github.com/rust-lang/rust/issues/26035
-                map_uppercase_sigma(self, i, &mut s)
-            } else {
-                match conversions::to_lower(c) {
-                    [a, '\0', _] => s.push(a),
-                    [a, b, '\0'] => {
-                        s.push(a);
-                        s.push(b);
-                    }
-                    [a, b, c] => {
-                        s.push(a);
-                        s.push(b);
-                        s.push(c);
-                    }
-                }
-            }
-        }
-        return s;
-
-        fn map_uppercase_sigma(from: &str, i: usize, to: &mut String) {
-            // See https://www.unicode.org/versions/Unicode7.0.0/ch03.pdf#G33992
-            // for the definition of `Final_Sigma`.
-            debug_assert!('Σ'.len_utf8() == 2);
-            let is_word_final = case_ignoreable_then_cased(from[..i].chars().rev())
-                && !case_ignoreable_then_cased(from[i + 2..].chars());
-            to.push_str(if is_word_final { "ς" } else { "σ" });
-        }
-
-        fn case_ignoreable_then_cased<I: Iterator<Item = char>>(iter: I) -> bool {
-            use core::unicode::{Case_Ignorable, Cased};
-            match iter.skip_while(|&c| Case_Ignorable(c)).next() {
-                Some(c) => Cased(c),
-                None => false,
-            }
-        }
-    }
+    pub fn to_lowercase(&self) -> String {}
 
     /// Returns the uppercase equivalent of this string slice, as a new [`String`].
     ///
@@ -28954,24 +16940,7 @@ impl str {
     #[must_use = "this returns the uppercase string as a new String, \
                   without modifying the original"]
     #[stable(feature = "unicode_case_mapping", since = "1.2.0")]
-    pub fn to_uppercase(&self) -> String {
-        let mut s = String::with_capacity(self.len());
-        for c in self[..].chars() {
-            match conversions::to_upper(c) {
-                [a, '\0', _] => s.push(a),
-                [a, b, '\0'] => {
-                    s.push(a);
-                    s.push(b);
-                }
-                [a, b, c] => {
-                    s.push(a);
-                    s.push(b);
-                    s.push(c);
-                }
-            }
-        }
-        s
-    }
+    pub fn to_uppercase(&self) -> String {}
 
     /// Converts a [`Box<str>`] into a [`String`] without copying or allocating.
     ///
@@ -28988,10 +16957,7 @@ impl str {
     #[stable(feature = "box_str", since = "1.4.0")]
     #[must_use = "`self` will be dropped if the result is not used"]
     #[inline]
-    pub fn into_string(self: Box<str>) -> String {
-        let slice = Box::<[u8]>::from(self);
-        unsafe { String::from_utf8_unchecked(slice.into_vec()) }
-    }
+    pub fn into_string(self: Box<str>) -> String {}
 
     /// Creates a new [`String`] by repeating a string `n` times.
     ///
@@ -29016,9 +16982,7 @@ impl str {
     #[cfg(not(no_global_oom_handling))]
     #[must_use]
     #[stable(feature = "repeat_str", since = "1.16.0")]
-    pub fn repeat(&self, n: usize) -> String {
-        unsafe { String::from_utf8_unchecked(self.as_bytes().repeat(n)) }
-    }
+    pub fn repeat(&self, n: usize) -> String {}
 
     /// Returns a copy of this string where each character is mapped to its
     /// ASCII upper case equivalent.
@@ -29045,12 +17009,7 @@ impl str {
     #[must_use = "to uppercase the value in-place, use `make_ascii_uppercase()`"]
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
-    pub fn to_ascii_uppercase(&self) -> String {
-        let mut bytes = self.as_bytes().to_vec();
-        bytes.make_ascii_uppercase();
-        // make_ascii_uppercase() preserves the UTF-8 invariant.
-        unsafe { String::from_utf8_unchecked(bytes) }
-    }
+    pub fn to_ascii_uppercase(&self) -> String {}
 
     /// Returns a copy of this string where each character is mapped to its
     /// ASCII lower case equivalent.
@@ -29077,12 +17036,7 @@ impl str {
     #[must_use = "to lowercase the value in-place, use `make_ascii_lowercase()`"]
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
-    pub fn to_ascii_lowercase(&self) -> String {
-        let mut bytes = self.as_bytes().to_vec();
-        bytes.make_ascii_lowercase();
-        // make_ascii_lowercase() preserves the UTF-8 invariant.
-        unsafe { String::from_utf8_unchecked(bytes) }
-    }
+    pub fn to_ascii_lowercase(&self) -> String {}
 }
 
 /// Converts a boxed slice of bytes to a boxed string slice without checking
@@ -29101,9 +17055,7 @@ impl str {
 #[stable(feature = "str_box_extras", since = "1.20.0")]
 #[must_use]
 #[inline]
-pub unsafe fn from_boxed_utf8_unchecked(v: Box<[u8]>) -> Box<str> {
-    unsafe { Box::from_raw(Box::into_raw(v) as *mut str) }
-}
+pub unsafe fn from_boxed_utf8_unchecked(v: Box<[u8]>) -> Box<str> {}
 }
 pub mod string {
 //! A UTF-8–encoded, growable string.
@@ -29254,7 +17206,7 @@ use crate::vec::Vec;
 /// function which takes a [`&str`] by using an ampersand (`&`):
 ///
 /// ```
-/// fn takes_str(s: &str) { }
+/// fn takes_str(s: &str) {}
 ///
 /// let s = String::from("Hello");
 ///
@@ -29487,9 +17439,7 @@ impl String {
     #[rustc_const_stable(feature = "const_string_new", since = "1.39.0")]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
-    pub const fn new() -> String {
-        String { vec: Vec::new() }
-    }
+    pub const fn new() -> String {}
 
     /// Creates a new empty `String` with a particular capacity.
     ///
@@ -29532,9 +17482,7 @@ impl String {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
-    pub fn with_capacity(capacity: usize) -> String {
-        String { vec: Vec::with_capacity(capacity) }
-    }
+    pub fn with_capacity(capacity: usize) -> String {}
 
     // HACK(japaric): with cfg(test) the inherent `[T]::to_vec` method, which is
     // required for this method definition, is not available. Since we don't
@@ -29542,9 +17490,7 @@ impl String {
     // NB see the slice::hack module in slice.rs for more information
     #[inline]
     #[cfg(test)]
-    pub fn from_str(_: &str) -> String {
-        panic!("not available with cfg(test)");
-    }
+    pub fn from_str(_: &str) -> String {}
 
     /// Converts a vector of bytes to a `String`.
     ///
@@ -29604,12 +17550,7 @@ impl String {
     /// [`into_bytes`]: String::into_bytes
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn from_utf8(vec: Vec<u8>) -> Result<String, FromUtf8Error> {
-        match str::from_utf8(&vec) {
-            Ok(..) => Ok(String { vec }),
-            Err(e) => Err(FromUtf8Error { bytes: vec, error: e }),
-        }
-    }
+    pub fn from_utf8(vec: Vec<u8>) -> Result<String, FromUtf8Error> {}
 
     /// Converts a slice of bytes to a string, including invalid characters.
     ///
@@ -29663,37 +17604,7 @@ impl String {
     #[must_use]
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn from_utf8_lossy(v: &[u8]) -> Cow<'_, str> {
-        let mut iter = lossy::Utf8Lossy::from_bytes(v).chunks();
-
-        let (first_valid, first_broken) = if let Some(chunk) = iter.next() {
-            let lossy::Utf8LossyChunk { valid, broken } = chunk;
-            if valid.len() == v.len() {
-                debug_assert!(broken.is_empty());
-                return Cow::Borrowed(valid);
-            }
-            (valid, broken)
-        } else {
-            return Cow::Borrowed("");
-        };
-
-        const REPLACEMENT: &str = "\u{FFFD}";
-
-        let mut res = String::with_capacity(v.len());
-        res.push_str(first_valid);
-        if !first_broken.is_empty() {
-            res.push_str(REPLACEMENT);
-        }
-
-        for lossy::Utf8LossyChunk { valid, broken } in iter {
-            res.push_str(valid);
-            if !broken.is_empty() {
-                res.push_str(REPLACEMENT);
-            }
-        }
-
-        Cow::Owned(res)
-    }
+    pub fn from_utf8_lossy(v: &[u8]) -> Cow<'_, str> {}
 
     /// Decode a UTF-16–encoded vector `v` into a `String`, returning [`Err`]
     /// if `v` contains any invalid data.
@@ -29716,19 +17627,7 @@ impl String {
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn from_utf16(v: &[u16]) -> Result<String, FromUtf16Error> {
-        // This isn't done via collect::<Result<_, _>>() for performance reasons.
-        // FIXME: the function can be simplified again when #48994 is closed.
-        let mut ret = String::with_capacity(v.len());
-        for c in decode_utf16(v.iter().cloned()) {
-            if let Ok(c) = c {
-                ret.push(c);
-            } else {
-                return Err(FromUtf16Error(()));
-            }
-        }
-        Ok(ret)
-    }
+    pub fn from_utf16(v: &[u16]) -> Result<String, FromUtf16Error> {}
 
     /// Decode a UTF-16–encoded slice `v` into a `String`, replacing
     /// invalid data with [the replacement character (`U+FFFD`)][U+FFFD].
@@ -29758,9 +17657,7 @@ impl String {
     #[must_use]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn from_utf16_lossy(v: &[u16]) -> String {
-        decode_utf16(v.iter().cloned()).map(|r| r.unwrap_or(REPLACEMENT_CHARACTER)).collect()
-    }
+    pub fn from_utf16_lossy(v: &[u16]) -> String {}
 
     /// Decomposes a `String` into its raw components.
     ///
@@ -29790,9 +17687,7 @@ impl String {
     /// ```
     #[must_use = "`self` will be dropped if the result is not used"]
     #[unstable(feature = "vec_into_raw_parts", reason = "new API", issue = "65816")]
-    pub fn into_raw_parts(self) -> (*mut u8, usize, usize) {
-        self.vec.into_raw_parts()
-    }
+    pub fn into_raw_parts(self) -> (*mut u8, usize, usize) {}
 
     /// Creates a new `String` from a length, capacity, and pointer.
     ///
@@ -29841,9 +17736,7 @@ impl String {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub unsafe fn from_raw_parts(buf: *mut u8, length: usize, capacity: usize) -> String {
-        unsafe { String { vec: Vec::from_raw_parts(buf, length, capacity) } }
-    }
+    pub unsafe fn from_raw_parts(buf: *mut u8, length: usize, capacity: usize) -> String {}
 
     /// Converts a vector of bytes to a `String` without checking that the
     /// string contains valid UTF-8.
@@ -29876,9 +17769,7 @@ impl String {
     #[inline]
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub unsafe fn from_utf8_unchecked(bytes: Vec<u8>) -> String {
-        String { vec: bytes }
-    }
+    pub unsafe fn from_utf8_unchecked(bytes: Vec<u8>) -> String {}
 
     /// Converts a `String` into a byte vector.
     ///
@@ -29897,9 +17788,7 @@ impl String {
     #[inline]
     #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn into_bytes(self) -> Vec<u8> {
-        self.vec
-    }
+    pub fn into_bytes(self) -> Vec<u8> {}
 
     /// Extracts a string slice containing the entire `String`.
     ///
@@ -29915,9 +17804,7 @@ impl String {
     #[inline]
     #[must_use]
     #[stable(feature = "string_as_str", since = "1.7.0")]
-    pub fn as_str(&self) -> &str {
-        self
-    }
+    pub fn as_str(&self) -> &str {}
 
     /// Converts a `String` into a mutable string slice.
     ///
@@ -29936,9 +17823,7 @@ impl String {
     #[inline]
     #[must_use]
     #[stable(feature = "string_as_str", since = "1.7.0")]
-    pub fn as_mut_str(&mut self) -> &mut str {
-        self
-    }
+    pub fn as_mut_str(&mut self) -> &mut str {}
 
     /// Appends a given string slice onto the end of this `String`.
     ///
@@ -29956,9 +17841,7 @@ impl String {
     #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn push_str(&mut self, string: &str) {
-        self.vec.extend_from_slice(string.as_bytes())
-    }
+    pub fn push_str(&mut self, string: &str) {}
 
     /// Copies elements from `src` range to the end of the string.
     ///
@@ -29987,14 +17870,7 @@ impl String {
     pub fn extend_from_within<R>(&mut self, src: R)
     where
         R: RangeBounds<usize>,
-    {
-        let src @ Range { start, end } = slice::range(src, ..self.len());
-
-        assert!(self.is_char_boundary(start));
-        assert!(self.is_char_boundary(end));
-
-        self.vec.extend_from_within(src);
-    }
+    {}
 
     /// Returns this `String`'s capacity, in bytes.
     ///
@@ -30010,9 +17886,7 @@ impl String {
     #[inline]
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn capacity(&self) -> usize {
-        self.vec.capacity()
-    }
+    pub fn capacity(&self) -> usize {}
 
     /// Ensures that this `String`'s capacity is at least `additional` bytes
     /// larger than its length.
@@ -30061,9 +17935,7 @@ impl String {
     #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn reserve(&mut self, additional: usize) {
-        self.vec.reserve(additional)
-    }
+    pub fn reserve(&mut self, additional: usize) {}
 
     /// Ensures that this `String`'s capacity is `additional` bytes
     /// larger than its length.
@@ -30109,9 +17981,7 @@ impl String {
     #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn reserve_exact(&mut self, additional: usize) {
-        self.vec.reserve_exact(additional)
-    }
+    pub fn reserve_exact(&mut self, additional: usize) {}
 
     /// Tries to reserve capacity for at least `additional` more elements to be inserted
     /// in the given `String`. The collection may reserve more space to avoid
@@ -30129,23 +17999,11 @@ impl String {
     /// ```
     /// use std::collections::TryReserveError;
     ///
-    /// fn process_data(data: &str) -> Result<String, TryReserveError> {
-    ///     let mut output = String::new();
-    ///
-    ///     // Pre-reserve the memory, exiting if we can't
-    ///     output.try_reserve(data.len())?;
-    ///
-    ///     // Now we know this can't OOM in the middle of our complex work
-    ///     output.push_str(data);
-    ///
-    ///     Ok(output)
-    /// }
+    /// fn process_data(data: &str) -> Result<String, TryReserveError> {}
     /// # process_data("rust").expect("why is the test harness OOMing on 4 bytes?");
     /// ```
     #[stable(feature = "try_reserve", since = "1.57.0")]
-    pub fn try_reserve(&mut self, additional: usize) -> Result<(), TryReserveError> {
-        self.vec.try_reserve(additional)
-    }
+    pub fn try_reserve(&mut self, additional: usize) -> Result<(), TryReserveError> {}
 
     /// Tries to reserve the minimum capacity for exactly `additional` more elements to
     /// be inserted in the given `String`. After calling `reserve_exact`,
@@ -30168,23 +18026,11 @@ impl String {
     /// ```
     /// use std::collections::TryReserveError;
     ///
-    /// fn process_data(data: &str) -> Result<String, TryReserveError> {
-    ///     let mut output = String::new();
-    ///
-    ///     // Pre-reserve the memory, exiting if we can't
-    ///     output.try_reserve(data.len())?;
-    ///
-    ///     // Now we know this can't OOM in the middle of our complex work
-    ///     output.push_str(data);
-    ///
-    ///     Ok(output)
-    /// }
+    /// fn process_data(data: &str) -> Result<String, TryReserveError> {}
     /// # process_data("rust").expect("why is the test harness OOMing on 4 bytes?");
     /// ```
     #[stable(feature = "try_reserve", since = "1.57.0")]
-    pub fn try_reserve_exact(&mut self, additional: usize) -> Result<(), TryReserveError> {
-        self.vec.try_reserve_exact(additional)
-    }
+    pub fn try_reserve_exact(&mut self, additional: usize) -> Result<(), TryReserveError> {}
 
     /// Shrinks the capacity of this `String` to match its length.
     ///
@@ -30204,9 +18050,7 @@ impl String {
     #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn shrink_to_fit(&mut self) {
-        self.vec.shrink_to_fit()
-    }
+    pub fn shrink_to_fit(&mut self) {}
 
     /// Shrinks the capacity of this `String` with a lower bound.
     ///
@@ -30231,9 +18075,7 @@ impl String {
     #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[stable(feature = "shrink_to", since = "1.56.0")]
-    pub fn shrink_to(&mut self, min_capacity: usize) {
-        self.vec.shrink_to(min_capacity)
-    }
+    pub fn shrink_to(&mut self, min_capacity: usize) {}
 
     /// Appends the given [`char`] to the end of this `String`.
     ///
@@ -30253,12 +18095,7 @@ impl String {
     #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn push(&mut self, ch: char) {
-        match ch.len_utf8() {
-            1 => self.vec.push(ch as u8),
-            _ => self.vec.extend_from_slice(ch.encode_utf8(&mut [0; 4]).as_bytes()),
-        }
-    }
+    pub fn push(&mut self, ch: char) {}
 
     /// Returns a byte slice of this `String`'s contents.
     ///
@@ -30278,9 +18115,7 @@ impl String {
     #[inline]
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn as_bytes(&self) -> &[u8] {
-        &self.vec
-    }
+    pub fn as_bytes(&self) -> &[u8] {}
 
     /// Shortens this `String` to the specified length.
     ///
@@ -30307,12 +18142,7 @@ impl String {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn truncate(&mut self, new_len: usize) {
-        if new_len <= self.len() {
-            assert!(self.is_char_boundary(new_len));
-            self.vec.truncate(new_len)
-        }
-    }
+    pub fn truncate(&mut self, new_len: usize) {}
 
     /// Removes the last character from the string buffer and returns it.
     ///
@@ -30333,14 +18163,7 @@ impl String {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn pop(&mut self) -> Option<char> {
-        let ch = self.chars().rev().next()?;
-        let newlen = self.len() - ch.len_utf8();
-        unsafe {
-            self.vec.set_len(newlen);
-        }
-        Some(ch)
-    }
+    pub fn pop(&mut self) -> Option<char> {}
 
     /// Removes a [`char`] from this `String` at a byte position and returns it.
     ///
@@ -30365,20 +18188,7 @@ impl String {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn remove(&mut self, idx: usize) -> char {
-        let ch = match self[idx..].chars().next() {
-            Some(ch) => ch,
-            None => panic!("cannot remove a char from the end of a string"),
-        };
-
-        let next = idx + ch.len_utf8();
-        let len = self.len();
-        unsafe {
-            ptr::copy(self.vec.as_ptr().add(next), self.vec.as_mut_ptr().add(idx), len - next);
-            self.vec.set_len(len - (next - idx));
-        }
-        ch
-    }
+    pub fn remove(&mut self, idx: usize) -> char {}
 
     /// Remove all matches of pattern `pat` in the `String`.
     ///
@@ -30405,54 +18215,7 @@ impl String {
     pub fn remove_matches<'a, P>(&'a mut self, pat: P)
     where
         P: for<'x> Pattern<'x>,
-    {
-        use core::str::pattern::Searcher;
-
-        let rejections = {
-            let mut searcher = pat.into_searcher(self);
-            // Per Searcher::next:
-            //
-            // A Match result needs to contain the whole matched pattern,
-            // however Reject results may be split up into arbitrary many
-            // adjacent fragments. Both ranges may have zero length.
-            //
-            // In practice the implementation of Searcher::next_match tends to
-            // be more efficient, so we use it here and do some work to invert
-            // matches into rejections since that's what we want to copy below.
-            let mut front = 0;
-            let rejections: Vec<_> = from_fn(|| {
-                let (start, end) = searcher.next_match()?;
-                let prev_front = front;
-                front = end;
-                Some((prev_front, start))
-            })
-            .collect();
-            rejections.into_iter().chain(core::iter::once((front, self.len())))
-        };
-
-        let mut len = 0;
-        let ptr = self.vec.as_mut_ptr();
-
-        for (start, end) in rejections {
-            let count = end - start;
-            if start != len {
-                // SAFETY: per Searcher::next:
-                //
-                // The stream of Match and Reject values up to a Done will
-                // contain index ranges that are adjacent, non-overlapping,
-                // covering the whole haystack, and laying on utf8
-                // boundaries.
-                unsafe {
-                    ptr::copy(ptr.add(start), ptr.add(len), count);
-                }
-            }
-            len += count;
-        }
-
-        unsafe {
-            self.vec.set_len(len);
-        }
-    }
+    {}
 
     /// Retains only the characters specified by the predicate.
     ///
@@ -30485,46 +18248,7 @@ impl String {
     pub fn retain<F>(&mut self, mut f: F)
     where
         F: FnMut(char) -> bool,
-    {
-        struct SetLenOnDrop<'a> {
-            s: &'a mut String,
-            idx: usize,
-            del_bytes: usize,
-        }
-
-        impl<'a> Drop for SetLenOnDrop<'a> {
-            fn drop(&mut self) {
-                let new_len = self.idx - self.del_bytes;
-                debug_assert!(new_len <= self.s.len());
-                unsafe { self.s.vec.set_len(new_len) };
-            }
-        }
-
-        let len = self.len();
-        let mut guard = SetLenOnDrop { s: self, idx: 0, del_bytes: 0 };
-
-        while guard.idx < len {
-            let ch = unsafe { guard.s.get_unchecked(guard.idx..len).chars().next().unwrap() };
-            let ch_len = ch.len_utf8();
-
-            if !f(ch) {
-                guard.del_bytes += ch_len;
-            } else if guard.del_bytes > 0 {
-                unsafe {
-                    ptr::copy(
-                        guard.s.vec.as_ptr().add(guard.idx),
-                        guard.s.vec.as_mut_ptr().add(guard.idx - guard.del_bytes),
-                        ch_len,
-                    );
-                }
-            }
-
-            // Point idx to the next char
-            guard.idx += ch_len;
-        }
-
-        drop(guard);
-    }
+    {}
 
     /// Inserts a character into this `String` at a byte position.
     ///
@@ -30552,28 +18276,10 @@ impl String {
     #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn insert(&mut self, idx: usize, ch: char) {
-        assert!(self.is_char_boundary(idx));
-        let mut bits = [0; 4];
-        let bits = ch.encode_utf8(&mut bits).as_bytes();
-
-        unsafe {
-            self.insert_bytes(idx, bits);
-        }
-    }
+    pub fn insert(&mut self, idx: usize, ch: char) {}
 
     #[cfg(not(no_global_oom_handling))]
-    unsafe fn insert_bytes(&mut self, idx: usize, bytes: &[u8]) {
-        let len = self.len();
-        let amt = bytes.len();
-        self.vec.reserve(amt);
-
-        unsafe {
-            ptr::copy(self.vec.as_ptr().add(idx), self.vec.as_mut_ptr().add(idx + amt), len - idx);
-            ptr::copy_nonoverlapping(bytes.as_ptr(), self.vec.as_mut_ptr().add(idx), amt);
-            self.vec.set_len(len + amt);
-        }
-    }
+    unsafe fn insert_bytes(&mut self, idx: usize, bytes: &[u8]) {}
 
     /// Inserts a string slice into this `String` at a byte position.
     ///
@@ -30599,13 +18305,7 @@ impl String {
     #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[stable(feature = "insert_str", since = "1.16.0")]
-    pub fn insert_str(&mut self, idx: usize, string: &str) {
-        assert!(self.is_char_boundary(idx));
-
-        unsafe {
-            self.insert_bytes(idx, string.as_bytes());
-        }
-    }
+    pub fn insert_str(&mut self, idx: usize, string: &str) {}
 
     /// Returns a mutable reference to the contents of this `String`.
     ///
@@ -30634,9 +18334,7 @@ impl String {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub unsafe fn as_mut_vec(&mut self) -> &mut Vec<u8> {
-        &mut self.vec
-    }
+    pub unsafe fn as_mut_vec(&mut self) -> &mut Vec<u8> {}
 
     /// Returns the length of this `String`, in bytes, not [`char`]s or
     /// graphemes. In other words, it might not be what a human considers the
@@ -30657,9 +18355,7 @@ impl String {
     #[inline]
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn len(&self) -> usize {
-        self.vec.len()
-    }
+    pub fn len(&self) -> usize {}
 
     /// Returns `true` if this `String` has a length of zero, and `false` otherwise.
     ///
@@ -30677,9 +18373,7 @@ impl String {
     #[inline]
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn is_empty(&self) -> bool {
-        self.len() == 0
-    }
+    pub fn is_empty(&self) -> bool {}
 
     /// Splits the string into two at the given byte index.
     ///
@@ -30697,22 +18391,13 @@ impl String {
     /// # Examples
     ///
     /// ```
-    /// # fn main() {
-    /// let mut hello = String::from("Hello, World!");
-    /// let world = hello.split_off(7);
-    /// assert_eq!(hello, "Hello, ");
-    /// assert_eq!(world, "World!");
-    /// # }
+    /// # fn main() {}
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[stable(feature = "string_split_off", since = "1.16.0")]
     #[must_use = "use `.truncate()` if you don't need the other half"]
-    pub fn split_off(&mut self, at: usize) -> String {
-        assert!(self.is_char_boundary(at));
-        let other = self.vec.split_off(at);
-        unsafe { String::from_utf8_unchecked(other) }
-    }
+    pub fn split_off(&mut self, at: usize) -> String {}
 
     /// Truncates this `String`, removing all contents.
     ///
@@ -30734,9 +18419,7 @@ impl String {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn clear(&mut self) {
-        self.vec.clear()
-    }
+    pub fn clear(&mut self) {}
 
     /// Creates a draining iterator that removes the specified range in the `String`
     /// and yields the removed `chars`.
@@ -30770,25 +18453,7 @@ impl String {
     pub fn drain<R>(&mut self, range: R) -> Drain<'_>
     where
         R: RangeBounds<usize>,
-    {
-        // Memory safety
-        //
-        // The String version of Drain does not have the memory safety issues
-        // of the vector version. The data is just plain bytes.
-        // Because the range removal happens in Drop, if the Drain iterator is leaked,
-        // the removal will not happen.
-        let Range { start, end } = slice::range(range, ..self.len());
-        assert!(self.is_char_boundary(start));
-        assert!(self.is_char_boundary(end));
-
-        // Take out two simultaneous borrows. The &mut String won't be accessed
-        // until iteration is over, in Drop.
-        let self_ptr = self as *mut _;
-        // SAFETY: `slice::range` and `is_char_boundary` do the appropriate bounds checks.
-        let chars_iter = unsafe { self.get_unchecked(start..end) }.chars();
-
-        Drain { start, end, iter: chars_iter, string: self_ptr }
-    }
+    {}
 
     /// Removes the specified range in the string,
     /// and replaces it with the given string.
@@ -30816,32 +18481,7 @@ impl String {
     pub fn replace_range<R>(&mut self, range: R, replace_with: &str)
     where
         R: RangeBounds<usize>,
-    {
-        // Memory safety
-        //
-        // Replace_range does not have the memory safety issues of a vector Splice.
-        // of the vector version. The data is just plain bytes.
-
-        // WARNING: Inlining this variable would be unsound (#81138)
-        let start = range.start_bound();
-        match start {
-            Included(&n) => assert!(self.is_char_boundary(n)),
-            Excluded(&n) => assert!(self.is_char_boundary(n + 1)),
-            Unbounded => {}
-        };
-        // WARNING: Inlining this variable would be unsound (#81138)
-        let end = range.end_bound();
-        match end {
-            Included(&n) => assert!(self.is_char_boundary(n + 1)),
-            Excluded(&n) => assert!(self.is_char_boundary(n)),
-            Unbounded => {}
-        };
-
-        // Using `range` again would be unsound (#81138)
-        // We assume the bounds reported by `range` remain the same, but
-        // an adversarial implementation could change between calls
-        unsafe { self.as_mut_vec() }.splice((start, end), replace_with.bytes());
-    }
+    {}
 
     /// Converts this `String` into a <code>[Box]<[str]></code>.
     ///
@@ -30862,10 +18502,7 @@ impl String {
     #[stable(feature = "box_str", since = "1.4.0")]
     #[must_use = "`self` will be dropped if the result is not used"]
     #[inline]
-    pub fn into_boxed_str(self) -> Box<str> {
-        let slice = self.vec.into_boxed_slice();
-        unsafe { from_boxed_utf8_unchecked(slice) }
-    }
+    pub fn into_boxed_str(self) -> Box<str> {}
 }
 
 impl FromUtf8Error {
@@ -30885,9 +18522,7 @@ impl FromUtf8Error {
     /// ```
     #[must_use]
     #[stable(feature = "from_utf8_error_as_bytes", since = "1.26.0")]
-    pub fn as_bytes(&self) -> &[u8] {
-        &self.bytes[..]
-    }
+    pub fn as_bytes(&self) -> &[u8] {}
 
     /// Returns the bytes that were attempted to convert to a `String`.
     ///
@@ -30909,9 +18544,7 @@ impl FromUtf8Error {
     /// ```
     #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn into_bytes(self) -> Vec<u8> {
-        self.bytes
-    }
+    pub fn into_bytes(self) -> Vec<u8> {}
 
     /// Fetch a `Utf8Error` to get more details about the conversion failure.
     ///
@@ -30938,200 +18571,118 @@ impl FromUtf8Error {
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn utf8_error(&self) -> Utf8Error {
-        self.error
-    }
+    pub fn utf8_error(&self) -> Utf8Error {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for FromUtf8Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(&self.error, f)
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for FromUtf16Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt("invalid utf-16: lone surrogate found", f)
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Clone for String {
-    fn clone(&self) -> Self {
-        String { vec: self.vec.clone() }
-    }
+    fn clone(&self) -> Self {}
 
-    fn clone_from(&mut self, source: &Self) {
-        self.vec.clone_from(&source.vec);
-    }
+    fn clone_from(&mut self, source: &Self) {}
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl FromIterator<char> for String {
-    fn from_iter<I: IntoIterator<Item = char>>(iter: I) -> String {
-        let mut buf = String::new();
-        buf.extend(iter);
-        buf
-    }
+    fn from_iter<I: IntoIterator<Item = char>>(iter: I) -> String {}
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "string_from_iter_by_ref", since = "1.17.0")]
 impl<'a> FromIterator<&'a char> for String {
-    fn from_iter<I: IntoIterator<Item = &'a char>>(iter: I) -> String {
-        let mut buf = String::new();
-        buf.extend(iter);
-        buf
-    }
+    fn from_iter<I: IntoIterator<Item = &'a char>>(iter: I) -> String {}
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> FromIterator<&'a str> for String {
-    fn from_iter<I: IntoIterator<Item = &'a str>>(iter: I) -> String {
-        let mut buf = String::new();
-        buf.extend(iter);
-        buf
-    }
+    fn from_iter<I: IntoIterator<Item = &'a str>>(iter: I) -> String {}
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "extend_string", since = "1.4.0")]
 impl FromIterator<String> for String {
-    fn from_iter<I: IntoIterator<Item = String>>(iter: I) -> String {
-        let mut iterator = iter.into_iter();
-
-        // Because we're iterating over `String`s, we can avoid at least
-        // one allocation by getting the first string from the iterator
-        // and appending to it all the subsequent strings.
-        match iterator.next() {
-            None => String::new(),
-            Some(mut buf) => {
-                buf.extend(iterator);
-                buf
-            }
-        }
-    }
+    fn from_iter<I: IntoIterator<Item = String>>(iter: I) -> String {}
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "box_str2", since = "1.45.0")]
 impl FromIterator<Box<str>> for String {
-    fn from_iter<I: IntoIterator<Item = Box<str>>>(iter: I) -> String {
-        let mut buf = String::new();
-        buf.extend(iter);
-        buf
-    }
+    fn from_iter<I: IntoIterator<Item = Box<str>>>(iter: I) -> String {}
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "herd_cows", since = "1.19.0")]
 impl<'a> FromIterator<Cow<'a, str>> for String {
-    fn from_iter<I: IntoIterator<Item = Cow<'a, str>>>(iter: I) -> String {
-        let mut iterator = iter.into_iter();
-
-        // Because we're iterating over CoWs, we can (potentially) avoid at least
-        // one allocation by getting the first item and appending to it all the
-        // subsequent items.
-        match iterator.next() {
-            None => String::new(),
-            Some(cow) => {
-                let mut buf = cow.into_owned();
-                buf.extend(iterator);
-                buf
-            }
-        }
-    }
+    fn from_iter<I: IntoIterator<Item = Cow<'a, str>>>(iter: I) -> String {}
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Extend<char> for String {
-    fn extend<I: IntoIterator<Item = char>>(&mut self, iter: I) {
-        let iterator = iter.into_iter();
-        let (lower_bound, _) = iterator.size_hint();
-        self.reserve(lower_bound);
-        iterator.for_each(move |c| self.push(c));
-    }
+    fn extend<I: IntoIterator<Item = char>>(&mut self, iter: I) {}
 
     #[inline]
-    fn extend_one(&mut self, c: char) {
-        self.push(c);
-    }
+    fn extend_one(&mut self, c: char) {}
 
     #[inline]
-    fn extend_reserve(&mut self, additional: usize) {
-        self.reserve(additional);
-    }
+    fn extend_reserve(&mut self, additional: usize) {}
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "extend_ref", since = "1.2.0")]
 impl<'a> Extend<&'a char> for String {
-    fn extend<I: IntoIterator<Item = &'a char>>(&mut self, iter: I) {
-        self.extend(iter.into_iter().cloned());
-    }
+    fn extend<I: IntoIterator<Item = &'a char>>(&mut self, iter: I) {}
 
     #[inline]
-    fn extend_one(&mut self, &c: &'a char) {
-        self.push(c);
-    }
+    fn extend_one(&mut self, &c: &'a char) {}
 
     #[inline]
-    fn extend_reserve(&mut self, additional: usize) {
-        self.reserve(additional);
-    }
+    fn extend_reserve(&mut self, additional: usize) {}
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Extend<&'a str> for String {
-    fn extend<I: IntoIterator<Item = &'a str>>(&mut self, iter: I) {
-        iter.into_iter().for_each(move |s| self.push_str(s));
-    }
+    fn extend<I: IntoIterator<Item = &'a str>>(&mut self, iter: I) {}
 
     #[inline]
-    fn extend_one(&mut self, s: &'a str) {
-        self.push_str(s);
-    }
+    fn extend_one(&mut self, s: &'a str) {}
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "box_str2", since = "1.45.0")]
 impl Extend<Box<str>> for String {
-    fn extend<I: IntoIterator<Item = Box<str>>>(&mut self, iter: I) {
-        iter.into_iter().for_each(move |s| self.push_str(&s));
-    }
+    fn extend<I: IntoIterator<Item = Box<str>>>(&mut self, iter: I) {}
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "extend_string", since = "1.4.0")]
 impl Extend<String> for String {
-    fn extend<I: IntoIterator<Item = String>>(&mut self, iter: I) {
-        iter.into_iter().for_each(move |s| self.push_str(&s));
-    }
+    fn extend<I: IntoIterator<Item = String>>(&mut self, iter: I) {}
 
     #[inline]
-    fn extend_one(&mut self, s: String) {
-        self.push_str(&s);
-    }
+    fn extend_one(&mut self, s: String) {}
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "herd_cows", since = "1.19.0")]
 impl<'a> Extend<Cow<'a, str>> for String {
-    fn extend<I: IntoIterator<Item = Cow<'a, str>>>(&mut self, iter: I) {
-        iter.into_iter().for_each(move |s| self.push_str(&s));
-    }
+    fn extend<I: IntoIterator<Item = Cow<'a, str>>>(&mut self, iter: I) {}
 
     #[inline]
-    fn extend_one(&mut self, s: Cow<'a, str>) {
-        self.push_str(&s);
-    }
+    fn extend_one(&mut self, s: Cow<'a, str>) {}
 }
 
 /// A convenience impl that delegates to the impl for `&str`.
@@ -31149,46 +18700,30 @@ impl<'a> Extend<Cow<'a, str>> for String {
 impl<'a, 'b> Pattern<'a> for &'b String {
     type Searcher = <&'b str as Pattern<'a>>::Searcher;
 
-    fn into_searcher(self, haystack: &'a str) -> <&'b str as Pattern<'a>>::Searcher {
-        self[..].into_searcher(haystack)
-    }
+    fn into_searcher(self, haystack: &'a str) -> <&'b str as Pattern<'a>>::Searcher {}
 
     #[inline]
-    fn is_contained_in(self, haystack: &'a str) -> bool {
-        self[..].is_contained_in(haystack)
-    }
+    fn is_contained_in(self, haystack: &'a str) -> bool {}
 
     #[inline]
-    fn is_prefix_of(self, haystack: &'a str) -> bool {
-        self[..].is_prefix_of(haystack)
-    }
+    fn is_prefix_of(self, haystack: &'a str) -> bool {}
 
     #[inline]
-    fn strip_prefix_of(self, haystack: &'a str) -> Option<&'a str> {
-        self[..].strip_prefix_of(haystack)
-    }
+    fn strip_prefix_of(self, haystack: &'a str) -> Option<&'a str> {}
 
     #[inline]
-    fn is_suffix_of(self, haystack: &'a str) -> bool {
-        self[..].is_suffix_of(haystack)
-    }
+    fn is_suffix_of(self, haystack: &'a str) -> bool {}
 
     #[inline]
-    fn strip_suffix_of(self, haystack: &'a str) -> Option<&'a str> {
-        self[..].strip_suffix_of(haystack)
-    }
+    fn strip_suffix_of(self, haystack: &'a str) -> Option<&'a str> {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl PartialEq for String {
     #[inline]
-    fn eq(&self, other: &String) -> bool {
-        PartialEq::eq(&self[..], &other[..])
-    }
+    fn eq(&self, other: &String) -> bool {}
     #[inline]
-    fn ne(&self, other: &String) -> bool {
-        PartialEq::ne(&self[..], &other[..])
-    }
+    fn ne(&self, other: &String) -> bool {}
 }
 
 macro_rules! impl_eq {
@@ -31197,26 +18732,18 @@ macro_rules! impl_eq {
         #[allow(unused_lifetimes)]
         impl<'a, 'b> PartialEq<$rhs> for $lhs {
             #[inline]
-            fn eq(&self, other: &$rhs) -> bool {
-                PartialEq::eq(&self[..], &other[..])
-            }
+            fn eq(&self, other: &$rhs) -> bool {}
             #[inline]
-            fn ne(&self, other: &$rhs) -> bool {
-                PartialEq::ne(&self[..], &other[..])
-            }
+            fn ne(&self, other: &$rhs) -> bool {}
         }
 
         #[stable(feature = "rust1", since = "1.0.0")]
         #[allow(unused_lifetimes)]
         impl<'a, 'b> PartialEq<$lhs> for $rhs {
             #[inline]
-            fn eq(&self, other: &$lhs) -> bool {
-                PartialEq::eq(&self[..], &other[..])
-            }
+            fn eq(&self, other: &$lhs) -> bool {}
             #[inline]
-            fn ne(&self, other: &$lhs) -> bool {
-                PartialEq::ne(&self[..], &other[..])
-            }
+            fn ne(&self, other: &$lhs) -> bool {}
         }
     };
 }
@@ -31235,33 +18762,25 @@ impl_eq! { Cow<'a, str>, String }
 impl const Default for String {
     /// Creates an empty `String`.
     #[inline]
-    fn default() -> String {
-        String::new()
-    }
+    fn default() -> String {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for String {
     #[inline]
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(&**self, f)
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Debug for String {
     #[inline]
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Debug::fmt(&**self, f)
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl hash::Hash for String {
     #[inline]
-    fn hash<H: hash::Hasher>(&self, hasher: &mut H) {
-        (**self).hash(hasher)
-    }
+    fn hash<H: hash::Hasher>(&self, hasher: &mut H) {}
 }
 
 /// Implements the `+` operator for concatenating two strings.
@@ -31307,10 +18826,7 @@ impl Add<&str> for String {
     type Output = String;
 
     #[inline]
-    fn add(mut self, other: &str) -> String {
-        self.push_str(other);
-        self
-    }
+    fn add(mut self, other: &str) -> String {}
 }
 
 /// Implements the `+=` operator for appending to a `String`.
@@ -31320,9 +18836,7 @@ impl Add<&str> for String {
 #[stable(feature = "stringaddassign", since = "1.12.0")]
 impl AddAssign<&str> for String {
     #[inline]
-    fn add_assign(&mut self, other: &str) {
-        self.push_str(other);
-    }
+    fn add_assign(&mut self, other: &str) {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -31330,97 +18844,73 @@ impl ops::Index<ops::Range<usize>> for String {
     type Output = str;
 
     #[inline]
-    fn index(&self, index: ops::Range<usize>) -> &str {
-        &self[..][index]
-    }
+    fn index(&self, index: ops::Range<usize>) -> &str {}
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl ops::Index<ops::RangeTo<usize>> for String {
     type Output = str;
 
     #[inline]
-    fn index(&self, index: ops::RangeTo<usize>) -> &str {
-        &self[..][index]
-    }
+    fn index(&self, index: ops::RangeTo<usize>) -> &str {}
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl ops::Index<ops::RangeFrom<usize>> for String {
     type Output = str;
 
     #[inline]
-    fn index(&self, index: ops::RangeFrom<usize>) -> &str {
-        &self[..][index]
-    }
+    fn index(&self, index: ops::RangeFrom<usize>) -> &str {}
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl ops::Index<ops::RangeFull> for String {
     type Output = str;
 
     #[inline]
-    fn index(&self, _index: ops::RangeFull) -> &str {
-        unsafe { str::from_utf8_unchecked(&self.vec) }
-    }
+    fn index(&self, _index: ops::RangeFull) -> &str {}
 }
 #[stable(feature = "inclusive_range", since = "1.26.0")]
 impl ops::Index<ops::RangeInclusive<usize>> for String {
     type Output = str;
 
     #[inline]
-    fn index(&self, index: ops::RangeInclusive<usize>) -> &str {
-        Index::index(&**self, index)
-    }
+    fn index(&self, index: ops::RangeInclusive<usize>) -> &str {}
 }
 #[stable(feature = "inclusive_range", since = "1.26.0")]
 impl ops::Index<ops::RangeToInclusive<usize>> for String {
     type Output = str;
 
     #[inline]
-    fn index(&self, index: ops::RangeToInclusive<usize>) -> &str {
-        Index::index(&**self, index)
-    }
+    fn index(&self, index: ops::RangeToInclusive<usize>) -> &str {}
 }
 
 #[stable(feature = "derefmut_for_string", since = "1.3.0")]
 impl ops::IndexMut<ops::Range<usize>> for String {
     #[inline]
-    fn index_mut(&mut self, index: ops::Range<usize>) -> &mut str {
-        &mut self[..][index]
-    }
+    fn index_mut(&mut self, index: ops::Range<usize>) -> &mut str {}
 }
 #[stable(feature = "derefmut_for_string", since = "1.3.0")]
 impl ops::IndexMut<ops::RangeTo<usize>> for String {
     #[inline]
-    fn index_mut(&mut self, index: ops::RangeTo<usize>) -> &mut str {
-        &mut self[..][index]
-    }
+    fn index_mut(&mut self, index: ops::RangeTo<usize>) -> &mut str {}
 }
 #[stable(feature = "derefmut_for_string", since = "1.3.0")]
 impl ops::IndexMut<ops::RangeFrom<usize>> for String {
     #[inline]
-    fn index_mut(&mut self, index: ops::RangeFrom<usize>) -> &mut str {
-        &mut self[..][index]
-    }
+    fn index_mut(&mut self, index: ops::RangeFrom<usize>) -> &mut str {}
 }
 #[stable(feature = "derefmut_for_string", since = "1.3.0")]
 impl ops::IndexMut<ops::RangeFull> for String {
     #[inline]
-    fn index_mut(&mut self, _index: ops::RangeFull) -> &mut str {
-        unsafe { str::from_utf8_unchecked_mut(&mut *self.vec) }
-    }
+    fn index_mut(&mut self, _index: ops::RangeFull) -> &mut str {}
 }
 #[stable(feature = "inclusive_range", since = "1.26.0")]
 impl ops::IndexMut<ops::RangeInclusive<usize>> for String {
     #[inline]
-    fn index_mut(&mut self, index: ops::RangeInclusive<usize>) -> &mut str {
-        IndexMut::index_mut(&mut **self, index)
-    }
+    fn index_mut(&mut self, index: ops::RangeInclusive<usize>) -> &mut str {}
 }
 #[stable(feature = "inclusive_range", since = "1.26.0")]
 impl ops::IndexMut<ops::RangeToInclusive<usize>> for String {
     #[inline]
-    fn index_mut(&mut self, index: ops::RangeToInclusive<usize>) -> &mut str {
-        IndexMut::index_mut(&mut **self, index)
-    }
+    fn index_mut(&mut self, index: ops::RangeToInclusive<usize>) -> &mut str {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -31428,17 +18918,13 @@ impl ops::Deref for String {
     type Target = str;
 
     #[inline]
-    fn deref(&self) -> &str {
-        unsafe { str::from_utf8_unchecked(&self.vec) }
-    }
+    fn deref(&self) -> &str {}
 }
 
 #[stable(feature = "derefmut_for_string", since = "1.3.0")]
 impl ops::DerefMut for String {
     #[inline]
-    fn deref_mut(&mut self) -> &mut str {
-        unsafe { str::from_utf8_unchecked_mut(&mut *self.vec) }
-    }
+    fn deref_mut(&mut self) -> &mut str {}
 }
 
 /// A type alias for [`Infallible`].
@@ -31454,9 +18940,7 @@ pub type ParseError = core::convert::Infallible;
 impl FromStr for String {
     type Err = core::convert::Infallible;
     #[inline]
-    fn from_str(s: &str) -> Result<String, Self::Err> {
-        Ok(String::from(s))
-    }
+    fn from_str(s: &str) -> Result<String, Self::Err> {}
 }
 
 /// A trait for converting a value to a `String`.
@@ -31501,117 +18985,67 @@ impl<T: fmt::Display + ?Sized> ToString for T {
     // See <https://github.com/rust-lang/rust/pull/74852>, the last attempt
     // to try to remove it.
     #[inline]
-    default fn to_string(&self) -> String {
-        let mut buf = String::new();
-        let mut formatter = core::fmt::Formatter::new(&mut buf);
-        // Bypass format_args!() to avoid write_str with zero-length strs
-        fmt::Display::fmt(self, &mut formatter)
-            .expect("a Display implementation returned an error unexpectedly");
-        buf
-    }
+    default fn to_string(&self) -> String {}
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "char_to_string_specialization", since = "1.46.0")]
 impl ToString for char {
     #[inline]
-    fn to_string(&self) -> String {
-        String::from(self.encode_utf8(&mut [0; 4]))
-    }
+    fn to_string(&self) -> String {}
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "u8_to_string_specialization", since = "1.54.0")]
 impl ToString for u8 {
     #[inline]
-    fn to_string(&self) -> String {
-        let mut buf = String::with_capacity(3);
-        let mut n = *self;
-        if n >= 10 {
-            if n >= 100 {
-                buf.push((b'0' + n / 100) as char);
-                n %= 100;
-            }
-            buf.push((b'0' + n / 10) as char);
-            n %= 10;
-        }
-        buf.push((b'0' + n) as char);
-        buf
-    }
+    fn to_string(&self) -> String {}
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "i8_to_string_specialization", since = "1.54.0")]
 impl ToString for i8 {
     #[inline]
-    fn to_string(&self) -> String {
-        let mut buf = String::with_capacity(4);
-        if self.is_negative() {
-            buf.push('-');
-        }
-        let mut n = self.unsigned_abs();
-        if n >= 10 {
-            if n >= 100 {
-                buf.push('1');
-                n -= 100;
-            }
-            buf.push((b'0' + n / 10) as char);
-            n %= 10;
-        }
-        buf.push((b'0' + n) as char);
-        buf
-    }
+    fn to_string(&self) -> String {}
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "str_to_string_specialization", since = "1.9.0")]
 impl ToString for str {
     #[inline]
-    fn to_string(&self) -> String {
-        String::from(self)
-    }
+    fn to_string(&self) -> String {}
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "cow_str_to_string_specialization", since = "1.17.0")]
 impl ToString for Cow<'_, str> {
     #[inline]
-    fn to_string(&self) -> String {
-        self[..].to_owned()
-    }
+    fn to_string(&self) -> String {}
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "string_to_string_specialization", since = "1.17.0")]
 impl ToString for String {
     #[inline]
-    fn to_string(&self) -> String {
-        self.to_owned()
-    }
+    fn to_string(&self) -> String {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl AsRef<str> for String {
     #[inline]
-    fn as_ref(&self) -> &str {
-        self
-    }
+    fn as_ref(&self) -> &str {}
 }
 
 #[stable(feature = "string_as_mut", since = "1.43.0")]
 impl AsMut<str> for String {
     #[inline]
-    fn as_mut(&mut self) -> &mut str {
-        self
-    }
+    fn as_mut(&mut self) -> &mut str {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl AsRef<[u8]> for String {
     #[inline]
-    fn as_ref(&self) -> &[u8] {
-        self.as_bytes()
-    }
+    fn as_ref(&self) -> &[u8] {}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -31621,9 +19055,7 @@ impl From<&str> for String {
     ///
     /// The result is allocated on the heap.
     #[inline]
-    fn from(s: &str) -> String {
-        s.to_owned()
-    }
+    fn from(s: &str) -> String {}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -31633,9 +19065,7 @@ impl From<&mut str> for String {
     ///
     /// The result is allocated on the heap.
     #[inline]
-    fn from(s: &mut str) -> String {
-        s.to_owned()
-    }
+    fn from(s: &mut str) -> String {}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -31645,9 +19075,7 @@ impl From<&String> for String {
     ///
     /// This clones `s` and returns the clone.
     #[inline]
-    fn from(s: &String) -> String {
-        s.clone()
-    }
+    fn from(s: &String) -> String {}
 }
 
 // note: test pulls in libstd, which causes errors here
@@ -31668,9 +19096,7 @@ impl From<Box<str>> for String {
     ///
     /// assert_eq!("hello world", s3)
     /// ```
-    fn from(s: Box<str>) -> String {
-        s.into_string()
-    }
+    fn from(s: Box<str>) -> String {}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -31689,9 +19115,7 @@ impl From<String> for Box<str> {
     ///
     /// assert_eq!("hello world", s3)
     /// ```
-    fn from(s: String) -> Box<str> {
-        s.into_boxed_str()
-    }
+    fn from(s: String) -> Box<str> {}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -31713,9 +19137,7 @@ impl<'a> From<Cow<'a, str>> for String {
     /// let owned: String = String::from(cow);
     /// assert_eq!(&owned[..], "eggplant");
     /// ```
-    fn from(s: Cow<'a, str>) -> String {
-        s.into_owned()
-    }
+    fn from(s: Cow<'a, str>) -> String {}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -31734,9 +19156,7 @@ impl<'a> From<&'a str> for Cow<'a, str> {
     ///
     /// [`Borrowed`]: crate::borrow::Cow::Borrowed "borrow::Cow::Borrowed"
     #[inline]
-    fn from(s: &'a str) -> Cow<'a, str> {
-        Cow::Borrowed(s)
-    }
+    fn from(s: &'a str) -> Cow<'a, str> {}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -31757,9 +19177,7 @@ impl<'a> From<String> for Cow<'a, str> {
     ///
     /// [`Owned`]: crate::borrow::Cow::Owned "borrow::Cow::Owned"
     #[inline]
-    fn from(s: String) -> Cow<'a, str> {
-        Cow::Owned(s)
-    }
+    fn from(s: String) -> Cow<'a, str> {}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -31779,33 +19197,25 @@ impl<'a> From<&'a String> for Cow<'a, str> {
     ///
     /// [`Borrowed`]: crate::borrow::Cow::Borrowed "borrow::Cow::Borrowed"
     #[inline]
-    fn from(s: &'a String) -> Cow<'a, str> {
-        Cow::Borrowed(s.as_str())
-    }
+    fn from(s: &'a String) -> Cow<'a, str> {}
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "cow_str_from_iter", since = "1.12.0")]
 impl<'a> FromIterator<char> for Cow<'a, str> {
-    fn from_iter<I: IntoIterator<Item = char>>(it: I) -> Cow<'a, str> {
-        Cow::Owned(FromIterator::from_iter(it))
-    }
+    fn from_iter<I: IntoIterator<Item = char>>(it: I) -> Cow<'a, str> {}
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "cow_str_from_iter", since = "1.12.0")]
 impl<'a, 'b> FromIterator<&'b str> for Cow<'a, str> {
-    fn from_iter<I: IntoIterator<Item = &'b str>>(it: I) -> Cow<'a, str> {
-        Cow::Owned(FromIterator::from_iter(it))
-    }
+    fn from_iter<I: IntoIterator<Item = &'b str>>(it: I) -> Cow<'a, str> {}
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "cow_str_from_iter", since = "1.12.0")]
 impl<'a> FromIterator<String> for Cow<'a, str> {
-    fn from_iter<I: IntoIterator<Item = String>>(it: I) -> Cow<'a, str> {
-        Cow::Owned(FromIterator::from_iter(it))
-    }
+    fn from_iter<I: IntoIterator<Item = String>>(it: I) -> Cow<'a, str> {}
 }
 
 #[stable(feature = "from_string_for_vec_u8", since = "1.14.0")]
@@ -31824,25 +19234,17 @@ impl From<String> for Vec<u8> {
     ///     println!("{}", b);
     /// }
     /// ```
-    fn from(string: String) -> Vec<u8> {
-        string.into_bytes()
-    }
+    fn from(string: String) -> Vec<u8> {}
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Write for String {
     #[inline]
-    fn write_str(&mut self, s: &str) -> fmt::Result {
-        self.push_str(s);
-        Ok(())
-    }
+    fn write_str(&mut self, s: &str) -> fmt::Result {}
 
     #[inline]
-    fn write_char(&mut self, c: char) -> fmt::Result {
-        self.push(c);
-        Ok(())
-    }
+    fn write_char(&mut self, c: char) -> fmt::Result {}
 }
 
 /// A draining iterator for `String`.
@@ -31865,9 +19267,7 @@ pub struct Drain<'a> {
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl fmt::Debug for Drain<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("Drain").field(&self.as_str()).finish()
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
@@ -31877,16 +19277,7 @@ unsafe impl Send for Drain<'_> {}
 
 #[stable(feature = "drain", since = "1.6.0")]
 impl Drop for Drain<'_> {
-    fn drop(&mut self) {
-        unsafe {
-            // Use Vec::drain. "Reaffirm" the bounds checks to avoid
-            // panic code being inserted again.
-            let self_vec = (*self.string).as_mut_vec();
-            if self.start <= self.end && self.end <= self_vec.len() {
-                self_vec.drain(self.start..self.end);
-            }
-        }
-    }
+    fn drop(&mut self) {}
 }
 
 impl<'a> Drain<'a> {
@@ -31903,23 +19294,17 @@ impl<'a> Drain<'a> {
     /// ```
     #[must_use]
     #[stable(feature = "string_drain_as_str", since = "1.55.0")]
-    pub fn as_str(&self) -> &str {
-        self.iter.as_str()
-    }
+    pub fn as_str(&self) -> &str {}
 }
 
 #[stable(feature = "string_drain_as_str", since = "1.55.0")]
 impl<'a> AsRef<str> for Drain<'a> {
-    fn as_ref(&self) -> &str {
-        self.as_str()
-    }
+    fn as_ref(&self) -> &str {}
 }
 
 #[stable(feature = "string_drain_as_str", since = "1.55.0")]
 impl<'a> AsRef<[u8]> for Drain<'a> {
-    fn as_ref(&self) -> &[u8] {
-        self.as_str().as_bytes()
-    }
+    fn as_ref(&self) -> &[u8] {}
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
@@ -31927,26 +19312,18 @@ impl Iterator for Drain<'_> {
     type Item = char;
 
     #[inline]
-    fn next(&mut self) -> Option<char> {
-        self.iter.next()
-    }
+    fn next(&mut self) -> Option<char> {}
 
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.iter.size_hint()
-    }
+    fn size_hint(&self) -> (usize, Option<usize>) {}
 
     #[inline]
-    fn last(mut self) -> Option<char> {
-        self.next_back()
-    }
+    fn last(mut self) -> Option<char> {}
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
 impl DoubleEndedIterator for Drain<'_> {
     #[inline]
-    fn next_back(&mut self) -> Option<char> {
-        self.iter.next_back()
-    }
+    fn next_back(&mut self) -> Option<char> {}
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -31964,9 +19341,7 @@ impl From<char> for String {
     /// assert_eq!("a", &s[..]);
     /// ```
     #[inline]
-    fn from(c: char) -> Self {
-        c.to_string()
-    }
+    fn from(c: char) -> Self {}
 }
 }
 #[cfg(target_has_atomic = "ptr")]
@@ -32036,324 +19411,66 @@ use crate::vec::Vec;
 struct Canary(*mut atomic::AtomicUsize);
 
 impl Drop for Canary {
-    fn drop(&mut self) {
-        unsafe {
-            match *self {
-                Canary(c) => {
-                    (*c).fetch_add(1, SeqCst);
-                }
-            }
-        }
-    }
+    fn drop(&mut self) {}
 }
 
 #[test]
 #[cfg_attr(target_os = "emscripten", ignore)]
-fn manually_share_arc() {
-    let v = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-    let arc_v = Arc::new(v);
-
-    let (tx, rx) = channel();
-
-    let _t = thread::spawn(move || {
-        let arc_v: Arc<Vec<i32>> = rx.recv().unwrap();
-        assert_eq!((*arc_v)[3], 4);
-    });
-
-    tx.send(arc_v.clone()).unwrap();
-
-    assert_eq!((*arc_v)[2], 3);
-    assert_eq!((*arc_v)[4], 5);
-}
+fn manually_share_arc() {}
 
 #[test]
-fn test_arc_get_mut() {
-    let mut x = Arc::new(3);
-    *Arc::get_mut(&mut x).unwrap() = 4;
-    assert_eq!(*x, 4);
-    let y = x.clone();
-    assert!(Arc::get_mut(&mut x).is_none());
-    drop(y);
-    assert!(Arc::get_mut(&mut x).is_some());
-    let _w = Arc::downgrade(&x);
-    assert!(Arc::get_mut(&mut x).is_none());
-}
+fn test_arc_get_mut() {}
 
 #[test]
-fn weak_counts() {
-    assert_eq!(Weak::weak_count(&Weak::<u64>::new()), 0);
-    assert_eq!(Weak::strong_count(&Weak::<u64>::new()), 0);
-
-    let a = Arc::new(0);
-    let w = Arc::downgrade(&a);
-    assert_eq!(Weak::strong_count(&w), 1);
-    assert_eq!(Weak::weak_count(&w), 1);
-    let w2 = w.clone();
-    assert_eq!(Weak::strong_count(&w), 1);
-    assert_eq!(Weak::weak_count(&w), 2);
-    assert_eq!(Weak::strong_count(&w2), 1);
-    assert_eq!(Weak::weak_count(&w2), 2);
-    drop(w);
-    assert_eq!(Weak::strong_count(&w2), 1);
-    assert_eq!(Weak::weak_count(&w2), 1);
-    let a2 = a.clone();
-    assert_eq!(Weak::strong_count(&w2), 2);
-    assert_eq!(Weak::weak_count(&w2), 1);
-    drop(a2);
-    drop(a);
-    assert_eq!(Weak::strong_count(&w2), 0);
-    assert_eq!(Weak::weak_count(&w2), 0);
-    drop(w2);
-}
+fn weak_counts() {}
 
 #[test]
-fn try_unwrap() {
-    let x = Arc::new(3);
-    assert_eq!(Arc::try_unwrap(x), Ok(3));
-    let x = Arc::new(4);
-    let _y = x.clone();
-    assert_eq!(Arc::try_unwrap(x), Err(Arc::new(4)));
-    let x = Arc::new(5);
-    let _w = Arc::downgrade(&x);
-    assert_eq!(Arc::try_unwrap(x), Ok(5));
-}
+fn try_unwrap() {}
 
 #[test]
-fn into_from_raw() {
-    let x = Arc::new(box "hello");
-    let y = x.clone();
-
-    let x_ptr = Arc::into_raw(x);
-    drop(y);
-    unsafe {
-        assert_eq!(**x_ptr, "hello");
-
-        let x = Arc::from_raw(x_ptr);
-        assert_eq!(**x, "hello");
-
-        assert_eq!(Arc::try_unwrap(x).map(|x| *x), Ok("hello"));
-    }
-}
+fn into_from_raw() {}
 
 #[test]
-fn test_into_from_raw_unsized() {
-    use std::fmt::Display;
-    use std::string::ToString;
-
-    let arc: Arc<str> = Arc::from("foo");
-
-    let ptr = Arc::into_raw(arc.clone());
-    let arc2 = unsafe { Arc::from_raw(ptr) };
-
-    assert_eq!(unsafe { &*ptr }, "foo");
-    assert_eq!(arc, arc2);
-
-    let arc: Arc<dyn Display> = Arc::new(123);
-
-    let ptr = Arc::into_raw(arc.clone());
-    let arc2 = unsafe { Arc::from_raw(ptr) };
-
-    assert_eq!(unsafe { &*ptr }.to_string(), "123");
-    assert_eq!(arc2.to_string(), "123");
-}
+fn test_into_from_raw_unsized() {}
 
 #[test]
-fn into_from_weak_raw() {
-    let x = Arc::new(box "hello");
-    let y = Arc::downgrade(&x);
-
-    let y_ptr = Weak::into_raw(y);
-    unsafe {
-        assert_eq!(**y_ptr, "hello");
-
-        let y = Weak::from_raw(y_ptr);
-        let y_up = Weak::upgrade(&y).unwrap();
-        assert_eq!(**y_up, "hello");
-        drop(y_up);
-
-        assert_eq!(Arc::try_unwrap(x).map(|x| *x), Ok("hello"));
-    }
-}
+fn into_from_weak_raw() {}
 
 #[test]
-fn test_into_from_weak_raw_unsized() {
-    use std::fmt::Display;
-    use std::string::ToString;
-
-    let arc: Arc<str> = Arc::from("foo");
-    let weak: Weak<str> = Arc::downgrade(&arc);
-
-    let ptr = Weak::into_raw(weak.clone());
-    let weak2 = unsafe { Weak::from_raw(ptr) };
-
-    assert_eq!(unsafe { &*ptr }, "foo");
-    assert!(weak.ptr_eq(&weak2));
-
-    let arc: Arc<dyn Display> = Arc::new(123);
-    let weak: Weak<dyn Display> = Arc::downgrade(&arc);
-
-    let ptr = Weak::into_raw(weak.clone());
-    let weak2 = unsafe { Weak::from_raw(ptr) };
-
-    assert_eq!(unsafe { &*ptr }.to_string(), "123");
-    assert!(weak.ptr_eq(&weak2));
-}
+fn test_into_from_weak_raw_unsized() {}
 
 #[test]
-fn test_cowarc_clone_make_mut() {
-    let mut cow0 = Arc::new(75);
-    let mut cow1 = cow0.clone();
-    let mut cow2 = cow1.clone();
-
-    assert!(75 == *Arc::make_mut(&mut cow0));
-    assert!(75 == *Arc::make_mut(&mut cow1));
-    assert!(75 == *Arc::make_mut(&mut cow2));
-
-    *Arc::make_mut(&mut cow0) += 1;
-    *Arc::make_mut(&mut cow1) += 2;
-    *Arc::make_mut(&mut cow2) += 3;
-
-    assert!(76 == *cow0);
-    assert!(77 == *cow1);
-    assert!(78 == *cow2);
-
-    // none should point to the same backing memory
-    assert!(*cow0 != *cow1);
-    assert!(*cow0 != *cow2);
-    assert!(*cow1 != *cow2);
-}
+fn test_cowarc_clone_make_mut() {}
 
 #[test]
-fn test_cowarc_clone_unique2() {
-    let mut cow0 = Arc::new(75);
-    let cow1 = cow0.clone();
-    let cow2 = cow1.clone();
-
-    assert!(75 == *cow0);
-    assert!(75 == *cow1);
-    assert!(75 == *cow2);
-
-    *Arc::make_mut(&mut cow0) += 1;
-    assert!(76 == *cow0);
-    assert!(75 == *cow1);
-    assert!(75 == *cow2);
-
-    // cow1 and cow2 should share the same contents
-    // cow0 should have a unique reference
-    assert!(*cow0 != *cow1);
-    assert!(*cow0 != *cow2);
-    assert!(*cow1 == *cow2);
-}
+fn test_cowarc_clone_unique2() {}
 
 #[test]
-fn test_cowarc_clone_weak() {
-    let mut cow0 = Arc::new(75);
-    let cow1_weak = Arc::downgrade(&cow0);
-
-    assert!(75 == *cow0);
-    assert!(75 == *cow1_weak.upgrade().unwrap());
-
-    *Arc::make_mut(&mut cow0) += 1;
-
-    assert!(76 == *cow0);
-    assert!(cow1_weak.upgrade().is_none());
-}
+fn test_cowarc_clone_weak() {}
 
 #[test]
-fn test_live() {
-    let x = Arc::new(5);
-    let y = Arc::downgrade(&x);
-    assert!(y.upgrade().is_some());
-}
+fn test_live() {}
 
 #[test]
-fn test_dead() {
-    let x = Arc::new(5);
-    let y = Arc::downgrade(&x);
-    drop(x);
-    assert!(y.upgrade().is_none());
-}
+fn test_dead() {}
 
 #[test]
-fn weak_self_cyclic() {
-    struct Cycle {
-        x: Mutex<Option<Weak<Cycle>>>,
-    }
-
-    let a = Arc::new(Cycle { x: Mutex::new(None) });
-    let b = Arc::downgrade(&a.clone());
-    *a.x.lock().unwrap() = Some(b);
-
-    // hopefully we don't double-free (or leak)...
-}
+fn weak_self_cyclic() {}
 
 #[test]
-fn drop_arc() {
-    let mut canary = atomic::AtomicUsize::new(0);
-    let x = Arc::new(Canary(&mut canary as *mut atomic::AtomicUsize));
-    drop(x);
-    assert!(canary.load(Acquire) == 1);
-}
+fn drop_arc() {}
 
 #[test]
-fn drop_arc_weak() {
-    let mut canary = atomic::AtomicUsize::new(0);
-    let arc = Arc::new(Canary(&mut canary as *mut atomic::AtomicUsize));
-    let arc_weak = Arc::downgrade(&arc);
-    assert!(canary.load(Acquire) == 0);
-    drop(arc);
-    assert!(canary.load(Acquire) == 1);
-    drop(arc_weak);
-}
+fn drop_arc_weak() {}
 
 #[test]
-fn test_strong_count() {
-    let a = Arc::new(0);
-    assert!(Arc::strong_count(&a) == 1);
-    let w = Arc::downgrade(&a);
-    assert!(Arc::strong_count(&a) == 1);
-    let b = w.upgrade().expect("");
-    assert!(Arc::strong_count(&b) == 2);
-    assert!(Arc::strong_count(&a) == 2);
-    drop(w);
-    drop(a);
-    assert!(Arc::strong_count(&b) == 1);
-    let c = b.clone();
-    assert!(Arc::strong_count(&b) == 2);
-    assert!(Arc::strong_count(&c) == 2);
-}
+fn test_strong_count() {}
 
 #[test]
-fn test_weak_count() {
-    let a = Arc::new(0);
-    assert!(Arc::strong_count(&a) == 1);
-    assert!(Arc::weak_count(&a) == 0);
-    let w = Arc::downgrade(&a);
-    assert!(Arc::strong_count(&a) == 1);
-    assert!(Arc::weak_count(&a) == 1);
-    let x = w.clone();
-    assert!(Arc::weak_count(&a) == 2);
-    drop(w);
-    drop(x);
-    assert!(Arc::strong_count(&a) == 1);
-    assert!(Arc::weak_count(&a) == 0);
-    let c = a.clone();
-    assert!(Arc::strong_count(&a) == 2);
-    assert!(Arc::weak_count(&a) == 0);
-    let d = Arc::downgrade(&c);
-    assert!(Arc::weak_count(&c) == 1);
-    assert!(Arc::strong_count(&c) == 2);
-
-    drop(a);
-    drop(c);
-    drop(d);
-}
+fn test_weak_count() {}
 
 #[test]
-fn show_arc() {
-    let a = Arc::new(5);
-    assert_eq!(format!("{:?}", a), "5");
-}
+fn show_arc() {}
 
 // Make sure deriving works with Arc<T>
 #[derive(Eq, Ord, PartialEq, PartialOrd, Clone, Debug, Default)]
@@ -32362,279 +19479,69 @@ struct Foo {
 }
 
 #[test]
-fn test_unsized() {
-    let x: Arc<[i32]> = Arc::new([1, 2, 3]);
-    assert_eq!(format!("{:?}", x), "[1, 2, 3]");
-    let y = Arc::downgrade(&x.clone());
-    drop(x);
-    assert!(y.upgrade().is_none());
-}
+fn test_unsized() {}
 
 #[test]
-fn test_maybe_thin_unsized() {
-    // If/when custom thin DSTs exist, this test should be updated to use one
-    use std::ffi::{CStr, CString};
-
-    let x: Arc<CStr> = Arc::from(CString::new("swordfish").unwrap().into_boxed_c_str());
-    assert_eq!(format!("{:?}", x), "\"swordfish\"");
-    let y: Weak<CStr> = Arc::downgrade(&x);
-    drop(x);
-
-    // At this point, the weak points to a dropped DST
-    assert!(y.upgrade().is_none());
-    // But we still need to be able to get the alloc layout to drop.
-    // CStr has no drop glue, but custom DSTs might, and need to work.
-    drop(y);
-}
+fn test_maybe_thin_unsized() {}
 
 #[test]
-fn test_from_owned() {
-    let foo = 123;
-    let foo_arc = Arc::from(foo);
-    assert!(123 == *foo_arc);
-}
+fn test_from_owned() {}
 
 #[test]
-fn test_new_weak() {
-    let foo: Weak<usize> = Weak::new();
-    assert!(foo.upgrade().is_none());
-}
+fn test_new_weak() {}
 
 #[test]
-fn test_ptr_eq() {
-    let five = Arc::new(5);
-    let same_five = five.clone();
-    let other_five = Arc::new(5);
-
-    assert!(Arc::ptr_eq(&five, &same_five));
-    assert!(!Arc::ptr_eq(&five, &other_five));
-}
+fn test_ptr_eq() {}
 
 #[test]
 #[cfg_attr(target_os = "emscripten", ignore)]
-fn test_weak_count_locked() {
-    let mut a = Arc::new(atomic::AtomicBool::new(false));
-    let a2 = a.clone();
-    let t = thread::spawn(move || {
-        // Miri is too slow
-        let count = if cfg!(miri) { 1000 } else { 1000000 };
-        for _i in 0..count {
-            Arc::get_mut(&mut a);
-        }
-        a.store(true, SeqCst);
-    });
-
-    while !a2.load(SeqCst) {
-        let n = Arc::weak_count(&a2);
-        assert!(n < 2, "bad weak count: {}", n);
-        #[cfg(miri)] // Miri's scheduler does not guarantee liveness, and thus needs this hint.
-        std::hint::spin_loop();
-    }
-    t.join().unwrap();
-}
+fn test_weak_count_locked() {}
 
 #[test]
-fn test_from_str() {
-    let r: Arc<str> = Arc::from("foo");
-
-    assert_eq!(&r[..], "foo");
-}
+fn test_from_str() {}
 
 #[test]
-fn test_copy_from_slice() {
-    let s: &[u32] = &[1, 2, 3];
-    let r: Arc<[u32]> = Arc::from(s);
-
-    assert_eq!(&r[..], [1, 2, 3]);
-}
+fn test_copy_from_slice() {}
 
 #[test]
-fn test_clone_from_slice() {
-    #[derive(Clone, Debug, Eq, PartialEq)]
-    struct X(u32);
-
-    let s: &[X] = &[X(1), X(2), X(3)];
-    let r: Arc<[X]> = Arc::from(s);
-
-    assert_eq!(&r[..], s);
-}
+fn test_clone_from_slice() {}
 
 #[test]
 #[should_panic]
-fn test_clone_from_slice_panic() {
-    use std::string::{String, ToString};
-
-    struct Fail(u32, String);
-
-    impl Clone for Fail {
-        fn clone(&self) -> Fail {
-            if self.0 == 2 {
-                panic!();
-            }
-            Fail(self.0, self.1.clone())
-        }
-    }
-
-    let s: &[Fail] =
-        &[Fail(0, "foo".to_string()), Fail(1, "bar".to_string()), Fail(2, "baz".to_string())];
-
-    // Should panic, but not cause memory corruption
-    let _r: Arc<[Fail]> = Arc::from(s);
-}
+fn test_clone_from_slice_panic() {}
 
 #[test]
-fn test_from_box() {
-    let b: Box<u32> = box 123;
-    let r: Arc<u32> = Arc::from(b);
-
-    assert_eq!(*r, 123);
-}
+fn test_from_box() {}
 
 #[test]
-fn test_from_box_str() {
-    use std::string::String;
-
-    let s = String::from("foo").into_boxed_str();
-    let r: Arc<str> = Arc::from(s);
-
-    assert_eq!(&r[..], "foo");
-}
+fn test_from_box_str() {}
 
 #[test]
-fn test_from_box_slice() {
-    let s = vec![1, 2, 3].into_boxed_slice();
-    let r: Arc<[u32]> = Arc::from(s);
-
-    assert_eq!(&r[..], [1, 2, 3]);
-}
+fn test_from_box_slice() {}
 
 #[test]
-fn test_from_box_trait() {
-    use std::fmt::Display;
-    use std::string::ToString;
-
-    let b: Box<dyn Display> = box 123;
-    let r: Arc<dyn Display> = Arc::from(b);
-
-    assert_eq!(r.to_string(), "123");
-}
+fn test_from_box_trait() {}
 
 #[test]
-fn test_from_box_trait_zero_sized() {
-    use std::fmt::Debug;
-
-    let b: Box<dyn Debug> = box ();
-    let r: Arc<dyn Debug> = Arc::from(b);
-
-    assert_eq!(format!("{:?}", r), "()");
-}
+fn test_from_box_trait_zero_sized() {}
 
 #[test]
-fn test_from_vec() {
-    let v = vec![1, 2, 3];
-    let r: Arc<[u32]> = Arc::from(v);
-
-    assert_eq!(&r[..], [1, 2, 3]);
-}
+fn test_from_vec() {}
 
 #[test]
-fn test_downcast() {
-    use std::any::Any;
-
-    let r1: Arc<dyn Any + Send + Sync> = Arc::new(i32::MAX);
-    let r2: Arc<dyn Any + Send + Sync> = Arc::new("abc");
-
-    assert!(r1.clone().downcast::<u32>().is_err());
-
-    let r1i32 = r1.downcast::<i32>();
-    assert!(r1i32.is_ok());
-    assert_eq!(r1i32.unwrap(), Arc::new(i32::MAX));
-
-    assert!(r2.clone().downcast::<i32>().is_err());
-
-    let r2str = r2.downcast::<&'static str>();
-    assert!(r2str.is_ok());
-    assert_eq!(r2str.unwrap(), Arc::new("abc"));
-}
+fn test_downcast() {}
 
 #[test]
-fn test_array_from_slice() {
-    let v = vec![1, 2, 3];
-    let r: Arc<[u32]> = Arc::from(v);
-
-    let a: Result<Arc<[u32; 3]>, _> = r.clone().try_into();
-    assert!(a.is_ok());
-
-    let a: Result<Arc<[u32; 2]>, _> = r.clone().try_into();
-    assert!(a.is_err());
-}
+fn test_array_from_slice() {}
 
 #[test]
-fn test_arc_cyclic_with_zero_refs() {
-    struct ZeroRefs {
-        inner: Weak<ZeroRefs>,
-    }
-    let zero_refs = Arc::new_cyclic(|inner| {
-        assert_eq!(inner.strong_count(), 0);
-        assert!(inner.upgrade().is_none());
-        ZeroRefs { inner: Weak::new() }
-    });
-
-    assert_eq!(Arc::strong_count(&zero_refs), 1);
-    assert_eq!(Arc::weak_count(&zero_refs), 0);
-    assert_eq!(zero_refs.inner.strong_count(), 0);
-    assert_eq!(zero_refs.inner.weak_count(), 0);
-}
+fn test_arc_cyclic_with_zero_refs() {}
 
 #[test]
-fn test_arc_new_cyclic_one_ref() {
-    struct OneRef {
-        inner: Weak<OneRef>,
-    }
-    let one_ref = Arc::new_cyclic(|inner| {
-        assert_eq!(inner.strong_count(), 0);
-        assert!(inner.upgrade().is_none());
-        OneRef { inner: inner.clone() }
-    });
-
-    assert_eq!(Arc::strong_count(&one_ref), 1);
-    assert_eq!(Arc::weak_count(&one_ref), 1);
-
-    let one_ref2 = Weak::upgrade(&one_ref.inner).unwrap();
-    assert!(Arc::ptr_eq(&one_ref, &one_ref2));
-
-    assert_eq!(Arc::strong_count(&one_ref), 2);
-    assert_eq!(Arc::weak_count(&one_ref), 1);
-}
+fn test_arc_new_cyclic_one_ref() {}
 
 #[test]
-fn test_arc_cyclic_two_refs() {
-    struct TwoRefs {
-        inner1: Weak<TwoRefs>,
-        inner2: Weak<TwoRefs>,
-    }
-    let two_refs = Arc::new_cyclic(|inner| {
-        assert_eq!(inner.strong_count(), 0);
-        assert!(inner.upgrade().is_none());
-
-        let inner1 = inner.clone();
-        let inner2 = inner1.clone();
-
-        TwoRefs { inner1, inner2 }
-    });
-
-    assert_eq!(Arc::strong_count(&two_refs), 1);
-    assert_eq!(Arc::weak_count(&two_refs), 2);
-
-    let two_refs1 = Weak::upgrade(&two_refs.inner1).unwrap();
-    assert!(Arc::ptr_eq(&two_refs, &two_refs1));
-
-    let two_refs2 = Weak::upgrade(&two_refs.inner2).unwrap();
-    assert!(Arc::ptr_eq(&two_refs, &two_refs2));
-
-    assert_eq!(Arc::strong_count(&two_refs), 3);
-    assert_eq!(Arc::weak_count(&two_refs), 2);
-}
+fn test_arc_cyclic_two_refs() {}
 }
 
 /// A soft limit on the amount of references that may be made to an `Arc`.
@@ -32846,13 +19753,9 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Arc<U>> for Arc<T> {}
 impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Arc<U>> for Arc<T> {}
 
 impl<T: ?Sized> Arc<T> {
-    fn from_inner(ptr: NonNull<ArcInner<T>>) -> Self {
-        Self { ptr, phantom: PhantomData }
-    }
+    fn from_inner(ptr: NonNull<ArcInner<T>>) -> Self {}
 
-    unsafe fn from_ptr(ptr: *mut ArcInner<T>) -> Self {
-        unsafe { Self::from_inner(NonNull::new_unchecked(ptr)) }
-    }
+    unsafe fn from_ptr(ptr: *mut ArcInner<T>) -> Self {}
 }
 
 /// `Weak` is a version of [`Arc`] that holds a non-owning reference to the
@@ -32898,9 +19801,7 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Weak<U>> for Weak<T> {}
 
 #[stable(feature = "arc_weak", since = "1.4.0")]
 impl<T: ?Sized + fmt::Debug> fmt::Debug for Weak<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "(Weak)")
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
 }
 
 // This is repr(C) to future-proof against possible field-reordering, which
@@ -32934,16 +19835,7 @@ impl<T> Arc<T> {
     #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn new(data: T) -> Arc<T> {
-        // Start the weak pointer count as 1 which is the weak pointer that's
-        // held by all the strong pointers (kinda), see std/rc.rs for more info
-        let x: Box<_> = box ArcInner {
-            strong: atomic::AtomicUsize::new(1),
-            weak: atomic::AtomicUsize::new(1),
-            data,
-        };
-        Self::from_inner(Box::leak(x).into())
-    }
+    pub fn new(data: T) -> Arc<T> {}
 
     /// Constructs a new `Arc<T>` using a weak reference to itself. Attempting
     /// to upgrade the weak reference before this function returns will result
@@ -32968,56 +19860,7 @@ impl<T> Arc<T> {
     #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[unstable(feature = "arc_new_cyclic", issue = "75861")]
-    pub fn new_cyclic(data_fn: impl FnOnce(&Weak<T>) -> T) -> Arc<T> {
-        // Construct the inner in the "uninitialized" state with a single
-        // weak reference.
-        let uninit_ptr: NonNull<_> = Box::leak(box ArcInner {
-            strong: atomic::AtomicUsize::new(0),
-            weak: atomic::AtomicUsize::new(1),
-            data: mem::MaybeUninit::<T>::uninit(),
-        })
-        .into();
-        let init_ptr: NonNull<ArcInner<T>> = uninit_ptr.cast();
-
-        let weak = Weak { ptr: init_ptr };
-
-        // It's important we don't give up ownership of the weak pointer, or
-        // else the memory might be freed by the time `data_fn` returns. If
-        // we really wanted to pass ownership, we could create an additional
-        // weak pointer for ourselves, but this would result in additional
-        // updates to the weak reference count which might not be necessary
-        // otherwise.
-        let data = data_fn(&weak);
-
-        // Now we can properly initialize the inner value and turn our weak
-        // reference into a strong reference.
-        unsafe {
-            let inner = init_ptr.as_ptr();
-            ptr::write(ptr::addr_of_mut!((*inner).data), data);
-
-            // The above write to the data field must be visible to any threads which
-            // observe a non-zero strong count. Therefore we need at least "Release" ordering
-            // in order to synchronize with the `compare_exchange_weak` in `Weak::upgrade`.
-            //
-            // "Acquire" ordering is not required. When considering the possible behaviours
-            // of `data_fn` we only need to look at what it could do with a reference to a
-            // non-upgradeable `Weak`:
-            // - It can *clone* the `Weak`, increasing the weak reference count.
-            // - It can drop those clones, decreasing the weak reference count (but never to zero).
-            //
-            // These side effects do not impact us in any way, and no other side effects are
-            // possible with safe code alone.
-            let prev_value = (*inner).strong.fetch_add(1, Release);
-            debug_assert_eq!(prev_value, 0, "No prior strong references should exist");
-        }
-
-        let strong = Arc::from_inner(init_ptr);
-
-        // Strong references should collectively own a shared weak reference,
-        // so don't run the destructor for our old weak reference.
-        mem::forget(weak);
-        strong
-    }
+    pub fn new_cyclic(data_fn: impl FnOnce(&Weak<T>) -> T) -> Arc<T> {}
 
     /// Constructs a new `Arc` with uninitialized contents.
     ///
@@ -33043,15 +19886,7 @@ impl<T> Arc<T> {
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "new_uninit", issue = "63291")]
     #[must_use]
-    pub fn new_uninit() -> Arc<mem::MaybeUninit<T>> {
-        unsafe {
-            Arc::from_ptr(Arc::allocate_for_layout(
-                Layout::new::<T>(),
-                |layout| Global.allocate(layout),
-                |mem| mem as *mut ArcInner<mem::MaybeUninit<T>>,
-            ))
-        }
-    }
+    pub fn new_uninit() -> Arc<mem::MaybeUninit<T>> {}
 
     /// Constructs a new `Arc` with uninitialized contents, with the memory
     /// being filled with `0` bytes.
@@ -33076,31 +19911,19 @@ impl<T> Arc<T> {
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "new_uninit", issue = "63291")]
     #[must_use]
-    pub fn new_zeroed() -> Arc<mem::MaybeUninit<T>> {
-        unsafe {
-            Arc::from_ptr(Arc::allocate_for_layout(
-                Layout::new::<T>(),
-                |layout| Global.allocate_zeroed(layout),
-                |mem| mem as *mut ArcInner<mem::MaybeUninit<T>>,
-            ))
-        }
-    }
+    pub fn new_zeroed() -> Arc<mem::MaybeUninit<T>> {}
 
     /// Constructs a new `Pin<Arc<T>>`. If `T` does not implement `Unpin`, then
     /// `data` will be pinned in memory and unable to be moved.
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "pin", since = "1.33.0")]
     #[must_use]
-    pub fn pin(data: T) -> Pin<Arc<T>> {
-        unsafe { Pin::new_unchecked(Arc::new(data)) }
-    }
+    pub fn pin(data: T) -> Pin<Arc<T>> {}
 
     /// Constructs a new `Pin<Arc<T>>`, return an error if allocation fails.
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
-    pub fn try_pin(data: T) -> Result<Pin<Arc<T>>, AllocError> {
-        unsafe { Ok(Pin::new_unchecked(Arc::try_new(data)?)) }
-    }
+    pub fn try_pin(data: T) -> Result<Pin<Arc<T>>, AllocError> {}
 
     /// Constructs a new `Arc<T>`, returning an error if allocation fails.
     ///
@@ -33115,16 +19938,7 @@ impl<T> Arc<T> {
     /// ```
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
-    pub fn try_new(data: T) -> Result<Arc<T>, AllocError> {
-        // Start the weak pointer count as 1 which is the weak pointer that's
-        // held by all the strong pointers (kinda), see std/rc.rs for more info
-        let x: Box<_> = Box::try_new(ArcInner {
-            strong: atomic::AtomicUsize::new(1),
-            weak: atomic::AtomicUsize::new(1),
-            data,
-        })?;
-        Ok(Self::from_inner(Box::leak(x).into()))
-    }
+    pub fn try_new(data: T) -> Result<Arc<T>, AllocError> {}
 
     /// Constructs a new `Arc` with uninitialized contents, returning an error
     /// if allocation fails.
@@ -33151,15 +19965,7 @@ impl<T> Arc<T> {
     /// ```
     #[unstable(feature = "allocator_api", issue = "32838")]
     // #[unstable(feature = "new_uninit", issue = "63291")]
-    pub fn try_new_uninit() -> Result<Arc<mem::MaybeUninit<T>>, AllocError> {
-        unsafe {
-            Ok(Arc::from_ptr(Arc::try_allocate_for_layout(
-                Layout::new::<T>(),
-                |layout| Global.allocate(layout),
-                |mem| mem as *mut ArcInner<mem::MaybeUninit<T>>,
-            )?))
-        }
-    }
+    pub fn try_new_uninit() -> Result<Arc<mem::MaybeUninit<T>>, AllocError> {}
 
     /// Constructs a new `Arc` with uninitialized contents, with the memory
     /// being filled with `0` bytes, returning an error if allocation fails.
@@ -33184,15 +19990,7 @@ impl<T> Arc<T> {
     /// [zeroed]: mem::MaybeUninit::zeroed
     #[unstable(feature = "allocator_api", issue = "32838")]
     // #[unstable(feature = "new_uninit", issue = "63291")]
-    pub fn try_new_zeroed() -> Result<Arc<mem::MaybeUninit<T>>, AllocError> {
-        unsafe {
-            Ok(Arc::from_ptr(Arc::try_allocate_for_layout(
-                Layout::new::<T>(),
-                |layout| Global.allocate_zeroed(layout),
-                |mem| mem as *mut ArcInner<mem::MaybeUninit<T>>,
-            )?))
-        }
-    }
+    pub fn try_new_zeroed() -> Result<Arc<mem::MaybeUninit<T>>, AllocError> {}
     /// Returns the inner value, if the `Arc` has exactly one strong reference.
     ///
     /// Otherwise, an [`Err`] is returned with the same `Arc` that was
@@ -33214,23 +20012,7 @@ impl<T> Arc<T> {
     /// ```
     #[inline]
     #[stable(feature = "arc_unique", since = "1.4.0")]
-    pub fn try_unwrap(this: Self) -> Result<T, Self> {
-        if this.inner().strong.compare_exchange(1, 0, Relaxed, Relaxed).is_err() {
-            return Err(this);
-        }
-
-        acquire!(this.inner().strong);
-
-        unsafe {
-            let elem = ptr::read(&this.ptr.as_ref().data);
-
-            // Make a weak pointer to clean up the implicit strong-weak reference
-            let _weak = Weak { ptr: this.ptr };
-            mem::forget(this);
-
-            Ok(elem)
-        }
-    }
+    pub fn try_unwrap(this: Self) -> Result<T, Self> {}
 }
 
 impl<T> Arc<[T]> {
@@ -33260,9 +20042,7 @@ impl<T> Arc<[T]> {
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "new_uninit", issue = "63291")]
     #[must_use]
-    pub fn new_uninit_slice(len: usize) -> Arc<[mem::MaybeUninit<T>]> {
-        unsafe { Arc::from_ptr(Arc::allocate_for_slice(len)) }
-    }
+    pub fn new_uninit_slice(len: usize) -> Arc<[mem::MaybeUninit<T>]> {}
 
     /// Constructs a new atomically reference-counted slice with uninitialized contents, with the memory being
     /// filled with `0` bytes.
@@ -33287,18 +20067,7 @@ impl<T> Arc<[T]> {
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "new_uninit", issue = "63291")]
     #[must_use]
-    pub fn new_zeroed_slice(len: usize) -> Arc<[mem::MaybeUninit<T>]> {
-        unsafe {
-            Arc::from_ptr(Arc::allocate_for_layout(
-                Layout::array::<T>(len).unwrap(),
-                |layout| Global.allocate_zeroed(layout),
-                |mem| {
-                    ptr::slice_from_raw_parts_mut(mem as *mut T, len)
-                        as *mut ArcInner<[mem::MaybeUninit<T>]>
-                },
-            ))
-        }
-    }
+    pub fn new_zeroed_slice(len: usize) -> Arc<[mem::MaybeUninit<T>]> {}
 }
 
 impl<T> Arc<mem::MaybeUninit<T>> {
@@ -33336,9 +20105,7 @@ impl<T> Arc<mem::MaybeUninit<T>> {
     #[unstable(feature = "new_uninit", issue = "63291")]
     #[must_use = "`self` will be dropped if the result is not used"]
     #[inline]
-    pub unsafe fn assume_init(self) -> Arc<T> {
-        Arc::from_inner(mem::ManuallyDrop::new(self).ptr.cast())
-    }
+    pub unsafe fn assume_init(self) -> Arc<T> {}
 }
 
 impl<T> Arc<[mem::MaybeUninit<T>]> {
@@ -33378,9 +20145,7 @@ impl<T> Arc<[mem::MaybeUninit<T>]> {
     #[unstable(feature = "new_uninit", issue = "63291")]
     #[must_use = "`self` will be dropped if the result is not used"]
     #[inline]
-    pub unsafe fn assume_init(self) -> Arc<[T]> {
-        unsafe { Arc::from_ptr(mem::ManuallyDrop::new(self).ptr.as_ptr() as _) }
-    }
+    pub unsafe fn assume_init(self) -> Arc<[T]> {}
 }
 
 impl<T: ?Sized> Arc<T> {
@@ -33400,11 +20165,7 @@ impl<T: ?Sized> Arc<T> {
     /// ```
     #[must_use = "losing the pointer will leak memory"]
     #[stable(feature = "rc_raw", since = "1.17.0")]
-    pub fn into_raw(this: Self) -> *const T {
-        let ptr = Self::as_ptr(&this);
-        mem::forget(this);
-        ptr
-    }
+    pub fn into_raw(this: Self) -> *const T {}
 
     /// Provides a raw pointer to the data.
     ///
@@ -33424,14 +20185,7 @@ impl<T: ?Sized> Arc<T> {
     /// ```
     #[must_use]
     #[stable(feature = "rc_as_ptr", since = "1.45.0")]
-    pub fn as_ptr(this: &Self) -> *const T {
-        let ptr: *mut ArcInner<T> = NonNull::as_ptr(this.ptr);
-
-        // SAFETY: This cannot go through Deref::deref or RcBoxPtr::inner because
-        // this is required to retain raw/mut provenance such that e.g. `get_mut` can
-        // write through the pointer after the Rc is recovered through `from_raw`.
-        unsafe { ptr::addr_of_mut!((*ptr).data) }
-    }
+    pub fn as_ptr(this: &Self) -> *const T {}
 
     /// Constructs an `Arc<T>` from a raw pointer.
     ///
@@ -33471,16 +20225,7 @@ impl<T: ?Sized> Arc<T> {
     /// // The memory was freed when `x` went out of scope above, so `x_ptr` is now dangling!
     /// ```
     #[stable(feature = "rc_raw", since = "1.17.0")]
-    pub unsafe fn from_raw(ptr: *const T) -> Self {
-        unsafe {
-            let offset = data_offset(ptr);
-
-            // Reverse the offset to find the original ArcInner.
-            let arc_ptr = (ptr as *mut ArcInner<T>).set_ptr_value((ptr as *mut u8).offset(-offset));
-
-            Self::from_ptr(arc_ptr)
-        }
-    }
+    pub unsafe fn from_raw(ptr: *const T) -> Self {}
 
     /// Creates a new [`Weak`] pointer to this allocation.
     ///
@@ -33496,36 +20241,7 @@ impl<T: ?Sized> Arc<T> {
     #[must_use = "this returns a new `Weak` pointer, \
                   without modifying the original `Arc`"]
     #[stable(feature = "arc_weak", since = "1.4.0")]
-    pub fn downgrade(this: &Self) -> Weak<T> {
-        // This Relaxed is OK because we're checking the value in the CAS
-        // below.
-        let mut cur = this.inner().weak.load(Relaxed);
-
-        loop {
-            // check if the weak counter is currently "locked"; if so, spin.
-            if cur == usize::MAX {
-                hint::spin_loop();
-                cur = this.inner().weak.load(Relaxed);
-                continue;
-            }
-
-            // NOTE: this code currently ignores the possibility of overflow
-            // into usize::MAX; in general both Rc and Arc need to be adjusted
-            // to deal with overflow.
-
-            // Unlike with Clone(), we need this to be an Acquire read to
-            // synchronize with the write coming from `is_unique`, so that the
-            // events prior to that write happen before this read.
-            match this.inner().weak.compare_exchange_weak(cur, cur + 1, Acquire, Relaxed) {
-                Ok(_) => {
-                    // Make sure we do not create a dangling Weak
-                    debug_assert!(!is_dangling(this.ptr.as_ptr()));
-                    return Weak { ptr: this.ptr };
-                }
-                Err(old) => cur = old,
-            }
-        }
-    }
+    pub fn downgrade(this: &Self) -> Weak<T> {}
 
     /// Gets the number of [`Weak`] pointers to this allocation.
     ///
@@ -33550,12 +20266,7 @@ impl<T: ?Sized> Arc<T> {
     #[inline]
     #[must_use]
     #[stable(feature = "arc_counts", since = "1.15.0")]
-    pub fn weak_count(this: &Self) -> usize {
-        let cnt = this.inner().weak.load(SeqCst);
-        // If the weak count is currently locked, the value of the
-        // count was 0 just before taking the lock.
-        if cnt == usize::MAX { 0 } else { cnt - 1 }
-    }
+    pub fn weak_count(this: &Self) -> usize {}
 
     /// Gets the number of strong (`Arc`) pointers to this allocation.
     ///
@@ -33580,9 +20291,7 @@ impl<T: ?Sized> Arc<T> {
     #[inline]
     #[must_use]
     #[stable(feature = "arc_counts", since = "1.15.0")]
-    pub fn strong_count(this: &Self) -> usize {
-        this.inner().strong.load(SeqCst)
-    }
+    pub fn strong_count(this: &Self) -> usize {}
 
     /// Increments the strong reference count on the `Arc<T>` associated with the
     /// provided pointer by one.
@@ -33612,12 +20321,7 @@ impl<T: ?Sized> Arc<T> {
     /// ```
     #[inline]
     #[stable(feature = "arc_mutate_strong_count", since = "1.51.0")]
-    pub unsafe fn increment_strong_count(ptr: *const T) {
-        // Retain Arc, but don't touch refcount by wrapping in ManuallyDrop
-        let arc = unsafe { mem::ManuallyDrop::new(Arc::<T>::from_raw(ptr)) };
-        // Now increase refcount, but don't drop new refcount either
-        let _arc_clone: mem::ManuallyDrop<_> = arc.clone();
-    }
+    pub unsafe fn increment_strong_count(ptr: *const T) {}
 
     /// Decrements the strong reference count on the `Arc<T>` associated with the
     /// provided pointer by one.
@@ -33651,30 +20355,14 @@ impl<T: ?Sized> Arc<T> {
     /// ```
     #[inline]
     #[stable(feature = "arc_mutate_strong_count", since = "1.51.0")]
-    pub unsafe fn decrement_strong_count(ptr: *const T) {
-        unsafe { mem::drop(Arc::from_raw(ptr)) };
-    }
+    pub unsafe fn decrement_strong_count(ptr: *const T) {}
 
     #[inline]
-    fn inner(&self) -> &ArcInner<T> {
-        // This unsafety is ok because while this arc is alive we're guaranteed
-        // that the inner pointer is valid. Furthermore, we know that the
-        // `ArcInner` structure itself is `Sync` because the inner data is
-        // `Sync` as well, so we're ok loaning out an immutable pointer to these
-        // contents.
-        unsafe { self.ptr.as_ref() }
-    }
+    fn inner(&self) -> &ArcInner<T> {}
 
     // Non-inlined part of `drop`.
     #[inline(never)]
-    unsafe fn drop_slow(&mut self) {
-        // Destroy the data at this time, even though we must not free the box
-        // allocation itself (there might still be weak pointers lying around).
-        unsafe { ptr::drop_in_place(Self::get_mut_unchecked(self)) };
-
-        // Drop the weak ref collectively held by all strong references
-        drop(Weak { ptr: self.ptr });
-    }
+    unsafe fn drop_slow(&mut self) {}
 
     /// Returns `true` if the two `Arc`s point to the same allocation
     /// (in a vein similar to [`ptr::eq`]).
@@ -33696,9 +20384,7 @@ impl<T: ?Sized> Arc<T> {
     #[inline]
     #[must_use]
     #[stable(feature = "ptr_eq", since = "1.17.0")]
-    pub fn ptr_eq(this: &Self, other: &Self) -> bool {
-        this.ptr.as_ptr() == other.ptr.as_ptr()
-    }
+    pub fn ptr_eq(this: &Self, other: &Self) -> bool {}
 }
 
 impl<T: ?Sized> Arc<T> {
@@ -33712,17 +20398,7 @@ impl<T: ?Sized> Arc<T> {
         value_layout: Layout,
         allocate: impl FnOnce(Layout) -> Result<NonNull<[u8]>, AllocError>,
         mem_to_arcinner: impl FnOnce(*mut u8) -> *mut ArcInner<T>,
-    ) -> *mut ArcInner<T> {
-        // Calculate layout using the given value layout.
-        // Previously, layout was calculated on the expression
-        // `&*(ptr as *const ArcInner<T>)`, but this created a misaligned
-        // reference (see #54908).
-        let layout = Layout::new::<ArcInner<()>>().extend(value_layout).unwrap().0.pad_to_align();
-        unsafe {
-            Arc::try_allocate_for_layout(value_layout, allocate, mem_to_arcinner)
-                .unwrap_or_else(|_| handle_alloc_error(layout))
-        }
-    }
+    ) -> *mut ArcInner<T> {}
 
     /// Allocates an `ArcInner<T>` with sufficient space for
     /// a possibly-unsized inner value where the value has the layout provided,
@@ -33734,139 +20410,32 @@ impl<T: ?Sized> Arc<T> {
         value_layout: Layout,
         allocate: impl FnOnce(Layout) -> Result<NonNull<[u8]>, AllocError>,
         mem_to_arcinner: impl FnOnce(*mut u8) -> *mut ArcInner<T>,
-    ) -> Result<*mut ArcInner<T>, AllocError> {
-        // Calculate layout using the given value layout.
-        // Previously, layout was calculated on the expression
-        // `&*(ptr as *const ArcInner<T>)`, but this created a misaligned
-        // reference (see #54908).
-        let layout = Layout::new::<ArcInner<()>>().extend(value_layout).unwrap().0.pad_to_align();
-
-        let ptr = allocate(layout)?;
-
-        // Initialize the ArcInner
-        let inner = mem_to_arcinner(ptr.as_non_null_ptr().as_ptr());
-        debug_assert_eq!(unsafe { Layout::for_value(&*inner) }, layout);
-
-        unsafe {
-            ptr::write(&mut (*inner).strong, atomic::AtomicUsize::new(1));
-            ptr::write(&mut (*inner).weak, atomic::AtomicUsize::new(1));
-        }
-
-        Ok(inner)
-    }
+    ) -> Result<*mut ArcInner<T>, AllocError> {}
 
     /// Allocates an `ArcInner<T>` with sufficient space for an unsized inner value.
     #[cfg(not(no_global_oom_handling))]
-    unsafe fn allocate_for_ptr(ptr: *const T) -> *mut ArcInner<T> {
-        // Allocate for the `ArcInner<T>` using the given value.
-        unsafe {
-            Self::allocate_for_layout(
-                Layout::for_value(&*ptr),
-                |layout| Global.allocate(layout),
-                |mem| (ptr as *mut ArcInner<T>).set_ptr_value(mem) as *mut ArcInner<T>,
-            )
-        }
-    }
+    unsafe fn allocate_for_ptr(ptr: *const T) -> *mut ArcInner<T> {}
 
     #[cfg(not(no_global_oom_handling))]
-    fn from_box(v: Box<T>) -> Arc<T> {
-        unsafe {
-            let (box_unique, alloc) = Box::into_unique(v);
-            let bptr = box_unique.as_ptr();
-
-            let value_size = size_of_val(&*bptr);
-            let ptr = Self::allocate_for_ptr(bptr);
-
-            // Copy value as bytes
-            ptr::copy_nonoverlapping(
-                bptr as *const T as *const u8,
-                &mut (*ptr).data as *mut _ as *mut u8,
-                value_size,
-            );
-
-            // Free the allocation without dropping its contents
-            box_free(box_unique, alloc);
-
-            Self::from_ptr(ptr)
-        }
-    }
+    fn from_box(v: Box<T>) -> Arc<T> {}
 }
 
 impl<T> Arc<[T]> {
     /// Allocates an `ArcInner<[T]>` with the given length.
     #[cfg(not(no_global_oom_handling))]
-    unsafe fn allocate_for_slice(len: usize) -> *mut ArcInner<[T]> {
-        unsafe {
-            Self::allocate_for_layout(
-                Layout::array::<T>(len).unwrap(),
-                |layout| Global.allocate(layout),
-                |mem| ptr::slice_from_raw_parts_mut(mem as *mut T, len) as *mut ArcInner<[T]>,
-            )
-        }
-    }
+    unsafe fn allocate_for_slice(len: usize) -> *mut ArcInner<[T]> {}
 
     /// Copy elements from slice into newly allocated Arc<\[T\]>
     ///
     /// Unsafe because the caller must either take ownership or bind `T: Copy`.
     #[cfg(not(no_global_oom_handling))]
-    unsafe fn copy_from_slice(v: &[T]) -> Arc<[T]> {
-        unsafe {
-            let ptr = Self::allocate_for_slice(v.len());
-
-            ptr::copy_nonoverlapping(v.as_ptr(), &mut (*ptr).data as *mut [T] as *mut T, v.len());
-
-            Self::from_ptr(ptr)
-        }
-    }
+    unsafe fn copy_from_slice(v: &[T]) -> Arc<[T]> {}
 
     /// Constructs an `Arc<[T]>` from an iterator known to be of a certain size.
     ///
     /// Behavior is undefined should the size be wrong.
     #[cfg(not(no_global_oom_handling))]
-    unsafe fn from_iter_exact(iter: impl iter::Iterator<Item = T>, len: usize) -> Arc<[T]> {
-        // Panic guard while cloning T elements.
-        // In the event of a panic, elements that have been written
-        // into the new ArcInner will be dropped, then the memory freed.
-        struct Guard<T> {
-            mem: NonNull<u8>,
-            elems: *mut T,
-            layout: Layout,
-            n_elems: usize,
-        }
-
-        impl<T> Drop for Guard<T> {
-            fn drop(&mut self) {
-                unsafe {
-                    let slice = from_raw_parts_mut(self.elems, self.n_elems);
-                    ptr::drop_in_place(slice);
-
-                    Global.deallocate(self.mem, self.layout);
-                }
-            }
-        }
-
-        unsafe {
-            let ptr = Self::allocate_for_slice(len);
-
-            let mem = ptr as *mut _ as *mut u8;
-            let layout = Layout::for_value(&*ptr);
-
-            // Pointer to first element
-            let elems = &mut (*ptr).data as *mut [T] as *mut T;
-
-            let mut guard = Guard { mem: NonNull::new_unchecked(mem), elems, layout, n_elems: 0 };
-
-            for (i, item) in iter.enumerate() {
-                ptr::write(elems.add(i), item);
-                guard.n_elems += 1;
-            }
-
-            // All clear. Forget the guard so it doesn't free the new ArcInner.
-            mem::forget(guard);
-
-            Self::from_ptr(ptr)
-        }
-    }
+    unsafe fn from_iter_exact(iter: impl iter::Iterator<Item = T>, len: usize) -> Arc<[T]> {}
 }
 
 /// Specialization trait used for `From<&[T]>`.
@@ -33878,17 +20447,13 @@ trait ArcFromSlice<T> {
 #[cfg(not(no_global_oom_handling))]
 impl<T: Clone> ArcFromSlice<T> for Arc<[T]> {
     #[inline]
-    default fn from_slice(v: &[T]) -> Self {
-        unsafe { Self::from_iter_exact(v.iter().cloned(), v.len()) }
-    }
+    default fn from_slice(v: &[T]) -> Self {}
 }
 
 #[cfg(not(no_global_oom_handling))]
 impl<T: Copy> ArcFromSlice<T> for Arc<[T]> {
     #[inline]
-    fn from_slice(v: &[T]) -> Self {
-        unsafe { Arc::copy_from_slice(v) }
-    }
+    fn from_slice(v: &[T]) -> Self {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -33908,35 +20473,7 @@ impl<T: ?Sized> Clone for Arc<T> {
     /// let _ = Arc::clone(&five);
     /// ```
     #[inline]
-    fn clone(&self) -> Arc<T> {
-        // Using a relaxed ordering is alright here, as knowledge of the
-        // original reference prevents other threads from erroneously deleting
-        // the object.
-        //
-        // As explained in the [Boost documentation][1], Increasing the
-        // reference counter can always be done with memory_order_relaxed: New
-        // references to an object can only be formed from an existing
-        // reference, and passing an existing reference from one thread to
-        // another must already provide any required synchronization.
-        //
-        // [1]: (www.boost.org/doc/libs/1_55_0/doc/html/atomic/usage_examples.html)
-        let old_size = self.inner().strong.fetch_add(1, Relaxed);
-
-        // However we need to guard against massive refcounts in case someone
-        // is `mem::forget`ing Arcs. If we don't do this the count can overflow
-        // and users will use-after free. We racily saturate to `isize::MAX` on
-        // the assumption that there aren't ~2 billion threads incrementing
-        // the reference count at once. This branch will never be taken in
-        // any realistic program.
-        //
-        // We abort because such a program is incredibly degenerate, and we
-        // don't care to support it.
-        if old_size > MAX_REFCOUNT {
-            abort();
-        }
-
-        Self::from_inner(self.ptr)
-    }
+    fn clone(&self) -> Arc<T> {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -33944,9 +20481,7 @@ impl<T: ?Sized> Deref for Arc<T> {
     type Target = T;
 
     #[inline]
-    fn deref(&self) -> &T {
-        &self.inner().data
-    }
+    fn deref(&self) -> &T {}
 }
 
 #[unstable(feature = "receiver_trait", issue = "none")]
@@ -34006,58 +20541,7 @@ impl<T: Clone> Arc<T> {
     #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[stable(feature = "arc_unique", since = "1.4.0")]
-    pub fn make_mut(this: &mut Self) -> &mut T {
-        // Note that we hold both a strong reference and a weak reference.
-        // Thus, releasing our strong reference only will not, by itself, cause
-        // the memory to be deallocated.
-        //
-        // Use Acquire to ensure that we see any writes to `weak` that happen
-        // before release writes (i.e., decrements) to `strong`. Since we hold a
-        // weak count, there's no chance the ArcInner itself could be
-        // deallocated.
-        if this.inner().strong.compare_exchange(1, 0, Acquire, Relaxed).is_err() {
-            // Another strong pointer exists, so we must clone.
-            // Pre-allocate memory to allow writing the cloned value directly.
-            let mut arc = Self::new_uninit();
-            unsafe {
-                let data = Arc::get_mut_unchecked(&mut arc);
-                (**this).write_clone_into_raw(data.as_mut_ptr());
-                *this = arc.assume_init();
-            }
-        } else if this.inner().weak.load(Relaxed) != 1 {
-            // Relaxed suffices in the above because this is fundamentally an
-            // optimization: we are always racing with weak pointers being
-            // dropped. Worst case, we end up allocated a new Arc unnecessarily.
-
-            // We removed the last strong ref, but there are additional weak
-            // refs remaining. We'll move the contents to a new Arc, and
-            // invalidate the other weak refs.
-
-            // Note that it is not possible for the read of `weak` to yield
-            // usize::MAX (i.e., locked), since the weak count can only be
-            // locked by a thread with a strong reference.
-
-            // Materialize our own implicit weak pointer, so that it can clean
-            // up the ArcInner as needed.
-            let _weak = Weak { ptr: this.ptr };
-
-            // Can just steal the data, all that's left is Weaks
-            let mut arc = Self::new_uninit();
-            unsafe {
-                let data = Arc::get_mut_unchecked(&mut arc);
-                data.as_mut_ptr().copy_from_nonoverlapping(&**this, 1);
-                ptr::write(this, arc.assume_init());
-            }
-        } else {
-            // We were the sole reference of either kind; bump back up the
-            // strong ref count.
-            this.inner().strong.store(1, Release);
-        }
-
-        // As with `get_mut()`, the unsafety is ok because our reference was
-        // either unique to begin with, or became one upon cloning the contents.
-        unsafe { Self::get_mut_unchecked(this) }
-    }
+    pub fn make_mut(this: &mut Self) -> &mut T {}
 }
 
 impl<T: ?Sized> Arc<T> {
@@ -34087,18 +20571,7 @@ impl<T: ?Sized> Arc<T> {
     /// ```
     #[inline]
     #[stable(feature = "arc_unique", since = "1.4.0")]
-    pub fn get_mut(this: &mut Self) -> Option<&mut T> {
-        if this.is_unique() {
-            // This unsafety is ok because we're guaranteed that the pointer
-            // returned is the *only* pointer that will ever be returned to T. Our
-            // reference count is guaranteed to be 1 at this point, and we required
-            // the Arc itself to be `mut`, so we're returning the only possible
-            // reference to the inner data.
-            unsafe { Some(Arc::get_mut_unchecked(this)) }
-        } else {
-            None
-        }
-    }
+    pub fn get_mut(this: &mut Self) -> Option<&mut T> {}
 
     /// Returns a mutable reference into the given `Arc`,
     /// without any check.
@@ -34129,39 +20602,13 @@ impl<T: ?Sized> Arc<T> {
     /// ```
     #[inline]
     #[unstable(feature = "get_mut_unchecked", issue = "63292")]
-    pub unsafe fn get_mut_unchecked(this: &mut Self) -> &mut T {
-        // We are careful to *not* create a reference covering the "count" fields, as
-        // this would alias with concurrent access to the reference counts (e.g. by `Weak`).
-        unsafe { &mut (*this.ptr.as_ptr()).data }
-    }
+    pub unsafe fn get_mut_unchecked(this: &mut Self) -> &mut T {}
 
     /// Determine whether this is the unique reference (including weak refs) to
     /// the underlying data.
     ///
     /// Note that this requires locking the weak ref count.
-    fn is_unique(&mut self) -> bool {
-        // lock the weak pointer count if we appear to be the sole weak pointer
-        // holder.
-        //
-        // The acquire label here ensures a happens-before relationship with any
-        // writes to `strong` (in particular in `Weak::upgrade`) prior to decrements
-        // of the `weak` count (via `Weak::drop`, which uses release).  If the upgraded
-        // weak ref was never dropped, the CAS here will fail so we do not care to synchronize.
-        if self.inner().weak.compare_exchange(1, usize::MAX, Acquire, Relaxed).is_ok() {
-            // This needs to be an `Acquire` to synchronize with the decrement of the `strong`
-            // counter in `drop` -- the only access that happens when any but the last reference
-            // is being dropped.
-            let unique = self.inner().strong.load(Acquire) == 1;
-
-            // The release write here synchronizes with a read in `downgrade`,
-            // effectively preventing the above read of `strong` from happening
-            // after the write.
-            self.inner().weak.store(1, Release); // release the lock
-            unique
-        } else {
-            false
-        }
-    }
+    fn is_unique(&mut self) -> bool {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -34180,9 +20627,7 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for Arc<T> {
     /// struct Foo;
     ///
     /// impl Drop for Foo {
-    ///     fn drop(&mut self) {
-    ///         println!("dropped!");
-    ///     }
+    ///     fn drop(&mut self) {}
     /// }
     ///
     /// let foo  = Arc::new(Foo);
@@ -34192,48 +20637,7 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for Arc<T> {
     /// drop(foo2);   // Prints "dropped!"
     /// ```
     #[inline]
-    fn drop(&mut self) {
-        // Because `fetch_sub` is already atomic, we do not need to synchronize
-        // with other threads unless we are going to delete the object. This
-        // same logic applies to the below `fetch_sub` to the `weak` count.
-        if self.inner().strong.fetch_sub(1, Release) != 1 {
-            return;
-        }
-
-        // This fence is needed to prevent reordering of use of the data and
-        // deletion of the data.  Because it is marked `Release`, the decreasing
-        // of the reference count synchronizes with this `Acquire` fence. This
-        // means that use of the data happens before decreasing the reference
-        // count, which happens before this fence, which happens before the
-        // deletion of the data.
-        //
-        // As explained in the [Boost documentation][1],
-        //
-        // > It is important to enforce any possible access to the object in one
-        // > thread (through an existing reference) to *happen before* deleting
-        // > the object in a different thread. This is achieved by a "release"
-        // > operation after dropping a reference (any access to the object
-        // > through this reference must obviously happened before), and an
-        // > "acquire" operation before deleting the object.
-        //
-        // In particular, while the contents of an Arc are usually immutable, it's
-        // possible to have interior writes to something like a Mutex<T>. Since a
-        // Mutex is not acquired when it is deleted, we can't rely on its
-        // synchronization logic to make writes in thread A visible to a destructor
-        // running in thread B.
-        //
-        // Also note that the Acquire fence here could probably be replaced with an
-        // Acquire load, which could improve performance in highly-contended
-        // situations. See [2].
-        //
-        // [1]: (www.boost.org/doc/libs/1_55_0/doc/html/atomic/usage_examples.html)
-        // [2]: (https://github.com/rust-lang/rust/pull/41714)
-        acquire!(self.inner().strong);
-
-        unsafe {
-            self.drop_slow();
-        }
-    }
+    fn drop(&mut self) {}
 }
 
 impl Arc<dyn Any + Send + Sync> {
@@ -34247,11 +20651,7 @@ impl Arc<dyn Any + Send + Sync> {
     /// use std::any::Any;
     /// use std::sync::Arc;
     ///
-    /// fn print_if_string(value: Arc<dyn Any + Send + Sync>) {
-    ///     if let Ok(string) = value.downcast::<String>() {
-    ///         println!("String ({}): {}", string.len(), string);
-    ///     }
-    /// }
+    /// fn print_if_string(value: Arc<dyn Any + Send + Sync>) {}
     ///
     /// let my_string = "Hello World".to_string();
     /// print_if_string(Arc::new(my_string));
@@ -34260,15 +20660,7 @@ impl Arc<dyn Any + Send + Sync> {
     pub fn downcast<T>(self) -> Result<Arc<T>, Self>
     where
         T: Any + Send + Sync + 'static,
-    {
-        if (*self).is::<T>() {
-            let ptr = self.ptr.cast::<ArcInner<T>>();
-            mem::forget(self);
-            Ok(Arc::from_inner(ptr))
-        } else {
-            Err(self)
-        }
-    }
+    {}
 }
 
 impl<T> Weak<T> {
@@ -34287,9 +20679,7 @@ impl<T> Weak<T> {
     /// ```
     #[stable(feature = "downgraded_weak", since = "1.10.0")]
     #[must_use]
-    pub fn new() -> Weak<T> {
-        Weak { ptr: NonNull::new(usize::MAX as *mut ArcInner<T>).expect("MAX is not 0") }
-    }
+    pub fn new() -> Weak<T> {}
 }
 
 /// Helper type to allow accessing the reference counts without
@@ -34327,20 +20717,7 @@ impl<T: ?Sized> Weak<T> {
     /// [`null`]: core::ptr::null "ptr::null"
     #[must_use]
     #[stable(feature = "weak_into_raw", since = "1.45.0")]
-    pub fn as_ptr(&self) -> *const T {
-        let ptr: *mut ArcInner<T> = NonNull::as_ptr(self.ptr);
-
-        if is_dangling(ptr) {
-            // If the pointer is dangling, we return the sentinel directly. This cannot be
-            // a valid payload address, as the payload is at least as aligned as ArcInner (usize).
-            ptr as *const T
-        } else {
-            // SAFETY: if is_dangling returns false, then the pointer is dereferencable.
-            // The payload may be dropped at this point, and we have to maintain provenance,
-            // so use raw pointer manipulation.
-            unsafe { ptr::addr_of_mut!((*ptr).data) }
-        }
-    }
+    pub fn as_ptr(&self) -> *const T {}
 
     /// Consumes the `Weak<T>` and turns it into a raw pointer.
     ///
@@ -34371,11 +20748,7 @@ impl<T: ?Sized> Weak<T> {
     /// [`as_ptr`]: Weak::as_ptr
     #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "weak_into_raw", since = "1.45.0")]
-    pub fn into_raw(self) -> *const T {
-        let result = self.as_ptr();
-        mem::forget(self);
-        result
-    }
+    pub fn into_raw(self) -> *const T {}
 
     /// Converts a raw pointer previously created by [`into_raw`] back into `Weak<T>`.
     ///
@@ -34419,24 +20792,7 @@ impl<T: ?Sized> Weak<T> {
     /// [`into_raw`]: Weak::into_raw
     /// [`upgrade`]: Weak::upgrade
     #[stable(feature = "weak_into_raw", since = "1.45.0")]
-    pub unsafe fn from_raw(ptr: *const T) -> Self {
-        // See Weak::as_ptr for context on how the input pointer is derived.
-
-        let ptr = if is_dangling(ptr as *mut T) {
-            // This is a dangling Weak.
-            ptr as *mut ArcInner<T>
-        } else {
-            // Otherwise, we're guaranteed the pointer came from a nondangling Weak.
-            // SAFETY: data_offset is safe to call, as ptr references a real (potentially dropped) T.
-            let offset = unsafe { data_offset(ptr) };
-            // Thus, we reverse the offset to get the whole RcBox.
-            // SAFETY: the pointer originated from a Weak, so this offset is safe.
-            unsafe { (ptr as *mut ArcInner<T>).set_ptr_value((ptr as *mut u8).offset(-offset)) }
-        };
-
-        // SAFETY: we now have recovered the original Weak pointer, so can create the Weak.
-        Weak { ptr: unsafe { NonNull::new_unchecked(ptr) } }
-    }
+    pub unsafe fn from_raw(ptr: *const T) -> Self {}
 }
 
 impl<T: ?Sized> Weak<T> {
@@ -34466,47 +20822,14 @@ impl<T: ?Sized> Weak<T> {
     #[must_use = "this returns a new `Arc`, \
                   without modifying the original weak pointer"]
     #[stable(feature = "arc_weak", since = "1.4.0")]
-    pub fn upgrade(&self) -> Option<Arc<T>> {
-        // We use a CAS loop to increment the strong count instead of a
-        // fetch_add as this function should never take the reference count
-        // from zero to one.
-        let inner = self.inner()?;
-
-        // Relaxed load because any write of 0 that we can observe
-        // leaves the field in a permanently zero state (so a
-        // "stale" read of 0 is fine), and any other value is
-        // confirmed via the CAS below.
-        let mut n = inner.strong.load(Relaxed);
-
-        loop {
-            if n == 0 {
-                return None;
-            }
-
-            // See comments in `Arc::clone` for why we do this (for `mem::forget`).
-            if n > MAX_REFCOUNT {
-                abort();
-            }
-
-            // Relaxed is fine for the failure case because we don't have any expectations about the new state.
-            // Acquire is necessary for the success case to synchronise with `Arc::new_cyclic`, when the inner
-            // value can be initialized after `Weak` references have already been created. In that case, we
-            // expect to observe the fully initialized value.
-            match inner.strong.compare_exchange_weak(n, n + 1, Acquire, Relaxed) {
-                Ok(_) => return Some(Arc::from_inner(self.ptr)), // null checked above
-                Err(old) => n = old,
-            }
-        }
-    }
+    pub fn upgrade(&self) -> Option<Arc<T>> {}
 
     /// Gets the number of strong (`Arc`) pointers pointing to this allocation.
     ///
     /// If `self` was created using [`Weak::new`], this will return 0.
     #[must_use]
     #[stable(feature = "weak_counts", since = "1.41.0")]
-    pub fn strong_count(&self) -> usize {
-        if let Some(inner) = self.inner() { inner.strong.load(SeqCst) } else { 0 }
-    }
+    pub fn strong_count(&self) -> usize {}
 
     /// Gets an approximation of the number of `Weak` pointers pointing to this
     /// allocation.
@@ -34521,41 +20844,12 @@ impl<T: ?Sized> Weak<T> {
     /// `Weak`s pointing to the same allocation.
     #[must_use]
     #[stable(feature = "weak_counts", since = "1.41.0")]
-    pub fn weak_count(&self) -> usize {
-        self.inner()
-            .map(|inner| {
-                let weak = inner.weak.load(SeqCst);
-                let strong = inner.strong.load(SeqCst);
-                if strong == 0 {
-                    0
-                } else {
-                    // Since we observed that there was at least one strong pointer
-                    // after reading the weak count, we know that the implicit weak
-                    // reference (present whenever any strong references are alive)
-                    // was still around when we observed the weak count, and can
-                    // therefore safely subtract it.
-                    weak - 1
-                }
-            })
-            .unwrap_or(0)
-    }
+    pub fn weak_count(&self) -> usize {}
 
     /// Returns `None` when the pointer is dangling and there is no allocated `ArcInner`,
     /// (i.e., when this `Weak` was created by `Weak::new`).
     #[inline]
-    fn inner(&self) -> Option<WeakInner<'_>> {
-        if is_dangling(self.ptr.as_ptr()) {
-            None
-        } else {
-            // We are careful to *not* create a reference covering the "data" field, as
-            // the field may be mutated concurrently (for example, if the last `Arc`
-            // is dropped, the data field will be dropped in-place).
-            Some(unsafe {
-                let ptr = self.ptr.as_ptr();
-                WeakInner { strong: &(*ptr).strong, weak: &(*ptr).weak }
-            })
-        }
-    }
+    fn inner(&self) -> Option<WeakInner<'_>> {}
 
     /// Returns `true` if the two `Weak`s point to the same allocation (similar to
     /// [`ptr::eq`]), or if both don't point to any allocation
@@ -34601,9 +20895,7 @@ impl<T: ?Sized> Weak<T> {
     #[inline]
     #[must_use]
     #[stable(feature = "weak_ptr_eq", since = "1.39.0")]
-    pub fn ptr_eq(&self, other: &Self) -> bool {
-        self.ptr.as_ptr() == other.ptr.as_ptr()
-    }
+    pub fn ptr_eq(&self, other: &Self) -> bool {}
 }
 
 #[stable(feature = "arc_weak", since = "1.4.0")]
@@ -34620,25 +20912,7 @@ impl<T: ?Sized> Clone for Weak<T> {
     /// let _ = Weak::clone(&weak_five);
     /// ```
     #[inline]
-    fn clone(&self) -> Weak<T> {
-        let inner = if let Some(inner) = self.inner() {
-            inner
-        } else {
-            return Weak { ptr: self.ptr };
-        };
-        // See comments in Arc::clone() for why this is relaxed.  This can use a
-        // fetch_add (ignoring the lock) because the weak count is only locked
-        // where are *no other* weak pointers in existence. (So we can't be
-        // running this code in that case).
-        let old_size = inner.weak.fetch_add(1, Relaxed);
-
-        // See comments in Arc::clone() for why we do this (for mem::forget).
-        if old_size > MAX_REFCOUNT {
-            abort();
-        }
-
-        Weak { ptr: self.ptr }
-    }
+    fn clone(&self) -> Weak<T> {}
 }
 
 #[stable(feature = "downgraded_weak", since = "1.10.0")]
@@ -34657,9 +20931,7 @@ impl<T> Default for Weak<T> {
     /// let empty: Weak<i64> = Default::default();
     /// assert!(empty.upgrade().is_none());
     /// ```
-    fn default() -> Weak<T> {
-        Weak::new()
-    }
+    fn default() -> Weak<T> {}
 }
 
 #[stable(feature = "arc_weak", since = "1.4.0")]
@@ -34674,9 +20946,7 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for Weak<T> {
     /// struct Foo;
     ///
     /// impl Drop for Foo {
-    ///     fn drop(&mut self) {
-    ///         println!("dropped!");
-    ///     }
+    ///     fn drop(&mut self) {}
     /// }
     ///
     /// let foo = Arc::new(Foo);
@@ -34688,22 +20958,7 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for Weak<T> {
     ///
     /// assert!(other_weak_foo.upgrade().is_none());
     /// ```
-    fn drop(&mut self) {
-        // If we find out that we were the last weak pointer, then its time to
-        // deallocate the data entirely. See the discussion in Arc::drop() about
-        // the memory orderings
-        //
-        // It's not necessary to check for the locked state here, because the
-        // weak count can only be locked if there was precisely one weak ref,
-        // meaning that drop could only subsequently run ON that remaining weak
-        // ref, which can only happen after the lock is released.
-        let inner = if let Some(inner) = self.inner() { inner } else { return };
-
-        if inner.weak.fetch_sub(1, Release) == 1 {
-            acquire!(inner.weak);
-            unsafe { Global.deallocate(self.ptr.cast(), Layout::for_value_raw(self.ptr.as_ptr())) }
-        }
-    }
+    fn drop(&mut self) {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -34715,13 +20970,9 @@ trait ArcEqIdent<T: ?Sized + PartialEq> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + PartialEq> ArcEqIdent<T> for Arc<T> {
     #[inline]
-    default fn eq(&self, other: &Arc<T>) -> bool {
-        **self == **other
-    }
+    default fn eq(&self, other: &Arc<T>) -> bool {}
     #[inline]
-    default fn ne(&self, other: &Arc<T>) -> bool {
-        **self != **other
-    }
+    default fn ne(&self, other: &Arc<T>) -> bool {}
 }
 
 /// We're doing this specialization here, and not as a more general optimization on `&T`, because it
@@ -34734,14 +20985,10 @@ impl<T: ?Sized + PartialEq> ArcEqIdent<T> for Arc<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + crate::rc::MarkerEq> ArcEqIdent<T> for Arc<T> {
     #[inline]
-    fn eq(&self, other: &Arc<T>) -> bool {
-        Arc::ptr_eq(self, other) || **self == **other
-    }
+    fn eq(&self, other: &Arc<T>) -> bool {}
 
     #[inline]
-    fn ne(&self, other: &Arc<T>) -> bool {
-        !Arc::ptr_eq(self, other) && **self != **other
-    }
+    fn ne(&self, other: &Arc<T>) -> bool {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -34764,9 +21011,7 @@ impl<T: ?Sized + PartialEq> PartialEq for Arc<T> {
     /// assert!(five == Arc::new(5));
     /// ```
     #[inline]
-    fn eq(&self, other: &Arc<T>) -> bool {
-        ArcEqIdent::eq(self, other)
-    }
+    fn eq(&self, other: &Arc<T>) -> bool {}
 
     /// Inequality for two `Arc`s.
     ///
@@ -34785,9 +21030,7 @@ impl<T: ?Sized + PartialEq> PartialEq for Arc<T> {
     /// assert!(five != Arc::new(6));
     /// ```
     #[inline]
-    fn ne(&self, other: &Arc<T>) -> bool {
-        ArcEqIdent::ne(self, other)
-    }
+    fn ne(&self, other: &Arc<T>) -> bool {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -34806,9 +21049,7 @@ impl<T: ?Sized + PartialOrd> PartialOrd for Arc<T> {
     ///
     /// assert_eq!(Some(Ordering::Less), five.partial_cmp(&Arc::new(6)));
     /// ```
-    fn partial_cmp(&self, other: &Arc<T>) -> Option<Ordering> {
-        (**self).partial_cmp(&**other)
-    }
+    fn partial_cmp(&self, other: &Arc<T>) -> Option<Ordering> {}
 
     /// Less-than comparison for two `Arc`s.
     ///
@@ -34823,9 +21064,7 @@ impl<T: ?Sized + PartialOrd> PartialOrd for Arc<T> {
     ///
     /// assert!(five < Arc::new(6));
     /// ```
-    fn lt(&self, other: &Arc<T>) -> bool {
-        *(*self) < *(*other)
-    }
+    fn lt(&self, other: &Arc<T>) -> bool {}
 
     /// 'Less than or equal to' comparison for two `Arc`s.
     ///
@@ -34840,9 +21079,7 @@ impl<T: ?Sized + PartialOrd> PartialOrd for Arc<T> {
     ///
     /// assert!(five <= Arc::new(5));
     /// ```
-    fn le(&self, other: &Arc<T>) -> bool {
-        *(*self) <= *(*other)
-    }
+    fn le(&self, other: &Arc<T>) -> bool {}
 
     /// Greater-than comparison for two `Arc`s.
     ///
@@ -34857,9 +21094,7 @@ impl<T: ?Sized + PartialOrd> PartialOrd for Arc<T> {
     ///
     /// assert!(five > Arc::new(4));
     /// ```
-    fn gt(&self, other: &Arc<T>) -> bool {
-        *(*self) > *(*other)
-    }
+    fn gt(&self, other: &Arc<T>) -> bool {}
 
     /// 'Greater than or equal to' comparison for two `Arc`s.
     ///
@@ -34874,9 +21109,7 @@ impl<T: ?Sized + PartialOrd> PartialOrd for Arc<T> {
     ///
     /// assert!(five >= Arc::new(5));
     /// ```
-    fn ge(&self, other: &Arc<T>) -> bool {
-        *(*self) >= *(*other)
-    }
+    fn ge(&self, other: &Arc<T>) -> bool {}
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + Ord> Ord for Arc<T> {
@@ -34894,32 +21127,24 @@ impl<T: ?Sized + Ord> Ord for Arc<T> {
     ///
     /// assert_eq!(Ordering::Less, five.cmp(&Arc::new(6)));
     /// ```
-    fn cmp(&self, other: &Arc<T>) -> Ordering {
-        (**self).cmp(&**other)
-    }
+    fn cmp(&self, other: &Arc<T>) -> Ordering {}
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + Eq> Eq for Arc<T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + fmt::Display> fmt::Display for Arc<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(&**self, f)
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + fmt::Debug> fmt::Debug for Arc<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Debug::fmt(&**self, f)
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> fmt::Pointer for Arc<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Pointer::fmt(&(&**self as *const T), f)
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -34935,16 +21160,12 @@ impl<T: Default> Default for Arc<T> {
     /// let x: Arc<i32> = Default::default();
     /// assert_eq!(*x, 0);
     /// ```
-    fn default() -> Arc<T> {
-        Arc::new(Default::default())
-    }
+    fn default() -> Arc<T> {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + Hash> Hash for Arc<T> {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        (**self).hash(state)
-    }
+    fn hash<H: Hasher>(&self, state: &mut H) {}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -34964,9 +21185,7 @@ impl<T> From<T> for Arc<T> {
     ///
     /// assert_eq!(Arc::from(x), arc);
     /// ```
-    fn from(t: T) -> Self {
-        Arc::new(t)
-    }
+    fn from(t: T) -> Self {}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -34983,9 +21202,7 @@ impl<T: Clone> From<&[T]> for Arc<[T]> {
     /// assert_eq!(&[1, 2, 3], &shared[..]);
     /// ```
     #[inline]
-    fn from(v: &[T]) -> Arc<[T]> {
-        <Self as ArcFromSlice<T>>::from_slice(v)
-    }
+    fn from(v: &[T]) -> Arc<[T]> {}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -35001,10 +21218,7 @@ impl From<&str> for Arc<str> {
     /// assert_eq!("eggplant", &shared[..]);
     /// ```
     #[inline]
-    fn from(v: &str) -> Arc<str> {
-        let arc = Arc::<[u8]>::from(v.as_bytes());
-        unsafe { Arc::from_raw(Arc::into_raw(arc) as *const str) }
-    }
+    fn from(v: &str) -> Arc<str> {}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -35021,9 +21235,7 @@ impl From<String> for Arc<str> {
     /// assert_eq!("eggplant", &shared[..]);
     /// ```
     #[inline]
-    fn from(v: String) -> Arc<str> {
-        Arc::from(&v[..])
-    }
+    fn from(v: String) -> Arc<str> {}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -35040,9 +21252,7 @@ impl<T: ?Sized> From<Box<T>> for Arc<T> {
     /// assert_eq!("eggplant", &shared[..]);
     /// ```
     #[inline]
-    fn from(v: Box<T>) -> Arc<T> {
-        Arc::from_box(v)
-    }
+    fn from(v: Box<T>) -> Arc<T> {}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -35059,16 +21269,7 @@ impl<T> From<Vec<T>> for Arc<[T]> {
     /// assert_eq!(&[1, 2, 3], &shared[..]);
     /// ```
     #[inline]
-    fn from(mut v: Vec<T>) -> Arc<[T]> {
-        unsafe {
-            let arc = Arc::copy_from_slice(&v);
-
-            // Allow the Vec to free its memory, but not destroy its contents
-            v.set_len(0);
-
-            arc
-        }
-    }
+    fn from(mut v: Vec<T>) -> Arc<[T]> {}
 }
 
 #[stable(feature = "shared_from_cow", since = "1.45.0")]
@@ -35090,25 +21291,14 @@ where
     /// assert_eq!("eggplant", &shared[..]);
     /// ```
     #[inline]
-    fn from(cow: Cow<'a, B>) -> Arc<B> {
-        match cow {
-            Cow::Borrowed(s) => Arc::from(s),
-            Cow::Owned(s) => Arc::from(s),
-        }
-    }
+    fn from(cow: Cow<'a, B>) -> Arc<B> {}
 }
 
 #[stable(feature = "boxed_slice_try_from", since = "1.43.0")]
 impl<T, const N: usize> TryFrom<Arc<[T]>> for Arc<[T; N]> {
     type Error = Arc<[T]>;
 
-    fn try_from(boxed_slice: Arc<[T]>) -> Result<Self, Self::Error> {
-        if boxed_slice.len() == N {
-            Ok(unsafe { Arc::from_raw(Arc::into_raw(boxed_slice) as *mut [T; N]) })
-        } else {
-            Err(boxed_slice)
-        }
-    }
+    fn try_from(boxed_slice: Arc<[T]>) -> Result<Self, Self::Error> {}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -35152,9 +21342,7 @@ impl<T> iter::FromIterator<T> for Arc<[T]> {
     /// let evens: Arc<[u8]> = (0..10).collect(); // Just a single allocation happens here.
     /// # assert_eq!(&*evens, &*(0..10).collect::<Vec<_>>());
     /// ```
-    fn from_iter<I: iter::IntoIterator<Item = T>>(iter: I) -> Self {
-        ToArcSlice::to_arc_slice(iter.into_iter())
-    }
+    fn from_iter<I: iter::IntoIterator<Item = T>>(iter: I) -> Self {}
 }
 
 /// Specialization trait used for collecting into `Arc<[T]>`.
@@ -35164,50 +21352,22 @@ trait ToArcSlice<T>: Iterator<Item = T> + Sized {
 
 #[cfg(not(no_global_oom_handling))]
 impl<T, I: Iterator<Item = T>> ToArcSlice<T> for I {
-    default fn to_arc_slice(self) -> Arc<[T]> {
-        self.collect::<Vec<T>>().into()
-    }
+    default fn to_arc_slice(self) -> Arc<[T]> {}
 }
 
 #[cfg(not(no_global_oom_handling))]
 impl<T, I: iter::TrustedLen<Item = T>> ToArcSlice<T> for I {
-    fn to_arc_slice(self) -> Arc<[T]> {
-        // This is the case for a `TrustedLen` iterator.
-        let (low, high) = self.size_hint();
-        if let Some(high) = high {
-            debug_assert_eq!(
-                low,
-                high,
-                "TrustedLen iterator's size hint is not exact: {:?}",
-                (low, high)
-            );
-
-            unsafe {
-                // SAFETY: We need to ensure that the iterator has an exact length and we have.
-                Arc::from_iter_exact(self, low)
-            }
-        } else {
-            // TrustedLen contract guarantees that `upper_bound == `None` implies an iterator
-            // length exceeding `usize::MAX`.
-            // The default implementation would collect into a vec which would panic.
-            // Thus we panic here immediately without invoking `Vec` code.
-            panic!("capacity overflow");
-        }
-    }
+    fn to_arc_slice(self) -> Arc<[T]> {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> borrow::Borrow<T> for Arc<T> {
-    fn borrow(&self) -> &T {
-        &**self
-    }
+    fn borrow(&self) -> &T {}
 }
 
 #[stable(since = "1.5.0", feature = "smart_ptr_as_ref")]
 impl<T: ?Sized> AsRef<T> for Arc<T> {
-    fn as_ref(&self) -> &T {
-        &**self
-    }
+    fn as_ref(&self) -> &T {}
 }
 
 #[stable(feature = "pin", since = "1.33.0")]
@@ -35219,21 +21379,10 @@ impl<T: ?Sized> Unpin for Arc<T> {}
 ///
 /// The pointer must point to (and have valid metadata for) a previously
 /// valid instance of T, but the T is allowed to be dropped.
-unsafe fn data_offset<T: ?Sized>(ptr: *const T) -> isize {
-    // Align the unsized value to the end of the ArcInner.
-    // Because RcBox is repr(C), it will always be the last field in memory.
-    // SAFETY: since the only unsized types possible are slices, trait objects,
-    // and extern types, the input safety requirement is currently enough to
-    // satisfy the requirements of align_of_val_raw; this is an implementation
-    // detail of the language that must not be relied upon outside of std.
-    unsafe { data_offset_align(align_of_val_raw(ptr)) }
-}
+unsafe fn data_offset<T: ?Sized>(ptr: *const T) -> isize {}
 
 #[inline]
-fn data_offset_align(align: usize) -> isize {
-    let layout = Layout::new::<ArcInner<()>>();
-    (layout.size() + layout.padding_needed_for(align)) as isize
-}
+fn data_offset_align(align: usize) -> isize {}
 }
 #[cfg(all(not(no_global_oom_handling), target_has_atomic = "ptr"))]
 pub mod task {
@@ -35277,29 +21426,11 @@ use crate::sync::Arc;
 /// struct ThreadWaker(Thread);
 ///
 /// impl Wake for ThreadWaker {
-///     fn wake(self: Arc<Self>) {
-///         self.0.unpark();
-///     }
+///     fn wake(self: Arc<Self>) {}
 /// }
 ///
 /// /// Run a future to completion on the current thread.
-/// fn block_on<T>(fut: impl Future<Output = T>) -> T {
-///     // Pin the future so it can be polled.
-///     let mut fut = Box::pin(fut);
-///
-///     // Create a new context to be passed to the future.
-///     let t = thread::current();
-///     let waker = Arc::new(ThreadWaker(t)).into();
-///     let mut cx = Context::from_waker(&waker);
-///
-///     // Run the future to completion.
-///     loop {
-///         match fut.as_mut().poll(&mut cx) {
-///             Poll::Ready(res) => return res,
-///             Poll::Pending => thread::park(),
-///         }
-///     }
-/// }
+/// fn block_on<T>(fut: impl Future<Output = T>) -> T {}
 ///
 /// block_on(async {
 ///     println!("Hi from inside a future!");
@@ -35319,9 +21450,7 @@ pub trait Wake {
     ///
     /// [`wake`]: Wake::wake
     #[stable(feature = "wake_trait", since = "1.51.0")]
-    fn wake_by_ref(self: &Arc<Self>) {
-        self.clone().wake();
-    }
+    fn wake_by_ref(self: &Arc<Self>) {}
 }
 
 #[stable(feature = "wake_trait", since = "1.51.0")]
@@ -35329,11 +21458,7 @@ impl<W: Wake + Send + Sync + 'static> From<Arc<W>> for Waker {
     /// Use a `Wake`-able type as a `Waker`.
     ///
     /// No heap allocations or atomic operations are used for this conversion.
-    fn from(waker: Arc<W>) -> Waker {
-        // SAFETY: This is safe because raw_waker safely constructs
-        // a RawWaker from Arc<W>.
-        unsafe { Waker::from_raw(raw_waker(waker)) }
-    }
+    fn from(waker: Arc<W>) -> Waker {}
 }
 
 #[stable(feature = "wake_trait", since = "1.51.0")]
@@ -35341,9 +21466,7 @@ impl<W: Wake + Send + Sync + 'static> From<Arc<W>> for RawWaker {
     /// Use a `Wake`-able type as a `RawWaker`.
     ///
     /// No heap allocations or atomic operations are used for this conversion.
-    fn from(waker: Arc<W>) -> RawWaker {
-        raw_waker(waker)
-    }
+    fn from(waker: Arc<W>) -> RawWaker {}
 }
 
 // NB: This private function for constructing a RawWaker is used, rather than
@@ -35352,38 +21475,7 @@ impl<W: Wake + Send + Sync + 'static> From<Arc<W>> for RawWaker {
 // trait dispatch - instead both impls call this function directly and
 // explicitly.
 #[inline(always)]
-fn raw_waker<W: Wake + Send + Sync + 'static>(waker: Arc<W>) -> RawWaker {
-    // Increment the reference count of the arc to clone it.
-    unsafe fn clone_waker<W: Wake + Send + Sync + 'static>(waker: *const ()) -> RawWaker {
-        unsafe { Arc::increment_strong_count(waker as *const W) };
-        RawWaker::new(
-            waker as *const (),
-            &RawWakerVTable::new(clone_waker::<W>, wake::<W>, wake_by_ref::<W>, drop_waker::<W>),
-        )
-    }
-
-    // Wake by value, moving the Arc into the Wake::wake function
-    unsafe fn wake<W: Wake + Send + Sync + 'static>(waker: *const ()) {
-        let waker = unsafe { Arc::from_raw(waker as *const W) };
-        <W as Wake>::wake(waker);
-    }
-
-    // Wake by reference, wrap the waker in ManuallyDrop to avoid dropping it
-    unsafe fn wake_by_ref<W: Wake + Send + Sync + 'static>(waker: *const ()) {
-        let waker = unsafe { ManuallyDrop::new(Arc::from_raw(waker as *const W)) };
-        <W as Wake>::wake_by_ref(&waker);
-    }
-
-    // Decrement the reference count of the Arc on drop
-    unsafe fn drop_waker<W: Wake + Send + Sync + 'static>(waker: *const ()) {
-        unsafe { Arc::decrement_strong_count(waker as *const W) };
-    }
-
-    RawWaker::new(
-        Arc::into_raw(waker) as *const (),
-        &RawWakerVTable::new(clone_waker::<W>, wake::<W>, wake_by_ref::<W>, drop_waker::<W>),
-    )
-}
+fn raw_waker<W: Wake + Send + Sync + 'static>(waker: Arc<W>) -> RawWaker {}
 }
 #[cfg(test)]
 mod tests {
@@ -35398,146 +21490,40 @@ use core::result::Result::{Err, Ok};
 use std::boxed::Box;
 
 #[test]
-fn test_owned_clone() {
-    let a = Box::new(5);
-    let b: Box<i32> = a.clone();
-    assert!(a == b);
-}
+fn test_owned_clone() {}
 
 #[derive(PartialEq, Eq)]
 struct Test;
 
 #[test]
-fn any_move() {
-    let a = Box::new(8) as Box<dyn Any>;
-    let b = Box::new(Test) as Box<dyn Any>;
-
-    match a.downcast::<i32>() {
-        Ok(a) => {
-            assert!(a == Box::new(8));
-        }
-        Err(..) => panic!(),
-    }
-    match b.downcast::<Test>() {
-        Ok(a) => {
-            assert!(a == Box::new(Test));
-        }
-        Err(..) => panic!(),
-    }
-
-    let a = Box::new(8) as Box<dyn Any>;
-    let b = Box::new(Test) as Box<dyn Any>;
-
-    assert!(a.downcast::<Box<Test>>().is_err());
-    assert!(b.downcast::<Box<i32>>().is_err());
-}
+fn any_move() {}
 
 #[test]
-fn test_show() {
-    let a = Box::new(8) as Box<dyn Any>;
-    let b = Box::new(Test) as Box<dyn Any>;
-    let a_str = format!("{:?}", a);
-    let b_str = format!("{:?}", b);
-    assert_eq!(a_str, "Any { .. }");
-    assert_eq!(b_str, "Any { .. }");
-
-    static EIGHT: usize = 8;
-    static TEST: Test = Test;
-    let a = &EIGHT as &dyn Any;
-    let b = &TEST as &dyn Any;
-    let s = format!("{:?}", a);
-    assert_eq!(s, "Any { .. }");
-    let s = format!("{:?}", b);
-    assert_eq!(s, "Any { .. }");
-}
+fn test_show() {}
 
 #[test]
-fn deref() {
-    fn homura<T: Deref<Target = i32>>(_: T) {}
-    homura(Box::new(765));
-}
+fn deref() {}
 
 #[test]
-fn raw_sized() {
-    let x = Box::new(17);
-    let p = Box::into_raw(x);
-    unsafe {
-        assert_eq!(17, *p);
-        *p = 19;
-        let y = Box::from_raw(p);
-        assert_eq!(19, *y);
-    }
-}
+fn raw_sized() {}
 
 #[test]
-fn raw_trait() {
-    trait Foo {
-        fn get(&self) -> u32;
-        fn set(&mut self, value: u32);
-    }
-
-    struct Bar(u32);
-
-    impl Foo for Bar {
-        fn get(&self) -> u32 {
-            self.0
-        }
-
-        fn set(&mut self, value: u32) {
-            self.0 = value;
-        }
-    }
-
-    let x: Box<dyn Foo> = Box::new(Bar(17));
-    let p = Box::into_raw(x);
-    unsafe {
-        assert_eq!(17, (*p).get());
-        (*p).set(19);
-        let y: Box<dyn Foo> = Box::from_raw(p);
-        assert_eq!(19, y.get());
-    }
-}
+fn raw_trait() {}
 
 #[test]
-fn f64_slice() {
-    let slice: &[f64] = &[-1.0, 0.0, 1.0, f64::INFINITY];
-    let boxed: Box<[f64]> = Box::from(slice);
-    assert_eq!(&*boxed, slice)
-}
+fn f64_slice() {}
 
 #[test]
-fn i64_slice() {
-    let slice: &[i64] = &[i64::MIN, -2, -1, 0, 1, 2, i64::MAX];
-    let boxed: Box<[i64]> = Box::from(slice);
-    assert_eq!(&*boxed, slice)
-}
+fn i64_slice() {}
 
 #[test]
-fn str_slice() {
-    let s = "Hello, world!";
-    let boxed: Box<str> = Box::from(s);
-    assert_eq!(&*boxed, s)
-}
+fn str_slice() {}
 
 #[test]
-fn boxed_slice_from_iter() {
-    let iter = 0..100;
-    let boxed: Box<[u32]> = iter.collect();
-    assert_eq!(boxed.len(), 100);
-    assert_eq!(boxed[7], 7);
-}
+fn boxed_slice_from_iter() {}
 
 #[test]
-fn test_array_from_slice() {
-    let v = vec![1, 2, 3];
-    let r: Box<[u32]> = v.into_boxed_slice();
-
-    let a: Result<Box<[u32; 3]>, _> = r.clone().try_into();
-    assert!(a.is_ok());
-
-    let a: Result<Box<[u32; 2]>, _> = r.clone().try_into();
-    assert!(a.is_err());
-}
+fn test_array_from_slice() {}
 }
 pub mod vec {
 //! A contiguous growable array type with heap-allocated contents, written
@@ -35674,9 +21660,7 @@ where
     /// Returns a reference to the underlying allocator.
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
-    pub fn allocator(&self) -> &A {
-        self.vec.allocator()
-    }
+    pub fn allocator(&self) -> &A {}
 }
 
 #[unstable(feature = "drain_filter", reason = "recently added", issue = "43244")]
@@ -35686,35 +21670,9 @@ where
 {
     type Item = T;
 
-    fn next(&mut self) -> Option<T> {
-        unsafe {
-            while self.idx < self.old_len {
-                let i = self.idx;
-                let v = slice::from_raw_parts_mut(self.vec.as_mut_ptr(), self.old_len);
-                self.panic_flag = true;
-                let drained = (self.pred)(&mut v[i]);
-                self.panic_flag = false;
-                // Update the index *after* the predicate is called. If the index
-                // is updated prior and the predicate panics, the element at this
-                // index would be leaked.
-                self.idx += 1;
-                if drained {
-                    self.del += 1;
-                    return Some(ptr::read(&v[i]));
-                } else if self.del > 0 {
-                    let del = self.del;
-                    let src: *const T = &v[i];
-                    let dst: *mut T = &mut v[i - del];
-                    ptr::copy_nonoverlapping(src, dst, 1);
-                }
-            }
-            None
-        }
-    }
+    fn next(&mut self) -> Option<T> {}
 
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        (0, Some(self.old_len - self.idx))
-    }
+    fn size_hint(&self) -> (usize, Option<usize>) {}
 }
 
 #[unstable(feature = "drain_filter", reason = "recently added", issue = "43244")]
@@ -35722,47 +21680,7 @@ impl<T, F, A: Allocator> Drop for DrainFilter<'_, T, F, A>
 where
     F: FnMut(&mut T) -> bool,
 {
-    fn drop(&mut self) {
-        struct BackshiftOnDrop<'a, 'b, T, F, A: Allocator>
-        where
-            F: FnMut(&mut T) -> bool,
-        {
-            drain: &'b mut DrainFilter<'a, T, F, A>,
-        }
-
-        impl<'a, 'b, T, F, A: Allocator> Drop for BackshiftOnDrop<'a, 'b, T, F, A>
-        where
-            F: FnMut(&mut T) -> bool,
-        {
-            fn drop(&mut self) {
-                unsafe {
-                    if self.drain.idx < self.drain.old_len && self.drain.del > 0 {
-                        // This is a pretty messed up state, and there isn't really an
-                        // obviously right thing to do. We don't want to keep trying
-                        // to execute `pred`, so we just backshift all the unprocessed
-                        // elements and tell the vec that they still exist. The backshift
-                        // is required to prevent a double-drop of the last successfully
-                        // drained item prior to a panic in the predicate.
-                        let ptr = self.drain.vec.as_mut_ptr();
-                        let src = ptr.add(self.drain.idx);
-                        let dst = src.sub(self.drain.del);
-                        let tail_len = self.drain.old_len - self.drain.idx;
-                        src.copy_to(dst, tail_len);
-                    }
-                    self.drain.vec.set_len(self.drain.old_len - self.drain.del);
-                }
-            }
-        }
-
-        let backshift = BackshiftOnDrop { drain: self };
-
-        // Attempt to consume any remaining elements if the filter predicate
-        // has not yet panicked. We'll backshift any remaining elements
-        // whether we've already panicked or if the consumption here panics.
-        if !backshift.drain.panic_flag {
-            backshift.drain.for_each(drop);
-        }
-    }
+    fn drop(&mut self) {}
 }
 }
 
@@ -35805,20 +21723,14 @@ pub struct Splice<
 impl<I: Iterator, A: Allocator> Iterator for Splice<'_, I, A> {
     type Item = I::Item;
 
-    fn next(&mut self) -> Option<Self::Item> {
-        self.drain.next()
-    }
+    fn next(&mut self) -> Option<Self::Item> {}
 
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.drain.size_hint()
-    }
+    fn size_hint(&self) -> (usize, Option<usize>) {}
 }
 
 #[stable(feature = "vec_splice", since = "1.21.0")]
 impl<I: Iterator, A: Allocator> DoubleEndedIterator for Splice<'_, I, A> {
-    fn next_back(&mut self) -> Option<Self::Item> {
-        self.drain.next_back()
-    }
+    fn next_back(&mut self) -> Option<Self::Item> {}
 }
 
 #[stable(feature = "vec_splice", since = "1.21.0")]
@@ -35826,43 +21738,7 @@ impl<I: Iterator, A: Allocator> ExactSizeIterator for Splice<'_, I, A> {}
 
 #[stable(feature = "vec_splice", since = "1.21.0")]
 impl<I: Iterator, A: Allocator> Drop for Splice<'_, I, A> {
-    fn drop(&mut self) {
-        self.drain.by_ref().for_each(drop);
-
-        unsafe {
-            if self.drain.tail_len == 0 {
-                self.drain.vec.as_mut().extend(self.replace_with.by_ref());
-                return;
-            }
-
-            // First fill the range left by drain().
-            if !self.drain.fill(&mut self.replace_with) {
-                return;
-            }
-
-            // There may be more elements. Use the lower bound as an estimate.
-            // FIXME: Is the upper bound a better guess? Or something else?
-            let (lower_bound, _upper_bound) = self.replace_with.size_hint();
-            if lower_bound > 0 {
-                self.drain.move_tail(lower_bound);
-                if !self.drain.fill(&mut self.replace_with) {
-                    return;
-                }
-            }
-
-            // Collect any remaining elements.
-            // This is a zero-length vector which does not allocate if `lower_bound` was exact.
-            let mut collected = self.replace_with.by_ref().collect::<Vec<I::Item>>().into_iter();
-            // Now we have an exact count.
-            if collected.len() > 0 {
-                self.drain.move_tail(collected.len());
-                let filled = self.drain.fill(&mut collected);
-                debug_assert!(filled);
-                debug_assert_eq!(collected.len(), 0);
-            }
-        }
-        // Let `Drain::drop` move the tail back if necessary and restore `vec.len`.
-    }
+    fn drop(&mut self) {}
 }
 
 /// Private helper methods for `Splice::drop`
@@ -35871,39 +21747,10 @@ impl<T, A: Allocator> Drain<'_, T, A> {
     /// that have been moved out.
     /// Fill that range as much as possible with new elements from the `replace_with` iterator.
     /// Returns `true` if we filled the entire range. (`replace_with.next()` didn’t return `None`.)
-    unsafe fn fill<I: Iterator<Item = T>>(&mut self, replace_with: &mut I) -> bool {
-        let vec = unsafe { self.vec.as_mut() };
-        let range_start = vec.len;
-        let range_end = self.tail_start;
-        let range_slice = unsafe {
-            slice::from_raw_parts_mut(vec.as_mut_ptr().add(range_start), range_end - range_start)
-        };
-
-        for place in range_slice {
-            if let Some(new_item) = replace_with.next() {
-                unsafe { ptr::write(place, new_item) };
-                vec.len += 1;
-            } else {
-                return false;
-            }
-        }
-        true
-    }
+    unsafe fn fill<I: Iterator<Item = T>>(&mut self, replace_with: &mut I) -> bool {}
 
     /// Makes room for inserting more elements before the tail.
-    unsafe fn move_tail(&mut self, additional: usize) {
-        let vec = unsafe { self.vec.as_mut() };
-        let len = self.tail_start + self.tail_len;
-        vec.buf.reserve(len, additional);
-
-        let new_tail_start = self.tail_start + additional;
-        unsafe {
-            let src = vec.as_ptr().add(self.tail_start);
-            let dst = vec.as_mut_ptr().add(new_tail_start);
-            ptr::copy(src, dst, self.tail_len);
-        }
-        self.tail_start = new_tail_start;
-    }
+    unsafe fn move_tail(&mut self, additional: usize) {}
 }
 }
 
@@ -35948,9 +21795,7 @@ pub struct Drain<
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<T: fmt::Debug, A: Allocator> fmt::Debug for Drain<'_, T, A> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("Drain").field(&self.iter.as_slice()).finish()
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
 }
 
 impl<'a, T, A: Allocator> Drain<'a, T, A> {
@@ -35967,24 +21812,18 @@ impl<'a, T, A: Allocator> Drain<'a, T, A> {
     /// ```
     #[must_use]
     #[stable(feature = "vec_drain_as_slice", since = "1.46.0")]
-    pub fn as_slice(&self) -> &[T] {
-        self.iter.as_slice()
-    }
+    pub fn as_slice(&self) -> &[T] {}
 
     /// Returns a reference to the underlying allocator.
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[must_use]
     #[inline]
-    pub fn allocator(&self) -> &A {
-        unsafe { self.vec.as_ref().allocator() }
-    }
+    pub fn allocator(&self) -> &A {}
 }
 
 #[stable(feature = "vec_drain_as_slice", since = "1.46.0")]
 impl<'a, T, A: Allocator> AsRef<[T]> for Drain<'a, T, A> {
-    fn as_ref(&self) -> &[T] {
-        self.as_slice()
-    }
+    fn as_ref(&self) -> &[T] {}
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
@@ -35997,70 +21836,25 @@ impl<T, A: Allocator> Iterator for Drain<'_, T, A> {
     type Item = T;
 
     #[inline]
-    fn next(&mut self) -> Option<T> {
-        self.iter.next().map(|elt| unsafe { ptr::read(elt as *const _) })
-    }
+    fn next(&mut self) -> Option<T> {}
 
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.iter.size_hint()
-    }
+    fn size_hint(&self) -> (usize, Option<usize>) {}
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
 impl<T, A: Allocator> DoubleEndedIterator for Drain<'_, T, A> {
     #[inline]
-    fn next_back(&mut self) -> Option<T> {
-        self.iter.next_back().map(|elt| unsafe { ptr::read(elt as *const _) })
-    }
+    fn next_back(&mut self) -> Option<T> {}
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
 impl<T, A: Allocator> Drop for Drain<'_, T, A> {
-    fn drop(&mut self) {
-        /// Continues dropping the remaining elements in the `Drain`, then moves back the
-        /// un-`Drain`ed elements to restore the original `Vec`.
-        struct DropGuard<'r, 'a, T, A: Allocator>(&'r mut Drain<'a, T, A>);
-
-        impl<'r, 'a, T, A: Allocator> Drop for DropGuard<'r, 'a, T, A> {
-            fn drop(&mut self) {
-                // Continue the same loop we have below. If the loop already finished, this does
-                // nothing.
-                self.0.for_each(drop);
-
-                if self.0.tail_len > 0 {
-                    unsafe {
-                        let source_vec = self.0.vec.as_mut();
-                        // memmove back untouched tail, update to new length
-                        let start = source_vec.len();
-                        let tail = self.0.tail_start;
-                        if tail != start {
-                            let src = source_vec.as_ptr().add(tail);
-                            let dst = source_vec.as_mut_ptr().add(start);
-                            ptr::copy(src, dst, self.0.tail_len);
-                        }
-                        source_vec.set_len(start + self.0.tail_len);
-                    }
-                }
-            }
-        }
-
-        // exhaust self first
-        while let Some(item) = self.next() {
-            let guard = DropGuard(self);
-            drop(item);
-            mem::forget(guard);
-        }
-
-        // Drop a `DropGuard` to move back the non-drained tail of `self`.
-        DropGuard(self);
-    }
+    fn drop(&mut self) {}
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
 impl<T, A: Allocator> ExactSizeIterator for Drain<'_, T, A> {
-    fn is_empty(&self) -> bool {
-        self.iter.is_empty()
-    }
+    fn is_empty(&self) -> bool {}
 }
 
 #[unstable(feature = "trusted_len", issue = "37572")]
@@ -36085,9 +21879,7 @@ impl<'a, T: Clone> From<&'a [T]> for Cow<'a, [T]> {
     /// This conversion does not allocate or clone the data.
     ///
     /// [`Borrowed`]: crate::borrow::Cow::Borrowed
-    fn from(s: &'a [T]) -> Cow<'a, [T]> {
-        Cow::Borrowed(s)
-    }
+    fn from(s: &'a [T]) -> Cow<'a, [T]> {}
 }
 
 #[stable(feature = "cow_from_vec", since = "1.8.0")]
@@ -36098,9 +21890,7 @@ impl<'a, T: Clone> From<Vec<T>> for Cow<'a, [T]> {
     /// This conversion does not allocate or clone the data.
     ///
     /// [`Owned`]: crate::borrow::Cow::Owned
-    fn from(v: Vec<T>) -> Cow<'a, [T]> {
-        Cow::Owned(v)
-    }
+    fn from(v: Vec<T>) -> Cow<'a, [T]> {}
 }
 
 #[stable(feature = "cow_from_vec_ref", since = "1.28.0")]
@@ -36111,9 +21901,7 @@ impl<'a, T: Clone> From<&'a Vec<T>> for Cow<'a, [T]> {
     /// This conversion does not allocate or clone the data.
     ///
     /// [`Borrowed`]: crate::borrow::Cow::Borrowed
-    fn from(v: &'a Vec<T>) -> Cow<'a, [T]> {
-        Cow::Borrowed(v.as_slice())
-    }
+    fn from(v: &'a Vec<T>) -> Cow<'a, [T]> {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -36121,9 +21909,7 @@ impl<'a, T> FromIterator<T> for Cow<'a, [T]>
 where
     T: Clone,
 {
-    fn from_iter<I: IntoIterator<Item = T>>(it: I) -> Cow<'a, [T]> {
-        Cow::Owned(FromIterator::from_iter(it))
-    }
+    fn from_iter<I: IntoIterator<Item = T>>(it: I) -> Cow<'a, [T]> {}
 }
 }
 
@@ -36172,9 +21958,7 @@ pub struct IntoIter<
 
 #[stable(feature = "vec_intoiter_debug", since = "1.13.0")]
 impl<T: fmt::Debug, A: Allocator> fmt::Debug for IntoIter<T, A> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("IntoIter").field(&self.as_slice()).finish()
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
 }
 
 impl<T, A: Allocator> IntoIter<T, A> {
@@ -36190,9 +21974,7 @@ impl<T, A: Allocator> IntoIter<T, A> {
     /// assert_eq!(into_iter.as_slice(), &['b', 'c']);
     /// ```
     #[stable(feature = "vec_into_iter_as_slice", since = "1.15.0")]
-    pub fn as_slice(&self) -> &[T] {
-        unsafe { slice::from_raw_parts(self.ptr, self.len()) }
-    }
+    pub fn as_slice(&self) -> &[T] {}
 
     /// Returns the remaining items of this iterator as a mutable slice.
     ///
@@ -36208,20 +21990,14 @@ impl<T, A: Allocator> IntoIter<T, A> {
     /// assert_eq!(into_iter.next().unwrap(), 'z');
     /// ```
     #[stable(feature = "vec_into_iter_as_slice", since = "1.15.0")]
-    pub fn as_mut_slice(&mut self) -> &mut [T] {
-        unsafe { &mut *self.as_raw_mut_slice() }
-    }
+    pub fn as_mut_slice(&mut self) -> &mut [T] {}
 
     /// Returns a reference to the underlying allocator.
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
-    pub fn allocator(&self) -> &A {
-        &self.alloc
-    }
+    pub fn allocator(&self) -> &A {}
 
-    fn as_raw_mut_slice(&mut self) -> *mut [T] {
-        ptr::slice_from_raw_parts_mut(self.ptr as *mut T, self.len())
-    }
+    fn as_raw_mut_slice(&mut self) -> *mut [T] {}
 
     /// Drops remaining elements and relinquishes the backing allocation.
     ///
@@ -36233,28 +22009,12 @@ impl<T, A: Allocator> IntoIter<T, A> {
     /// unsafe { core::ptr::write(&mut into_iter, Vec::new().into_iter()); }
     /// ```
     #[cfg(not(no_global_oom_handling))]
-    pub(super) fn forget_allocation_drop_remaining(&mut self) {
-        let remaining = self.as_raw_mut_slice();
-
-        // overwrite the individual fields instead of creating a new
-        // struct and then overwriting &mut self.
-        // this creates less assembly
-        self.cap = 0;
-        self.buf = unsafe { NonNull::new_unchecked(RawVec::NEW.ptr()) };
-        self.ptr = self.buf.as_ptr();
-        self.end = self.buf.as_ptr();
-
-        unsafe {
-            ptr::drop_in_place(remaining);
-        }
-    }
+    pub(super) fn forget_allocation_drop_remaining(&mut self) {}
 }
 
 #[stable(feature = "vec_intoiter_as_ref", since = "1.46.0")]
 impl<T, A: Allocator> AsRef<[T]> for IntoIter<T, A> {
-    fn as_ref(&self) -> &[T] {
-        self.as_slice()
-    }
+    fn as_ref(&self) -> &[T] {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -36267,130 +22027,36 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
     type Item = T;
 
     #[inline]
-    fn next(&mut self) -> Option<T> {
-        if self.ptr as *const _ == self.end {
-            None
-        } else if mem::size_of::<T>() == 0 {
-            // purposefully don't use 'ptr.offset' because for
-            // vectors with 0-size elements this would return the
-            // same pointer.
-            self.ptr = unsafe { arith_offset(self.ptr as *const i8, 1) as *mut T };
-
-            // Make up a value of this ZST.
-            Some(unsafe { mem::zeroed() })
-        } else {
-            let old = self.ptr;
-            self.ptr = unsafe { self.ptr.offset(1) };
-
-            Some(unsafe { ptr::read(old) })
-        }
-    }
+    fn next(&mut self) -> Option<T> {}
 
     #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        let exact = if mem::size_of::<T>() == 0 {
-            (self.end as usize).wrapping_sub(self.ptr as usize)
-        } else {
-            unsafe { self.end.offset_from(self.ptr) as usize }
-        };
-        (exact, Some(exact))
-    }
+    fn size_hint(&self) -> (usize, Option<usize>) {}
 
     #[inline]
-    fn advance_by(&mut self, n: usize) -> Result<(), usize> {
-        let step_size = self.len().min(n);
-        let to_drop = ptr::slice_from_raw_parts_mut(self.ptr as *mut T, step_size);
-        if mem::size_of::<T>() == 0 {
-            // SAFETY: due to unchecked casts of unsigned amounts to signed offsets the wraparound
-            // effectively results in unsigned pointers representing positions 0..usize::MAX,
-            // which is valid for ZSTs.
-            self.ptr = unsafe { arith_offset(self.ptr as *const i8, step_size as isize) as *mut T }
-        } else {
-            // SAFETY: the min() above ensures that step_size is in bounds
-            self.ptr = unsafe { self.ptr.add(step_size) };
-        }
-        // SAFETY: the min() above ensures that step_size is in bounds
-        unsafe {
-            ptr::drop_in_place(to_drop);
-        }
-        if step_size < n {
-            return Err(step_size);
-        }
-        Ok(())
-    }
+    fn advance_by(&mut self, n: usize) -> Result<(), usize> {}
 
     #[inline]
-    fn count(self) -> usize {
-        self.len()
-    }
+    fn count(self) -> usize {}
 
     #[doc(hidden)]
     unsafe fn __iterator_get_unchecked(&mut self, i: usize) -> Self::Item
     where
         Self: TrustedRandomAccessNoCoerce,
-    {
-        // SAFETY: the caller must guarantee that `i` is in bounds of the
-        // `Vec<T>`, so `i` cannot overflow an `isize`, and the `self.ptr.add(i)`
-        // is guaranteed to pointer to an element of the `Vec<T>` and
-        // thus guaranteed to be valid to dereference.
-        //
-        // Also note the implementation of `Self: TrustedRandomAccess` requires
-        // that `T: Copy` so reading elements from the buffer doesn't invalidate
-        // them for `Drop`.
-        unsafe {
-            if mem::size_of::<T>() == 0 { mem::zeroed() } else { ptr::read(self.ptr.add(i)) }
-        }
-    }
+    {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, A: Allocator> DoubleEndedIterator for IntoIter<T, A> {
     #[inline]
-    fn next_back(&mut self) -> Option<T> {
-        if self.end == self.ptr {
-            None
-        } else if mem::size_of::<T>() == 0 {
-            // See above for why 'ptr.offset' isn't used
-            self.end = unsafe { arith_offset(self.end as *const i8, -1) as *mut T };
-
-            // Make up a value of this ZST.
-            Some(unsafe { mem::zeroed() })
-        } else {
-            self.end = unsafe { self.end.offset(-1) };
-
-            Some(unsafe { ptr::read(self.end) })
-        }
-    }
+    fn next_back(&mut self) -> Option<T> {}
 
     #[inline]
-    fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {
-        let step_size = self.len().min(n);
-        if mem::size_of::<T>() == 0 {
-            // SAFETY: same as for advance_by()
-            self.end = unsafe {
-                arith_offset(self.end as *const i8, step_size.wrapping_neg() as isize) as *mut T
-            }
-        } else {
-            // SAFETY: same as for advance_by()
-            self.end = unsafe { self.end.offset(step_size.wrapping_neg() as isize) };
-        }
-        let to_drop = ptr::slice_from_raw_parts_mut(self.end as *mut T, step_size);
-        // SAFETY: same as for advance_by()
-        unsafe {
-            ptr::drop_in_place(to_drop);
-        }
-        if step_size < n {
-            return Err(step_size);
-        }
-        Ok(())
-    }
+    fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, A: Allocator> ExactSizeIterator for IntoIter<T, A> {
-    fn is_empty(&self) -> bool {
-        self.ptr == self.end
-    }
+    fn is_empty(&self) -> bool {}
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -36424,38 +22090,14 @@ where
 #[stable(feature = "vec_into_iter_clone", since = "1.8.0")]
 impl<T: Clone, A: Allocator + Clone> Clone for IntoIter<T, A> {
     #[cfg(not(test))]
-    fn clone(&self) -> Self {
-        self.as_slice().to_vec_in(self.alloc.clone()).into_iter()
-    }
+    fn clone(&self) -> Self {}
     #[cfg(test)]
-    fn clone(&self) -> Self {
-        crate::slice::to_vec(self.as_slice(), self.alloc.clone()).into_iter()
-    }
+    fn clone(&self) -> Self {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<#[may_dangle] T, A: Allocator> Drop for IntoIter<T, A> {
-    fn drop(&mut self) {
-        struct DropGuard<'a, T, A: Allocator>(&'a mut IntoIter<T, A>);
-
-        impl<T, A: Allocator> Drop for DropGuard<'_, T, A> {
-            fn drop(&mut self) {
-                unsafe {
-                    // `IntoIter::alloc` is not used anymore after this
-                    let alloc = ptr::read(&self.0.alloc);
-                    // RawVec handles deallocation
-                    let _ = RawVec::from_raw_parts_in(self.0.buf.as_ptr(), self.0.cap, alloc);
-                }
-            }
-        }
-
-        let guard = DropGuard(self);
-        // destroy the remaining elements
-        unsafe {
-            ptr::drop_in_place(guard.0.as_raw_mut_slice());
-        }
-        // now `guard` will be dropped and do the rest
-    }
+    fn drop(&mut self) {}
 }
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
@@ -36468,9 +22110,7 @@ unsafe impl<T, A: Allocator> SourceIter for IntoIter<T, A> {
     type Source = Self;
 
     #[inline]
-    unsafe fn as_inner(&mut self) -> &mut Self::Source {
-        self
-    }
+    unsafe fn as_inner(&mut self) -> &mut Self::Source {}
 }
 
 // internal helper trait for in-place iteration specialization.
@@ -36483,9 +22123,7 @@ pub(crate) trait AsIntoIter {
 impl<T> AsIntoIter for IntoIter<T> {
     type Item = T;
 
-    fn as_into_iter(&mut self) -> &mut IntoIter<Self::Item> {
-        self
-    }
+    fn as_into_iter(&mut self) -> &mut IntoIter<Self::Item> {}
 }
 }
 
@@ -36505,9 +22143,7 @@ macro_rules! impl_is_zero {
     ($t:ty, $is_zero:expr) => {
         unsafe impl IsZero for $t {
             #[inline]
-            fn is_zero(&self) -> bool {
-                $is_zero(*self)
-            }
+            fn is_zero(&self) -> bool {}
         }
     };
 }
@@ -36532,16 +22168,12 @@ impl_is_zero!(f64, |x: f64| x.to_bits() == 0);
 
 unsafe impl<T> IsZero for *const T {
     #[inline]
-    fn is_zero(&self) -> bool {
-        (*self).is_null()
-    }
+    fn is_zero(&self) -> bool {}
 }
 
 unsafe impl<T> IsZero for *mut T {
     #[inline]
-    fn is_zero(&self) -> bool {
-        (*self).is_null()
-    }
+    fn is_zero(&self) -> bool {}
 }
 
 // `Option<&T>` and `Option<Box<T>>` are guaranteed to represent `None` as null.
@@ -36553,16 +22185,12 @@ unsafe impl<T> IsZero for *mut T {
 
 unsafe impl<T: ?Sized> IsZero for Option<&T> {
     #[inline]
-    fn is_zero(&self) -> bool {
-        self.is_none()
-    }
+    fn is_zero(&self) -> bool {}
 }
 
 unsafe impl<T: ?Sized> IsZero for Option<Box<T>> {
     #[inline]
-    fn is_zero(&self) -> bool {
-        self.is_none()
-    }
+    fn is_zero(&self) -> bool {}
 }
 
 // `Option<num::NonZeroU32>` and similar have a representation guarantee that
@@ -36576,9 +22204,7 @@ macro_rules! impl_is_zero_option_of_nonzero {
     ($($t:ident,)+) => {$(
         unsafe impl IsZero for Option<core::num::$t> {
             #[inline]
-            fn is_zero(&self) -> bool {
-                self.is_none()
-            }
+            fn is_zero(&self) -> bool {}
         }
     )+};
 }
@@ -36618,89 +22244,12 @@ impl<T, I> SpecFromIter<T, I> for Vec<T>
 where
     I: Iterator<Item = T> + SourceIter<Source: AsIntoIter> + InPlaceIterableMarker,
 {
-    default fn from_iter(mut iterator: I) -> Self {
-        // Additional requirements which cannot expressed via trait bounds. We rely on const eval
-        // instead:
-        // a) no ZSTs as there would be no allocation to reuse and pointer arithmetic would panic
-        // b) size match as required by Alloc contract
-        // c) alignments match as required by Alloc contract
-        if mem::size_of::<T>() == 0
-            || mem::size_of::<T>()
-                != mem::size_of::<<<I as SourceIter>::Source as AsIntoIter>::Item>()
-            || mem::align_of::<T>()
-                != mem::align_of::<<<I as SourceIter>::Source as AsIntoIter>::Item>()
-        {
-            // fallback to more generic implementations
-            return SpecFromIterNested::from_iter(iterator);
-        }
-
-        let (src_buf, src_ptr, dst_buf, dst_end, cap) = unsafe {
-            let inner = iterator.as_inner().as_into_iter();
-            (
-                inner.buf.as_ptr(),
-                inner.ptr,
-                inner.buf.as_ptr() as *mut T,
-                inner.end as *const T,
-                inner.cap,
-            )
-        };
-
-        let len = SpecInPlaceCollect::collect_in_place(&mut iterator, dst_buf, dst_end);
-
-        let src = unsafe { iterator.as_inner().as_into_iter() };
-        // check if SourceIter contract was upheld
-        // caveat: if they weren't we might not even make it to this point
-        debug_assert_eq!(src_buf, src.buf.as_ptr());
-        // check InPlaceIterable contract. This is only possible if the iterator advanced the
-        // source pointer at all. If it uses unchecked access via TrustedRandomAccess
-        // then the source pointer will stay in its initial position and we can't use it as reference
-        if src.ptr != src_ptr {
-            debug_assert!(
-                unsafe { dst_buf.add(len) as *const _ } <= src.ptr,
-                "InPlaceIterable contract violation, write pointer advanced beyond read pointer"
-            );
-        }
-
-        // drop any remaining values at the tail of the source
-        // but prevent drop of the allocation itself once IntoIter goes out of scope
-        // if the drop panics then we also leak any elements collected into dst_buf
-        //
-        // FIXME: Since `SpecInPlaceCollect::collect_in_place` above might use
-        // `__iterator_get_unchecked` internally, this call might be operating on
-        // a `vec::IntoIter` with incorrect internal state regarding which elements
-        // have already been “consumed”. However, the `TrustedRandomIteratorNoCoerce`
-        // implementation of `vec::IntoIter` is only present if the `Vec` elements
-        // don’t have a destructor, so it doesn’t matter if elements are “dropped multiple times”
-        // in this case.
-        // This argument technically currently lacks justification from the `# Safety` docs for
-        // `SourceIter`/`InPlaceIterable` and/or `TrustedRandomAccess`, so it might be possible that
-        // someone could inadvertently create new library unsoundness
-        // involving this `.forget_allocation_drop_remaining()` call.
-        src.forget_allocation_drop_remaining();
-
-        let vec = unsafe { Vec::from_raw_parts(dst_buf, len, cap) };
-
-        vec
-    }
+    default fn from_iter(mut iterator: I) -> Self {}
 }
 
 fn write_in_place_with_drop<T>(
     src_end: *const T,
-) -> impl FnMut(InPlaceDrop<T>, T) -> Result<InPlaceDrop<T>, !> {
-    move |mut sink, item| {
-        unsafe {
-            // the InPlaceIterable contract cannot be verified precisely here since
-            // try_fold has an exclusive reference to the source pointer
-            // all we can do is check if it's still in range
-            debug_assert!(sink.dst as *const _ <= src_end, "InPlaceIterable contract violation");
-            ptr::write(sink.dst, item);
-            // Since this executes user code which can panic we have to bump the pointer
-            // after each step.
-            sink.dst = sink.dst.add(1);
-        }
-        Ok(sink)
-    }
-}
+) -> impl FnMut(InPlaceDrop<T>, T) -> Result<InPlaceDrop<T>, !> {}
 
 /// Helper trait to hold specialized implementations of the in-place iterate-collect loop
 trait SpecInPlaceCollect<T, I>: Iterator<Item = T> {
@@ -36719,17 +22268,7 @@ where
     I: Iterator<Item = T>,
 {
     #[inline]
-    default fn collect_in_place(&mut self, dst_buf: *mut T, end: *const T) -> usize {
-        // use try-fold since
-        // - it vectorizes better for some iterator adapters
-        // - unlike most internal iteration methods, it only takes a &mut self
-        // - it lets us thread the write pointer through its innards and get it back in the end
-        let sink = InPlaceDrop { inner: dst_buf, dst: dst_buf };
-        let sink =
-            self.try_fold::<_, _, Result<_, !>>(sink, write_in_place_with_drop(end)).unwrap();
-        // iteration succeeded, don't drop head
-        unsafe { ManuallyDrop::new(sink).dst.offset_from(dst_buf) as usize }
-    }
+    default fn collect_in_place(&mut self, dst_buf: *mut T, end: *const T) -> usize {}
 }
 
 impl<T, I> SpecInPlaceCollect<T, I> for I
@@ -36737,25 +22276,7 @@ where
     I: Iterator<Item = T> + TrustedRandomAccessNoCoerce,
 {
     #[inline]
-    fn collect_in_place(&mut self, dst_buf: *mut T, end: *const T) -> usize {
-        let len = self.size();
-        let mut drop_guard = InPlaceDrop { inner: dst_buf, dst: dst_buf };
-        for i in 0..len {
-            // Safety: InplaceIterable contract guarantees that for every element we read
-            // one slot in the underlying storage will have been freed up and we can immediately
-            // write back the result.
-            unsafe {
-                let dst = dst_buf.offset(i as isize);
-                debug_assert!(dst as *const _ <= end, "InPlaceIterable contract violation");
-                ptr::write(dst, self.__iterator_get_unchecked(i));
-                // Since this executes user code which can panic we have to bump the pointer
-                // after each step.
-                drop_guard.dst = dst.add(1);
-            }
-        }
-        mem::forget(drop_guard);
-        len
-    }
+    fn collect_in_place(&mut self, dst_buf: *mut T, end: *const T) -> usize {}
 }
 }
 
@@ -36775,9 +22296,9 @@ macro_rules! __impl_slice_eq1 {
             $($ty: $bound)?
         {
             #[inline]
-            fn eq(&self, other: &$rhs) -> bool { self[..] == other[..] }
+            fn eq(&self, other: &$rhs) -> bool {}
             #[inline]
-            fn ne(&self, other: &$rhs) -> bool { self[..] != other[..] }
+            fn ne(&self, other: &$rhs) -> bool {}
         }
     }
 }
@@ -36826,53 +22347,22 @@ pub(super) trait SpecFromElem: Sized {
 }
 
 impl<T: Clone> SpecFromElem for T {
-    default fn from_elem<A: Allocator>(elem: Self, n: usize, alloc: A) -> Vec<Self, A> {
-        let mut v = Vec::with_capacity_in(n, alloc);
-        v.extend_with(n, ExtendElement(elem));
-        v
-    }
+    default fn from_elem<A: Allocator>(elem: Self, n: usize, alloc: A) -> Vec<Self, A> {}
 }
 
 impl SpecFromElem for i8 {
     #[inline]
-    fn from_elem<A: Allocator>(elem: i8, n: usize, alloc: A) -> Vec<i8, A> {
-        if elem == 0 {
-            return Vec { buf: RawVec::with_capacity_zeroed_in(n, alloc), len: n };
-        }
-        unsafe {
-            let mut v = Vec::with_capacity_in(n, alloc);
-            ptr::write_bytes(v.as_mut_ptr(), elem as u8, n);
-            v.set_len(n);
-            v
-        }
-    }
+    fn from_elem<A: Allocator>(elem: i8, n: usize, alloc: A) -> Vec<i8, A> {}
 }
 
 impl SpecFromElem for u8 {
     #[inline]
-    fn from_elem<A: Allocator>(elem: u8, n: usize, alloc: A) -> Vec<u8, A> {
-        if elem == 0 {
-            return Vec { buf: RawVec::with_capacity_zeroed_in(n, alloc), len: n };
-        }
-        unsafe {
-            let mut v = Vec::with_capacity_in(n, alloc);
-            ptr::write_bytes(v.as_mut_ptr(), elem, n);
-            v.set_len(n);
-            v
-        }
-    }
+    fn from_elem<A: Allocator>(elem: u8, n: usize, alloc: A) -> Vec<u8, A> {}
 }
 
 impl<T: Clone + IsZero> SpecFromElem for T {
     #[inline]
-    fn from_elem<A: Allocator>(elem: T, n: usize, alloc: A) -> Vec<T, A> {
-        if elem.is_zero() {
-            return Vec { buf: RawVec::with_capacity_zeroed_in(n, alloc), len: n };
-        }
-        let mut v = Vec::with_capacity_in(n, alloc);
-        v.extend_with(n, ExtendElement(elem));
-        v
-    }
+    fn from_elem<A: Allocator>(elem: T, n: usize, alloc: A) -> Vec<T, A> {}
 }
 }
 
@@ -36893,21 +22383,15 @@ pub(super) struct SetLenOnDrop<'a> {
 
 impl<'a> SetLenOnDrop<'a> {
     #[inline]
-    pub(super) fn new(len: &'a mut usize) -> Self {
-        SetLenOnDrop { local_len: *len, len }
-    }
+    pub(super) fn new(len: &'a mut usize) -> Self {}
 
     #[inline]
-    pub(super) fn increment_len(&mut self, increment: usize) {
-        self.local_len += increment;
-    }
+    pub(super) fn increment_len(&mut self, increment: usize) {}
 }
 
 impl Drop for SetLenOnDrop<'_> {
     #[inline]
-    fn drop(&mut self) {
-        *self.len = self.local_len;
-    }
+    fn drop(&mut self) {}
 }
 }
 
@@ -36927,18 +22411,12 @@ pub(super) struct InPlaceDrop<T> {
 }
 
 impl<T> InPlaceDrop<T> {
-    fn len(&self) -> usize {
-        unsafe { self.dst.offset_from(self.inner) as usize }
-    }
+    fn len(&self) -> usize {}
 }
 
 impl<T> Drop for InPlaceDrop<T> {
     #[inline]
-    fn drop(&mut self) {
-        unsafe {
-            ptr::drop_in_place(slice::from_raw_parts_mut(self.inner, self.len()));
-        }
-    }
+    fn drop(&mut self) {}
 }
 }
 
@@ -36963,48 +22441,14 @@ impl<T, I> SpecFromIterNested<T, I> for Vec<T>
 where
     I: Iterator<Item = T>,
 {
-    default fn from_iter(mut iterator: I) -> Self {
-        // Unroll the first iteration, as the vector is going to be
-        // expanded on this iteration in every case when the iterable is not
-        // empty, but the loop in extend_desugared() is not going to see the
-        // vector being full in the few subsequent loop iterations.
-        // So we get better branch prediction.
-        let mut vector = match iterator.next() {
-            None => return Vec::new(),
-            Some(element) => {
-                let (lower, _) = iterator.size_hint();
-                let mut vector = Vec::with_capacity(lower.saturating_add(1));
-                unsafe {
-                    ptr::write(vector.as_mut_ptr(), element);
-                    vector.set_len(1);
-                }
-                vector
-            }
-        };
-        // must delegate to spec_extend() since extend() itself delegates
-        // to spec_from for empty Vecs
-        <Vec<T> as SpecExtend<T, I>>::spec_extend(&mut vector, iterator);
-        vector
-    }
+    default fn from_iter(mut iterator: I) -> Self {}
 }
 
 impl<T, I> SpecFromIterNested<T, I> for Vec<T>
 where
     I: TrustedLen<Item = T>,
 {
-    fn from_iter(iterator: I) -> Self {
-        let mut vector = match iterator.size_hint() {
-            (_, Some(upper)) => Vec::with_capacity(upper),
-            // TrustedLen contract guarantees that `size_hint() == (_, None)` means that there
-            // are more than `usize::MAX` elements.
-            // Since the previous branch would eagerly panic if the capacity is too large
-            // (via `with_capacity`) we do the same here.
-            _ => panic!("capacity overflow"),
-        };
-        // reuse extend specialization for TrustedLen
-        vector.spec_extend(iterator);
-        vector
-    }
+    fn from_iter(iterator: I) -> Self {}
 }
 }
 
@@ -37044,38 +22488,11 @@ impl<T, I> SpecFromIter<T, I> for Vec<T>
 where
     I: Iterator<Item = T>,
 {
-    default fn from_iter(iterator: I) -> Self {
-        SpecFromIterNested::from_iter(iterator)
-    }
+    default fn from_iter(iterator: I) -> Self {}
 }
 
 impl<T> SpecFromIter<T, IntoIter<T>> for Vec<T> {
-    fn from_iter(iterator: IntoIter<T>) -> Self {
-        // A common case is passing a vector into a function which immediately
-        // re-collects into a vector. We can short circuit this if the IntoIter
-        // has not been advanced at all.
-        // When it has been advanced We can also reuse the memory and move the data to the front.
-        // But we only do so when the resulting Vec wouldn't have more unused capacity
-        // than creating it through the generic FromIterator implementation would. That limitation
-        // is not strictly necessary as Vec's allocation behavior is intentionally unspecified.
-        // But it is a conservative choice.
-        let has_advanced = iterator.buf.as_ptr() as *const _ != iterator.ptr;
-        if !has_advanced || iterator.len() >= iterator.cap / 2 {
-            unsafe {
-                let it = ManuallyDrop::new(iterator);
-                if has_advanced {
-                    ptr::copy(it.ptr, it.buf.as_ptr(), it.len());
-                }
-                return Vec::from_raw_parts(it.buf.as_ptr(), it.len(), it.cap);
-            }
-        }
-
-        let mut vec = Vec::new();
-        // must delegate to spec_extend() since extend() itself delegates
-        // to spec_from for empty Vecs
-        vec.spec_extend(iterator);
-        vec
-    }
+    fn from_iter(iterator: IntoIter<T>) -> Self {}
 }
 }
 
@@ -37100,56 +22517,18 @@ impl<T, I, A: Allocator> SpecExtend<T, I> for Vec<T, A>
 where
     I: Iterator<Item = T>,
 {
-    default fn spec_extend(&mut self, iter: I) {
-        self.extend_desugared(iter)
-    }
+    default fn spec_extend(&mut self, iter: I) {}
 }
 
 impl<T, I, A: Allocator> SpecExtend<T, I> for Vec<T, A>
 where
     I: TrustedLen<Item = T>,
 {
-    default fn spec_extend(&mut self, iterator: I) {
-        // This is the case for a TrustedLen iterator.
-        let (low, high) = iterator.size_hint();
-        if let Some(additional) = high {
-            debug_assert_eq!(
-                low,
-                additional,
-                "TrustedLen iterator's size hint is not exact: {:?}",
-                (low, high)
-            );
-            self.reserve(additional);
-            unsafe {
-                let mut ptr = self.as_mut_ptr().add(self.len());
-                let mut local_len = SetLenOnDrop::new(&mut self.len);
-                iterator.for_each(move |element| {
-                    ptr::write(ptr, element);
-                    ptr = ptr.offset(1);
-                    // Since the loop executes user code which can panic we have to bump the pointer
-                    // after each step.
-                    // NB can't overflow since we would have had to alloc the address space
-                    local_len.increment_len(1);
-                });
-            }
-        } else {
-            // Per TrustedLen contract a `None` upper bound means that the iterator length
-            // truly exceeds usize::MAX, which would eventually lead to a capacity overflow anyway.
-            // Since the other branch already panics eagerly (via `reserve()`) we do the same here.
-            // This avoids additional codegen for a fallback code path which would eventually
-            // panic anyway.
-            panic!("capacity overflow");
-        }
-    }
+    default fn spec_extend(&mut self, iterator: I) {}
 }
 
 impl<T, A: Allocator> SpecExtend<T, IntoIter<T>> for Vec<T, A> {
-    fn spec_extend(&mut self, mut iterator: IntoIter<T>) {
-        unsafe {
-            self.append_elements(iterator.as_slice() as _);
-        }
-        iterator.ptr = iterator.end;
-    }
+    fn spec_extend(&mut self, mut iterator: IntoIter<T>) {}
 }
 
 impl<'a, T: 'a, I, A: Allocator + 'a> SpecExtend<&'a T, I> for Vec<T, A>
@@ -37157,19 +22536,14 @@ where
     I: Iterator<Item = &'a T>,
     T: Clone,
 {
-    default fn spec_extend(&mut self, iterator: I) {
-        self.spec_extend(iterator.cloned())
-    }
+    default fn spec_extend(&mut self, iterator: I) {}
 }
 
 impl<'a, T: 'a, A: Allocator + 'a> SpecExtend<&'a T, slice::Iter<'a, T>> for Vec<T, A>
 where
     T: Copy,
 {
-    fn spec_extend(&mut self, iterator: slice::Iter<'a, T>) {
-        let slice = iterator.as_slice();
-        unsafe { self.append_elements(slice) };
-    }
+    fn spec_extend(&mut self, iterator: slice::Iter<'a, T>) {}
 }
 }
 
@@ -37267,9 +22641,7 @@ where
 /// To get a [slice][prim@slice], use [`&`]. Example:
 ///
 /// ```
-/// fn read_slice(slice: &[usize]) {
-///     // ...
-/// }
+/// fn read_slice(slice: &[usize]) {}
 ///
 /// let v = vec![0, 1];
 /// read_slice(&v);
@@ -37446,9 +22818,7 @@ impl<T> Vec<T> {
     #[rustc_const_stable(feature = "const_vec_new", since = "1.39.0")]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
-    pub const fn new() -> Self {
-        Vec { buf: RawVec::NEW, len: 0 }
-    }
+    pub const fn new() -> Self {}
 
     /// Constructs a new, empty `Vec<T>` with the specified capacity.
     ///
@@ -37491,9 +22861,7 @@ impl<T> Vec<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
-    pub fn with_capacity(capacity: usize) -> Self {
-        Self::with_capacity_in(capacity, Global)
-    }
+    pub fn with_capacity(capacity: usize) -> Self {}
 
     /// Creates a `Vec<T>` directly from the raw components of another vector.
     ///
@@ -37559,9 +22927,7 @@ impl<T> Vec<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub unsafe fn from_raw_parts(ptr: *mut T, length: usize, capacity: usize) -> Self {
-        unsafe { Self::from_raw_parts_in(ptr, length, capacity, Global) }
-    }
+    pub unsafe fn from_raw_parts(ptr: *mut T, length: usize, capacity: usize) -> Self {}
 }
 
 impl<T, A: Allocator> Vec<T, A> {
@@ -37581,9 +22947,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
-    pub const fn new_in(alloc: A) -> Self {
-        Vec { buf: RawVec::new_in(alloc), len: 0 }
-    }
+    pub const fn new_in(alloc: A) -> Self {}
 
     /// Constructs a new, empty `Vec<T, A>` with the specified capacity with the provided
     /// allocator.
@@ -37630,9 +22994,7 @@ impl<T, A: Allocator> Vec<T, A> {
     #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
-    pub fn with_capacity_in(capacity: usize, alloc: A) -> Self {
-        Vec { buf: RawVec::with_capacity_in(capacity, alloc), len: 0 }
-    }
+    pub fn with_capacity_in(capacity: usize, alloc: A) -> Self {}
 
     /// Creates a `Vec<T, A>` directly from the raw components of another vector.
     ///
@@ -37706,9 +23068,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
-    pub unsafe fn from_raw_parts_in(ptr: *mut T, length: usize, capacity: usize, alloc: A) -> Self {
-        unsafe { Vec { buf: RawVec::from_raw_parts_in(ptr, capacity, alloc), len: length } }
-    }
+    pub unsafe fn from_raw_parts_in(ptr: *mut T, length: usize, capacity: usize, alloc: A) -> Self {}
 
     /// Decomposes a `Vec<T>` into its raw components.
     ///
@@ -37743,10 +23103,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// assert_eq!(rebuilt, [4294967295, 0, 1]);
     /// ```
     #[unstable(feature = "vec_into_raw_parts", reason = "new API", issue = "65816")]
-    pub fn into_raw_parts(self) -> (*mut T, usize, usize) {
-        let mut me = ManuallyDrop::new(self);
-        (me.as_mut_ptr(), me.len(), me.capacity())
-    }
+    pub fn into_raw_parts(self) -> (*mut T, usize, usize) {}
 
     /// Decomposes a `Vec<T>` into its raw components.
     ///
@@ -37787,14 +23144,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[unstable(feature = "allocator_api", issue = "32838")]
     // #[unstable(feature = "vec_into_raw_parts", reason = "new API", issue = "65816")]
-    pub fn into_raw_parts_with_alloc(self) -> (*mut T, usize, usize, A) {
-        let mut me = ManuallyDrop::new(self);
-        let len = me.len();
-        let capacity = me.capacity();
-        let ptr = me.as_mut_ptr();
-        let alloc = unsafe { ptr::read(me.allocator()) };
-        (ptr, len, capacity, alloc)
-    }
+    pub fn into_raw_parts_with_alloc(self) -> (*mut T, usize, usize, A) {}
 
     /// Returns the number of elements the vector can hold without
     /// reallocating.
@@ -37807,9 +23157,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn capacity(&self) -> usize {
-        self.buf.capacity()
-    }
+    pub fn capacity(&self) -> usize {}
 
     /// Reserves capacity for at least `additional` more elements to be inserted
     /// in the given `Vec<T>`. The collection may reserve more space to avoid
@@ -37830,9 +23178,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn reserve(&mut self, additional: usize) {
-        self.buf.reserve(self.len, additional);
-    }
+    pub fn reserve(&mut self, additional: usize) {}
 
     /// Reserves the minimum capacity for exactly `additional` more elements to
     /// be inserted in the given `Vec<T>`. After calling `reserve_exact`,
@@ -37858,9 +23204,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn reserve_exact(&mut self, additional: usize) {
-        self.buf.reserve_exact(self.len, additional);
-    }
+    pub fn reserve_exact(&mut self, additional: usize) {}
 
     /// Tries to reserve capacity for at least `additional` more elements to be inserted
     /// in the given `Vec<T>`. The collection may reserve more space to avoid
@@ -37878,25 +23222,11 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     /// use std::collections::TryReserveError;
     ///
-    /// fn process_data(data: &[u32]) -> Result<Vec<u32>, TryReserveError> {
-    ///     let mut output = Vec::new();
-    ///
-    ///     // Pre-reserve the memory, exiting if we can't
-    ///     output.try_reserve(data.len())?;
-    ///
-    ///     // Now we know this can't OOM in the middle of our complex work
-    ///     output.extend(data.iter().map(|&val| {
-    ///         val * 2 + 5 // very complicated
-    ///     }));
-    ///
-    ///     Ok(output)
-    /// }
+    /// fn process_data(data: &[u32]) -> Result<Vec<u32>, TryReserveError> {}
     /// # process_data(&[1, 2, 3]).expect("why is the test harness OOMing on 12 bytes?");
     /// ```
     #[stable(feature = "try_reserve", since = "1.57.0")]
-    pub fn try_reserve(&mut self, additional: usize) -> Result<(), TryReserveError> {
-        self.buf.try_reserve(self.len, additional)
-    }
+    pub fn try_reserve(&mut self, additional: usize) -> Result<(), TryReserveError> {}
 
     /// Tries to reserve the minimum capacity for exactly `additional`
     /// elements to be inserted in the given `Vec<T>`. After calling
@@ -37920,25 +23250,11 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     /// use std::collections::TryReserveError;
     ///
-    /// fn process_data(data: &[u32]) -> Result<Vec<u32>, TryReserveError> {
-    ///     let mut output = Vec::new();
-    ///
-    ///     // Pre-reserve the memory, exiting if we can't
-    ///     output.try_reserve_exact(data.len())?;
-    ///
-    ///     // Now we know this can't OOM in the middle of our complex work
-    ///     output.extend(data.iter().map(|&val| {
-    ///         val * 2 + 5 // very complicated
-    ///     }));
-    ///
-    ///     Ok(output)
-    /// }
+    /// fn process_data(data: &[u32]) -> Result<Vec<u32>, TryReserveError> {}
     /// # process_data(&[1, 2, 3]).expect("why is the test harness OOMing on 12 bytes?");
     /// ```
     #[stable(feature = "try_reserve", since = "1.57.0")]
-    pub fn try_reserve_exact(&mut self, additional: usize) -> Result<(), TryReserveError> {
-        self.buf.try_reserve_exact(self.len, additional)
-    }
+    pub fn try_reserve_exact(&mut self, additional: usize) -> Result<(), TryReserveError> {}
 
     /// Shrinks the capacity of the vector as much as possible.
     ///
@@ -37956,14 +23272,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn shrink_to_fit(&mut self) {
-        // The capacity is never less than the length, and there's nothing to do when
-        // they are equal, so we can avoid the panic case in `RawVec::shrink_to_fit`
-        // by only calling it with a greater capacity.
-        if self.capacity() > self.len {
-            self.buf.shrink_to_fit(self.len);
-        }
-    }
+    pub fn shrink_to_fit(&mut self) {}
 
     /// Shrinks the capacity of the vector with a lower bound.
     ///
@@ -37985,11 +23294,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "shrink_to", since = "1.56.0")]
-    pub fn shrink_to(&mut self, min_capacity: usize) {
-        if self.capacity() > min_capacity {
-            self.buf.shrink_to_fit(cmp::max(self.len, min_capacity));
-        }
-    }
+    pub fn shrink_to(&mut self, min_capacity: usize) {}
 
     /// Converts the vector into [`Box<[T]>`][owned slice].
     ///
@@ -38017,15 +23322,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn into_boxed_slice(mut self) -> Box<[T], A> {
-        unsafe {
-            self.shrink_to_fit();
-            let me = ManuallyDrop::new(self);
-            let buf = ptr::read(&me.buf);
-            let len = me.len();
-            buf.into_box(len).assume_init()
-        }
-    }
+    pub fn into_boxed_slice(mut self) -> Box<[T], A> {}
 
     /// Shortens the vector, keeping the first `len` elements and dropping
     /// the rest.
@@ -38070,27 +23367,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// [`clear`]: Vec::clear
     /// [`drain`]: Vec::drain
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn truncate(&mut self, len: usize) {
-        // This is safe because:
-        //
-        // * the slice passed to `drop_in_place` is valid; the `len > self.len`
-        //   case avoids creating an invalid slice, and
-        // * the `len` of the vector is shrunk before calling `drop_in_place`,
-        //   such that no value will be dropped twice in case `drop_in_place`
-        //   were to panic once (if it panics twice, the program aborts).
-        unsafe {
-            // Note: It's intentional that this is `>` and not `>=`.
-            //       Changing it to `>=` has negative performance
-            //       implications in some cases. See #78884 for more.
-            if len > self.len {
-                return;
-            }
-            let remaining_len = self.len - len;
-            let s = ptr::slice_from_raw_parts_mut(self.as_mut_ptr().add(len), remaining_len);
-            self.len = len;
-            ptr::drop_in_place(s);
-        }
-    }
+    pub fn truncate(&mut self, len: usize) {}
 
     /// Extracts a slice containing the entire vector.
     ///
@@ -38105,9 +23382,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[inline]
     #[stable(feature = "vec_as_slice", since = "1.7.0")]
-    pub fn as_slice(&self) -> &[T] {
-        self
-    }
+    pub fn as_slice(&self) -> &[T] {}
 
     /// Extracts a mutable slice of the entire vector.
     ///
@@ -38122,9 +23397,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[inline]
     #[stable(feature = "vec_as_slice", since = "1.7.0")]
-    pub fn as_mut_slice(&mut self) -> &mut [T] {
-        self
-    }
+    pub fn as_mut_slice(&mut self) -> &mut [T] {}
 
     /// Returns a raw pointer to the vector's buffer.
     ///
@@ -38153,15 +23426,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// [`as_mut_ptr`]: Vec::as_mut_ptr
     #[stable(feature = "vec_as_ptr", since = "1.37.0")]
     #[inline]
-    pub fn as_ptr(&self) -> *const T {
-        // We shadow the slice method of the same name to avoid going through
-        // `deref`, which creates an intermediate reference.
-        let ptr = self.buf.ptr();
-        unsafe {
-            assume(!ptr.is_null());
-        }
-        ptr
-    }
+    pub fn as_ptr(&self) -> *const T {}
 
     /// Returns an unsafe mutable pointer to the vector's buffer.
     ///
@@ -38189,22 +23454,12 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[stable(feature = "vec_as_ptr", since = "1.37.0")]
     #[inline]
-    pub fn as_mut_ptr(&mut self) -> *mut T {
-        // We shadow the slice method of the same name to avoid going through
-        // `deref_mut`, which creates an intermediate reference.
-        let ptr = self.buf.ptr();
-        unsafe {
-            assume(!ptr.is_null());
-        }
-        ptr
-    }
+    pub fn as_mut_ptr(&mut self) -> *mut T {}
 
     /// Returns a reference to the underlying allocator.
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
-    pub fn allocator(&self) -> &A {
-        self.buf.allocator()
-    }
+    pub fn allocator(&self) -> &A {}
 
     /// Forces the length of the vector to `new_len`.
     ///
@@ -38244,26 +23499,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// #     ) -> i32;
     /// # }
     /// # impl StreamWrapper {
-    /// pub fn get_dictionary(&self) -> Option<Vec<u8>> {
-    ///     // Per the FFI method's docs, "32768 bytes is always enough".
-    ///     let mut dict = Vec::with_capacity(32_768);
-    ///     let mut dict_length = 0;
-    ///     // SAFETY: When `deflateGetDictionary` returns `Z_OK`, it holds that:
-    ///     // 1. `dict_length` elements were initialized.
-    ///     // 2. `dict_length` <= the capacity (32_768)
-    ///     // which makes `set_len` safe to call.
-    ///     unsafe {
-    ///         // Make the FFI call...
-    ///         let r = deflateGetDictionary(self.strm, dict.as_mut_ptr(), &mut dict_length);
-    ///         if r == Z_OK {
-    ///             // ...and update the length to what was initialized.
-    ///             dict.set_len(dict_length);
-    ///             Some(dict)
-    ///         } else {
-    ///             None
-    ///         }
-    ///     }
-    /// }
+    /// pub fn get_dictionary(&self) -> Option<Vec<u8>> {}
     /// # }
     /// ```
     ///
@@ -38286,11 +23522,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// the contents and thus not leak memory.
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub unsafe fn set_len(&mut self, new_len: usize) {
-        debug_assert!(new_len <= self.capacity());
-
-        self.len = new_len;
-    }
+    pub unsafe fn set_len(&mut self, new_len: usize) {}
 
     /// Removes an element from the vector and returns it.
     ///
@@ -38315,28 +23547,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn swap_remove(&mut self, index: usize) -> T {
-        #[cold]
-        #[inline(never)]
-        fn assert_failed(index: usize, len: usize) -> ! {
-            panic!("swap_remove index (is {}) should be < len (is {})", index, len);
-        }
-
-        let len = self.len();
-        if index >= len {
-            assert_failed(index, len);
-        }
-        unsafe {
-            // We replace self[index] with the last element. Note that if the
-            // bounds check above succeeds there must be a last element (which
-            // can be self[index] itself).
-            let value = ptr::read(self.as_ptr().add(index));
-            let base_ptr = self.as_mut_ptr();
-            ptr::copy(base_ptr.add(len - 1), base_ptr.add(index), 1);
-            self.set_len(len - 1);
-            value
-        }
-    }
+    pub fn swap_remove(&mut self, index: usize) -> T {}
 
     /// Inserts an element at position `index` within the vector, shifting all
     /// elements after it to the right.
@@ -38356,38 +23567,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn insert(&mut self, index: usize, element: T) {
-        #[cold]
-        #[inline(never)]
-        fn assert_failed(index: usize, len: usize) -> ! {
-            panic!("insertion index (is {}) should be <= len (is {})", index, len);
-        }
-
-        let len = self.len();
-        if index > len {
-            assert_failed(index, len);
-        }
-
-        // space for the new element
-        if len == self.buf.capacity() {
-            self.reserve(1);
-        }
-
-        unsafe {
-            // infallible
-            // The spot to put the new value
-            {
-                let p = self.as_mut_ptr().add(index);
-                // Shift everything over to make space. (Duplicating the
-                // `index`th element into two consecutive places.)
-                ptr::copy(p, p.offset(1), len - index);
-                // Write it in, overwriting the first copy of the `index`th
-                // element.
-                ptr::write(p, element);
-            }
-            self.set_len(len + 1);
-        }
-    }
+    pub fn insert(&mut self, index: usize, element: T) {}
 
     /// Removes and returns the element at position `index` within the vector,
     /// shifting all elements after it to the left.
@@ -38411,35 +23591,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[track_caller]
-    pub fn remove(&mut self, index: usize) -> T {
-        #[cold]
-        #[inline(never)]
-        #[track_caller]
-        fn assert_failed(index: usize, len: usize) -> ! {
-            panic!("removal index (is {}) should be < len (is {})", index, len);
-        }
-
-        let len = self.len();
-        if index >= len {
-            assert_failed(index, len);
-        }
-        unsafe {
-            // infallible
-            let ret;
-            {
-                // the place we are taking from.
-                let ptr = self.as_mut_ptr().add(index);
-                // copy it out, unsafely having a copy of the value on
-                // the stack and in the vector at the same time.
-                ret = ptr::read(ptr);
-
-                // Shift everything down to fill in that spot.
-                ptr::copy(ptr.offset(1), ptr, len - index - 1);
-            }
-            self.set_len(len - 1);
-            ret
-        }
-    }
+    pub fn remove(&mut self, index: usize) -> T {}
 
     /// Retains only the elements specified by the predicate.
     ///
@@ -38469,98 +23621,7 @@ impl<T, A: Allocator> Vec<T, A> {
     pub fn retain<F>(&mut self, mut f: F)
     where
         F: FnMut(&T) -> bool,
-    {
-        let original_len = self.len();
-        // Avoid double drop if the drop guard is not executed,
-        // since we may make some holes during the process.
-        unsafe { self.set_len(0) };
-
-        // Vec: [Kept, Kept, Hole, Hole, Hole, Hole, Unchecked, Unchecked]
-        //      |<-              processed len   ->| ^- next to check
-        //                  |<-  deleted cnt     ->|
-        //      |<-              original_len                          ->|
-        // Kept: Elements which predicate returns true on.
-        // Hole: Moved or dropped element slot.
-        // Unchecked: Unchecked valid elements.
-        //
-        // This drop guard will be invoked when predicate or `drop` of element panicked.
-        // It shifts unchecked elements to cover holes and `set_len` to the correct length.
-        // In cases when predicate and `drop` never panick, it will be optimized out.
-        struct BackshiftOnDrop<'a, T, A: Allocator> {
-            v: &'a mut Vec<T, A>,
-            processed_len: usize,
-            deleted_cnt: usize,
-            original_len: usize,
-        }
-
-        impl<T, A: Allocator> Drop for BackshiftOnDrop<'_, T, A> {
-            fn drop(&mut self) {
-                if self.deleted_cnt > 0 {
-                    // SAFETY: Trailing unchecked items must be valid since we never touch them.
-                    unsafe {
-                        ptr::copy(
-                            self.v.as_ptr().add(self.processed_len),
-                            self.v.as_mut_ptr().add(self.processed_len - self.deleted_cnt),
-                            self.original_len - self.processed_len,
-                        );
-                    }
-                }
-                // SAFETY: After filling holes, all items are in contiguous memory.
-                unsafe {
-                    self.v.set_len(self.original_len - self.deleted_cnt);
-                }
-            }
-        }
-
-        let mut g = BackshiftOnDrop { v: self, processed_len: 0, deleted_cnt: 0, original_len };
-
-        // process_one return a bool indicates whether the processing element should be retained.
-        #[inline(always)]
-        fn process_one<F, T, A: Allocator, const DELETED: bool>(
-            f: &mut F,
-            g: &mut BackshiftOnDrop<'_, T, A>,
-        ) -> bool
-        where
-            F: FnMut(&T) -> bool,
-        {
-            // SAFETY: Unchecked element must be valid.
-            let cur = unsafe { &mut *g.v.as_mut_ptr().add(g.processed_len) };
-            if !f(cur) {
-                // Advance early to avoid double drop if `drop_in_place` panicked.
-                g.processed_len += 1;
-                g.deleted_cnt += 1;
-                // SAFETY: We never touch this element again after dropped.
-                unsafe { ptr::drop_in_place(cur) };
-                // We already advanced the counter.
-                return false;
-            }
-            if DELETED {
-                // SAFETY: `deleted_cnt` > 0, so the hole slot must not overlap with current element.
-                // We use copy for move, and never touch this element again.
-                unsafe {
-                    let hole_slot = g.v.as_mut_ptr().add(g.processed_len - g.deleted_cnt);
-                    ptr::copy_nonoverlapping(cur, hole_slot, 1);
-                }
-            }
-            g.processed_len += 1;
-            return true;
-        }
-
-        // Stage 1: Nothing was deleted.
-        while g.processed_len != original_len {
-            if !process_one::<F, T, A, false>(&mut f, &mut g) {
-                break;
-            }
-        }
-
-        // Stage 2: Some elements were deleted.
-        while g.processed_len != original_len {
-            process_one::<F, T, A, true>(&mut f, &mut g);
-        }
-
-        // All item are processed. This can be optimized to `set_len` by LLVM.
-        drop(g);
-    }
+    {}
 
     /// Removes all but the first of consecutive elements in the vector that resolve to the same
     /// key.
@@ -38582,9 +23643,7 @@ impl<T, A: Allocator> Vec<T, A> {
     where
         F: FnMut(&mut T) -> K,
         K: PartialEq,
-    {
-        self.dedup_by(|a, b| key(a) == key(b))
-    }
+    {}
 
     /// Removes all but the first of consecutive elements in the vector satisfying a given equality
     /// relation.
@@ -38608,97 +23667,7 @@ impl<T, A: Allocator> Vec<T, A> {
     pub fn dedup_by<F>(&mut self, mut same_bucket: F)
     where
         F: FnMut(&mut T, &mut T) -> bool,
-    {
-        let len = self.len();
-        if len <= 1 {
-            return;
-        }
-
-        /* INVARIANT: vec.len() > read >= write > write-1 >= 0 */
-        struct FillGapOnDrop<'a, T, A: core::alloc::Allocator> {
-            /* Offset of the element we want to check if it is duplicate */
-            read: usize,
-
-            /* Offset of the place where we want to place the non-duplicate
-             * when we find it. */
-            write: usize,
-
-            /* The Vec that would need correction if `same_bucket` panicked */
-            vec: &'a mut Vec<T, A>,
-        }
-
-        impl<'a, T, A: core::alloc::Allocator> Drop for FillGapOnDrop<'a, T, A> {
-            fn drop(&mut self) {
-                /* This code gets executed when `same_bucket` panics */
-
-                /* SAFETY: invariant guarantees that `read - write`
-                 * and `len - read` never overflow and that the copy is always
-                 * in-bounds. */
-                unsafe {
-                    let ptr = self.vec.as_mut_ptr();
-                    let len = self.vec.len();
-
-                    /* How many items were left when `same_bucket` paniced.
-                     * Basically vec[read..].len() */
-                    let items_left = len.wrapping_sub(self.read);
-
-                    /* Pointer to first item in vec[write..write+items_left] slice */
-                    let dropped_ptr = ptr.add(self.write);
-                    /* Pointer to first item in vec[read..] slice */
-                    let valid_ptr = ptr.add(self.read);
-
-                    /* Copy `vec[read..]` to `vec[write..write+items_left]`.
-                     * The slices can overlap, so `copy_nonoverlapping` cannot be used */
-                    ptr::copy(valid_ptr, dropped_ptr, items_left);
-
-                    /* How many items have been already dropped
-                     * Basically vec[read..write].len() */
-                    let dropped = self.read.wrapping_sub(self.write);
-
-                    self.vec.set_len(len - dropped);
-                }
-            }
-        }
-
-        let mut gap = FillGapOnDrop { read: 1, write: 1, vec: self };
-        let ptr = gap.vec.as_mut_ptr();
-
-        /* Drop items while going through Vec, it should be more efficient than
-         * doing slice partition_dedup + truncate */
-
-        /* SAFETY: Because of the invariant, read_ptr, prev_ptr and write_ptr
-         * are always in-bounds and read_ptr never aliases prev_ptr */
-        unsafe {
-            while gap.read < len {
-                let read_ptr = ptr.add(gap.read);
-                let prev_ptr = ptr.add(gap.write.wrapping_sub(1));
-
-                if same_bucket(&mut *read_ptr, &mut *prev_ptr) {
-                    // Increase `gap.read` now since the drop may panic.
-                    gap.read += 1;
-                    /* We have found duplicate, drop it in-place */
-                    ptr::drop_in_place(read_ptr);
-                } else {
-                    let write_ptr = ptr.add(gap.write);
-
-                    /* Because `read_ptr` can be equal to `write_ptr`, we either
-                     * have to use `copy` or conditional `copy_nonoverlapping`.
-                     * Looks like the first option is faster. */
-                    ptr::copy(read_ptr, write_ptr, 1);
-
-                    /* We have filled that place, so go further */
-                    gap.write += 1;
-                    gap.read += 1;
-                }
-            }
-
-            /* Technically we could let `gap` clean up with its Drop, but
-             * when `same_bucket` is guaranteed to not panic, this bloats a little
-             * the codegen, so we just do it manually */
-            gap.vec.set_len(gap.write);
-            mem::forget(gap);
-        }
-    }
+    {}
 
     /// Appends an element to the back of a collection.
     ///
@@ -38716,18 +23685,7 @@ impl<T, A: Allocator> Vec<T, A> {
     #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn push(&mut self, value: T) {
-        // This will panic or abort if we would allocate > isize::MAX bytes
-        // or if the length increment would overflow for zero-sized types.
-        if self.len == self.buf.capacity() {
-            self.reserve(1);
-        }
-        unsafe {
-            let end = self.as_mut_ptr().add(self.len);
-            ptr::write(end, value);
-            self.len += 1;
-        }
-    }
+    pub fn push(&mut self, value: T) {}
 
     /// Removes the last element from a vector and returns it, or [`None`] if it
     /// is empty.
@@ -38741,16 +23699,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn pop(&mut self) -> Option<T> {
-        if self.len == 0 {
-            None
-        } else {
-            unsafe {
-                self.len -= 1;
-                Some(ptr::read(self.as_ptr().add(self.len())))
-            }
-        }
-    }
+    pub fn pop(&mut self) -> Option<T> {}
 
     /// Moves all the elements of `other` into `Self`, leaving `other` empty.
     ///
@@ -38770,23 +23719,12 @@ impl<T, A: Allocator> Vec<T, A> {
     #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[stable(feature = "append", since = "1.4.0")]
-    pub fn append(&mut self, other: &mut Self) {
-        unsafe {
-            self.append_elements(other.as_slice() as _);
-            other.set_len(0);
-        }
-    }
+    pub fn append(&mut self, other: &mut Self) {}
 
     /// Appends elements to `Self` from other buffer.
     #[cfg(not(no_global_oom_handling))]
     #[inline]
-    unsafe fn append_elements(&mut self, other: *const [T]) {
-        let count = unsafe { (*other).len() };
-        self.reserve(count);
-        let len = self.len();
-        unsafe { ptr::copy_nonoverlapping(other as *const T, self.as_mut_ptr().add(len), count) };
-        self.len += count;
-    }
+    unsafe fn append_elements(&mut self, other: *const [T]) {}
 
     /// Creates a draining iterator that removes the specified range in the vector
     /// and yields the removed items.
@@ -38817,34 +23755,7 @@ impl<T, A: Allocator> Vec<T, A> {
     pub fn drain<R>(&mut self, range: R) -> Drain<'_, T, A>
     where
         R: RangeBounds<usize>,
-    {
-        // Memory safety
-        //
-        // When the Drain is first created, it shortens the length of
-        // the source vector to make sure no uninitialized or moved-from elements
-        // are accessible at all if the Drain's destructor never gets to run.
-        //
-        // Drain will ptr::read out the values to remove.
-        // When finished, remaining tail of the vec is copied back to cover
-        // the hole, and the vector length is restored to the new length.
-        //
-        let len = self.len();
-        let Range { start, end } = slice::range(range, ..len);
-
-        unsafe {
-            // set self.vec length's to start, to be safe in case Drain is leaked
-            self.set_len(start);
-            // Use the borrow in the IterMut to indicate borrowing behavior of the
-            // whole Drain iterator (like &mut T).
-            let range_slice = slice::from_raw_parts_mut(self.as_mut_ptr().add(start), end - start);
-            Drain {
-                tail_start: end,
-                tail_len: len - end,
-                iter: range_slice.iter(),
-                vec: NonNull::from(self),
-            }
-        }
-    }
+    {}
 
     /// Clears the vector, removing all values.
     ///
@@ -38862,9 +23773,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn clear(&mut self) {
-        self.truncate(0)
-    }
+    pub fn clear(&mut self) {}
 
     /// Returns the number of elements in the vector, also referred to
     /// as its 'length'.
@@ -38877,9 +23786,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn len(&self) -> usize {
-        self.len
-    }
+    pub fn len(&self) -> usize {}
 
     /// Returns `true` if the vector contains no elements.
     ///
@@ -38893,9 +23800,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// assert!(!v.is_empty());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn is_empty(&self) -> bool {
-        self.len() == 0
-    }
+    pub fn is_empty(&self) -> bool {}
 
     /// Splits the collection into two at the given index.
     ///
@@ -38922,37 +23827,7 @@ impl<T, A: Allocator> Vec<T, A> {
     pub fn split_off(&mut self, at: usize) -> Self
     where
         A: Clone,
-    {
-        #[cold]
-        #[inline(never)]
-        fn assert_failed(at: usize, len: usize) -> ! {
-            panic!("`at` split index (is {}) should be <= len (is {})", at, len);
-        }
-
-        if at > self.len() {
-            assert_failed(at, self.len());
-        }
-
-        if at == 0 {
-            // the new vector can take over the original buffer and avoid the copy
-            return mem::replace(
-                self,
-                Vec::with_capacity_in(self.capacity(), self.allocator().clone()),
-            );
-        }
-
-        let other_len = self.len - at;
-        let mut other = Vec::with_capacity_in(other_len, self.allocator().clone());
-
-        // Unsafely `set_len` and copy items to `other`.
-        unsafe {
-            self.set_len(at);
-            other.set_len(other_len);
-
-            ptr::copy_nonoverlapping(self.as_ptr().add(at), other.as_mut_ptr(), other.len());
-        }
-        other
-    }
+    {}
 
     /// Resizes the `Vec` in-place so that `len` is equal to `new_len`.
     ///
@@ -38985,14 +23860,7 @@ impl<T, A: Allocator> Vec<T, A> {
     pub fn resize_with<F>(&mut self, new_len: usize, f: F)
     where
         F: FnMut() -> T,
-    {
-        let len = self.len();
-        if new_len > len {
-            self.extend_with(new_len - len, ExtendFunc(f));
-        } else {
-            self.truncate(new_len);
-        }
-    }
+    {}
 
     /// Consumes and leaks the `Vec`, returning a mutable reference to the contents,
     /// `&'a mut [T]`. Note that the type `T` must outlive the chosen lifetime
@@ -39023,10 +23891,7 @@ impl<T, A: Allocator> Vec<T, A> {
     pub fn leak<'a>(self) -> &'a mut [T]
     where
         A: 'a,
-    {
-        let mut me = ManuallyDrop::new(self);
-        unsafe { slice::from_raw_parts_mut(me.as_mut_ptr(), me.len) }
-    }
+    {}
 
     /// Returns the remaining spare capacity of the vector as a slice of
     /// `MaybeUninit<T>`.
@@ -39060,17 +23925,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[unstable(feature = "vec_spare_capacity", issue = "75017")]
     #[inline]
-    pub fn spare_capacity_mut(&mut self) -> &mut [MaybeUninit<T>] {
-        // Note:
-        // This method is not implemented in terms of `split_at_spare_mut`,
-        // to prevent invalidation of pointers to the buffer.
-        unsafe {
-            slice::from_raw_parts_mut(
-                self.as_mut_ptr().add(self.len) as *mut MaybeUninit<T>,
-                self.buf.capacity() - self.len,
-            )
-        }
-    }
+    pub fn spare_capacity_mut(&mut self) -> &mut [MaybeUninit<T>] {}
 
     /// Returns vector content as a slice of `T`, along with the remaining spare
     /// capacity of the vector as a slice of `MaybeUninit<T>`.
@@ -39125,33 +23980,14 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[unstable(feature = "vec_split_at_spare", issue = "81944")]
     #[inline]
-    pub fn split_at_spare_mut(&mut self) -> (&mut [T], &mut [MaybeUninit<T>]) {
-        // SAFETY:
-        // - len is ignored and so never changed
-        let (init, spare, _) = unsafe { self.split_at_spare_mut_with_len() };
-        (init, spare)
-    }
+    pub fn split_at_spare_mut(&mut self) -> (&mut [T], &mut [MaybeUninit<T>]) {}
 
     /// Safety: changing returned .2 (&mut usize) is considered the same as calling `.set_len(_)`.
     ///
     /// This method provides unique access to all vec parts at once in `extend_from_within`.
     unsafe fn split_at_spare_mut_with_len(
         &mut self,
-    ) -> (&mut [T], &mut [MaybeUninit<T>], &mut usize) {
-        let Range { start: ptr, end: spare_ptr } = self.as_mut_ptr_range();
-        let spare_ptr = spare_ptr.cast::<MaybeUninit<T>>();
-        let spare_len = self.buf.capacity() - self.len;
-
-        // SAFETY:
-        // - `ptr` is guaranteed to be valid for `len` elements
-        // - `spare_ptr` is pointing one element past the buffer, so it doesn't overlap with `initialized`
-        unsafe {
-            let initialized = slice::from_raw_parts_mut(ptr, self.len);
-            let spare = slice::from_raw_parts_mut(spare_ptr, spare_len);
-
-            (initialized, spare, &mut self.len)
-        }
-    }
+    ) -> (&mut [T], &mut [MaybeUninit<T>], &mut usize) {}
 }
 
 impl<T: Clone, A: Allocator> Vec<T, A> {
@@ -39180,15 +24016,7 @@ impl<T: Clone, A: Allocator> Vec<T, A> {
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "vec_resize", since = "1.5.0")]
-    pub fn resize(&mut self, new_len: usize, value: T) {
-        let len = self.len();
-
-        if new_len > len {
-            self.extend_with(new_len - len, ExtendElement(value))
-        } else {
-            self.truncate(new_len);
-        }
-    }
+    pub fn resize(&mut self, new_len: usize, value: T) {}
 
     /// Clones and appends all elements in a slice to the `Vec`.
     ///
@@ -39211,9 +24039,7 @@ impl<T: Clone, A: Allocator> Vec<T, A> {
     /// [`extend`]: Vec::extend
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "vec_extend_from_slice", since = "1.6.0")]
-    pub fn extend_from_slice(&mut self, other: &[T]) {
-        self.spec_extend(other.iter())
-    }
+    pub fn extend_from_slice(&mut self, other: &[T]) {}
 
     /// Copies elements from `src` range to the end of the vector.
     ///
@@ -39241,16 +24067,7 @@ impl<T: Clone, A: Allocator> Vec<T, A> {
     pub fn extend_from_within<R>(&mut self, src: R)
     where
         R: RangeBounds<usize>,
-    {
-        let range = slice::range(src, ..self.len());
-        self.reserve(range.len());
-
-        // SAFETY:
-        // - `slice::range` guarantees  that the given range is valid for indexing self
-        unsafe {
-            self.spec_extend_from_within(range);
-        }
-    }
+    {}
 }
 
 // This code generalizes `extend_with_{element,default}`.
@@ -39261,64 +24078,26 @@ trait ExtendWith<T> {
 
 struct ExtendElement<T>(T);
 impl<T: Clone> ExtendWith<T> for ExtendElement<T> {
-    fn next(&mut self) -> T {
-        self.0.clone()
-    }
-    fn last(self) -> T {
-        self.0
-    }
+    fn next(&mut self) -> T {}
+    fn last(self) -> T {}
 }
 
 struct ExtendDefault;
 impl<T: Default> ExtendWith<T> for ExtendDefault {
-    fn next(&mut self) -> T {
-        Default::default()
-    }
-    fn last(self) -> T {
-        Default::default()
-    }
+    fn next(&mut self) -> T {}
+    fn last(self) -> T {}
 }
 
 struct ExtendFunc<F>(F);
 impl<T, F: FnMut() -> T> ExtendWith<T> for ExtendFunc<F> {
-    fn next(&mut self) -> T {
-        (self.0)()
-    }
-    fn last(mut self) -> T {
-        (self.0)()
-    }
+    fn next(&mut self) -> T {}
+    fn last(mut self) -> T {}
 }
 
 impl<T, A: Allocator> Vec<T, A> {
     #[cfg(not(no_global_oom_handling))]
     /// Extend the vector by `n` values, using the given generator.
-    fn extend_with<E: ExtendWith<T>>(&mut self, n: usize, mut value: E) {
-        self.reserve(n);
-
-        unsafe {
-            let mut ptr = self.as_mut_ptr().add(self.len());
-            // Use SetLenOnDrop to work around bug where compiler
-            // might not realize the store through `ptr` through self.set_len()
-            // don't alias.
-            let mut local_len = SetLenOnDrop::new(&mut self.len);
-
-            // Write all elements except the last one
-            for _ in 1..n {
-                ptr::write(ptr, value.next());
-                ptr = ptr.offset(1);
-                // Increment the length in every step in case next() panics
-                local_len.increment_len(1);
-            }
-
-            if n > 0 {
-                // We can write the last element directly without cloning needlessly
-                ptr::write(ptr, value.last());
-                local_len.increment_len(1);
-            }
-
-            // len set by scope guard
-        }
-    }
+    fn extend_with<E: ExtendWith<T>>(&mut self, n: usize, mut value: E) {}
 }
 
 impl<T: PartialEq, A: Allocator> Vec<T, A> {
@@ -39338,9 +24117,7 @@ impl<T: PartialEq, A: Allocator> Vec<T, A> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn dedup(&mut self) {
-        self.dedup_by(|a, b| a == b)
-    }
+    pub fn dedup(&mut self) {}
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -39350,16 +24127,12 @@ impl<T: PartialEq, A: Allocator> Vec<T, A> {
 #[doc(hidden)]
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn from_elem<T: Clone>(elem: T, n: usize) -> Vec<T> {
-    <T as SpecFromElem>::from_elem(elem, n, Global)
-}
+pub fn from_elem<T: Clone>(elem: T, n: usize) -> Vec<T> {}
 
 #[doc(hidden)]
 #[cfg(not(no_global_oom_handling))]
 #[unstable(feature = "allocator_api", issue = "32838")]
-pub fn from_elem_in<T: Clone, A: Allocator>(elem: T, n: usize, alloc: A) -> Vec<T, A> {
-    <T as SpecFromElem>::from_elem(elem, n, alloc)
-}
+pub fn from_elem_in<T: Clone, A: Allocator>(elem: T, n: usize, alloc: A) -> Vec<T, A> {}
 
 trait ExtendFromWithinSpec {
     /// # Safety
@@ -39370,50 +24143,11 @@ trait ExtendFromWithinSpec {
 }
 
 impl<T: Clone, A: Allocator> ExtendFromWithinSpec for Vec<T, A> {
-    default unsafe fn spec_extend_from_within(&mut self, src: Range<usize>) {
-        // SAFETY:
-        // - len is increased only after initializing elements
-        let (this, spare, len) = unsafe { self.split_at_spare_mut_with_len() };
-
-        // SAFETY:
-        // - caller guaratees that src is a valid index
-        let to_clone = unsafe { this.get_unchecked(src) };
-
-        iter::zip(to_clone, spare)
-            .map(|(src, dst)| dst.write(src.clone()))
-            // Note:
-            // - Element was just initialized with `MaybeUninit::write`, so it's ok to increase len
-            // - len is increased after each element to prevent leaks (see issue #82533)
-            .for_each(|_| *len += 1);
-    }
+    default unsafe fn spec_extend_from_within(&mut self, src: Range<usize>) {}
 }
 
 impl<T: Copy, A: Allocator> ExtendFromWithinSpec for Vec<T, A> {
-    unsafe fn spec_extend_from_within(&mut self, src: Range<usize>) {
-        let count = src.len();
-        {
-            let (init, spare) = self.split_at_spare_mut();
-
-            // SAFETY:
-            // - caller guaratees that `src` is a valid index
-            let source = unsafe { init.get_unchecked(src) };
-
-            // SAFETY:
-            // - Both pointers are created from unique slice references (`&mut [_]`)
-            //   so they are valid and do not overlap.
-            // - Elements are :Copy so it's OK to to copy them, without doing
-            //   anything with the original values
-            // - `count` is equal to the len of `source`, so source is valid for
-            //   `count` reads
-            // - `.reserve(count)` guarantees that `spare.len() >= count` so spare
-            //   is valid for `count` writes
-            unsafe { ptr::copy_nonoverlapping(source.as_ptr(), spare.as_mut_ptr() as _, count) };
-        }
-
-        // SAFETY:
-        // - The elements were just initialized by `copy_nonoverlapping`
-        self.len += count;
-    }
+    unsafe fn spec_extend_from_within(&mut self, src: Range<usize>) {}
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -39424,16 +24158,12 @@ impl<T: Copy, A: Allocator> ExtendFromWithinSpec for Vec<T, A> {
 impl<T, A: Allocator> ops::Deref for Vec<T, A> {
     type Target = [T];
 
-    fn deref(&self) -> &[T] {
-        unsafe { slice::from_raw_parts(self.as_ptr(), self.len) }
-    }
+    fn deref(&self) -> &[T] {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, A: Allocator> ops::DerefMut for Vec<T, A> {
-    fn deref_mut(&mut self) -> &mut [T] {
-        unsafe { slice::from_raw_parts_mut(self.as_mut_ptr(), self.len) }
-    }
+    fn deref_mut(&mut self) -> &mut [T] {}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -39443,50 +24173,28 @@ trait SpecCloneFrom {
 
 #[cfg(not(no_global_oom_handling))]
 impl<T: Clone, A: Allocator> SpecCloneFrom for Vec<T, A> {
-    default fn clone_from(this: &mut Self, other: &Self) {
-        // drop anything that will not be overwritten
-        this.truncate(other.len());
-
-        // self.len <= other.len due to the truncate above, so the
-        // slices here are always in-bounds.
-        let (init, tail) = other.split_at(this.len());
-
-        // reuse the contained values' allocations/resources.
-        this.clone_from_slice(init);
-        this.extend_from_slice(tail);
-    }
+    default fn clone_from(this: &mut Self, other: &Self) {}
 }
 
 #[cfg(not(no_global_oom_handling))]
 impl<T: Copy, A: Allocator> SpecCloneFrom for Vec<T, A> {
-    fn clone_from(this: &mut Self, other: &Self) {
-        this.clear();
-        this.extend_from_slice(other);
-    }
+    fn clone_from(this: &mut Self, other: &Self) {}
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Clone, A: Allocator + Clone> Clone for Vec<T, A> {
     #[cfg(not(test))]
-    fn clone(&self) -> Self {
-        let alloc = self.allocator().clone();
-        <[T]>::to_vec_in(&**self, alloc)
-    }
+    fn clone(&self) -> Self {}
 
     // HACK(japaric): with cfg(test) the inherent `[T]::to_vec` method, which is
     // required for this method definition, is not available. Instead use the
     // `slice::to_vec`  function which is only available with cfg(test)
     // NB see the slice::hack module in slice.rs for more information
     #[cfg(test)]
-    fn clone(&self) -> Self {
-        let alloc = self.allocator().clone();
-        crate::slice::to_vec(&**self, alloc)
-    }
+    fn clone(&self) -> Self {}
 
-    fn clone_from(&mut self, other: &Self) {
-        SpecCloneFrom::clone_from(self, other)
-    }
+    fn clone_from(&mut self, other: &Self) {}
 }
 
 /// The hash of a vector is the same as that of the corresponding slice,
@@ -39504,9 +24212,7 @@ impl<T: Clone, A: Allocator + Clone> Clone for Vec<T, A> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Hash, A: Allocator> Hash for Vec<T, A> {
     #[inline]
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        Hash::hash(&**self, state)
-    }
+    fn hash<H: Hasher>(&self, state: &mut H) {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -39518,9 +24224,7 @@ impl<T, I: SliceIndex<[T]>, A: Allocator> Index<I> for Vec<T, A> {
     type Output = I::Output;
 
     #[inline]
-    fn index(&self, index: I) -> &Self::Output {
-        Index::index(&**self, index)
-    }
+    fn index(&self, index: I) -> &Self::Output {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -39530,18 +24234,14 @@ impl<T, I: SliceIndex<[T]>, A: Allocator> Index<I> for Vec<T, A> {
 )]
 impl<T, I: SliceIndex<[T]>, A: Allocator> IndexMut<I> for Vec<T, A> {
     #[inline]
-    fn index_mut(&mut self, index: I) -> &mut Self::Output {
-        IndexMut::index_mut(&mut **self, index)
-    }
+    fn index_mut(&mut self, index: I) -> &mut Self::Output {}
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> FromIterator<T> for Vec<T> {
     #[inline]
-    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Vec<T> {
-        <Self as SpecFromIter<T, I::IntoIter>>::from_iter(iter.into_iter())
-    }
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Vec<T> {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -39563,27 +24263,7 @@ impl<T, A: Allocator> IntoIterator for Vec<T, A> {
     /// }
     /// ```
     #[inline]
-    fn into_iter(self) -> IntoIter<T, A> {
-        unsafe {
-            let mut me = ManuallyDrop::new(self);
-            let alloc = ptr::read(me.allocator());
-            let begin = me.as_mut_ptr();
-            let end = if mem::size_of::<T>() == 0 {
-                arith_offset(begin as *const i8, me.len() as isize) as *const T
-            } else {
-                begin.add(me.len()) as *const T
-            };
-            let cap = me.buf.capacity();
-            IntoIter {
-                buf: NonNull::new_unchecked(begin),
-                phantom: PhantomData,
-                cap,
-                alloc,
-                ptr: begin,
-                end,
-            }
-        }
-    }
+    fn into_iter(self) -> IntoIter<T, A> {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -39591,9 +24271,7 @@ impl<'a, T, A: Allocator> IntoIterator for &'a Vec<T, A> {
     type Item = &'a T;
     type IntoIter = slice::Iter<'a, T>;
 
-    fn into_iter(self) -> slice::Iter<'a, T> {
-        self.iter()
-    }
+    fn into_iter(self) -> slice::Iter<'a, T> {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -39601,57 +24279,27 @@ impl<'a, T, A: Allocator> IntoIterator for &'a mut Vec<T, A> {
     type Item = &'a mut T;
     type IntoIter = slice::IterMut<'a, T>;
 
-    fn into_iter(self) -> slice::IterMut<'a, T> {
-        self.iter_mut()
-    }
+    fn into_iter(self) -> slice::IterMut<'a, T> {}
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, A: Allocator> Extend<T> for Vec<T, A> {
     #[inline]
-    fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
-        <Self as SpecExtend<T, I::IntoIter>>::spec_extend(self, iter.into_iter())
-    }
+    fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {}
 
     #[inline]
-    fn extend_one(&mut self, item: T) {
-        self.push(item);
-    }
+    fn extend_one(&mut self, item: T) {}
 
     #[inline]
-    fn extend_reserve(&mut self, additional: usize) {
-        self.reserve(additional);
-    }
+    fn extend_reserve(&mut self, additional: usize) {}
 }
 
 impl<T, A: Allocator> Vec<T, A> {
     // leaf method to which various SpecFrom/SpecExtend implementations delegate when
     // they have no further optimizations to apply
     #[cfg(not(no_global_oom_handling))]
-    fn extend_desugared<I: Iterator<Item = T>>(&mut self, mut iterator: I) {
-        // This is the case for a general iterator.
-        //
-        // This function should be the moral equivalent of:
-        //
-        //      for item in iterator {
-        //          self.push(item);
-        //      }
-        while let Some(element) = iterator.next() {
-            let len = self.len();
-            if len == self.capacity() {
-                let (lower, _) = iterator.size_hint();
-                self.reserve(lower.saturating_add(1));
-            }
-            unsafe {
-                ptr::write(self.as_mut_ptr().add(len), element);
-                // Since next() executes user code which can panic we have to bump the length
-                // after each step.
-                // NB can't overflow since we would have had to alloc the address space
-                self.set_len(len + 1);
-            }
-        }
-    }
+    fn extend_desugared<I: Iterator<Item = T>>(&mut self, mut iterator: I) {}
 
     /// Creates a splicing iterator that replaces the specified range in the vector
     /// with the given `replace_with` iterator and yields the removed items.
@@ -39693,9 +24341,7 @@ impl<T, A: Allocator> Vec<T, A> {
     where
         R: RangeBounds<usize>,
         I: IntoIterator<Item = T>,
-    {
-        Splice { drain: self.drain(range), replace_with: replace_with.into_iter() }
-    }
+    {}
 
     /// Creates an iterator which uses a closure to determine if an element should be removed.
     ///
@@ -39745,16 +24391,7 @@ impl<T, A: Allocator> Vec<T, A> {
     pub fn drain_filter<F>(&mut self, filter: F) -> DrainFilter<'_, T, F, A>
     where
         F: FnMut(&mut T) -> bool,
-    {
-        let old_len = self.len();
-
-        // Guard against us getting leaked (leak amplification)
-        unsafe {
-            self.set_len(0);
-        }
-
-        DrainFilter { vec: self, idx: 0, del: 0, old_len, pred: filter, panic_flag: false }
-    }
+    {}
 }
 
 /// Extend implementation that copies elements out of references before pushing them onto the Vec.
@@ -39766,28 +24403,20 @@ impl<T, A: Allocator> Vec<T, A> {
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "extend_ref", since = "1.2.0")]
 impl<'a, T: Copy + 'a, A: Allocator + 'a> Extend<&'a T> for Vec<T, A> {
-    fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
-        self.spec_extend(iter.into_iter())
-    }
+    fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {}
 
     #[inline]
-    fn extend_one(&mut self, &item: &'a T) {
-        self.push(item);
-    }
+    fn extend_one(&mut self, &item: &'a T) {}
 
     #[inline]
-    fn extend_reserve(&mut self, additional: usize) {
-        self.reserve(additional);
-    }
+    fn extend_reserve(&mut self, additional: usize) {}
 }
 
 /// Implements comparison of vectors, [lexicographically](core::cmp::Ord#lexicographical-comparison).
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: PartialOrd, A: Allocator> PartialOrd for Vec<T, A> {
     #[inline]
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        PartialOrd::partial_cmp(&**self, &**other)
-    }
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -39797,66 +24426,44 @@ impl<T: Eq, A: Allocator> Eq for Vec<T, A> {}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Ord, A: Allocator> Ord for Vec<T, A> {
     #[inline]
-    fn cmp(&self, other: &Self) -> Ordering {
-        Ord::cmp(&**self, &**other)
-    }
+    fn cmp(&self, other: &Self) -> Ordering {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<#[may_dangle] T, A: Allocator> Drop for Vec<T, A> {
-    fn drop(&mut self) {
-        unsafe {
-            // use drop for [T]
-            // use a raw slice to refer to the elements of the vector as weakest necessary type;
-            // could avoid questions of validity in certain cases
-            ptr::drop_in_place(ptr::slice_from_raw_parts_mut(self.as_mut_ptr(), self.len))
-        }
-        // RawVec handles deallocation
-    }
+    fn drop(&mut self) {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_default_impls", issue = "87864")]
 impl<T> const Default for Vec<T> {
     /// Creates an empty `Vec<T>`.
-    fn default() -> Vec<T> {
-        Vec::new()
-    }
+    fn default() -> Vec<T> {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: fmt::Debug, A: Allocator> fmt::Debug for Vec<T, A> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Debug::fmt(&**self, f)
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, A: Allocator> AsRef<Vec<T, A>> for Vec<T, A> {
-    fn as_ref(&self) -> &Vec<T, A> {
-        self
-    }
+    fn as_ref(&self) -> &Vec<T, A> {}
 }
 
 #[stable(feature = "vec_as_mut", since = "1.5.0")]
 impl<T, A: Allocator> AsMut<Vec<T, A>> for Vec<T, A> {
-    fn as_mut(&mut self) -> &mut Vec<T, A> {
-        self
-    }
+    fn as_mut(&mut self) -> &mut Vec<T, A> {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, A: Allocator> AsRef<[T]> for Vec<T, A> {
-    fn as_ref(&self) -> &[T] {
-        self
-    }
+    fn as_ref(&self) -> &[T] {}
 }
 
 #[stable(feature = "vec_as_mut", since = "1.5.0")]
 impl<T, A: Allocator> AsMut<[T]> for Vec<T, A> {
-    fn as_mut(&mut self) -> &mut [T] {
-        self
-    }
+    fn as_mut(&mut self) -> &mut [T] {}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -39870,13 +24477,9 @@ impl<T: Clone> From<&[T]> for Vec<T> {
     /// assert_eq!(Vec::from(&[1, 2, 3][..]), vec![1, 2, 3]);
     /// ```
     #[cfg(not(test))]
-    fn from(s: &[T]) -> Vec<T> {
-        s.to_vec()
-    }
+    fn from(s: &[T]) -> Vec<T> {}
     #[cfg(test)]
-    fn from(s: &[T]) -> Vec<T> {
-        crate::slice::to_vec(s, Global)
-    }
+    fn from(s: &[T]) -> Vec<T> {}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -39890,22 +24493,16 @@ impl<T: Clone> From<&mut [T]> for Vec<T> {
     /// assert_eq!(Vec::from(&mut [1, 2, 3][..]), vec![1, 2, 3]);
     /// ```
     #[cfg(not(test))]
-    fn from(s: &mut [T]) -> Vec<T> {
-        s.to_vec()
-    }
+    fn from(s: &mut [T]) -> Vec<T> {}
     #[cfg(test)]
-    fn from(s: &mut [T]) -> Vec<T> {
-        crate::slice::to_vec(s, Global)
-    }
+    fn from(s: &mut [T]) -> Vec<T> {}
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "vec_from_array", since = "1.44.0")]
 impl<T, const N: usize> From<[T; N]> for Vec<T> {
     #[cfg(not(test))]
-    fn from(s: [T; N]) -> Vec<T> {
-        <[T]>::into_vec(box s)
-    }
+    fn from(s: [T; N]) -> Vec<T> {}
     /// Allocate a `Vec<T>` and move `s`'s items into it.
     ///
     /// # Examples
@@ -39914,9 +24511,7 @@ impl<T, const N: usize> From<[T; N]> for Vec<T> {
     /// assert_eq!(Vec::from([1, 2, 3]), vec![1, 2, 3]);
     /// ```
     #[cfg(test)]
-    fn from(s: [T; N]) -> Vec<T> {
-        crate::slice::into_vec(box s)
-    }
+    fn from(s: [T; N]) -> Vec<T> {}
 }
 
 #[stable(feature = "vec_from_cow_slice", since = "1.14.0")]
@@ -39938,9 +24533,7 @@ where
     /// let b: Cow<[i32]> = Cow::Borrowed(&[1, 2, 3]);
     /// assert_eq!(Vec::from(o), Vec::from(b));
     /// ```
-    fn from(s: Cow<'a, [T]>) -> Vec<T> {
-        s.into_owned()
-    }
+    fn from(s: Cow<'a, [T]>) -> Vec<T> {}
 }
 
 // note: test pulls in libstd, which causes errors here
@@ -39956,9 +24549,7 @@ impl<T, A: Allocator> From<Box<[T], A>> for Vec<T, A> {
     /// let b: Box<[i32]> = vec![1, 2, 3].into_boxed_slice();
     /// assert_eq!(Vec::from(b), vec![1, 2, 3]);
     /// ```
-    fn from(s: Box<[T], A>) -> Self {
-        s.into_vec()
-    }
+    fn from(s: Box<[T], A>) -> Self {}
 }
 
 // note: test pulls in libstd, which causes errors here
@@ -39976,9 +24567,7 @@ impl<T, A: Allocator> From<Vec<T, A>> for Box<[T], A> {
     /// ```
     /// assert_eq!(Box::from(vec![1, 2, 3]), vec![1, 2, 3].into_boxed_slice());
     /// ```
-    fn from(v: Vec<T, A>) -> Self {
-        v.into_boxed_slice()
-    }
+    fn from(v: Vec<T, A>) -> Self {}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -39991,9 +24580,7 @@ impl From<&str> for Vec<u8> {
     /// ```
     /// assert_eq!(Vec::from("123"), vec![b'1', b'2', b'3']);
     /// ```
-    fn from(s: &str) -> Vec<u8> {
-        From::from(s.as_bytes())
-    }
+    fn from(s: &str) -> Vec<u8> {}
 }
 
 #[stable(feature = "array_try_from_vec", since = "1.48.0")]
@@ -40029,22 +24616,7 @@ impl<T, A: Allocator, const N: usize> TryFrom<Vec<T, A>> for [T; N] {
     /// assert_eq!(a, b' ');
     /// assert_eq!(b, b'd');
     /// ```
-    fn try_from(mut vec: Vec<T, A>) -> Result<[T; N], Vec<T, A>> {
-        if vec.len() != N {
-            return Err(vec);
-        }
-
-        // SAFETY: `.set_len(0)` is always sound.
-        unsafe { vec.set_len(0) };
-
-        // SAFETY: A `Vec`'s pointer is always aligned properly, and
-        // the alignment the array needs is the same as the items.
-        // We checked earlier that we have sufficient items.
-        // The items will not double-drop as the `set_len`
-        // tells the `Vec` not to also drop them.
-        let array = unsafe { ptr::read(vec.as_ptr() as *const [T; N]) };
-        Ok(array)
-    }
+    fn try_from(mut vec: Vec<T, A>) -> Result<[T; N], Vec<T, A>> {}
 }
 }
 
