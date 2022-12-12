@@ -1,7 +1,7 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{
-    entry_point, to_binary, Addr, Binary, CanonicalAddr, Deps, DepsMut, Env, MessageInfo, Response,
-    StdResult, Storage,
+    entry_point, from_binary, to_binary, Addr, Binary, CanonicalAddr, Deps, DepsMut, Env,
+    MessageInfo, Response, StdResult, Storage,
 };
 use cosmwasm_storage::{singleton, singleton_read};
 
@@ -51,7 +51,6 @@ pub fn instantiate(
         deps.storage,
         &Config { owner: deps.api.addr_canonicalize(info.sender.as_str())? },
     )?;
-
     Ok(Response::default())
 }
 
@@ -77,13 +76,15 @@ pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
 
 #[test]
 fn test_init() {
-    use crate::{instantiate, InstantiateMsg};
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
     let mut deps = mock_dependencies();
     // instantiate an empty contract
     let instantiate_msg = InstantiateMsg {};
     let info = mock_info(&String::from("anyone"), &[]);
     let res = instantiate(deps.as_mut(), mock_env(), info, instantiate_msg).unwrap();
-    println!("res {:?}", res);
     assert_eq!(0, res.messages.len());
+    let query_msg = QueryMsg::Config {};
+    let res: ConfigResponse =
+        from_binary(&query(deps.as_ref(), mock_env(), query_msg).unwrap()).unwrap();
+    assert_eq!(res.owner, "anyone");
 }
