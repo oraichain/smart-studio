@@ -10,7 +10,7 @@ OUTPUT_PATH=src/rust COSMWASM_PATH=../cosmwasm cargo run -p rust-pack
 # to build client
 # rebuild template
 yarn templates
-DIST_FOLDER=server/fiddles/dist yarn build
+DIST_FOLDER=../smart-studio-server/dist yarn build
 SERVICE_URL=http://localhost:3000 yarn start
 ```
 

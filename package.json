@@ -4,8 +4,6 @@
   "description": "Oraichain Studio helps building smart contracts written in WebAssembly over the air",
   "main": "index.js",
   "scripts": {
-    "start-server": "cd server && docker-compose up -d && docker-compose exec app yarn start:dev",
-    "build-server": "cd server/fiddles && yarn build",
     "build": "webpack --mode production --progress",
     "build-watch": "webpack --watch --mode development",
     "start": "webpack serve --mode development -d false --host 0.0.0.0 --hot",
