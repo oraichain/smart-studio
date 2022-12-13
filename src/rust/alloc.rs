@@ -230,16 +230,6 @@ macro_rules! vec {
 // NB see the slice::hack module in slice.rs for more information
 #[cfg(test)]
 macro_rules! vec {
-    () => (
-        $crate::vec::Vec::new()
-    );
-    ($elem:expr; $n:expr) => (
-        $crate::vec::from_elem($elem, $n)
-    );
-    ($($x:expr),*) => (
-        $crate::slice::into_vec(box [$($x),*])
-    );
-    ($($x:expr,)*) => (vec![$($x),*])
 }
 
 /// Creates a `String` using interpolation of runtime expressions.
@@ -564,6 +554,9 @@ extern "Rust" {
 #[rustc_allocator_nounwind]
 #[cold]
 pub fn handle_alloc_error(layout: Layout) -> ! {
+    unsafe {
+        __rust_alloc_error_handler(layout.size(), layout.align());
+    }
 }
 
 // For alloc test `std::alloc::handle_alloc_error` can be used directly.
@@ -724,7 +717,6 @@ pub mod boxed {
 //! pub extern "C" fn foo_delete(_: Option<Box<Foo>>) {}}
 #[cfg(test)]
 mod boxed {
-    pub use std::boxed::Box;
 }
 pub mod borrow {
 //! A module for working with borrowed data.
@@ -804,7 +796,8 @@ pub trait ToOwned {
     /// ```
     #[unstable(feature = "toowned_clone_into", reason = "recently added", issue = "41263")]
     fn clone_into(&self, target: &mut Self::Owned) {
-}
+        *target = self.to_owned();
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -9871,7 +9864,16 @@ pub trait RingSlices: Sized {
     fn split_at(self, i: usize) -> (Self, Self);
 
     fn ring_slices(buf: Self, head: usize, tail: usize) -> (Self, Self) {
-}
+        let contiguous = tail <= head;
+        if contiguous {
+            let (empty, buf) = buf.split_at(0);
+            (buf.slice(tail, head), empty)
+        } else {
+            let (mid, right) = buf.split_at(tail);
+            let (left, _) = mid.split_at(head);
+            (right, left)
+        }
+    }
 }
 
 impl<T> RingSlices for &[T] {
@@ -14591,7 +14593,8 @@ trait RcInnerPtr {
 
     #[inline]
     fn strong(&self) -> usize {
-}
+        self.strong_ref().get()
+    }
 
     #[inline]
     fn inc_strong(&self) {
@@ -20350,7 +20353,8 @@ pub trait Wake {
     /// [`wake`]: Wake::wake
     #[stable(feature = "wake_trait", since = "1.51.0")]
     fn wake_by_ref(self: &Arc<Self>) {
-}
+        self.clone().wake();
+    }
 }
 
 #[stable(feature = "wake_trait", since = "1.51.0")]

@@ -56,20 +56,30 @@ fn peak_until(input: &str, start: usize, start_char: &str, end_char: &str) -> us
 }
 
 fn remove_from_reg(input: &str, regex: &Regex) -> String {
+    lazy_static::lazy_static! {
+        static ref END_STATEMENT_REGEX: Regex = Regex::new(r";[\s\t]*\n").unwrap();
+    }
+
     let indices: Vec<(usize, usize)> = regex
         .find_iter(input)
-        .map(|mat| (mat.end() + 1, mat.end()))
-        .filter(|(start, end)| {
+        .filter(|mat| {
             // ignore in comment line
-            let mut look_back = start - 3;
+            let mut look_back = mat.start();
             while input.get(look_back..=look_back).unwrap_or_default() != "\n" {
                 if input.get(look_back..look_back + 3).unwrap_or_default() == "///" {
                     return false;
                 }
                 look_back -= 1;
             }
+
+            // end statement, no processing
+            if END_STATEMENT_REGEX.is_match(input.get(mat.start()..mat.end()).unwrap_or_default()) {
+                return false;
+            }
+
             return true;
         })
+        .map(|mat| (mat.end() + 1, mat.end()))
         .collect();
     remove_from_indices(input, indices)
 }
@@ -94,7 +104,7 @@ fn remove_from_indices(input: &str, indices: Vec<(usize, usize)>) -> String {
 
 fn remove_function_body(input: &str) -> String {
     lazy_static::lazy_static! {
-        static ref FN_REGEX: Regex = Regex::new(r"[^\w]+fn\s+[^{}]+\{").unwrap();
+        static ref FN_REGEX: Regex = Regex::new(r"[\r\t\n\s]+fn\s+[^{]+\{").unwrap();
     }
 
     remove_from_reg(input, &FN_REGEX)
@@ -102,7 +112,7 @@ fn remove_function_body(input: &str) -> String {
 
 fn remove_test_mod(input: &str) -> String {
     lazy_static::lazy_static! {
-        static ref TEST_MOD_REGEX: Regex = Regex::new(r"[^\w]+mod\s+test[^{}]+\{").unwrap();
+        static ref TEST_MOD_REGEX: Regex = Regex::new(r"[\r\t\n\s]+#\[cfg\(test\)\][^{]+\{").unwrap();
     }
 
     remove_from_reg(input, &TEST_MOD_REGEX)

@@ -6925,6 +6925,527 @@ pub use crate::imports::{ExternalApi, ExternalQuerier, ExternalStorage};
 // Both unit tests and integration tests are compiled to native code, so everything in here does not need to compile to Wasm.
 #[cfg(not(target_arch = "wasm32"))]
 pub mod testing {
+#![cfg(not(target_arch = "wasm32"))]
+
+// Exposed for testing only
+// Both unit tests and integration tests are compiled to native code, so everything in here does not need to compile to Wasm.
+
+mod assertions {
+use crate::{Decimal, Uint128};
+use std::str::FromStr as _;
+
+/// Asserts that two expressions are approximately equal to each other.
+///
+/// The `max_rel_diff` argument defines the maximum relative difference
+/// of the `left` and `right` values.
+///
+/// On panic, this macro will print the values of the arguments and
+/// the actual relative difference.
+///
+/// Like [`assert_eq!`], this macro has a second form, where a custom
+/// panic message can be provided.
+#[macro_export]
+macro_rules! assert_approx_eq {
+    ($left:expr, $right:expr, $max_rel_diff:expr $(,)?) => {{
+        $crate::testing::assert_approx_eq_impl($left, $right, $max_rel_diff, None);
+    }};
+    ($left:expr, $right:expr, $max_rel_diff:expr, $($args:tt)+) => {{
+        $crate::testing::assert_approx_eq_impl($left, $right, $max_rel_diff, Some(format!($($args)*)));
+    }};
+}
+
+/// Implementation for the [`cosmwasm_std::assert_approx_eq`] macro. This does not provide any
+/// stability guarantees and may change any time.
+#[track_caller]
+#[doc(hidden)]
+pub fn assert_approx_eq_impl<U: Into<Uint128>>(
+    left: U,
+    right: U,
+    max_rel_diff: &str,
+    panic_msg: Option<String>,
+) {
+}
+
+#[cfg(test)]
+mod tests {
+}
+}
+mod mock {
+use cosmwasm_crypto::Poseidon;
+use serde::de::DeserializeOwned;
+#[cfg(feature = "stargate")]
+use serde::Serialize;
+use std::collections::HashMap;
+use std::marker::PhantomData;
+
+use crate::addresses::{Addr, CanonicalAddr};
+use crate::binary::Binary;
+use crate::coin::Coin;
+use crate::deps::OwnedDeps;
+use crate::errors::{RecoverPubkeyError, StdError, StdResult, SystemError, VerificationError};
+#[cfg(feature = "stargate")]
+use crate::ibc::{
+    IbcAcknowledgement, IbcChannel, IbcChannelCloseMsg, IbcChannelConnectMsg, IbcChannelOpenMsg,
+    IbcEndpoint, IbcOrder, IbcPacket, IbcPacketAckMsg, IbcPacketReceiveMsg, IbcPacketTimeoutMsg,
+    IbcTimeoutBlock,
+};
+use crate::math::Uint128;
+#[cfg(feature = "cosmwasm_1_1")]
+use crate::query::SupplyResponse;
+use crate::query::{
+    AllBalanceResponse, BalanceResponse, BankQuery, CustomQuery, QueryRequest, WasmQuery,
+};
+#[cfg(feature = "staking")]
+use crate::query::{
+    AllDelegationsResponse, AllValidatorsResponse, BondedDenomResponse, DelegationResponse,
+    FullDelegation, StakingQuery, Validator, ValidatorResponse,
+};
+use crate::results::{ContractResult, Empty, SystemResult};
+use crate::serde::{from_slice, to_binary};
+use crate::storage::MemoryStorage;
+use crate::timestamp::Timestamp;
+use crate::traits::{Api, Querier, QuerierResult};
+use crate::types::{BlockInfo, ContractInfo, Env, MessageInfo, TransactionInfo};
+use crate::Attribute;
+
+pub const MOCK_CONTRACT_ADDR: &str = "cosmos2contract";
+
+/// Creates all external requirements that can be injected for unit tests.
+///
+/// See also [`mock_dependencies_with_balance`] and [`mock_dependencies_with_balances`]
+/// if you want to start with some initial balances.
+pub fn mock_dependencies() -> OwnedDeps<MockStorage, MockApi, MockQuerier, Empty> {
+}
+
+/// Creates all external requirements that can be injected for unit tests.
+///
+/// It sets the given balance for the contract itself, nothing else.
+pub fn mock_dependencies_with_balance(
+    contract_balance: &[Coin],
+) -> OwnedDeps<MockStorage, MockApi, MockQuerier, Empty> {
+}
+
+/// Initializes the querier along with the mock_dependencies.
+/// Sets all balances provided (you must explicitly set contract balance if desired).
+pub fn mock_dependencies_with_balances(
+    balances: &[(&str, &[Coin])],
+) -> OwnedDeps<MockStorage, MockApi, MockQuerier> {
+}
+
+// Use MemoryStorage implementation (which is valid in non-testcode)
+// We can later make simplifications here if needed
+pub type MockStorage = MemoryStorage;
+
+/// Length of canonical addresses created with this API. Contracts should not make any assumtions
+/// what this value is.
+/// The value here must be restorable with `SHUFFLES_ENCODE` + `SHUFFLES_DECODE` in-shuffles.
+const CANONICAL_LENGTH: usize = 54;
+
+const SHUFFLES_ENCODE: usize = 18;
+const SHUFFLES_DECODE: usize = 2;
+
+// MockPrecompiles zero pads all human addresses to make them fit the canonical_length
+// it trims off zeros for the reverse operation.
+// not really smart, but allows us to see a difference (and consistent length for canonical adddresses)
+#[derive(Clone)]
+pub struct MockApi {
+    /// Length of canonical addresses created with this API. Contracts should not make any assumtions
+    /// what this value is.
+    canonical_length: usize,
+    poseidon: Poseidon,
+}
+
+impl Default for MockApi {
+    fn default() -> Self {
+}
+}
+
+impl Api for MockApi {
+    fn addr_validate(&self, input: &str) -> StdResult<Addr> {
+}
+
+    fn addr_canonicalize(&self, input: &str) -> StdResult<CanonicalAddr> {
+}
+
+    fn addr_humanize(&self, canonical: &CanonicalAddr) -> StdResult<Addr> {
+}
+
+    fn secp256k1_verify(
+        &self,
+        message_hash: &[u8],
+        signature: &[u8],
+        public_key: &[u8],
+    ) -> Result<bool, VerificationError> {
+}
+
+    fn poseidon_hash(&self, inputs: &[&[u8]]) -> StdResult<Vec<u8>> {
+}
+
+    fn curve_hash(&self, input: &[u8]) -> StdResult<Vec<u8>> {
+}
+
+    fn groth16_verify(
+        &self,
+        input: &[u8],
+        proof: &[u8],
+        vk: &[u8],
+    ) -> Result<bool, VerificationError> {
+}
+
+    fn secp256k1_recover_pubkey(
+        &self,
+        message_hash: &[u8],
+        signature: &[u8],
+        recovery_param: u8,
+    ) -> Result<Vec<u8>, RecoverPubkeyError> {
+}
+
+    fn ed25519_verify(
+        &self,
+        message: &[u8],
+        signature: &[u8],
+        public_key: &[u8],
+    ) -> Result<bool, VerificationError> {
+}
+
+    fn ed25519_batch_verify(
+        &self,
+        messages: &[&[u8]],
+        signatures: &[&[u8]],
+        public_keys: &[&[u8]],
+    ) -> Result<bool, VerificationError> {
+}
+
+    fn debug(&self, message: &str) {
+}
+}
+
+/// Returns a default enviroment with height, time, chain_id, and contract address
+/// You can submit as is to most contracts, or modify height/time if you want to
+/// test for expiration.
+///
+/// This is intended for use in test code only.
+pub fn mock_env() -> Env {
+}
+
+/// Just set sender and funds for the message.
+/// This is intended for use in test code only.
+pub fn mock_info(sender: &str, funds: &[Coin]) -> MessageInfo {
+}
+
+/// Creates an IbcChannel for testing. You set a few key parameters for handshaking,
+/// If you want to set more, use this as a default and mutate other fields
+#[cfg(feature = "stargate")]
+pub fn mock_ibc_channel(my_channel_id: &str, order: IbcOrder, version: &str) -> IbcChannel {
+}
+
+/// Creates a IbcChannelOpenMsg::OpenInit for testing ibc_channel_open.
+#[cfg(feature = "stargate")]
+pub fn mock_ibc_channel_open_init(
+    my_channel_id: &str,
+    order: IbcOrder,
+    version: &str,
+) -> IbcChannelOpenMsg {
+}
+
+/// Creates a IbcChannelOpenMsg::OpenTry for testing ibc_channel_open.
+#[cfg(feature = "stargate")]
+pub fn mock_ibc_channel_open_try(
+    my_channel_id: &str,
+    order: IbcOrder,
+    version: &str,
+) -> IbcChannelOpenMsg {
+}
+
+/// Creates a IbcChannelConnectMsg::ConnectAck for testing ibc_channel_connect.
+#[cfg(feature = "stargate")]
+pub fn mock_ibc_channel_connect_ack(
+    my_channel_id: &str,
+    order: IbcOrder,
+    version: &str,
+) -> IbcChannelConnectMsg {
+}
+
+/// Creates a IbcChannelConnectMsg::ConnectConfirm for testing ibc_channel_connect.
+#[cfg(feature = "stargate")]
+pub fn mock_ibc_channel_connect_confirm(
+    my_channel_id: &str,
+    order: IbcOrder,
+    version: &str,
+) -> IbcChannelConnectMsg {
+}
+
+/// Creates a IbcChannelCloseMsg::CloseInit for testing ibc_channel_close.
+#[cfg(feature = "stargate")]
+pub fn mock_ibc_channel_close_init(
+    my_channel_id: &str,
+    order: IbcOrder,
+    version: &str,
+) -> IbcChannelCloseMsg {
+}
+
+/// Creates a IbcChannelCloseMsg::CloseConfirm for testing ibc_channel_close.
+#[cfg(feature = "stargate")]
+pub fn mock_ibc_channel_close_confirm(
+    my_channel_id: &str,
+    order: IbcOrder,
+    version: &str,
+) -> IbcChannelCloseMsg {
+}
+
+/// Creates a IbcPacketReceiveMsg for testing ibc_packet_receive. You set a few key parameters that are
+/// often parsed. If you want to set more, use this as a default and mutate other fields
+#[cfg(feature = "stargate")]
+pub fn mock_ibc_packet_recv(
+    my_channel_id: &str,
+    data: &impl Serialize,
+) -> StdResult<IbcPacketReceiveMsg> {
+}
+
+/// Creates a IbcPacket for testing ibc_packet_{ack,timeout}. You set a few key parameters that are
+/// often parsed. If you want to set more, use this as a default and mutate other fields.
+/// The difference from mock_ibc_packet_recv is if `my_channel_id` is src or dest.
+#[cfg(feature = "stargate")]
+fn mock_ibc_packet(my_channel_id: &str, data: &impl Serialize) -> StdResult<IbcPacket> {
+}
+
+/// Creates a IbcPacketAckMsg for testing ibc_packet_ack. You set a few key parameters that are
+/// often parsed. If you want to set more, use this as a default and mutate other fields.
+/// The difference from mock_ibc_packet_recv is if `my_channel_id` is src or dest.
+#[cfg(feature = "stargate")]
+pub fn mock_ibc_packet_ack(
+    my_channel_id: &str,
+    data: &impl Serialize,
+    ack: IbcAcknowledgement,
+) -> StdResult<IbcPacketAckMsg> {
+}
+
+/// Creates a IbcPacketTimeoutMsg for testing ibc_packet_timeout. You set a few key parameters that are
+/// often parsed. If you want to set more, use this as a default and mutate other fields.
+/// The difference from mock_ibc_packet_recv is if `my_channel_id` is src or dest./
+#[cfg(feature = "stargate")]
+pub fn mock_ibc_packet_timeout(
+    my_channel_id: &str,
+    data: &impl Serialize,
+) -> StdResult<IbcPacketTimeoutMsg> {
+}
+
+/// The same type as cosmwasm-std's QuerierResult, but easier to reuse in
+/// cosmwasm-vm. It might diverge from QuerierResult at some point.
+pub type MockQuerierCustomHandlerResult = SystemResult<ContractResult<Binary>>;
+
+/// MockQuerier holds an immutable table of bank balances
+/// and configurable handlers for Wasm queries and custom queries.
+pub struct MockQuerier<C: DeserializeOwned = Empty> {
+    bank: BankQuerier,
+    #[cfg(feature = "staking")]
+    staking: StakingQuerier,
+    wasm: WasmQuerier,
+    /// A handler to handle custom queries. This is set to a dummy handler that
+    /// always errors by default. Update it via `with_custom_handler`.
+    ///
+    /// Use box to avoid the need of another generic type
+    custom_handler: Box<dyn for<'a> Fn(&'a C) -> MockQuerierCustomHandlerResult>,
+}
+
+impl<C: DeserializeOwned> MockQuerier<C> {
+    pub fn new(balances: &[(&str, &[Coin])]) -> Self {
+}
+
+    // set a new balance for the given address and return the old balance
+    pub fn update_balance(
+        &mut self,
+        addr: impl Into<String>,
+        balance: Vec<Coin>,
+    ) -> Option<Vec<Coin>> {
+}
+
+    #[cfg(feature = "staking")]
+    pub fn update_staking(
+        &mut self,
+        denom: &str,
+        validators: &[crate::query::Validator],
+        delegations: &[crate::query::FullDelegation],
+    ) {
+}
+
+    pub fn update_wasm<WH: 'static>(&mut self, handler: WH)
+    where
+        WH: Fn(&WasmQuery) -> QuerierResult,
+    {
+}
+
+    pub fn with_custom_handler<CH: 'static>(mut self, handler: CH) -> Self
+    where
+        CH: Fn(&C) -> MockQuerierCustomHandlerResult,
+    {
+}
+}
+
+impl Default for MockQuerier {
+    fn default() -> Self {
+}
+}
+
+impl<C: CustomQuery + DeserializeOwned> Querier for MockQuerier<C> {
+    fn raw_query(&self, bin_request: &[u8]) -> QuerierResult {
+}
+}
+
+impl<C: CustomQuery + DeserializeOwned> MockQuerier<C> {
+    pub fn handle_query(&self, request: &QueryRequest<C>) -> QuerierResult {
+}
+}
+
+struct WasmQuerier {
+    /// A handler to handle Wasm queries. This is set to a dummy handler that
+    /// always errors by default. Update it via `with_custom_handler`.
+    ///
+    /// Use box to avoid the need of generic type.
+    handler: Box<dyn for<'a> Fn(&'a WasmQuery) -> QuerierResult>,
+}
+
+impl WasmQuerier {
+    fn new(handler: Box<dyn for<'a> Fn(&'a WasmQuery) -> QuerierResult>) -> Self {
+}
+
+    fn update_handler<WH: 'static>(&mut self, handler: WH)
+    where
+        WH: Fn(&WasmQuery) -> QuerierResult,
+    {
+}
+
+    fn query(&self, request: &WasmQuery) -> QuerierResult {
+}
+}
+
+impl Default for WasmQuerier {
+    fn default() -> Self {
+}
+}
+
+#[derive(Clone, Default)]
+pub struct BankQuerier {
+    #[allow(dead_code)]
+    /// HashMap<denom, amount>
+    supplies: HashMap<String, Uint128>,
+    /// HashMap<address, coins>
+    balances: HashMap<String, Vec<Coin>>,
+}
+
+impl BankQuerier {
+    pub fn new(balances: &[(&str, &[Coin])]) -> Self {
+}
+
+    pub fn update_balance(
+        &mut self,
+        addr: impl Into<String>,
+        balance: Vec<Coin>,
+    ) -> Option<Vec<Coin>> {
+}
+
+    fn calculate_supplies(balances: &HashMap<String, Vec<Coin>>) -> HashMap<String, Uint128> {
+}
+
+    pub fn query(&self, request: &BankQuery) -> QuerierResult {
+}
+}
+
+#[cfg(feature = "staking")]
+#[derive(Clone, Default)]
+pub struct StakingQuerier {
+    denom: String,
+    validators: Vec<Validator>,
+    delegations: Vec<FullDelegation>,
+}
+
+#[cfg(feature = "staking")]
+impl StakingQuerier {
+    pub fn new(denom: &str, validators: &[Validator], delegations: &[FullDelegation]) -> Self {
+}
+
+    pub fn query(&self, request: &StakingQuery) -> QuerierResult {
+}
+}
+
+/// Performs a perfect shuffle (in shuffle)
+///
+/// https://en.wikipedia.org/wiki/Riffle_shuffle_permutation#Perfect_shuffles
+/// https://en.wikipedia.org/wiki/In_shuffle
+///
+/// The number of shuffles required to restore the original order are listed in
+/// https://oeis.org/A002326, e.g.:
+///
+/// ```ignore
+/// 2: 2
+/// 4: 4
+/// 6: 3
+/// 8: 6
+/// 10: 10
+/// 12: 12
+/// 14: 4
+/// 16: 8
+/// 18: 18
+/// 20: 6
+/// 22: 11
+/// 24: 20
+/// 26: 18
+/// 28: 28
+/// 30: 5
+/// 32: 10
+/// 34: 12
+/// 36: 36
+/// 38: 12
+/// 40: 20
+/// 42: 14
+/// 44: 12
+/// 46: 23
+/// 48: 21
+/// 50: 8
+/// 52: 52
+/// 54: 20
+/// 56: 18
+/// 58: 58
+/// 60: 60
+/// 62: 6
+/// 64: 12
+/// 66: 66
+/// 68: 22
+/// 70: 35
+/// 72: 9
+/// 74: 20
+/// ```
+pub fn riffle_shuffle<T: Clone>(input: &[T]) -> Vec<T> {
+}
+
+pub fn digit_sum(input: &[u8]) -> usize {
+}
+
+/// Only for test code. This bypasses assertions in new, allowing us to create _*
+/// Attributes to simulate responses from the blockchain
+pub fn mock_wasmd_attr(key: impl Into<String>, value: impl Into<String>) -> Attribute {
+}
+
+#[cfg(test)]
+mod tests {
+}
+}
+
+pub use assertions::assert_approx_eq_impl;
+
+#[cfg(feature = "staking")]
+pub use mock::StakingQuerier;
+pub use mock::{
+    digit_sum, mock_dependencies, mock_dependencies_with_balance, mock_dependencies_with_balances,
+    mock_env, mock_info, mock_wasmd_attr, riffle_shuffle, BankQuerier, MockApi, MockQuerier,
+    MockQuerierCustomHandlerResult, MockStorage, MOCK_CONTRACT_ADDR,
+};
+#[cfg(feature = "stargate")]
+pub use mock::{
+    mock_ibc_channel, mock_ibc_channel_close_confirm, mock_ibc_channel_close_init,
+    mock_ibc_channel_connect_ack, mock_ibc_channel_connect_confirm, mock_ibc_channel_open_init,
+    mock_ibc_channel_open_try, mock_ibc_packet_ack, mock_ibc_packet_recv, mock_ibc_packet_timeout,
+};
 }
 
 // Re-exports

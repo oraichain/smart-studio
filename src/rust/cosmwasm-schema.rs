@@ -174,6 +174,15 @@ pub trait QueryResponses: JsonSchema {
 pub fn combine_subqueries<const N: usize, T>(
     subqueries: [BTreeMap<String, RootSchema>; N],
 ) -> BTreeMap<String, RootSchema> {
+    let sub_count = subqueries.iter().flatten().count();
+    let map: BTreeMap<_, _> = subqueries.into_iter().flatten().collect();
+    if map.len() != sub_count {
+        panic!(
+            "name collision in subqueries for {}",
+            std::any::type_name::<T>()
+        )
+    }
+    map
 }
 
 #[derive(Debug, Error, PartialEq, Eq)]
