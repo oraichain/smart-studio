@@ -25,12 +25,12 @@ export class LanguageUpdater {
 
     const state = (await createRA()) as WorldState;
 
-    try {
+    if (process.env.NODE_ENV === 'production') {
       const data = await fetch('/change.json');
       const textData = await data.text();
       const encoder = new TextEncoder();
       await state.load(encoder.encode(textData), model.getValue());
-    } catch {
+    } else {
       // fallback loading from source code
       const rustFiles = await Promise.all([
         import('../rust/std.rs'),

@@ -115,6 +115,7 @@ module.exports = (env, options) => {
       new ForkTsCheckerWebpackPlugin(),
       new webpack.EnvironmentPlugin({
         SERVICE_URL: false,
+        NODE_ENV: options.mode,
         LCD: 'https://testnet.lcd.orai.io'
       }),
       new webpack.ProvidePlugin({
