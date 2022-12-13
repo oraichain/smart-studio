@@ -279,7 +279,7 @@ fn main() {
         std::str::from_utf8(&rustc_result).expect("rustc output wasn't utf8").trim()
     );
     let cosmwasm_path = &format!("{}/packages", std::env::var("COSMWASM_PATH").unwrap());
-    let output_type = std::env::var("OUTPUT_TYPE").unwrap_or("rust".to_string());
+    let output_type = std::env::var("OUTPUT_TYPE").unwrap_or("json".to_string());
 
     // rust library
     let lib_rust_paths = [
