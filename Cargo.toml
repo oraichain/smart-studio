@@ -2,3 +2,7 @@
 members = ["crates/*"]
 
 default-members = ["crates/rust-pack"]
+
+[profile.release]
+opt-level = 3
+

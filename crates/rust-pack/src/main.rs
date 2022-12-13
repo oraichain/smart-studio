@@ -1,11 +1,13 @@
 #![allow(unused)]
+use change_json::ChangeJson;
 use core::panic;
+use regex::Regex;
+use rust_pack::extractor;
+use std::collections::HashMap;
 use std::fs;
 use std::fs::read_to_string;
 use std::path::Path;
 use std::process::Command;
-
-use regex::Regex;
 
 struct Mod<'a> {
     pub_prefix: &'a str,
@@ -257,43 +259,66 @@ fn put_module_in_string(
 
 fn main() {
     let rustc_result = Command::new("rustc")
-        .args(&["--print", "sysroot"])
+        .args(&["+nightly-2021-11-02", "--print", "sysroot"])
         .output()
         .expect("Failed to execute rustc")
         .stdout;
-    let sysroot_path = format!(
+    let sysroot_path = &format!(
         "{}/lib/rustlib/src/rust/library",
         std::str::from_utf8(&rustc_result).expect("rustc output wasn't utf8").trim()
     );
-    let cosmwasm_path = std::env::var("COSMWASM_PATH").unwrap();
+    let cosmwasm_path = &format!("{}/packages", std::env::var("COSMWASM_PATH").unwrap());
     let output_path = std::env::var("OUTPUT_PATH")
         .map(|str| str.trim_end_matches('/').to_string())
         .unwrap_or("src/rust".to_string());
 
     // rust library
     let lib_rust_paths = [
-        (sysroot_path.clone(), vec!["std", "alloc", "core"], format!("{}/", output_path)),
+        (sysroot_path, vec!["std", "alloc", "core"], ""),
         (
-            format!("{}/packages", cosmwasm_path),
+            cosmwasm_path,
             vec!["std", "derive", "schema", "schema-derive", "crypto", "storage"],
-            format!("{}/cosmwasm-", output_path),
+            "cosmwasm-",
         ),
     ];
+
+    let mut crate_map = HashMap::new();
 
     for (rust_path, packages, out_prefix) in lib_rust_paths {
         for package in packages {
             let path_string = &format!("{}/{}/src/lib.rs", rust_path, package);
             let path = Path::new(path_string);
 
-            let output_path = format!("{}{}.rs", out_prefix, package);
-
             let mut output = String::default();
             put_module_in_string(&mut output, path, 0, 4000).unwrap();
+
+            let name = format!("{}{}", out_prefix, package);
             // remove test mod
             output = remove_test_mod(&output);
             // remove function body
-            output = remove_function_body(&output);
-            fs::write(output_path, output.clone()).unwrap();
+            if package != "core" {
+                output = remove_function_body(&output);
+            }
+            fs::write(format!("{}/{}.rs", output_path, name), output.clone()).unwrap();
+            // write change json
+            crate_map.insert(name, output);
         }
     }
+
+    let change = extractor::load_change_from_files(
+        crate_map.get("std").unwrap().clone(),
+        crate_map.get("core").unwrap().clone(),
+        crate_map.get("alloc").unwrap().clone(),
+        crate_map.get("cosmwasm-derive").unwrap().clone(),
+        crate_map.get("cosmwasm-schema-derive").unwrap().clone(),
+        crate_map.get("cosmwasm-schema").unwrap().clone(),
+        crate_map.get("cosmwasm-std").unwrap().clone(),
+        crate_map.get("cosmwasm-crypto").unwrap().clone(),
+        crate_map.get("cosmwasm-storage").unwrap().clone(),
+    );
+
+    let json = ChangeJson::from(&change);
+    let text = serde_json::to_string(&json)
+        .unwrap_or_else(|err| panic!("Error while parsing ChangeJson object to string: {}", err));
+    fs::write(format!("{}/change.json", output_path), text).unwrap();
 }

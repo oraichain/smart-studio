@@ -3,14 +3,13 @@
 
 use std::sync::Arc;
 
-use cfg::CfgOptions;
 use ide::{
-    Analysis, AnalysisHost, Change, CompletionConfig, CrateGraph, CrateId, DiagnosticsConfig,
-    Edition, FileId, FilePosition, FileRange, HoverConfig, HoverDocFormat, Indel, InlayHintsConfig,
-    InlayKind, SourceRoot, TextRange, TextSize,
+    Analysis, AnalysisHost, Change, CompletionConfig, DiagnosticsConfig, FileId, FilePosition,
+    FileRange, HoverConfig, HoverDocFormat, Indel, InlayHintsConfig, InlayKind, SourceRoot,
+    TextRange, TextSize,
 };
 use ide_db::{
-    base_db::{CrateName, Dependency, Env, FileSet, VfsPath},
+    base_db::{FileSet, VfsPath},
     helpers::{
         insert_use::{ImportGranularity, InsertUseConfig, PrefixKind},
         SnippetCap,
@@ -22,8 +21,8 @@ use wasm_bindgen::prelude::*;
 mod to_proto;
 
 mod return_types;
+// use rayon::prelude::*;
 use return_types::*;
-
 pub use wasm_bindgen_rayon::init_thread_pool;
 
 #[wasm_bindgen(start)]
@@ -44,129 +43,6 @@ pub fn create_source_root(name: &str, f: FileId) -> SourceRoot {
     SourceRoot::new_library(file_set)
 }
 
-pub fn create_crate(crate_graph: &mut CrateGraph, f: FileId) -> CrateId {
-    let mut cfg = CfgOptions::default();
-    cfg.insert_atom("unix".into());
-    cfg.insert_key_value("target_arch".into(), "x86_64".into());
-    cfg.insert_key_value("target_pointer_width".into(), "64".into());
-    crate_graph.add_crate_root(
-        f,
-        Edition::Edition2018,
-        None,
-        None,
-        cfg,
-        Default::default(),
-        Env::default(),
-        Vec::new(),
-    )
-}
-
-pub fn from_single_file(
-    text: String,
-    rust_std: String,
-    rust_core: String,
-    rust_alloc: String,
-    rust_cosmwasm_derive: String,
-    rust_cosmwasm_schema_derive: String,
-    rust_cosmwasm_schema: String,
-    rust_cosmwasm_std: String,
-    rust_cosmwasm_crypto: String,
-    rust_cosmwasm_storage: String,
-) -> (AnalysisHost, FileId) {
-    let mut host = AnalysisHost::default();
-    let file_id = FileId(0);
-    let std_id = FileId(1);
-    let core_id = FileId(2);
-    let alloc_id = FileId(3);
-    let cosmwasm_derive_id = FileId(4);
-    let cosmwasm_schema_derive_id = FileId(5);
-    let cosmwasm_schema_id = FileId(6);
-    let cosmwasm_std_id = FileId(7);
-    let cosmwasm_crypto_id = FileId(8);
-    let cosmwasm_storage_id = FileId(9);
-
-    let mut file_set = FileSet::default();
-    file_set.insert(file_id, VfsPath::new_virtual_path("/contract_crate/main.rs".to_string()));
-    let source_root = SourceRoot::new_local(file_set);
-
-    let mut change = Change::new();
-    change.set_roots(vec![
-        source_root,
-        create_source_root("std", std_id),
-        create_source_root("core", core_id),
-        create_source_root("alloc", alloc_id),
-        create_source_root("cosmwasm_derive", cosmwasm_derive_id),
-        create_source_root("cosmwasm_schema_derive", cosmwasm_schema_derive_id),
-        create_source_root("cosmwasm_schema", cosmwasm_schema_id),
-        create_source_root("cosmwasm_std", cosmwasm_std_id),
-        create_source_root("cosmwasm_crypto", cosmwasm_crypto_id),
-        create_source_root("cosmwasm_storage", cosmwasm_storage_id),
-    ]);
-    let mut crate_graph = CrateGraph::default();
-    let contract_crate = create_crate(&mut crate_graph, file_id);
-    let std_crate = create_crate(&mut crate_graph, std_id);
-    let core_crate = create_crate(&mut crate_graph, core_id);
-    let alloc_crate = create_crate(&mut crate_graph, alloc_id);
-    let cosmwasm_derive_crate = create_crate(&mut crate_graph, cosmwasm_derive_id);
-    let cosmwasm_schema_derive_crate = create_crate(&mut crate_graph, cosmwasm_schema_derive_id);
-    let cosmwasm_schema_crate = create_crate(&mut crate_graph, cosmwasm_schema_id);
-    let cosmwasm_std_crate = create_crate(&mut crate_graph, cosmwasm_std_id);
-    let cosmwasm_crypto_crate = create_crate(&mut crate_graph, cosmwasm_crypto_id);
-    let cosmwasm_storage_crate = create_crate(&mut crate_graph, cosmwasm_storage_id);
-
-    let core_dep = Dependency::new(CrateName::new("core").unwrap(), core_crate);
-    let alloc_dep = Dependency::new(CrateName::new("alloc").unwrap(), alloc_crate);
-    let std_dep = Dependency::new(CrateName::new("std").unwrap(), std_crate);
-    let cosmwasm_derive_dep =
-        Dependency::new(CrateName::new("cosmwasm_derive").unwrap(), cosmwasm_derive_crate);
-    let cosmwasm_schema_derive_dep = Dependency::new(
-        CrateName::new("cosmwasm_schema_derive").unwrap(),
-        cosmwasm_schema_derive_crate,
-    );
-    let cosmwasm_schema_dep =
-        Dependency::new(CrateName::new("cosmwasm_schema").unwrap(), cosmwasm_schema_crate);
-    let cosmwasm_std_dep =
-        Dependency::new(CrateName::new("cosmwasm_std").unwrap(), cosmwasm_std_crate);
-    let cosmwasm_crypto_dep =
-        Dependency::new(CrateName::new("cosmwasm_crypto").unwrap(), cosmwasm_crypto_crate);
-    let cosmwasm_storage_dep =
-        Dependency::new(CrateName::new("cosmwasm_storage").unwrap(), cosmwasm_storage_crate);
-
-    // dependencies
-    crate_graph.add_dep(std_crate, core_dep.clone()).unwrap();
-    crate_graph.add_dep(std_crate, alloc_dep.clone()).unwrap();
-    crate_graph.add_dep(alloc_crate, core_dep.clone()).unwrap();
-    crate_graph.add_dep(cosmwasm_std_crate, core_dep.clone()).unwrap();
-    crate_graph.add_dep(cosmwasm_std_crate, cosmwasm_derive_dep.clone()).unwrap();
-    crate_graph.add_dep(cosmwasm_storage_crate, cosmwasm_std_dep.clone()).unwrap();
-    crate_graph.add_dep(cosmwasm_schema_crate, cosmwasm_schema_derive_dep.clone()).unwrap();
-
-    crate_graph.add_dep(contract_crate, core_dep).unwrap();
-    crate_graph.add_dep(contract_crate, alloc_dep).unwrap();
-    crate_graph.add_dep(contract_crate, std_dep).unwrap();
-    crate_graph.add_dep(contract_crate, cosmwasm_derive_dep).unwrap();
-    crate_graph.add_dep(contract_crate, cosmwasm_schema_derive_dep).unwrap();
-    crate_graph.add_dep(contract_crate, cosmwasm_schema_dep).unwrap();
-    crate_graph.add_dep(contract_crate, cosmwasm_std_dep).unwrap();
-    crate_graph.add_dep(contract_crate, cosmwasm_crypto_dep).unwrap();
-    crate_graph.add_dep(contract_crate, cosmwasm_storage_dep).unwrap();
-
-    change.change_file(file_id, Some(Arc::new(text)));
-    change.change_file(std_id, Some(Arc::new(rust_std)));
-    change.change_file(core_id, Some(Arc::new(rust_core)));
-    change.change_file(alloc_id, Some(Arc::new(rust_alloc)));
-    change.change_file(cosmwasm_derive_id, Some(Arc::new(rust_cosmwasm_derive)));
-    change.change_file(cosmwasm_schema_derive_id, Some(Arc::new(rust_cosmwasm_schema_derive)));
-    change.change_file(cosmwasm_schema_id, Some(Arc::new(rust_cosmwasm_schema)));
-    change.change_file(cosmwasm_std_id, Some(Arc::new(rust_cosmwasm_std)));
-    change.change_file(cosmwasm_crypto_id, Some(Arc::new(rust_cosmwasm_crypto)));
-    change.change_file(cosmwasm_storage_id, Some(Arc::new(rust_cosmwasm_storage)));
-
-    change.set_crate_graph(crate_graph);
-    host.apply_change(change);
-    (host, file_id)
-}
-
 impl WorldState {
     fn analysis(&self) -> Analysis {
         self.host.analysis()
@@ -177,19 +53,16 @@ impl WorldState {
 impl WorldState {
     #[wasm_bindgen(constructor)]
     pub fn new() -> Self {
-        let (host, file_id) = from_single_file(
-            "".to_owned(),
-            "".to_owned(),
-            "".to_owned(),
-            "".to_owned(),
-            "".to_owned(),
-            "".to_owned(),
-            "".to_owned(),
-            "".to_owned(),
-            "".to_owned(),
-            "".to_owned(),
-        );
-        Self { host, file_id }
+        Self { host: AnalysisHost::default(), file_id: FileId(0) }
+    }
+
+    pub fn load(&mut self, json: Vec<u8>, code: String) {
+        let json = String::from_utf8_lossy(&json);
+        let mut change = rust_pack::extractor::load_change_from_json(&json);
+        change.change_file(self.file_id, Some(Arc::new(code)));
+
+        // apply change
+        self.host.apply_change(change);
     }
 
     pub fn init(
@@ -205,8 +78,7 @@ impl WorldState {
         rust_cosmwasm_crypto: String,
         rust_cosmwasm_storage: String,
     ) {
-        let (host, file_id) = from_single_file(
-            code,
+        let mut change = rust_pack::extractor::load_change_from_files(
             rust_std,
             rust_core,
             rust_alloc,
@@ -217,22 +89,25 @@ impl WorldState {
             rust_cosmwasm_crypto,
             rust_cosmwasm_storage,
         );
-        self.host = host;
-        self.file_id = file_id;
+
+        change.change_file(self.file_id, Some(Arc::new(code)));
+
+        // apply change
+        self.host.apply_change(change);
     }
 
     pub fn update(&mut self, code: String) -> JsValue {
         log::warn!("update");
-        let file_id = FileId(0);
+
         let mut change = Change::new();
-        change.change_file(file_id, Some(Arc::new(code)));
+        change.change_file(self.file_id, Some(Arc::new(code)));
         self.host.apply_change(change);
 
         let line_index = self.analysis().file_line_index(self.file_id).unwrap();
 
         let highlights: Vec<_> = self
             .analysis()
-            .highlight(file_id)
+            .highlight(self.file_id)
             .unwrap()
             .into_iter()
             .map(|hl| Highlight {
@@ -245,7 +120,7 @@ impl WorldState {
 
         let diagnostics: Vec<_> = self
             .analysis()
-            .diagnostics(&config, ide::AssistResolveStrategy::All, file_id)
+            .diagnostics(&config, ide::AssistResolveStrategy::All, self.file_id)
             .unwrap()
             .into_iter()
             .map(|d| {

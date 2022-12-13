@@ -114,6 +114,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "change_json"
+version = "0.1.0"
+dependencies = [
+ "ra_ap_base_db",
+ "ra_ap_cfg",
+ "ra_ap_tt",
+ "serde",
+]
+
+[[package]]
 name = "console_error_panic_hook"
 version = "0.1.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -335,6 +345,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "itoa"
+version = "1.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4217ad341ebadf8d8e724e264f13e593e0648f5b3e94b3896a5df283be015ecc"
+
+[[package]]
 name = "js-sys"
 version = "0.3.60"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -552,6 +568,7 @@ dependencies = [
  "ra_ap_cfg",
  "ra_ap_ide",
  "ra_ap_ide_db",
+ "rust-pack",
  "serde",
  "serde-wasm-bindgen",
  "serde_repr",
@@ -1017,8 +1034,15 @@ dependencies = [
 name = "rust-pack"
 version = "0.1.0"
 dependencies = [
+ "change_json",
  "lazy_static",
+ "ra_ap_base_db",
+ "ra_ap_cfg",
+ "ra_ap_ide",
+ "ra_ap_ide_db",
+ "ra_ap_tt",
  "regex",
+ "serde_json",
 ]
 
 [[package]]
@@ -1035,6 +1059,12 @@ name = "rustc-hash"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "08d43f7aa6b08d49f382cde6a7982047c3426db949b1424bc4b7ec9ae12c6ce2"
+
+[[package]]
+name = "ryu"
+version = "1.0.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4501abdff3ae82a1c1b477a17252eb69cee9e66eb915c1abaa4f44d873df9f09"
 
 [[package]]
 name = "salsa"
@@ -1107,6 +1137,18 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "serde_json"
+version = "1.0.89"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "020ff22c755c2ed3f8cf162dbb41a7268d934702f3ed3631656ea597e08fc3db"
+dependencies = [
+ "indexmap",
+ "itoa",
+ "ryu",
+ "serde",
 ]
 
 [[package]]
