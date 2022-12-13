@@ -10873,7 +10873,15 @@ pub mod io {
 //! use std::fs::File;
 //!
 //! fn main() -> io::Result<()> {
-}
+//!     let mut f = File::open("foo.txt")?;
+//!     let mut buffer = [0; 10];
+//!
+//!     // read up to 10 bytes
+//!     let n = f.read(&mut buffer)?;
+//!
+//!     println!("The bytes: {:?}", &buffer[..n]);
+//!     Ok(())
+//! }
 //! ```
 //!
 //! [`Read`] and [`Write`] are so important, implementors of the two traits have a
@@ -10894,7 +10902,18 @@ pub mod io {
 //! use std::fs::File;
 //!
 //! fn main() -> io::Result<()> {
-}
+//!     let mut f = File::open("foo.txt")?;
+//!     let mut buffer = [0; 10];
+//!
+//!     // skip to the last 10 bytes of the file
+//!     f.seek(SeekFrom::End(-10))?;
+//!
+//!     // read up to 10 bytes
+//!     let n = f.read(&mut buffer)?;
+//!
+//!     println!("The bytes: {:?}", &buffer[..n]);
+//!     Ok(())
+//! }
 //! ```
 //!
 //! [`BufRead`] uses an internal buffer to provide a number of other ways to read, but
@@ -10918,7 +10937,16 @@ pub mod io {
 //! use std::fs::File;
 //!
 //! fn main() -> io::Result<()> {
-}
+//!     let f = File::open("foo.txt")?;
+//!     let mut reader = BufReader::new(f);
+//!     let mut buffer = String::new();
+//!
+//!     // read a line into buffer
+//!     reader.read_line(&mut buffer)?;
+//!
+//!     println!("{}", buffer);
+//!     Ok(())
+//! }
 //! ```
 //!
 //! [`BufWriter`] doesn't add any new ways of writing; it just buffers every call
@@ -10931,7 +10959,17 @@ pub mod io {
 //! use std::fs::File;
 //!
 //! fn main() -> io::Result<()> {
-}
+//!     let f = File::create("foo.txt")?;
+//!     {
+//!         let mut writer = BufWriter::new(f);
+//!
+//!         // write a byte to the buffer
+//!         writer.write(&[42])?;
+//!
+//!     } // the buffer is flushed once writer goes out of scope
+//!
+//!     Ok(())
+//! }
 //! ```
 //!
 //! ## Standard input and output
@@ -10942,7 +10980,13 @@ pub mod io {
 //! use std::io;
 //!
 //! fn main() -> io::Result<()> {
-}
+//!     let mut input = String::new();
+//!
+//!     io::stdin().read_line(&mut input)?;
+//!
+//!     println!("You typed: {}", input.trim());
+//!     Ok(())
+//! }
 //! ```
 //!
 //! Note that you cannot use the [`?` operator] in functions that do not return
@@ -10964,7 +11008,9 @@ pub mod io {
 //! use std::io::prelude::*;
 //!
 //! fn main() -> io::Result<()> {
-}
+//!     io::stdout().write(&[42])?;
+//!     Ok(())
+//! }
 //! ```
 //!
 //! Of course, using [`io::stdout`] directly is less common than something like
@@ -10983,7 +11029,14 @@ pub mod io {
 //! use std::fs::File;
 //!
 //! fn main() -> io::Result<()> {
-}
+//!     let f = File::open("foo.txt")?;
+//!     let reader = BufReader::new(f);
+//!
+//!     for line in reader.lines() {
+//!         println!("{}", line?);
+//!     }
+//!     Ok(())
+//! }
 //! ```
 //!
 //! ## Functions
@@ -10996,7 +11049,9 @@ pub mod io {
 //! use std::io;
 //!
 //! fn main() -> io::Result<()> {
-}
+//!     io::copy(&mut io::stdin(), &mut io::stdout())?;
+//!     Ok(())
+//! }
 //! ```
 //!
 //! [functions-list]: #functions-1
@@ -11012,7 +11067,14 @@ pub mod io {
 //! use std::io;
 //!
 //! fn read_input() -> io::Result<()> {
-}
+//!     let mut input = String::new();
+//!
+//!     io::stdin().read_line(&mut input)?;
+//!
+//!     println!("You typed: {}", input.trim());
+//!
+//!     Ok(())
+//! }
 //! ```
 //!
 //! The return type of `read_input()`, [`io::Result<()>`][`io::Result`], is a very
@@ -22779,7 +22841,13 @@ pub mod unix {
 //! use std::os::unix::prelude::*;
 //!
 //! fn main() -> std::io::Result<()> {
-}
+//!     let f = File::create("foo.txt")?;
+//!     let fd = f.as_raw_fd();
+//!
+//!     // use fd with native unix bindings
+//!
+//!     Ok(())
+//! }
 //! ```
 //!
 //! [`OsStr`]: crate::ffi::OsStr
@@ -28280,7 +28348,13 @@ pub mod wasi {
 //! use std::os::wasi::prelude::*;
 //!
 //! fn main() -> std::io::Result<()> {
-}
+//!     let f = File::create("foo.txt")?;
+//!     let fd = f.as_raw_fd();
+//!
+//!     // use fd with native WASI bindings
+//!
+//!     Ok(())
+//! }
 //! ```
 //!
 //! [`OsStr`]: crate::ffi::OsStr
@@ -28927,7 +29001,13 @@ pub mod windows {
 //! use std::os::windows::prelude::*;
 //!
 //! fn main() -> std::io::Result<()> {
-}
+//!     let f = File::create("foo.txt")?;
+//!     let handle = f.as_raw_handle();
+//!
+//!     // use handle with native windows bindings
+//!
+//!     Ok(())
+//! }
 //! ```
 
 #![stable(feature = "rust1", since = "1.0.0")]
@@ -39999,7 +40079,15 @@ pub mod sync {
 //! static mut C: u32 = 0;
 //!
 //! fn main() {
-}
+//!     unsafe {
+//!         A = 3;
+//!         B = 4;
+//!         A = A + B;
+//!         C = B;
+//!         println!("{} {} {}", A, B, C);
+//!         C = A;
+//!     }
+//! }
 //! ```
 //!
 //! It appears as if some variables stored in memory are changed, an addition
@@ -48413,17 +48501,22 @@ pub mod alloc {
 //!
 //! unsafe impl GlobalAlloc for MyAllocator {
 //!     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-}
+//!         System.alloc(layout)
+//!     }
 //!
 //!     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
-}
+//!         System.dealloc(ptr, layout)
+//!     }
 //! }
 //!
 //! #[global_allocator]
 //! static GLOBAL: MyAllocator = MyAllocator;
 //!
 //! fn main() {
-}
+//!     // This `Vec` will allocate memory through `GLOBAL` above
+//!     let mut v = Vec::new();
+//!     v.push(1);
+//! }
 //! ```
 //!
 //! The attribute is used on a `static` item whose type implements the
@@ -48437,7 +48530,221 @@ pub mod alloc {
 //! #[global_allocator]
 //! static GLOBAL: Jemalloc = Jemalloc;
 //!
-//! fn main() {}}
+//! fn main() {}
+//! ```
+//!
+//! The `#[global_allocator]` can only be used once in a crate
+//! or its recursive dependencies.
+
+#![deny(unsafe_op_in_unsafe_fn)]
+#![stable(feature = "alloc_module", since = "1.28.0")]
+
+use core::intrinsics;
+use core::ptr::NonNull;
+use core::sync::atomic::{AtomicPtr, Ordering};
+use core::{mem, ptr};
+
+#[stable(feature = "alloc_module", since = "1.28.0")]
+#[doc(inline)]
+pub use alloc_crate::alloc::*;
+
+/// The default memory allocator provided by the operating system.
+///
+/// This is based on `malloc` on Unix platforms and `HeapAlloc` on Windows,
+/// plus related functions.
+///
+/// This type implements the `GlobalAlloc` trait and Rust programs by default
+/// work as if they had this definition:
+///
+/// ```rust
+/// use std::alloc::System;
+///
+/// #[global_allocator]
+/// static A: System = System;
+///
+/// fn main() {
+///     let a = Box::new(4); // Allocates from the system allocator.
+///     println!("{}", a);
+/// }
+/// ```
+///
+/// You can also define your own wrapper around `System` if you'd like, such as
+/// keeping track of the number of all bytes allocated:
+///
+/// ```rust
+/// use std::alloc::{System, GlobalAlloc, Layout};
+/// use std::sync::atomic::{AtomicUsize, Ordering::SeqCst};
+///
+/// struct Counter;
+///
+/// static ALLOCATED: AtomicUsize = AtomicUsize::new(0);
+///
+/// unsafe impl GlobalAlloc for Counter {
+///     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
+///         let ret = System.alloc(layout);
+///         if !ret.is_null() {
+///             ALLOCATED.fetch_add(layout.size(), SeqCst);
+///         }
+///         return ret
+///     }
+///
+///     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
+///         System.dealloc(ptr, layout);
+///         ALLOCATED.fetch_sub(layout.size(), SeqCst);
+///     }
+/// }
+///
+/// #[global_allocator]
+/// static A: Counter = Counter;
+///
+/// fn main() {
+///     println!("allocated bytes before main: {}", ALLOCATED.load(SeqCst));
+/// }
+/// ```
+///
+/// It can also be used directly to allocate memory independently of whatever
+/// global allocator has been selected for a Rust program. For example if a Rust
+/// program opts in to using jemalloc as the global allocator, `System` will
+/// still allocate memory using `malloc` and `HeapAlloc`.
+#[stable(feature = "alloc_system_type", since = "1.28.0")]
+#[derive(Debug, Default, Copy, Clone)]
+pub struct System;
+
+impl System {
+    #[inline]
+    fn alloc_impl(&self, layout: Layout, zeroed: bool) -> Result<NonNull<[u8]>, AllocError> {
+}
+
+    // SAFETY: Same as `Allocator::grow`
+    #[inline]
+    unsafe fn grow_impl(
+        &self,
+        ptr: NonNull<u8>,
+        old_layout: Layout,
+        new_layout: Layout,
+        zeroed: bool,
+    ) -> Result<NonNull<[u8]>, AllocError> {
+}
+}
+
+// The Allocator impl checks the layout size to be non-zero and forwards to the GlobalAlloc impl,
+// which is in `std::sys::*::alloc`.
+#[unstable(feature = "allocator_api", issue = "32838")]
+unsafe impl Allocator for System {
+    #[inline]
+    fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
+}
+
+    #[inline]
+    fn allocate_zeroed(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
+}
+
+    #[inline]
+    unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
+}
+
+    #[inline]
+    unsafe fn grow(
+        &self,
+        ptr: NonNull<u8>,
+        old_layout: Layout,
+        new_layout: Layout,
+    ) -> Result<NonNull<[u8]>, AllocError> {
+}
+
+    #[inline]
+    unsafe fn grow_zeroed(
+        &self,
+        ptr: NonNull<u8>,
+        old_layout: Layout,
+        new_layout: Layout,
+    ) -> Result<NonNull<[u8]>, AllocError> {
+}
+
+    #[inline]
+    unsafe fn shrink(
+        &self,
+        ptr: NonNull<u8>,
+        old_layout: Layout,
+        new_layout: Layout,
+    ) -> Result<NonNull<[u8]>, AllocError> {
+}
+}
+
+static HOOK: AtomicPtr<()> = AtomicPtr::new(ptr::null_mut());
+
+/// Registers a custom allocation error hook, replacing any that was previously registered.
+///
+/// The allocation error hook is invoked when an infallible memory allocation fails, before
+/// the runtime aborts. The default hook prints a message to standard error,
+/// but this behavior can be customized with the [`set_alloc_error_hook`] and
+/// [`take_alloc_error_hook`] functions.
+///
+/// The hook is provided with a `Layout` struct which contains information
+/// about the allocation that failed.
+///
+/// The allocation error hook is a global resource.
+#[unstable(feature = "alloc_error_hook", issue = "51245")]
+pub fn set_alloc_error_hook(hook: fn(Layout)) {
+}
+
+/// Unregisters the current allocation error hook, returning it.
+///
+/// *See also the function [`set_alloc_error_hook`].*
+///
+/// If no custom hook is registered, the default hook will be returned.
+#[unstable(feature = "alloc_error_hook", issue = "51245")]
+pub fn take_alloc_error_hook() -> fn(Layout) {
+}
+
+fn default_alloc_error_hook(layout: Layout) {
+}
+
+#[cfg(not(test))]
+#[doc(hidden)]
+#[alloc_error_handler]
+#[unstable(feature = "alloc_internals", issue = "none")]
+pub fn rust_oom(layout: Layout) -> ! {
+}
+
+#[cfg(not(test))]
+#[doc(hidden)]
+#[allow(unused_attributes)]
+#[unstable(feature = "alloc_internals", issue = "none")]
+pub mod __default_lib_allocator {
+    use super::{GlobalAlloc, Layout, System};
+    // These magic symbol names are used as a fallback for implementing the
+    // `__rust_alloc` etc symbols (see `src/liballoc/alloc.rs`) when there is
+    // no `#[global_allocator]` attribute.
+
+    // for symbol names src/librustc_ast/expand/allocator.rs
+    // for signatures src/librustc_allocator/lib.rs
+
+    // linkage directives are provided as part of the current compiler allocator
+    // ABI
+
+    #[rustc_std_internal_symbol]
+    pub unsafe extern "C" fn __rdl_alloc(size: usize, align: usize) -> *mut u8 {
+}
+
+    #[rustc_std_internal_symbol]
+    pub unsafe extern "C" fn __rdl_dealloc(ptr: *mut u8, size: usize, align: usize) {
+}
+
+    #[rustc_std_internal_symbol]
+    pub unsafe extern "C" fn __rdl_realloc(
+        ptr: *mut u8,
+        old_size: usize,
+        align: usize,
+        new_size: usize,
+    ) -> *mut u8 {
+}
+
+    #[rustc_std_internal_symbol]
+    pub unsafe extern "C" fn __rdl_alloc_zeroed(size: usize, align: usize) -> *mut u8 {
+}
+}
+}
 
 // Private support modules
 mod panicking {
@@ -48591,6 +48898,30 @@ pub fn take_hook() -> Box<dyn Fn(&PanicInfo<'_>) + 'static + Sync + Send> {
 }
 
 fn default_hook(info: &PanicInfo<'_>) {
+}', {}", name, msg, location);
+
+        static FIRST_PANIC: AtomicBool = AtomicBool::new(true);
+
+        match backtrace_env {
+            RustBacktrace::Print(format) => drop(backtrace::print(err, format)),
+            RustBacktrace::Disabled => {}
+            RustBacktrace::RuntimeDisabled => {
+                if FIRST_PANIC.swap(false, Ordering::SeqCst) {
+                    let _ = writeln!(
+                        err,
+                        "note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace"
+                    );
+                }
+            }
+        }
+    };
+
+    if let Some(local) = set_output_capture(None) {
+        write(&mut *local.lock().unwrap_or_else(|e| e.into_inner()));
+        set_output_capture(Some(local));
+    } else if let Some(mut out) = panic_output() {
+        write(&mut out);
+    }
 }
 
 #[cfg(not(test))]
@@ -48734,7 +49065,26 @@ mod backtrace_rs {
 //!
 //! ```
 //! fn main() {
-}
+//! # // Unsafe here so test passes on no_std.
+//! # #[cfg(feature = "std")] {
+//!     backtrace::trace(|frame| {
+//!         let ip = frame.ip();
+//!         let symbol_address = frame.symbol_address();
+//!
+//!         // Resolve this instruction pointer to a symbol name
+//!         backtrace::resolve_frame(frame, |symbol| {
+//!             if let Some(name) = symbol.name() {
+//!                 // ...
+//!             }
+//!             if let Some(filename) = symbol.filename() {
+//!                 // ...
+//!             }
+//!         });
+//!
+//!         true // keep going to the next frame
+//!     });
+//! }
+//! # }
 //! ```
 //!
 //! # Backtrace accuracy

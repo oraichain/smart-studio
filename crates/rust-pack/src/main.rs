@@ -1,7 +1,7 @@
 #![allow(unused)]
 use change_json::ChangeJson;
 use core::panic;
-use regex::Regex;
+use regex::{Regex, RegexBuilder};
 use rust_pack::extractor;
 use std::collections::HashMap;
 use std::fs;
@@ -42,15 +42,19 @@ fn peak_until(input: &str, start: usize, start_char: &str, end_char: &str) -> us
     let mut end_ind = start + 1;
 
     while end_ind < input.len() {
-        let c = input.get(end_ind..=end_ind).unwrap_or_default();
-        if c.eq(start_char) {
-            matched += 1;
-        } else if c.eq(end_char) {
-            matched -= 1;
-        }
+        let prev_c = input.get(end_ind - 1..=end_ind - 1).unwrap_or_default();
+        // quote '{' or '}', just continue
+        if prev_c != "'" {
+            let c = input.get(end_ind..=end_ind).unwrap_or_default();
+            if c.eq(start_char) {
+                matched += 1;
+            } else if c.eq(end_char) {
+                matched -= 1;
+            }
 
-        if matched == 0 {
-            break;
+            if matched == 0 {
+                break;
+            }
         }
         end_ind += 1;
     }
@@ -68,7 +72,7 @@ fn remove_from_reg(input: &str, regex: &Regex) -> String {
             // ignore in comment line
             let mut look_back = mat.start();
             while input.get(look_back..=look_back).unwrap_or_default() != "\n" {
-                if input.get(look_back..look_back + 3).unwrap_or_default() == "///" {
+                if input.get(look_back..look_back + 2).unwrap_or_default() == "//" {
                     return false;
                 }
                 look_back -= 1;
@@ -81,22 +85,29 @@ fn remove_from_reg(input: &str, regex: &Regex) -> String {
 
             return true;
         })
-        .map(|mat| (mat.end() + 1, mat.end()))
+        .map(|mat| (mat.start(), mat.end()))
         .collect();
     remove_from_indices(input, indices)
 }
+
 fn remove_from_indices(input: &str, indices: Vec<(usize, usize)>) -> String {
     let mut peak_start_ind: usize = 0;
     let mut output = String::new();
-    for (start_ind, search_ind) in indices {
+    let mut count = 0;
+    for (orig_start_ind, search_ind) in indices {
+        let start_ind = search_ind + 1;
         let end_ind = peak_until(&input, search_ind, "{", "}");
+
         // sub group
         if end_ind < peak_start_ind {
             continue;
         }
         // println!("matched: {}", input.get(start_ind..end_ind).unwrap());
+
         output.push_str(input.get(peak_start_ind..start_ind).unwrap_or_default());
         peak_start_ind = end_ind;
+
+        count += 1;
     }
 
     output.push_str(input.get(peak_start_ind..input.len()).unwrap_or_default());
@@ -106,7 +117,7 @@ fn remove_from_indices(input: &str, indices: Vec<(usize, usize)>) -> String {
 
 fn remove_function_body(input: &str) -> String {
     lazy_static::lazy_static! {
-        static ref FN_REGEX: Regex = Regex::new(r"[\r\t\n\s]+fn\s+[^{]+\{").unwrap();
+        static ref FN_REGEX: Regex = RegexBuilder::new(r"[\r\t\n\s]+fn\s+[^{]+\{").case_insensitive(true).build().unwrap();
     }
 
     remove_from_reg(input, &FN_REGEX)
@@ -114,7 +125,7 @@ fn remove_function_body(input: &str) -> String {
 
 fn remove_test_mod(input: &str) -> String {
     lazy_static::lazy_static! {
-        static ref TEST_MOD_REGEX: Regex = Regex::new(r"[\r\t\n\s]+#\[cfg\(test\)\][^{]+\{").unwrap();
+        static ref TEST_MOD_REGEX: Regex = RegexBuilder::new(r"[\r\t\n\s]+#\[cfg\(test\)\][^{]+\{").case_insensitive(true).build().unwrap();
     }
 
     remove_from_reg(input, &TEST_MOD_REGEX)
@@ -268,9 +279,7 @@ fn main() {
         std::str::from_utf8(&rustc_result).expect("rustc output wasn't utf8").trim()
     );
     let cosmwasm_path = &format!("{}/packages", std::env::var("COSMWASM_PATH").unwrap());
-    let output_path = std::env::var("OUTPUT_PATH")
-        .map(|str| str.trim_end_matches('/').to_string())
-        .unwrap_or("src/rust".to_string());
+    let output_type = std::env::var("OUTPUT_TYPE").unwrap_or("rust".to_string());
 
     // rust library
     let lib_rust_paths = [
@@ -296,29 +305,42 @@ fn main() {
             // remove test mod
             output = remove_test_mod(&output);
             // remove function body
-            if package != "core" {
-                output = remove_function_body(&output);
+            output = remove_function_body(&output);
+
+            if output_type.eq("json") {
+                // write change json
+                crate_map.insert(name, output);
+            } else {
+                fs::write(format!("src/rust/{}.rs", name), output.clone()).unwrap();
             }
-            fs::write(format!("{}/{}.rs", output_path, name), output.clone()).unwrap();
-            // write change json
-            crate_map.insert(name, output);
         }
     }
 
-    let change = extractor::load_change_from_files(
-        crate_map.get("std").unwrap().clone(),
-        crate_map.get("core").unwrap().clone(),
-        crate_map.get("alloc").unwrap().clone(),
-        crate_map.get("cosmwasm-derive").unwrap().clone(),
-        crate_map.get("cosmwasm-schema-derive").unwrap().clone(),
-        crate_map.get("cosmwasm-schema").unwrap().clone(),
-        crate_map.get("cosmwasm-std").unwrap().clone(),
-        crate_map.get("cosmwasm-crypto").unwrap().clone(),
-        crate_map.get("cosmwasm-storage").unwrap().clone(),
-    );
+    if output_type.eq("json") {
+        let change = extractor::load_change_from_files(
+            crate_map.get("std").unwrap().clone(),
+            crate_map.get("core").unwrap().clone(),
+            crate_map.get("alloc").unwrap().clone(),
+            crate_map.get("cosmwasm-derive").unwrap().clone(),
+            crate_map.get("cosmwasm-schema-derive").unwrap().clone(),
+            crate_map.get("cosmwasm-schema").unwrap().clone(),
+            crate_map.get("cosmwasm-std").unwrap().clone(),
+            crate_map.get("cosmwasm-crypto").unwrap().clone(),
+            crate_map.get("cosmwasm-storage").unwrap().clone(),
+        );
 
-    let json = ChangeJson::from(&change);
-    let text = serde_json::to_string(&json)
-        .unwrap_or_else(|err| panic!("Error while parsing ChangeJson object to string: {}", err));
-    fs::write(format!("{}/change.json", output_path), text).unwrap();
+        let json = ChangeJson::from(&change);
+        let text = serde_json::to_string(&json).unwrap_or_else(|err| {
+            panic!("Error while parsing ChangeJson object to string: {}", err)
+        });
+        fs::write("change.json", text).unwrap();
+    }
 }
+
+// fn main() {
+//     let mut output =
+//         fs::read_to_string("/Users/phamtu/Projects/smart-studio/src/rust/core.rs").unwrap();
+//     output = remove_test_mod(&output);
+//     output = remove_function_body(&output);
+//     println!("{}", output);
+// }

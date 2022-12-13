@@ -3,16 +3,6 @@ import { File, FileType, languageForFileType } from '../models';
 import { WorldState } from '../../crates/ra-wasm/pkg';
 import { createRA } from './creat-ra';
 
-// import rust_std from '../rust/std.rs';
-// import rust_core from '../rust/core.rs';
-// import rust_alloc from '../rust/alloc.rs';
-// import rust_cosmwasm_derive from '../rust/cosmwasm-derive.rs';
-// import rust_cosmwasm_schema_derive from '../rust/cosmwasm-schema-derive.rs';
-// import rust_cosmwasm_schema from '../rust/cosmwasm-schema.rs';
-// import rust_cosmwasm_std from '../rust/cosmwasm-std.rs';
-// import rust_cosmwasm_crypto from '../rust/cosmwasm-crypto.rs';
-// import rust_cosmwasm_storage from '../rust/cosmwasm-storage.rs';
-
 window.MonacoEnvironment = {
   getWorkerUrl: (moduleId, label) => {
     if (label === 'json') {
@@ -35,25 +25,28 @@ export class LanguageUpdater {
 
     const state = (await createRA()) as WorldState;
 
-    const data = await fetch('/src/rust/change.json');
-    const textData = await data.text();
-    const encoder = new TextEncoder();
-    const bufferData = encoder.encode(textData);
+    try {
+      const data = await fetch('/change.json');
+      const textData = await data.text();
+      const encoder = new TextEncoder();
+      await state.load(encoder.encode(textData), model.getValue());
+    } catch {
+      // fallback loading from source code
+      const rustFiles = await Promise.all([
+        import('../rust/std.rs'),
+        import('../rust/core.rs'),
+        import('../rust/alloc.rs'),
+        import('../rust/cosmwasm-derive.rs'),
+        import('../rust/cosmwasm-schema-derive.rs'),
+        import('../rust/cosmwasm-schema.rs'),
+        import('../rust/cosmwasm-std.rs'),
+        import('../rust/cosmwasm-crypto.rs'),
+        import('../rust/cosmwasm-storage.rs')
+      ]);
 
-    await state.load(bufferData, model.getValue());
-
-    // await state.init(
-    //   model.getValue(),
-    //   rust_std,
-    //   rust_core,
-    //   rust_alloc,
-    //   rust_cosmwasm_derive,
-    //   rust_cosmwasm_schema_derive,
-    //   rust_cosmwasm_schema,
-    //   rust_cosmwasm_std,
-    //   rust_cosmwasm_crypto,
-    //   rust_cosmwasm_storage
-    // );
+      // @ts-ignore
+      await state.init(model.getValue(), ...rustFiles.map((m) => m.default));
+    }
 
     const update = async () => {
       const res = await state.update(model.getValue());

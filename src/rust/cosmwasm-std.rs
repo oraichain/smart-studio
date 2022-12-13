@@ -2441,6 +2441,7 @@ impl<'de> de::Visitor<'de> for DecimalVisitor {
         E: de::Error,
     {
 }
+    }
 }
 
 impl PartialEq<&Decimal> for Decimal {
@@ -2859,6 +2860,7 @@ impl<'de> de::Visitor<'de> for Decimal256Visitor {
         E: de::Error,
     {
 }
+    }
 }
 
 impl PartialEq<&Decimal256> for Decimal256 {
@@ -3321,6 +3323,7 @@ impl<'de> de::Visitor<'de> for Uint128Visitor {
         E: de::Error,
     {
 }
+    }
 }
 
 impl<A> std::iter::Sum<A> for Uint128
@@ -3776,7 +3779,8 @@ impl<'de> de::Visitor<'de> for Uint256Visitor {
     where
         E: de::Error,
     {
-}
+}' - {}", v, e)))
+    }
 }
 
 impl<A> std::iter::Sum<A> for Uint256
@@ -4182,7 +4186,8 @@ impl<'de> de::Visitor<'de> for Uint512Visitor {
     where
         E: de::Error,
     {
-}
+}' - {}", v, e)))
+    }
 }
 
 impl<A> std::iter::Sum<A> for Uint512
@@ -4564,6 +4569,7 @@ impl<'de> de::Visitor<'de> for Uint64Visitor {
         E: de::Error,
     {
 }
+    }
 }
 
 impl<A> std::iter::Sum<A> for Uint64

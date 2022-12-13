@@ -5,7 +5,12 @@ To build Oraichain Studio whenever a file changes run:
 ```bash
 # build rust
 wasm-pack build crates/ra-wasm --target web
-OUTPUT_PATH=src/rust COSMWASM_PATH=../cosmwasm cargo run -p rust-pack
+# default bundle to json change
+COSMWASM_PATH=../cosmwasm cargo run -p rust-pack --release
+# for hot-reload in development
+OUTPUT_TYPE=rust|json COSMWASM_PATH=../cosmwasm cargo run -p rust-pack --release
+
+
 
 # to build client
 # rebuild template

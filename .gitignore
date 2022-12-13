@@ -10,3 +10,6 @@ yarn-error.log
 server
 
 target
+
+# rust analyzer
+change.json
