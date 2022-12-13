@@ -5,6 +5,8 @@ use std::fs::read_to_string;
 use std::path::Path;
 use std::process::Command;
 
+use regex::Regex;
+
 struct Mod<'a> {
     pub_prefix: &'a str,
     explicit_path: Option<&'a str>,
@@ -33,13 +35,12 @@ fn clean_token(line: &str) -> &str {
     }
 }
 
-fn peak_until(input: &str, start: usize, start_char: &str, end_char: &str) -> (usize, usize) {
+fn peak_until(input: &str, start: usize, start_char: &str, end_char: &str) -> usize {
     let mut matched = 1;
     let mut end_ind = start + 1;
-    let mut start_ind = start;
 
     while end_ind < input.len() {
-        let c = input.get(end_ind - 1..end_ind).unwrap_or_default();
+        let c = input.get(end_ind..=end_ind).unwrap_or_default();
         if c.eq(start_char) {
             matched += 1;
         } else if c.eq(end_char) {
@@ -51,40 +52,60 @@ fn peak_until(input: &str, start: usize, start_char: &str, end_char: &str) -> (u
         }
         end_ind += 1;
     }
-    (start_ind, end_ind)
+    end_ind
 }
 
-fn remove_function_body(mut input: &str) -> String {
-    lazy_static::lazy_static! {
-        static ref FN_REGEX: regex::Regex = regex::Regex::new(r"[^\w]+fn\s*[^{}]+\{").unwrap();
-    }
-    let mut peak_start_ind: usize = 0;
-    let mut ret: Vec<(usize, usize)> = FN_REGEX
+fn remove_from_reg(input: &str, regex: &Regex) -> String {
+    let indices: Vec<(usize, usize)> = regex
         .find_iter(input)
-        .map(|mat| {
-            let (start_ind, end_ind) = peak_until(input, mat.end(), "{", "}");
-            if end_ind < peak_start_ind {
-                return (0, 0);
+        .map(|mat| (mat.end() + 1, mat.end()))
+        .filter(|(start, end)| {
+            // ignore in comment line
+            let mut look_back = start - 3;
+            while input.get(look_back..=look_back).unwrap_or_default() != "\n" {
+                if input.get(look_back..look_back + 3).unwrap_or_default() == "///" {
+                    return false;
+                }
+                look_back -= 1;
             }
-            let ret = (peak_start_ind, start_ind);
-            peak_start_ind = end_ind;
-            ret
+            return true;
         })
-        .filter(|item| item.1 > 0)
         .collect();
-
-    ret.push((peak_start_ind, input.len()));
-
+    remove_from_indices(input, indices)
+}
+fn remove_from_indices(input: &str, indices: Vec<(usize, usize)>) -> String {
+    let mut peak_start_ind: usize = 0;
     let mut output = String::new();
-    for (start, end) in ret {
-        output.push_str(input.get(start..end).unwrap_or_default());
-        // custom logic here?
-        if end < input.len() {
-            output.push_str("}");
+    for (start_ind, search_ind) in indices {
+        let end_ind = peak_until(&input, search_ind, "{", "}");
+        // sub group
+        if end_ind < peak_start_ind {
+            continue;
         }
+        // println!("matched: {}", input.get(start_ind..end_ind).unwrap());
+        output.push_str(input.get(peak_start_ind..start_ind).unwrap_or_default());
+        peak_start_ind = end_ind;
     }
+
+    output.push_str(input.get(peak_start_ind..input.len()).unwrap_or_default());
 
     output
+}
+
+fn remove_function_body(input: &str) -> String {
+    lazy_static::lazy_static! {
+        static ref FN_REGEX: Regex = Regex::new(r"[^\w]+fn\s+[^{}]+\{").unwrap();
+    }
+
+    remove_from_reg(input, &FN_REGEX)
+}
+
+fn remove_test_mod(input: &str) -> String {
+    lazy_static::lazy_static! {
+        static ref TEST_MOD_REGEX: Regex = Regex::new(r"[^\w]+mod\s+test[^{}]+\{").unwrap();
+    }
+
+    remove_from_reg(input, &TEST_MOD_REGEX)
 }
 
 fn is_external_mod<'a>(mod_state: &mut ModState<'a>, line: &'a str) -> Option<Mod<'a>> {
@@ -258,10 +279,10 @@ fn main() {
 
             let mut output = String::default();
             put_module_in_string(&mut output, path, 0, 4000).unwrap();
-            // need remove function body and test to load faster with core rust
-            if rust_path != sysroot_path || package == "alloc" {
-                output = remove_function_body(&output);
-            }
+            // remove test mod
+            output = remove_test_mod(&output);
+            // remove function body
+            output = remove_function_body(&output);
             fs::write(output_path, output.clone()).unwrap();
         }
     }

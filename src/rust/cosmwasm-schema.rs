@@ -1,15 +1,9 @@
 mod casing {
-pub fn to_snake_case(name: &str) -> String {}
+pub fn to_snake_case(name: &str) -> String {
+}
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
-    #[test]
-    fn to_snake_case_leaves_snake_case_untouched() {}
-
-    #[test]
-    fn to_snake_case_works_for_camel_case() {}
 }
 }
 mod export {
@@ -23,15 +17,18 @@ use schemars::schema::RootSchema;
 use crate::casing::to_snake_case;
 
 // Exports a schema, auto-generating filename based on the metadata title of the generated schema.
-pub fn export_schema(schema: &RootSchema, out_dir: &Path) {}
+pub fn export_schema(schema: &RootSchema, out_dir: &Path) {
+}
 
 // use this if you want to override the auto-detected name of the object.
 // very useful when creating an alias for a type-alias.
-pub fn export_schema_with_title(schema: &RootSchema, out_dir: &Path, title: &str) {}
+pub fn export_schema_with_title(schema: &RootSchema, out_dir: &Path, title: &str) {
+}
 
 /// Writes schema to file. Overwrites existing file.
 /// Panics on any error writing out the schema.
-fn write_schema(schema: &RootSchema, out_dir: &Path, title: &str) {}
+fn write_schema(schema: &RootSchema, out_dir: &Path, title: &str) {
+}
 }
 mod idl {
 //! The Cosmwasm IDL (Interface Description Language)
@@ -61,7 +58,8 @@ pub struct Api {
 }
 
 impl Api {
-    pub fn render(self) -> JsonApi {}
+    pub fn render(self) -> JsonApi {
+}
 }
 
 /// A JSON representation of a contract's API.
@@ -79,11 +77,14 @@ pub struct JsonApi {
 }
 
 impl JsonApi {
-    pub fn to_string(&self) -> Result<String, EncodeError> {}
+    pub fn to_string(&self) -> Result<String, EncodeError> {
+}
 
-    pub fn to_schema_files(&self) -> Result<Vec<(String, String)>, EncodeError> {}
+    pub fn to_schema_files(&self) -> Result<Vec<(String, String)>, EncodeError> {
+}
 
-    pub fn to_writer(&self, writer: impl std::io::Write) -> Result<(), EncodeError> {}
+    pub fn to_writer(&self, writer: impl std::io::Write) -> Result<(), EncodeError> {
+}
 }
 
 #[derive(Error, Debug)]
@@ -94,10 +95,6 @@ pub enum EncodeError {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
-    #[test]
-    fn version_is_semver() {}
 }
 }
 mod query_response {
@@ -166,7 +163,8 @@ pub use cosmwasm_schema_derive::QueryResponses;
 /// # }
 /// ```
 pub trait QueryResponses: JsonSchema {
-    fn response_schemas() -> Result<BTreeMap<String, RootSchema>, IntegrityError> {}
+    fn response_schemas() -> Result<BTreeMap<String, RootSchema>, IntegrityError> {
+}
 
     fn response_schemas_impl() -> BTreeMap<String, RootSchema>;
 }
@@ -175,7 +173,8 @@ pub trait QueryResponses: JsonSchema {
 /// Used internally in the implementation of [`QueryResponses`] when using `#[query_responses(nested)]`
 pub fn combine_subqueries<const N: usize, T>(
     subqueries: [BTreeMap<String, RootSchema>; N],
-) -> BTreeMap<String, RootSchema> {}
+) -> BTreeMap<String, RootSchema> {
+}
 
 #[derive(Debug, Error, PartialEq, Eq)]
 pub enum IntegrityError {
@@ -194,97 +193,25 @@ pub enum IntegrityError {
 
 #[cfg(test)]
 mod tests {
-    use schemars::schema_for;
-
-    use super::*;
-
-    #[derive(Debug, JsonSchema)]
-    #[serde(rename_all = "snake_case")]
-    #[allow(dead_code)]
-    pub enum GoodMsg {
-        BalanceFor { account: String },
-        AccountIdFor(String),
-        Supply {},
-        Liquidity,
-        AccountCount(),
-    }
-
-    impl QueryResponses for GoodMsg {
-        fn response_schemas_impl() -> BTreeMap<String, RootSchema> {}
-    }
-
-    #[test]
-    fn good_msg_works() {}
-
-    #[derive(Debug, JsonSchema)]
-    #[serde(rename_all = "snake_case")]
-    #[allow(dead_code)]
-    pub enum EmptyMsg {}
-
-    impl QueryResponses for EmptyMsg {
-        fn response_schemas_impl() -> BTreeMap<String, RootSchema> {}
-    }
-
-    #[test]
-    fn empty_msg_works() {}
-
-    #[derive(Debug, JsonSchema)]
-    #[serde(rename_all = "kebab-case")]
-    #[allow(dead_code)]
-    pub enum BadMsg {
-        BalanceFor { account: String },
-    }
-
-    impl QueryResponses for BadMsg {
-        fn response_schemas_impl() -> BTreeMap<String, RootSchema> {}
-    }
-
-    #[derive(Debug, JsonSchema)]
-    #[serde(rename_all = "snake_case")]
-    #[allow(dead_code)]
-    pub enum ExtMsg {
-        Extension {},
-    }
-
-    #[derive(Debug, JsonSchema)]
-    #[serde(untagged, rename_all = "snake_case")]
-    #[allow(dead_code)]
-    pub enum UntaggedMsg {
-        Good(GoodMsg),
-        Ext(ExtMsg),
-        Empty(EmptyMsg),
-    }
-
-    impl QueryResponses for UntaggedMsg {
-        fn response_schemas_impl() -> BTreeMap<String, RootSchema> {}
-    }
-
-    #[test]
-    fn untagged_msg_works() {}
 }
 }
 mod remove {
 use std::{fs, io, path};
 
-fn is_regular_file(path: &path::Path) -> Result<bool, io::Error> {}
+fn is_regular_file(path: &path::Path) -> Result<bool, io::Error> {
+}
 
-fn is_hidden(path: &path::Path) -> bool {}
+fn is_hidden(path: &path::Path) -> bool {
+}
 
-fn is_json(path: &path::Path) -> bool {}
+fn is_json(path: &path::Path) -> bool {
+}
 
-pub fn remove_schemas(schemas_dir: &path::Path) -> Result<(), io::Error> {}
+pub fn remove_schemas(schemas_dir: &path::Path) -> Result<(), io::Error> {
+}
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use std::ffi::OsStr;
-    use std::path::Path;
-
-    #[test]
-    fn is_hidden_works() {}
-
-    #[test]
-    fn is_json_works() {}
 }
 }
 mod schema_for {

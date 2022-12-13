@@ -18,13 +18,15 @@ use crate::type_helpers::{may_deserialize, must_deserialize};
 pub fn bucket<'a, T>(storage: &'a mut dyn Storage, namespace: &[u8]) -> Bucket<'a, T>
 where
     T: Serialize + DeserializeOwned,
-{}
+{
+}
 
 /// An alias of ReadonlyBucket::new for less verbose usage
 pub fn bucket_read<'a, T>(storage: &'a dyn Storage, namespace: &[u8]) -> ReadonlyBucket<'a, T>
 where
     T: Serialize + DeserializeOwned,
-{}
+{
+}
 
 pub struct Bucket<'a, T>
 where
@@ -40,21 +42,27 @@ impl<'a, T> Bucket<'a, T>
 where
     T: Serialize + DeserializeOwned,
 {
-    pub fn new(storage: &'a mut dyn Storage, namespace: &[u8]) -> Self {}
+    pub fn new(storage: &'a mut dyn Storage, namespace: &[u8]) -> Self {
+}
 
-    pub fn multilevel(storage: &'a mut dyn Storage, namespaces: &[&[u8]]) -> Self {}
+    pub fn multilevel(storage: &'a mut dyn Storage, namespaces: &[&[u8]]) -> Self {
+}
 
     /// save will serialize the model and store, returns an error on serialization issues
-    pub fn save(&mut self, key: &[u8], data: &T) -> StdResult<()> {}
+    pub fn save(&mut self, key: &[u8], data: &T) -> StdResult<()> {
+}
 
-    pub fn remove(&mut self, key: &[u8]) {}
+    pub fn remove(&mut self, key: &[u8]) {
+}
 
     /// load will return an error if no data is set at the given key, or on parse error
-    pub fn load(&self, key: &[u8]) -> StdResult<T> {}
+    pub fn load(&self, key: &[u8]) -> StdResult<T> {
+}
 
     /// may_load will parse the data stored at the key if present, returns Ok(None) if no data there.
     /// returns an error on issues parsing
-    pub fn may_load(&self, key: &[u8]) -> StdResult<Option<T>> {}
+    pub fn may_load(&self, key: &[u8]) -> StdResult<Option<T>> {
+}
 
     #[cfg(feature = "iterator")]
     pub fn range<'b>(
@@ -62,7 +70,8 @@ where
         start: Option<&[u8]>,
         end: Option<&[u8]>,
         order: Order,
-    ) -> Box<dyn Iterator<Item = StdResult<Record<T>>> + 'b> {}
+    ) -> Box<dyn Iterator<Item = StdResult<Record<T>>> + 'b> {
+}
 
     /// Loads the data, perform the specified action, and store the result
     /// in the database. This is shorthand for some common sequences, which may be useful.
@@ -72,7 +81,8 @@ where
     where
         A: FnOnce(Option<T>) -> Result<T, E>,
         E: From<StdError>,
-    {}
+    {
+}
 }
 
 pub struct ReadonlyBucket<'a, T>
@@ -89,16 +99,20 @@ impl<'a, T> ReadonlyBucket<'a, T>
 where
     T: Serialize + DeserializeOwned,
 {
-    pub fn new(storage: &'a dyn Storage, namespace: &[u8]) -> Self {}
+    pub fn new(storage: &'a dyn Storage, namespace: &[u8]) -> Self {
+}
 
-    pub fn multilevel(storage: &'a dyn Storage, namespaces: &[&[u8]]) -> Self {}
+    pub fn multilevel(storage: &'a dyn Storage, namespaces: &[&[u8]]) -> Self {
+}
 
     /// load will return an error if no data is set at the given key, or on parse error
-    pub fn load(&self, key: &[u8]) -> StdResult<T> {}
+    pub fn load(&self, key: &[u8]) -> StdResult<T> {
+}
 
     /// may_load will parse the data stored at the key if present, returns Ok(None) if no data there.
     /// returns an error on issues parsing
-    pub fn may_load(&self, key: &[u8]) -> StdResult<Option<T>> {}
+    pub fn may_load(&self, key: &[u8]) -> StdResult<Option<T>> {
+}
 
     #[cfg(feature = "iterator")]
     pub fn range<'b>(
@@ -106,52 +120,12 @@ where
         start: Option<&[u8]>,
         end: Option<&[u8]>,
         order: Order,
-    ) -> Box<dyn Iterator<Item = StdResult<Record<T>>> + 'b> {}
+    ) -> Box<dyn Iterator<Item = StdResult<Record<T>>> + 'b> {
+}
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use cosmwasm_std::testing::MockStorage;
-    use cosmwasm_std::StdError;
-    use serde::{Deserialize, Serialize};
-
-    #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
-    struct Data {
-        pub name: String,
-        pub age: i32,
-    }
-
-    #[test]
-    fn store_and_load() {}
-
-    #[test]
-    fn remove_works() {}
-
-    #[test]
-    fn readonly_works() {}
-
-    #[test]
-    fn buckets_isolated() {}
-
-    #[test]
-    fn update_success() {}
-
-    #[test]
-    fn update_can_change_variable_from_outer_scope() {}
-
-    #[test]
-    fn update_fails_on_error() {}
-
-    #[test]
-    fn update_supports_custom_error_types() {}
-
-    #[test]
-    fn update_handles_on_no_data() {}
-
-    #[test]
-    #[cfg(feature = "iterator")]
-    fn range_over_data() {}
 }
 }
 mod length_prefixed {
@@ -163,47 +137,20 @@ mod length_prefixed {
 
 /// Calculates the raw key prefix for a given namespace as documented
 /// in https://github.com/webmaster128/key-namespacing#length-prefixed-keys
-pub fn to_length_prefixed(namespace: &[u8]) -> Vec<u8> {}
+pub fn to_length_prefixed(namespace: &[u8]) -> Vec<u8> {
+}
 
 /// Calculates the raw key prefix for a given nested namespace
 /// as documented in https://github.com/webmaster128/key-namespacing#nesting
-pub fn to_length_prefixed_nested(namespaces: &[&[u8]]) -> Vec<u8> {}
+pub fn to_length_prefixed_nested(namespaces: &[&[u8]]) -> Vec<u8> {
+}
 
 /// Encodes the length of a given namespace as a 2 byte big endian encoded integer
-fn encode_length(namespace: &[u8]) -> [u8; 2] {}
+fn encode_length(namespace: &[u8]) -> [u8; 2] {
+}
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
-    #[test]
-    fn to_length_prefixed_works() {}
-
-    #[test]
-    fn to_length_prefixed_works_for_long_prefix() {}
-
-    #[test]
-    #[should_panic(expected = "only supports namespaces up to length 0xFFFF")]
-    fn to_length_prefixed_panics_for_too_long_prefix() {}
-
-    #[test]
-    fn to_length_prefixed_calculates_capacity_correctly() {}
-
-    #[test]
-    fn to_length_prefixed_nested_works() {}
-
-    #[test]
-    fn to_length_prefixed_nested_allows_many_long_namespaces() {}
-
-    #[test]
-    fn to_length_prefixed_nested_calculates_capacity_correctly() {}
-
-    #[test]
-    fn encode_length_works() {}
-
-    #[test]
-    #[should_panic(expected = "only supports namespaces up to length 0xFFFF")]
-    fn encode_length_panics_for_large_values() {}
 }
 }
 mod namespace_helpers {
@@ -215,19 +162,23 @@ pub(crate) fn get_with_prefix(
     storage: &dyn Storage,
     namespace: &[u8],
     key: &[u8],
-) -> Option<Vec<u8>> {}
+) -> Option<Vec<u8>> {
+}
 
 pub(crate) fn set_with_prefix(
     storage: &mut dyn Storage,
     namespace: &[u8],
     key: &[u8],
     value: &[u8],
-) {}
+) {
+}
 
-pub(crate) fn remove_with_prefix(storage: &mut dyn Storage, namespace: &[u8], key: &[u8]) {}
+pub(crate) fn remove_with_prefix(storage: &mut dyn Storage, namespace: &[u8], key: &[u8]) {
+}
 
 #[inline]
-fn concat(namespace: &[u8], key: &[u8]) -> Vec<u8> {}
+fn concat(namespace: &[u8], key: &[u8]) -> Vec<u8> {
+}
 
 #[cfg(feature = "iterator")]
 pub(crate) fn range_with_prefix<'a>(
@@ -236,42 +187,23 @@ pub(crate) fn range_with_prefix<'a>(
     start: Option<&[u8]>,
     end: Option<&[u8]>,
     order: Order,
-) -> Box<dyn Iterator<Item = Record> + 'a> {}
+) -> Box<dyn Iterator<Item = Record> + 'a> {
+}
 
 #[cfg(feature = "iterator")]
 #[inline]
-fn trim(namespace: &[u8], key: &[u8]) -> Vec<u8> {}
+fn trim(namespace: &[u8], key: &[u8]) -> Vec<u8> {
+}
 
 /// Returns a new vec of same length and last byte incremented by one
 /// If last bytes are 255, we handle overflow up the chain.
 /// If all bytes are 255, this returns wrong data - but that is never possible as a namespace
 #[cfg(feature = "iterator")]
-fn namespace_upper_bound(input: &[u8]) -> Vec<u8> {}
+fn namespace_upper_bound(input: &[u8]) -> Vec<u8> {
+}
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::length_prefixed::to_length_prefixed;
-    use cosmwasm_std::testing::MockStorage;
-
-    #[test]
-    fn prefix_get_set() {}
-
-    #[test]
-    #[cfg(feature = "iterator")]
-    fn range_works() {}
-
-    #[test]
-    #[cfg(feature = "iterator")]
-    fn range_with_prefix_wrapover() {}
-
-    #[test]
-    #[cfg(feature = "iterator")]
-    fn range_with_start_end_set() {}
-
-    #[test]
-    #[cfg(feature = "iterator")]
-    fn namespace_upper_bound_works() {}
 }
 }
 mod prefixed_storage {
@@ -285,13 +217,15 @@ use crate::namespace_helpers::range_with_prefix;
 use crate::namespace_helpers::{get_with_prefix, remove_with_prefix, set_with_prefix};
 
 /// An alias of PrefixedStorage::new for less verbose usage
-pub fn prefixed<'a>(storage: &'a mut dyn Storage, namespace: &[u8]) -> PrefixedStorage<'a> {}
+pub fn prefixed<'a>(storage: &'a mut dyn Storage, namespace: &[u8]) -> PrefixedStorage<'a> {
+}
 
 /// An alias of ReadonlyPrefixedStorage::new for less verbose usage
 pub fn prefixed_read<'a>(
     storage: &'a dyn Storage,
     namespace: &[u8],
-) -> ReadonlyPrefixedStorage<'a> {}
+) -> ReadonlyPrefixedStorage<'a> {
+}
 
 pub struct PrefixedStorage<'a> {
     storage: &'a mut dyn Storage,
@@ -299,19 +233,24 @@ pub struct PrefixedStorage<'a> {
 }
 
 impl<'a> PrefixedStorage<'a> {
-    pub fn new(storage: &'a mut dyn Storage, namespace: &[u8]) -> Self {}
+    pub fn new(storage: &'a mut dyn Storage, namespace: &[u8]) -> Self {
+}
 
     // Nested namespaces as documented in
     // https://github.com/webmaster128/key-namespacing#nesting
-    pub fn multilevel(storage: &'a mut dyn Storage, namespaces: &[&[u8]]) -> Self {}
+    pub fn multilevel(storage: &'a mut dyn Storage, namespaces: &[&[u8]]) -> Self {
+}
 }
 
 impl<'a> Storage for PrefixedStorage<'a> {
-    fn get(&self, key: &[u8]) -> Option<Vec<u8>> {}
+    fn get(&self, key: &[u8]) -> Option<Vec<u8>> {
+}
 
-    fn set(&mut self, key: &[u8], value: &[u8]) {}
+    fn set(&mut self, key: &[u8], value: &[u8]) {
+}
 
-    fn remove(&mut self, key: &[u8]) {}
+    fn remove(&mut self, key: &[u8]) {
+}
 
     #[cfg(feature = "iterator")]
     /// range allows iteration over a set of keys, either forwards or backwards
@@ -321,7 +260,8 @@ impl<'a> Storage for PrefixedStorage<'a> {
         start: Option<&[u8]>,
         end: Option<&[u8]>,
         order: Order,
-    ) -> Box<dyn Iterator<Item = Record> + 'b> {}
+    ) -> Box<dyn Iterator<Item = Record> + 'b> {
+}
 }
 
 pub struct ReadonlyPrefixedStorage<'a> {
@@ -330,19 +270,24 @@ pub struct ReadonlyPrefixedStorage<'a> {
 }
 
 impl<'a> ReadonlyPrefixedStorage<'a> {
-    pub fn new(storage: &'a dyn Storage, namespace: &[u8]) -> Self {}
+    pub fn new(storage: &'a dyn Storage, namespace: &[u8]) -> Self {
+}
 
     // Nested namespaces as documented in
     // https://github.com/webmaster128/key-namespacing#nesting
-    pub fn multilevel(storage: &'a dyn Storage, namespaces: &[&[u8]]) -> Self {}
+    pub fn multilevel(storage: &'a dyn Storage, namespaces: &[&[u8]]) -> Self {
+}
 }
 
 impl<'a> Storage for ReadonlyPrefixedStorage<'a> {
-    fn get(&self, key: &[u8]) -> Option<Vec<u8>> {}
+    fn get(&self, key: &[u8]) -> Option<Vec<u8>> {
+}
 
-    fn set(&mut self, _key: &[u8], _value: &[u8]) {}
+    fn set(&mut self, _key: &[u8], _value: &[u8]) {
+}
 
-    fn remove(&mut self, _key: &[u8]) {}
+    fn remove(&mut self, _key: &[u8]) {
+}
 
     #[cfg(feature = "iterator")]
     /// range allows iteration over a set of keys, either forwards or backwards
@@ -351,25 +296,12 @@ impl<'a> Storage for ReadonlyPrefixedStorage<'a> {
         start: Option<&[u8]>,
         end: Option<&[u8]>,
         order: Order,
-    ) -> Box<dyn Iterator<Item = Record> + 'b> {}
+    ) -> Box<dyn Iterator<Item = Record> + 'b> {
+}
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use cosmwasm_std::testing::MockStorage;
-
-    #[test]
-    fn prefixed_storage_set_and_get() {}
-
-    #[test]
-    fn prefixed_storage_multilevel_set_and_get() {}
-
-    #[test]
-    fn readonly_prefixed_storage_get() {}
-
-    #[test]
-    fn readonly_prefixed_storage_multilevel_get() {}
 }
 }
 mod sequence {
@@ -378,29 +310,21 @@ use cosmwasm_std::{StdResult, Storage};
 use crate::Singleton;
 
 /// Sequence creates a custom Singleton to hold an empty sequence
-pub fn sequence<'a>(storage: &'a mut dyn Storage, key: &[u8]) -> Singleton<'a, u64> {}
+pub fn sequence<'a>(storage: &'a mut dyn Storage, key: &[u8]) -> Singleton<'a, u64> {
+}
 
 /// currval returns the last value returned by nextval. If the sequence has never been used,
 /// then it will return 0.
-pub fn currval(seq: &Singleton<u64>) -> StdResult<u64> {}
+pub fn currval(seq: &Singleton<u64>) -> StdResult<u64> {
+}
 
 /// nextval increments the counter by 1 and returns the new value.
 /// On the first time it is called (no sequence info in db) it will return 1.
-pub fn nextval(seq: &mut Singleton<u64>) -> StdResult<u64> {}
+pub fn nextval(seq: &mut Singleton<u64>) -> StdResult<u64> {
+}
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use cosmwasm_std::testing::MockStorage;
-
-    #[test]
-    fn walk_through_sequence() {}
-
-    #[test]
-    fn sequences_independent() {}
-
-    #[test]
-    fn set_sequence() {}
 }
 }
 mod singleton {
@@ -416,13 +340,15 @@ use crate::type_helpers::{may_deserialize, must_deserialize};
 pub fn singleton<'a, T>(storage: &'a mut dyn Storage, key: &[u8]) -> Singleton<'a, T>
 where
     T: Serialize + DeserializeOwned,
-{}
+{
+}
 
 /// An alias of ReadonlySingleton::new for less verbose usage
 pub fn singleton_read<'a, T>(storage: &'a dyn Storage, key: &[u8]) -> ReadonlySingleton<'a, T>
 where
     T: Serialize + DeserializeOwned,
-{}
+{
+}
 
 /// Singleton effectively combines PrefixedStorage with TypedStorage to
 /// work on a single storage key. It performs the to_length_prefixed transformation
@@ -442,19 +368,24 @@ impl<'a, T> Singleton<'a, T>
 where
     T: Serialize + DeserializeOwned,
 {
-    pub fn new(storage: &'a mut dyn Storage, key: &[u8]) -> Self {}
+    pub fn new(storage: &'a mut dyn Storage, key: &[u8]) -> Self {
+}
 
     /// save will serialize the model and store, returns an error on serialization issues
-    pub fn save(&mut self, data: &T) -> StdResult<()> {}
+    pub fn save(&mut self, data: &T) -> StdResult<()> {
+}
 
-    pub fn remove(&mut self) {}
+    pub fn remove(&mut self) {
+}
 
     /// load will return an error if no data is set at the given key, or on parse error
-    pub fn load(&self) -> StdResult<T> {}
+    pub fn load(&self) -> StdResult<T> {
+}
 
     /// may_load will parse the data stored at the key if present, returns Ok(None) if no data there.
     /// returns an error on issues parsing
-    pub fn may_load(&self) -> StdResult<Option<T>> {}
+    pub fn may_load(&self) -> StdResult<Option<T>> {
+}
 
     /// update will load the data, perform the specified action, and store the result
     /// in the database. This is shorthand for some common sequences, which may be useful
@@ -464,7 +395,8 @@ where
     where
         A: FnOnce(T) -> Result<T, E>,
         E: From<StdError>,
-    {}
+    {
+}
 }
 
 /// ReadonlySingleton only requires a Storage and exposes only the
@@ -483,50 +415,21 @@ impl<'a, T> ReadonlySingleton<'a, T>
 where
     T: Serialize + DeserializeOwned,
 {
-    pub fn new(storage: &'a dyn Storage, key: &[u8]) -> Self {}
+    pub fn new(storage: &'a dyn Storage, key: &[u8]) -> Self {
+}
 
     /// load will return an error if no data is set at the given key, or on parse error
-    pub fn load(&self) -> StdResult<T> {}
+    pub fn load(&self) -> StdResult<T> {
+}
 
     /// may_load will parse the data stored at the key if present, returns Ok(None) if no data there.
     /// returns an error on issues parsing
-    pub fn may_load(&self) -> StdResult<Option<T>> {}
+    pub fn may_load(&self) -> StdResult<Option<T>> {
+}
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use cosmwasm_std::testing::MockStorage;
-    use serde::{Deserialize, Serialize};
-
-    use cosmwasm_std::{OverflowError, OverflowOperation, StdError};
-
-    #[derive(Serialize, Deserialize, PartialEq, Debug)]
-    struct Config {
-        pub owner: String,
-        pub max_tokens: i32,
-    }
-
-    #[test]
-    fn save_and_load() {}
-
-    #[test]
-    fn remove_works() {}
-
-    #[test]
-    fn isolated_reads() {}
-
-    #[test]
-    fn update_success() {}
-
-    #[test]
-    fn update_can_change_variable_from_outer_scope() {}
-
-    #[test]
-    fn update_does_not_change_data_on_error() {}
-
-    #[test]
-    fn update_supports_custom_errors() {}
 }
 }
 mod type_helpers {
@@ -543,37 +446,19 @@ use cosmwasm_std::{from_slice, StdError, StdResult};
 /// and value.map(|s| s.as_slice()) seems trickier than &value
 pub(crate) fn may_deserialize<T: DeserializeOwned>(
     value: &Option<Vec<u8>>,
-) -> StdResult<Option<T>> {}
+) -> StdResult<Option<T>> {
+}
 
 /// must_deserialize parses json bytes from storage (Option), returning NotFound error if no data present
-pub(crate) fn must_deserialize<T: DeserializeOwned>(value: &Option<Vec<u8>>) -> StdResult<T> {}
+pub(crate) fn must_deserialize<T: DeserializeOwned>(value: &Option<Vec<u8>>) -> StdResult<T> {
+}
 
 #[cfg(feature = "iterator")]
-pub(crate) fn deserialize_kv<T: DeserializeOwned>(kv: Record<Vec<u8>>) -> StdResult<Record<T>> {}
+pub(crate) fn deserialize_kv<T: DeserializeOwned>(kv: Record<Vec<u8>>) -> StdResult<Record<T>> {
+}
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use cosmwasm_std::{to_vec, StdError};
-    use serde::{Deserialize, Serialize};
-
-    #[derive(Serialize, Deserialize, PartialEq, Debug)]
-    struct Person {
-        pub name: String,
-        pub age: i32,
-    }
-
-    #[test]
-    fn may_deserialize_handles_some() {}
-
-    #[test]
-    fn may_deserialize_handles_none() {}
-
-    #[test]
-    fn must_deserialize_handles_some() {}
-
-    #[test]
-    fn must_deserialize_handles_none() {}
 }
 }
 

@@ -171,7 +171,132 @@ extern crate test;
 
 // Module with internal macros used by other modules (needs to be included before other modules).
 #[macro_use]
-mod macros {}
+mod macros {
+/// Creates a [`Vec`] containing the arguments.
+///
+/// `vec!` allows `Vec`s to be defined with the same syntax as array expressions.
+/// There are two forms of this macro:
+///
+/// - Create a [`Vec`] containing a given list of elements:
+///
+/// ```
+/// let v = vec![1, 2, 3];
+/// assert_eq!(v[0], 1);
+/// assert_eq!(v[1], 2);
+/// assert_eq!(v[2], 3);
+/// ```
+///
+/// - Create a [`Vec`] from a given element and size:
+///
+/// ```
+/// let v = vec![1; 3];
+/// assert_eq!(v, [1, 1, 1]);
+/// ```
+///
+/// Note that unlike array expressions this syntax supports all elements
+/// which implement [`Clone`] and the number of elements doesn't have to be
+/// a constant.
+///
+/// This will use `clone` to duplicate an expression, so one should be careful
+/// using this with types having a nonstandard `Clone` implementation. For
+/// example, `vec![Rc::new(1); 5]` will create a vector of five references
+/// to the same boxed integer value, not five references pointing to independently
+/// boxed integers.
+///
+/// Also, note that `vec![expr; 0]` is allowed, and produces an empty vector.
+/// This will still evaluate `expr`, however, and immediately drop the resulting value, so
+/// be mindful of side effects.
+///
+/// [`Vec`]: crate::vec::Vec
+#[cfg(not(test))]
+#[macro_export]
+#[stable(feature = "rust1", since = "1.0.0")]
+#[allow_internal_unstable(box_syntax, liballoc_internals)]
+macro_rules! vec {
+    () => (
+        $crate::__rust_force_expr!($crate::vec::Vec::new())
+    );
+    ($elem:expr; $n:expr) => (
+        $crate::__rust_force_expr!($crate::vec::from_elem($elem, $n))
+    );
+    ($($x:expr),+ $(,)?) => (
+        $crate::__rust_force_expr!(<[_]>::into_vec(box [$($x),+]))
+    );
+}
+
+// HACK(japaric): with cfg(test) the inherent `[T]::into_vec` method, which is
+// required for this macro definition, is not available. Instead use the
+// `slice::into_vec`  function which is only available with cfg(test)
+// NB see the slice::hack module in slice.rs for more information
+#[cfg(test)]
+macro_rules! vec {
+    () => (
+        $crate::vec::Vec::new()
+    );
+    ($elem:expr; $n:expr) => (
+        $crate::vec::from_elem($elem, $n)
+    );
+    ($($x:expr),*) => (
+        $crate::slice::into_vec(box [$($x),*])
+    );
+    ($($x:expr,)*) => (vec![$($x),*])
+}
+
+/// Creates a `String` using interpolation of runtime expressions.
+///
+/// The first argument `format!` receives is a format string. This must be a string
+/// literal. The power of the formatting string is in the `{}`s contained.
+///
+/// Additional parameters passed to `format!` replace the `{}`s within the
+/// formatting string in the order given unless named or positional parameters
+/// are used; see [`std::fmt`] for more information.
+///
+/// A common use for `format!` is concatenation and interpolation of strings.
+/// The same convention is used with [`print!`] and [`write!`] macros,
+/// depending on the intended destination of the string.
+///
+/// To convert a single value to a string, use the [`to_string`] method. This
+/// will use the [`Display`] formatting trait.
+///
+/// [`std::fmt`]: ../std/fmt/index.html
+/// [`print!`]: ../std/macro.print.html
+/// [`write!`]: core::write
+/// [`to_string`]: crate::string::ToString
+/// [`Display`]: core::fmt::Display
+///
+/// # Panics
+///
+/// `format!` panics if a formatting trait implementation returns an error.
+/// This indicates an incorrect implementation
+/// since `fmt::Write for String` never returns an error itself.
+///
+/// # Examples
+///
+/// ```
+/// format!("test");
+/// format!("hello {}", "world!");
+/// format!("x = {}, y = {y}", 10, y = 30);
+/// ```
+#[macro_export]
+#[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "format_macro")]
+macro_rules! format {
+    ($($arg:tt)*) => {{
+        let res = $crate::fmt::format($crate::__export::format_args!($($arg)*));
+        res
+    }}
+}
+
+/// Force AST node to an expression to improve diagnostics in pattern position.
+#[doc(hidden)]
+#[macro_export]
+#[unstable(feature = "liballoc_internals", issue = "none", reason = "implementation detail")]
+macro_rules! __rust_force_expr {
+    ($e:expr) => {
+        $e
+    };
+}
+}
 
 // Heaps provided for low-level allocation strategies
 
@@ -194,18 +319,6 @@ pub use core::alloc::*;
 
 #[cfg(test)]
 mod tests {
-use super::*;
-
-extern crate test;
-use crate::boxed::Box;
-use test::Bencher;
-
-#[test]
-fn allocate_zeroed() {}
-
-#[bench]
-#[cfg_attr(miri, ignore)] // isolated Miri does not support benchmarks
-fn alloc_owned_small(b: &mut Bencher) {}
 }
 
 extern "Rust" {
@@ -274,7 +387,8 @@ pub use std::alloc::Global;
 #[stable(feature = "global_alloc", since = "1.28.0")]
 #[must_use = "losing the pointer will leak memory"]
 #[inline]
-pub unsafe fn alloc(layout: Layout) -> *mut u8 {}
+pub unsafe fn alloc(layout: Layout) -> *mut u8 {
+}
 
 /// Deallocate memory with the global allocator.
 ///
@@ -290,7 +404,8 @@ pub unsafe fn alloc(layout: Layout) -> *mut u8 {}
 /// See [`GlobalAlloc::dealloc`].
 #[stable(feature = "global_alloc", since = "1.28.0")]
 #[inline]
-pub unsafe fn dealloc(ptr: *mut u8, layout: Layout) {}
+pub unsafe fn dealloc(ptr: *mut u8, layout: Layout) {
+}
 
 /// Reallocate memory with the global allocator.
 ///
@@ -307,7 +422,8 @@ pub unsafe fn dealloc(ptr: *mut u8, layout: Layout) {}
 #[stable(feature = "global_alloc", since = "1.28.0")]
 #[must_use = "losing the pointer will leak memory"]
 #[inline]
-pub unsafe fn realloc(ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {}
+pub unsafe fn realloc(ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
+}
 
 /// Allocate zero-initialized memory with the global allocator.
 ///
@@ -339,12 +455,14 @@ pub unsafe fn realloc(ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 
 #[stable(feature = "global_alloc", since = "1.28.0")]
 #[must_use = "losing the pointer will leak memory"]
 #[inline]
-pub unsafe fn alloc_zeroed(layout: Layout) -> *mut u8 {}
+pub unsafe fn alloc_zeroed(layout: Layout) -> *mut u8 {
+}
 
 #[cfg(not(test))]
 impl Global {
     #[inline]
-    fn alloc_impl(&self, layout: Layout, zeroed: bool) -> Result<NonNull<[u8]>, AllocError> {}
+    fn alloc_impl(&self, layout: Layout, zeroed: bool) -> Result<NonNull<[u8]>, AllocError> {
+}
 
     // SAFETY: Same as `Allocator::grow`
     #[inline]
@@ -354,20 +472,24 @@ impl Global {
         old_layout: Layout,
         new_layout: Layout,
         zeroed: bool,
-    ) -> Result<NonNull<[u8]>, AllocError> {}
+    ) -> Result<NonNull<[u8]>, AllocError> {
+}
 }
 
 #[unstable(feature = "allocator_api", issue = "32838")]
 #[cfg(not(test))]
 unsafe impl Allocator for Global {
     #[inline]
-    fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {}
+    fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
+}
 
     #[inline]
-    fn allocate_zeroed(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {}
+    fn allocate_zeroed(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
+}
 
     #[inline]
-    unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {}
+    unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
+}
 
     #[inline]
     unsafe fn grow(
@@ -375,7 +497,8 @@ unsafe impl Allocator for Global {
         ptr: NonNull<u8>,
         old_layout: Layout,
         new_layout: Layout,
-    ) -> Result<NonNull<[u8]>, AllocError> {}
+    ) -> Result<NonNull<[u8]>, AllocError> {
+}
 
     #[inline]
     unsafe fn grow_zeroed(
@@ -383,7 +506,8 @@ unsafe impl Allocator for Global {
         ptr: NonNull<u8>,
         old_layout: Layout,
         new_layout: Layout,
-    ) -> Result<NonNull<[u8]>, AllocError> {}
+    ) -> Result<NonNull<[u8]>, AllocError> {
+}
 
     #[inline]
     unsafe fn shrink(
@@ -391,14 +515,16 @@ unsafe impl Allocator for Global {
         ptr: NonNull<u8>,
         old_layout: Layout,
         new_layout: Layout,
-    ) -> Result<NonNull<[u8]>, AllocError> {}
+    ) -> Result<NonNull<[u8]>, AllocError> {
+}
 }
 
 /// The allocator for unique pointers.
 #[cfg(all(not(no_global_oom_handling), not(test)))]
 #[lang = "exchange_malloc"]
 #[inline]
-unsafe fn exchange_malloc(size: usize, align: usize) -> *mut u8 {}
+unsafe fn exchange_malloc(size: usize, align: usize) -> *mut u8 {
+}
 
 #[cfg_attr(not(test), lang = "box_free")]
 #[inline]
@@ -407,7 +533,8 @@ unsafe fn exchange_malloc(size: usize, align: usize) -> *mut u8 {}
 // well.
 // For example if `Box` is changed to  `struct Box<T: ?Sized, A: Allocator>(Unique<T>, A)`,
 // this function has to be changed to `fn box_free<T: ?Sized, A: Allocator>(Unique<T>, A)` as well.
-pub(crate) unsafe fn box_free<T: ?Sized, A: Allocator>(ptr: Unique<T>, alloc: A) {}
+pub(crate) unsafe fn box_free<T: ?Sized, A: Allocator>(ptr: Unique<T>, alloc: A) {
+}
 
 // # Allocation error handler
 
@@ -436,7 +563,8 @@ extern "Rust" {
 #[cfg(all(not(no_global_oom_handling), not(test)))]
 #[rustc_allocator_nounwind]
 #[cold]
-pub fn handle_alloc_error(layout: Layout) -> ! {}
+pub fn handle_alloc_error(layout: Layout) -> ! {
+}
 
 // For alloc test `std::alloc::handle_alloc_error` can be used directly.
 #[cfg(all(not(no_global_oom_handling), test))]
@@ -453,11 +581,13 @@ pub mod __alloc_error_handler {
 
     // if there is no `#[alloc_error_handler]`
     #[rustc_std_internal_symbol]
-    pub unsafe extern "C" fn __rdl_oom(size: usize, _align: usize) -> ! {}
+    pub unsafe extern "C" fn __rdl_oom(size: usize, _align: usize) -> ! {
+}
 
     // if there is an `#[alloc_error_handler]`
     #[rustc_std_internal_symbol]
-    pub unsafe extern "C" fn __rg_oom(size: usize, align: usize) -> ! {}
+    pub unsafe extern "C" fn __rg_oom(size: usize, align: usize) -> ! {
+}
 }
 
 /// Specialize clones into pre-allocated, uninitialized memory.
@@ -468,12 +598,14 @@ pub(crate) trait WriteCloneIntoRaw: Sized {
 
 impl<T: Clone> WriteCloneIntoRaw for T {
     #[inline]
-    default unsafe fn write_clone_into_raw(&self, target: *mut Self) {}
+    default unsafe fn write_clone_into_raw(&self, target: *mut Self) {
+}
 }
 
 impl<T: Copy> WriteCloneIntoRaw for T {
     #[inline]
-    unsafe fn write_clone_into_raw(&self, target: *mut Self) {}
+    unsafe fn write_clone_into_raw(&self, target: *mut Self) {
+}
 }
 }
 
@@ -585,1417 +717,11 @@ pub mod boxed {
 //! pub struct Foo;
 //!
 //! #[no_mangle]
-//! pub extern "C" fn foo_new() -> Box<Foo> {}
+//! pub extern "C" fn foo_new() -> Box<Foo> {
+}
 //!
 //! #[no_mangle]
-//! pub extern "C" fn foo_delete(_: Option<Box<Foo>>) {}
-//! ```
-//!
-//! Even though `Box<T>` has the same representation and C ABI as a C pointer,
-//! this does not mean that you can convert an arbitrary `T*` into a `Box<T>`
-//! and expect things to work. `Box<T>` values will always be fully aligned,
-//! non-null pointers. Moreover, the destructor for `Box<T>` will attempt to
-//! free the value with the global allocator. In general, the best practice
-//! is to only use `Box<T>` for pointers that originated from the global
-//! allocator.
-//!
-//! **Important.** At least at present, you should avoid using
-//! `Box<T>` types for functions that are defined in C but invoked
-//! from Rust. In those cases, you should directly mirror the C types
-//! as closely as possible. Using types like `Box<T>` where the C
-//! definition is just using `T*` can lead to undefined behavior, as
-//! described in [rust-lang/unsafe-code-guidelines#198][ucg#198].
-//!
-//! [ucg#198]: https://github.com/rust-lang/unsafe-code-guidelines/issues/198
-//! [dereferencing]: core::ops::Deref
-//! [`Box::<T>::from_raw(value)`]: Box::from_raw
-//! [`Global`]: crate::alloc::Global
-//! [`Layout`]: crate::alloc::Layout
-//! [`Layout::for_value(&*value)`]: crate::alloc::Layout::for_value
-//! [valid]: ptr#safety
-
-#![stable(feature = "rust1", since = "1.0.0")]
-
-use core::any::Any;
-use core::borrow;
-use core::cmp::Ordering;
-use core::convert::{From, TryFrom};
-use core::fmt;
-use core::future::Future;
-use core::hash::{Hash, Hasher};
-#[cfg(not(no_global_oom_handling))]
-use core::iter::FromIterator;
-use core::iter::{FusedIterator, Iterator};
-use core::marker::{Unpin, Unsize};
-use core::mem;
-use core::ops::{
-    CoerceUnsized, Deref, DerefMut, DispatchFromDyn, Generator, GeneratorState, Receiver,
-};
-use core::pin::Pin;
-use core::ptr::{self, Unique};
-use core::stream::Stream;
-use core::task::{Context, Poll};
-
-#[cfg(not(no_global_oom_handling))]
-use crate::alloc::{handle_alloc_error, WriteCloneIntoRaw};
-use crate::alloc::{AllocError, Allocator, Global, Layout};
-#[cfg(not(no_global_oom_handling))]
-use crate::borrow::Cow;
-use crate::raw_vec::RawVec;
-#[cfg(not(no_global_oom_handling))]
-use crate::str::from_boxed_utf8_unchecked;
-#[cfg(not(no_global_oom_handling))]
-use crate::vec::Vec;
-
-/// A pointer type for heap allocation.
-///
-/// See the [module-level documentation](../../std/boxed/index.html) for more.
-#[lang = "owned_box"]
-#[fundamental]
-#[stable(feature = "rust1", since = "1.0.0")]
-pub struct Box<
-    T: ?Sized,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
->(Unique<T>, A);
-
-impl<T> Box<T> {
-    /// Allocates memory on the heap and then places `x` into it.
-    ///
-    /// This doesn't actually allocate if `T` is zero-sized.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let five = Box::new(5);
-    /// ```
-    #[cfg(not(no_global_oom_handling))]
-    #[inline(always)]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[must_use]
-    pub fn new(x: T) -> Self {}
-
-    /// Constructs a new box with uninitialized contents.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(new_uninit)]
-    ///
-    /// let mut five = Box::<u32>::new_uninit();
-    ///
-    /// let five = unsafe {
-    ///     // Deferred initialization:
-    ///     five.as_mut_ptr().write(5);
-    ///
-    ///     five.assume_init()
-    /// };
-    ///
-    /// assert_eq!(*five, 5)
-    /// ```
-    #[cfg(not(no_global_oom_handling))]
-    #[unstable(feature = "new_uninit", issue = "63291")]
-    #[must_use]
-    #[inline]
-    pub fn new_uninit() -> Box<mem::MaybeUninit<T>> {}
-
-    /// Constructs a new `Box` with uninitialized contents, with the memory
-    /// being filled with `0` bytes.
-    ///
-    /// See [`MaybeUninit::zeroed`][zeroed] for examples of correct and incorrect usage
-    /// of this method.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(new_uninit)]
-    ///
-    /// let zero = Box::<u32>::new_zeroed();
-    /// let zero = unsafe { zero.assume_init() };
-    ///
-    /// assert_eq!(*zero, 0)
-    /// ```
-    ///
-    /// [zeroed]: mem::MaybeUninit::zeroed
-    #[cfg(not(no_global_oom_handling))]
-    #[inline]
-    #[unstable(feature = "new_uninit", issue = "63291")]
-    #[must_use]
-    pub fn new_zeroed() -> Box<mem::MaybeUninit<T>> {}
-
-    /// Constructs a new `Pin<Box<T>>`. If `T` does not implement `Unpin`, then
-    /// `x` will be pinned in memory and unable to be moved.
-    #[cfg(not(no_global_oom_handling))]
-    #[stable(feature = "pin", since = "1.33.0")]
-    #[must_use]
-    #[inline(always)]
-    pub fn pin(x: T) -> Pin<Box<T>> {}
-
-    /// Allocates memory on the heap then places `x` into it,
-    /// returning an error if the allocation fails
-    ///
-    /// This doesn't actually allocate if `T` is zero-sized.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(allocator_api)]
-    ///
-    /// let five = Box::try_new(5)?;
-    /// # Ok::<(), std::alloc::AllocError>(())
-    /// ```
-    #[unstable(feature = "allocator_api", issue = "32838")]
-    #[inline]
-    pub fn try_new(x: T) -> Result<Self, AllocError> {}
-
-    /// Constructs a new box with uninitialized contents on the heap,
-    /// returning an error if the allocation fails
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(allocator_api, new_uninit)]
-    ///
-    /// let mut five = Box::<u32>::try_new_uninit()?;
-    ///
-    /// let five = unsafe {
-    ///     // Deferred initialization:
-    ///     five.as_mut_ptr().write(5);
-    ///
-    ///     five.assume_init()
-    /// };
-    ///
-    /// assert_eq!(*five, 5);
-    /// # Ok::<(), std::alloc::AllocError>(())
-    /// ```
-    #[unstable(feature = "allocator_api", issue = "32838")]
-    // #[unstable(feature = "new_uninit", issue = "63291")]
-    #[inline]
-    pub fn try_new_uninit() -> Result<Box<mem::MaybeUninit<T>>, AllocError> {}
-
-    /// Constructs a new `Box` with uninitialized contents, with the memory
-    /// being filled with `0` bytes on the heap
-    ///
-    /// See [`MaybeUninit::zeroed`][zeroed] for examples of correct and incorrect usage
-    /// of this method.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(allocator_api, new_uninit)]
-    ///
-    /// let zero = Box::<u32>::try_new_zeroed()?;
-    /// let zero = unsafe { zero.assume_init() };
-    ///
-    /// assert_eq!(*zero, 0);
-    /// # Ok::<(), std::alloc::AllocError>(())
-    /// ```
-    ///
-    /// [zeroed]: mem::MaybeUninit::zeroed
-    #[unstable(feature = "allocator_api", issue = "32838")]
-    // #[unstable(feature = "new_uninit", issue = "63291")]
-    #[inline]
-    pub fn try_new_zeroed() -> Result<Box<mem::MaybeUninit<T>>, AllocError> {}
-}
-
-impl<T, A: Allocator> Box<T, A> {
-    /// Allocates memory in the given allocator then places `x` into it.
-    ///
-    /// This doesn't actually allocate if `T` is zero-sized.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(allocator_api)]
-    ///
-    /// use std::alloc::System;
-    ///
-    /// let five = Box::new_in(5, System);
-    /// ```
-    #[cfg(not(no_global_oom_handling))]
-    #[unstable(feature = "allocator_api", issue = "32838")]
-    #[must_use]
-    #[inline]
-    pub fn new_in(x: T, alloc: A) -> Self {}
-
-    /// Allocates memory in the given allocator then places `x` into it,
-    /// returning an error if the allocation fails
-    ///
-    /// This doesn't actually allocate if `T` is zero-sized.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(allocator_api)]
-    ///
-    /// use std::alloc::System;
-    ///
-    /// let five = Box::try_new_in(5, System)?;
-    /// # Ok::<(), std::alloc::AllocError>(())
-    /// ```
-    #[unstable(feature = "allocator_api", issue = "32838")]
-    #[inline]
-    pub fn try_new_in(x: T, alloc: A) -> Result<Self, AllocError> {}
-
-    /// Constructs a new box with uninitialized contents in the provided allocator.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(allocator_api, new_uninit)]
-    ///
-    /// use std::alloc::System;
-    ///
-    /// let mut five = Box::<u32, _>::new_uninit_in(System);
-    ///
-    /// let five = unsafe {
-    ///     // Deferred initialization:
-    ///     five.as_mut_ptr().write(5);
-    ///
-    ///     five.assume_init()
-    /// };
-    ///
-    /// assert_eq!(*five, 5)
-    /// ```
-    #[unstable(feature = "allocator_api", issue = "32838")]
-    #[cfg(not(no_global_oom_handling))]
-    #[must_use]
-    // #[unstable(feature = "new_uninit", issue = "63291")]
-    pub fn new_uninit_in(alloc: A) -> Box<mem::MaybeUninit<T>, A> {}
-
-    /// Constructs a new box with uninitialized contents in the provided allocator,
-    /// returning an error if the allocation fails
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(allocator_api, new_uninit)]
-    ///
-    /// use std::alloc::System;
-    ///
-    /// let mut five = Box::<u32, _>::try_new_uninit_in(System)?;
-    ///
-    /// let five = unsafe {
-    ///     // Deferred initialization:
-    ///     five.as_mut_ptr().write(5);
-    ///
-    ///     five.assume_init()
-    /// };
-    ///
-    /// assert_eq!(*five, 5);
-    /// # Ok::<(), std::alloc::AllocError>(())
-    /// ```
-    #[unstable(feature = "allocator_api", issue = "32838")]
-    // #[unstable(feature = "new_uninit", issue = "63291")]
-    pub fn try_new_uninit_in(alloc: A) -> Result<Box<mem::MaybeUninit<T>, A>, AllocError> {}
-
-    /// Constructs a new `Box` with uninitialized contents, with the memory
-    /// being filled with `0` bytes in the provided allocator.
-    ///
-    /// See [`MaybeUninit::zeroed`][zeroed] for examples of correct and incorrect usage
-    /// of this method.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(allocator_api, new_uninit)]
-    ///
-    /// use std::alloc::System;
-    ///
-    /// let zero = Box::<u32, _>::new_zeroed_in(System);
-    /// let zero = unsafe { zero.assume_init() };
-    ///
-    /// assert_eq!(*zero, 0)
-    /// ```
-    ///
-    /// [zeroed]: mem::MaybeUninit::zeroed
-    #[unstable(feature = "allocator_api", issue = "32838")]
-    #[cfg(not(no_global_oom_handling))]
-    // #[unstable(feature = "new_uninit", issue = "63291")]
-    #[must_use]
-    pub fn new_zeroed_in(alloc: A) -> Box<mem::MaybeUninit<T>, A> {}
-
-    /// Constructs a new `Box` with uninitialized contents, with the memory
-    /// being filled with `0` bytes in the provided allocator,
-    /// returning an error if the allocation fails,
-    ///
-    /// See [`MaybeUninit::zeroed`][zeroed] for examples of correct and incorrect usage
-    /// of this method.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(allocator_api, new_uninit)]
-    ///
-    /// use std::alloc::System;
-    ///
-    /// let zero = Box::<u32, _>::try_new_zeroed_in(System)?;
-    /// let zero = unsafe { zero.assume_init() };
-    ///
-    /// assert_eq!(*zero, 0);
-    /// # Ok::<(), std::alloc::AllocError>(())
-    /// ```
-    ///
-    /// [zeroed]: mem::MaybeUninit::zeroed
-    #[unstable(feature = "allocator_api", issue = "32838")]
-    // #[unstable(feature = "new_uninit", issue = "63291")]
-    pub fn try_new_zeroed_in(alloc: A) -> Result<Box<mem::MaybeUninit<T>, A>, AllocError> {}
-
-    /// Constructs a new `Pin<Box<T, A>>`. If `T` does not implement `Unpin`, then
-    /// `x` will be pinned in memory and unable to be moved.
-    #[cfg(not(no_global_oom_handling))]
-    #[unstable(feature = "allocator_api", issue = "32838")]
-    #[must_use]
-    #[inline(always)]
-    pub fn pin_in(x: T, alloc: A) -> Pin<Self>
-    where
-        A: 'static,
-    {}
-
-    /// Converts a `Box<T>` into a `Box<[T]>`
-    ///
-    /// This conversion does not allocate on the heap and happens in place.
-    #[unstable(feature = "box_into_boxed_slice", issue = "71582")]
-    pub fn into_boxed_slice(boxed: Self) -> Box<[T], A> {}
-
-    /// Consumes the `Box`, returning the wrapped value.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(box_into_inner)]
-    ///
-    /// let c = Box::new(5);
-    ///
-    /// assert_eq!(Box::into_inner(c), 5);
-    /// ```
-    #[unstable(feature = "box_into_inner", issue = "80437")]
-    #[inline]
-    pub fn into_inner(boxed: Self) -> T {}
-}
-
-impl<T> Box<[T]> {
-    /// Constructs a new boxed slice with uninitialized contents.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(new_uninit)]
-    ///
-    /// let mut values = Box::<[u32]>::new_uninit_slice(3);
-    ///
-    /// let values = unsafe {
-    ///     // Deferred initialization:
-    ///     values[0].as_mut_ptr().write(1);
-    ///     values[1].as_mut_ptr().write(2);
-    ///     values[2].as_mut_ptr().write(3);
-    ///
-    ///     values.assume_init()
-    /// };
-    ///
-    /// assert_eq!(*values, [1, 2, 3])
-    /// ```
-    #[cfg(not(no_global_oom_handling))]
-    #[unstable(feature = "new_uninit", issue = "63291")]
-    #[must_use]
-    pub fn new_uninit_slice(len: usize) -> Box<[mem::MaybeUninit<T>]> {}
-
-    /// Constructs a new boxed slice with uninitialized contents, with the memory
-    /// being filled with `0` bytes.
-    ///
-    /// See [`MaybeUninit::zeroed`][zeroed] for examples of correct and incorrect usage
-    /// of this method.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(new_uninit)]
-    ///
-    /// let values = Box::<[u32]>::new_zeroed_slice(3);
-    /// let values = unsafe { values.assume_init() };
-    ///
-    /// assert_eq!(*values, [0, 0, 0])
-    /// ```
-    ///
-    /// [zeroed]: mem::MaybeUninit::zeroed
-    #[cfg(not(no_global_oom_handling))]
-    #[unstable(feature = "new_uninit", issue = "63291")]
-    #[must_use]
-    pub fn new_zeroed_slice(len: usize) -> Box<[mem::MaybeUninit<T>]> {}
-
-    /// Constructs a new boxed slice with uninitialized contents. Returns an error if
-    /// the allocation fails
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(allocator_api, new_uninit)]
-    ///
-    /// let mut values = Box::<[u32]>::try_new_uninit_slice(3)?;
-    /// let values = unsafe {
-    ///     // Deferred initialization:
-    ///     values[0].as_mut_ptr().write(1);
-    ///     values[1].as_mut_ptr().write(2);
-    ///     values[2].as_mut_ptr().write(3);
-    ///     values.assume_init()
-    /// };
-    ///
-    /// assert_eq!(*values, [1, 2, 3]);
-    /// # Ok::<(), std::alloc::AllocError>(())
-    /// ```
-    #[unstable(feature = "allocator_api", issue = "32838")]
-    #[inline]
-    pub fn try_new_uninit_slice(len: usize) -> Result<Box<[mem::MaybeUninit<T>]>, AllocError> {}
-
-    /// Constructs a new boxed slice with uninitialized contents, with the memory
-    /// being filled with `0` bytes. Returns an error if the allocation fails
-    ///
-    /// See [`MaybeUninit::zeroed`][zeroed] for examples of correct and incorrect usage
-    /// of this method.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(allocator_api, new_uninit)]
-    ///
-    /// let values = Box::<[u32]>::try_new_zeroed_slice(3)?;
-    /// let values = unsafe { values.assume_init() };
-    ///
-    /// assert_eq!(*values, [0, 0, 0]);
-    /// # Ok::<(), std::alloc::AllocError>(())
-    /// ```
-    ///
-    /// [zeroed]: mem::MaybeUninit::zeroed
-    #[unstable(feature = "allocator_api", issue = "32838")]
-    #[inline]
-    pub fn try_new_zeroed_slice(len: usize) -> Result<Box<[mem::MaybeUninit<T>]>, AllocError> {}
-}
-
-impl<T, A: Allocator> Box<[T], A> {
-    /// Constructs a new boxed slice with uninitialized contents in the provided allocator.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(allocator_api, new_uninit)]
-    ///
-    /// use std::alloc::System;
-    ///
-    /// let mut values = Box::<[u32], _>::new_uninit_slice_in(3, System);
-    ///
-    /// let values = unsafe {
-    ///     // Deferred initialization:
-    ///     values[0].as_mut_ptr().write(1);
-    ///     values[1].as_mut_ptr().write(2);
-    ///     values[2].as_mut_ptr().write(3);
-    ///
-    ///     values.assume_init()
-    /// };
-    ///
-    /// assert_eq!(*values, [1, 2, 3])
-    /// ```
-    #[cfg(not(no_global_oom_handling))]
-    #[unstable(feature = "allocator_api", issue = "32838")]
-    // #[unstable(feature = "new_uninit", issue = "63291")]
-    #[must_use]
-    pub fn new_uninit_slice_in(len: usize, alloc: A) -> Box<[mem::MaybeUninit<T>], A> {}
-
-    /// Constructs a new boxed slice with uninitialized contents in the provided allocator,
-    /// with the memory being filled with `0` bytes.
-    ///
-    /// See [`MaybeUninit::zeroed`][zeroed] for examples of correct and incorrect usage
-    /// of this method.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(allocator_api, new_uninit)]
-    ///
-    /// use std::alloc::System;
-    ///
-    /// let values = Box::<[u32], _>::new_zeroed_slice_in(3, System);
-    /// let values = unsafe { values.assume_init() };
-    ///
-    /// assert_eq!(*values, [0, 0, 0])
-    /// ```
-    ///
-    /// [zeroed]: mem::MaybeUninit::zeroed
-    #[cfg(not(no_global_oom_handling))]
-    #[unstable(feature = "allocator_api", issue = "32838")]
-    // #[unstable(feature = "new_uninit", issue = "63291")]
-    #[must_use]
-    pub fn new_zeroed_slice_in(len: usize, alloc: A) -> Box<[mem::MaybeUninit<T>], A> {}
-}
-
-impl<T, A: Allocator> Box<mem::MaybeUninit<T>, A> {
-    /// Converts to `Box<T, A>`.
-    ///
-    /// # Safety
-    ///
-    /// As with [`MaybeUninit::assume_init`],
-    /// it is up to the caller to guarantee that the value
-    /// really is in an initialized state.
-    /// Calling this when the content is not yet fully initialized
-    /// causes immediate undefined behavior.
-    ///
-    /// [`MaybeUninit::assume_init`]: mem::MaybeUninit::assume_init
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(new_uninit)]
-    ///
-    /// let mut five = Box::<u32>::new_uninit();
-    ///
-    /// let five: Box<u32> = unsafe {
-    ///     // Deferred initialization:
-    ///     five.as_mut_ptr().write(5);
-    ///
-    ///     five.assume_init()
-    /// };
-    ///
-    /// assert_eq!(*five, 5)
-    /// ```
-    #[unstable(feature = "new_uninit", issue = "63291")]
-    #[inline]
-    pub unsafe fn assume_init(self) -> Box<T, A> {}
-}
-
-impl<T, A: Allocator> Box<[mem::MaybeUninit<T>], A> {
-    /// Converts to `Box<[T], A>`.
-    ///
-    /// # Safety
-    ///
-    /// As with [`MaybeUninit::assume_init`],
-    /// it is up to the caller to guarantee that the values
-    /// really are in an initialized state.
-    /// Calling this when the content is not yet fully initialized
-    /// causes immediate undefined behavior.
-    ///
-    /// [`MaybeUninit::assume_init`]: mem::MaybeUninit::assume_init
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(new_uninit)]
-    ///
-    /// let mut values = Box::<[u32]>::new_uninit_slice(3);
-    ///
-    /// let values = unsafe {
-    ///     // Deferred initialization:
-    ///     values[0].as_mut_ptr().write(1);
-    ///     values[1].as_mut_ptr().write(2);
-    ///     values[2].as_mut_ptr().write(3);
-    ///
-    ///     values.assume_init()
-    /// };
-    ///
-    /// assert_eq!(*values, [1, 2, 3])
-    /// ```
-    #[unstable(feature = "new_uninit", issue = "63291")]
-    #[inline]
-    pub unsafe fn assume_init(self) -> Box<[T], A> {}
-}
-
-impl<T: ?Sized> Box<T> {
-    /// Constructs a box from a raw pointer.
-    ///
-    /// After calling this function, the raw pointer is owned by the
-    /// resulting `Box`. Specifically, the `Box` destructor will call
-    /// the destructor of `T` and free the allocated memory. For this
-    /// to be safe, the memory must have been allocated in accordance
-    /// with the [memory layout] used by `Box` .
-    ///
-    /// # Safety
-    ///
-    /// This function is unsafe because improper use may lead to
-    /// memory problems. For example, a double-free may occur if the
-    /// function is called twice on the same raw pointer.
-    ///
-    /// The safety conditions are described in the [memory layout] section.
-    ///
-    /// # Examples
-    ///
-    /// Recreate a `Box` which was previously converted to a raw pointer
-    /// using [`Box::into_raw`]:
-    /// ```
-    /// let x = Box::new(5);
-    /// let ptr = Box::into_raw(x);
-    /// let x = unsafe { Box::from_raw(ptr) };
-    /// ```
-    /// Manually create a `Box` from scratch by using the global allocator:
-    /// ```
-    /// use std::alloc::{alloc, Layout};
-    ///
-    /// unsafe {
-    ///     let ptr = alloc(Layout::new::<i32>()) as *mut i32;
-    ///     // In general .write is required to avoid attempting to destruct
-    ///     // the (uninitialized) previous contents of `ptr`, though for this
-    ///     // simple example `*ptr = 5` would have worked as well.
-    ///     ptr.write(5);
-    ///     let x = Box::from_raw(ptr);
-    /// }
-    /// ```
-    ///
-    /// [memory layout]: self#memory-layout
-    /// [`Layout`]: crate::Layout
-    #[stable(feature = "box_raw", since = "1.4.0")]
-    #[inline]
-    pub unsafe fn from_raw(raw: *mut T) -> Self {}
-}
-
-impl<T: ?Sized, A: Allocator> Box<T, A> {
-    /// Constructs a box from a raw pointer in the given allocator.
-    ///
-    /// After calling this function, the raw pointer is owned by the
-    /// resulting `Box`. Specifically, the `Box` destructor will call
-    /// the destructor of `T` and free the allocated memory. For this
-    /// to be safe, the memory must have been allocated in accordance
-    /// with the [memory layout] used by `Box` .
-    ///
-    /// # Safety
-    ///
-    /// This function is unsafe because improper use may lead to
-    /// memory problems. For example, a double-free may occur if the
-    /// function is called twice on the same raw pointer.
-    ///
-    ///
-    /// # Examples
-    ///
-    /// Recreate a `Box` which was previously converted to a raw pointer
-    /// using [`Box::into_raw_with_allocator`]:
-    /// ```
-    /// #![feature(allocator_api)]
-    ///
-    /// use std::alloc::System;
-    ///
-    /// let x = Box::new_in(5, System);
-    /// let (ptr, alloc) = Box::into_raw_with_allocator(x);
-    /// let x = unsafe { Box::from_raw_in(ptr, alloc) };
-    /// ```
-    /// Manually create a `Box` from scratch by using the system allocator:
-    /// ```
-    /// #![feature(allocator_api, slice_ptr_get)]
-    ///
-    /// use std::alloc::{Allocator, Layout, System};
-    ///
-    /// unsafe {
-    ///     let ptr = System.allocate(Layout::new::<i32>())?.as_mut_ptr() as *mut i32;
-    ///     // In general .write is required to avoid attempting to destruct
-    ///     // the (uninitialized) previous contents of `ptr`, though for this
-    ///     // simple example `*ptr = 5` would have worked as well.
-    ///     ptr.write(5);
-    ///     let x = Box::from_raw_in(ptr, System);
-    /// }
-    /// # Ok::<(), std::alloc::AllocError>(())
-    /// ```
-    ///
-    /// [memory layout]: self#memory-layout
-    /// [`Layout`]: crate::Layout
-    #[unstable(feature = "allocator_api", issue = "32838")]
-    #[inline]
-    pub unsafe fn from_raw_in(raw: *mut T, alloc: A) -> Self {}
-
-    /// Consumes the `Box`, returning a wrapped raw pointer.
-    ///
-    /// The pointer will be properly aligned and non-null.
-    ///
-    /// After calling this function, the caller is responsible for the
-    /// memory previously managed by the `Box`. In particular, the
-    /// caller should properly destroy `T` and release the memory, taking
-    /// into account the [memory layout] used by `Box`. The easiest way to
-    /// do this is to convert the raw pointer back into a `Box` with the
-    /// [`Box::from_raw`] function, allowing the `Box` destructor to perform
-    /// the cleanup.
-    ///
-    /// Note: this is an associated function, which means that you have
-    /// to call it as `Box::into_raw(b)` instead of `b.into_raw()`. This
-    /// is so that there is no conflict with a method on the inner type.
-    ///
-    /// # Examples
-    /// Converting the raw pointer back into a `Box` with [`Box::from_raw`]
-    /// for automatic cleanup:
-    /// ```
-    /// let x = Box::new(String::from("Hello"));
-    /// let ptr = Box::into_raw(x);
-    /// let x = unsafe { Box::from_raw(ptr) };
-    /// ```
-    /// Manual cleanup by explicitly running the destructor and deallocating
-    /// the memory:
-    /// ```
-    /// use std::alloc::{dealloc, Layout};
-    /// use std::ptr;
-    ///
-    /// let x = Box::new(String::from("Hello"));
-    /// let p = Box::into_raw(x);
-    /// unsafe {
-    ///     ptr::drop_in_place(p);
-    ///     dealloc(p as *mut u8, Layout::new::<String>());
-    /// }
-    /// ```
-    ///
-    /// [memory layout]: self#memory-layout
-    #[stable(feature = "box_raw", since = "1.4.0")]
-    #[inline]
-    pub fn into_raw(b: Self) -> *mut T {}
-
-    /// Consumes the `Box`, returning a wrapped raw pointer and the allocator.
-    ///
-    /// The pointer will be properly aligned and non-null.
-    ///
-    /// After calling this function, the caller is responsible for the
-    /// memory previously managed by the `Box`. In particular, the
-    /// caller should properly destroy `T` and release the memory, taking
-    /// into account the [memory layout] used by `Box`. The easiest way to
-    /// do this is to convert the raw pointer back into a `Box` with the
-    /// [`Box::from_raw_in`] function, allowing the `Box` destructor to perform
-    /// the cleanup.
-    ///
-    /// Note: this is an associated function, which means that you have
-    /// to call it as `Box::into_raw_with_allocator(b)` instead of `b.into_raw_with_allocator()`. This
-    /// is so that there is no conflict with a method on the inner type.
-    ///
-    /// # Examples
-    /// Converting the raw pointer back into a `Box` with [`Box::from_raw_in`]
-    /// for automatic cleanup:
-    /// ```
-    /// #![feature(allocator_api)]
-    ///
-    /// use std::alloc::System;
-    ///
-    /// let x = Box::new_in(String::from("Hello"), System);
-    /// let (ptr, alloc) = Box::into_raw_with_allocator(x);
-    /// let x = unsafe { Box::from_raw_in(ptr, alloc) };
-    /// ```
-    /// Manual cleanup by explicitly running the destructor and deallocating
-    /// the memory:
-    /// ```
-    /// #![feature(allocator_api)]
-    ///
-    /// use std::alloc::{Allocator, Layout, System};
-    /// use std::ptr::{self, NonNull};
-    ///
-    /// let x = Box::new_in(String::from("Hello"), System);
-    /// let (ptr, alloc) = Box::into_raw_with_allocator(x);
-    /// unsafe {
-    ///     ptr::drop_in_place(ptr);
-    ///     let non_null = NonNull::new_unchecked(ptr);
-    ///     alloc.deallocate(non_null.cast(), Layout::new::<String>());
-    /// }
-    /// ```
-    ///
-    /// [memory layout]: self#memory-layout
-    #[unstable(feature = "allocator_api", issue = "32838")]
-    #[inline]
-    pub fn into_raw_with_allocator(b: Self) -> (*mut T, A) {}
-
-    #[unstable(
-        feature = "ptr_internals",
-        issue = "none",
-        reason = "use `Box::leak(b).into()` or `Unique::from(Box::leak(b))` instead"
-    )]
-    #[inline]
-    #[doc(hidden)]
-    pub fn into_unique(b: Self) -> (Unique<T>, A) {}
-
-    /// Returns a reference to the underlying allocator.
-    ///
-    /// Note: this is an associated function, which means that you have
-    /// to call it as `Box::allocator(&b)` instead of `b.allocator()`. This
-    /// is so that there is no conflict with a method on the inner type.
-    #[unstable(feature = "allocator_api", issue = "32838")]
-    #[inline]
-    pub fn allocator(b: &Self) -> &A {}
-
-    /// Consumes and leaks the `Box`, returning a mutable reference,
-    /// `&'a mut T`. Note that the type `T` must outlive the chosen lifetime
-    /// `'a`. If the type has only static references, or none at all, then this
-    /// may be chosen to be `'static`.
-    ///
-    /// This function is mainly useful for data that lives for the remainder of
-    /// the program's life. Dropping the returned reference will cause a memory
-    /// leak. If this is not acceptable, the reference should first be wrapped
-    /// with the [`Box::from_raw`] function producing a `Box`. This `Box` can
-    /// then be dropped which will properly destroy `T` and release the
-    /// allocated memory.
-    ///
-    /// Note: this is an associated function, which means that you have
-    /// to call it as `Box::leak(b)` instead of `b.leak()`. This
-    /// is so that there is no conflict with a method on the inner type.
-    ///
-    /// # Examples
-    ///
-    /// Simple usage:
-    ///
-    /// ```
-    /// let x = Box::new(41);
-    /// let static_ref: &'static mut usize = Box::leak(x);
-    /// *static_ref += 1;
-    /// assert_eq!(*static_ref, 42);
-    /// ```
-    ///
-    /// Unsized data:
-    ///
-    /// ```
-    /// let x = vec![1, 2, 3].into_boxed_slice();
-    /// let static_ref = Box::leak(x);
-    /// static_ref[0] = 4;
-    /// assert_eq!(*static_ref, [4, 2, 3]);
-    /// ```
-    #[stable(feature = "box_leak", since = "1.26.0")]
-    #[inline]
-    pub fn leak<'a>(b: Self) -> &'a mut T
-    where
-        A: 'a,
-    {}
-
-    /// Converts a `Box<T>` into a `Pin<Box<T>>`
-    ///
-    /// This conversion does not allocate on the heap and happens in place.
-    ///
-    /// This is also available via [`From`].
-    #[unstable(feature = "box_into_pin", issue = "62370")]
-    pub fn into_pin(boxed: Self) -> Pin<Self>
-    where
-        A: 'static,
-    {}
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-unsafe impl<#[may_dangle] T: ?Sized, A: Allocator> Drop for Box<T, A> {
-    fn drop(&mut self) {}
-}
-
-#[cfg(not(no_global_oom_handling))]
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Default> Default for Box<T> {
-    /// Creates a `Box<T>`, with the `Default` value for T.
-    fn default() -> Self {}
-}
-
-#[cfg(not(no_global_oom_handling))]
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<T> Default for Box<[T]> {
-    fn default() -> Self {}
-}
-
-#[cfg(not(no_global_oom_handling))]
-#[stable(feature = "default_box_extra", since = "1.17.0")]
-impl Default for Box<str> {
-    fn default() -> Self {}
-}
-
-#[cfg(not(no_global_oom_handling))]
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Clone, A: Allocator + Clone> Clone for Box<T, A> {
-    /// Returns a new box with a `clone()` of this box's contents.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let x = Box::new(5);
-    /// let y = x.clone();
-    ///
-    /// // The value is the same
-    /// assert_eq!(x, y);
-    ///
-    /// // But they are unique objects
-    /// assert_ne!(&*x as *const i32, &*y as *const i32);
-    /// ```
-    #[inline]
-    fn clone(&self) -> Self {}
-
-    /// Copies `source`'s contents into `self` without creating a new allocation.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let x = Box::new(5);
-    /// let mut y = Box::new(10);
-    /// let yp: *const i32 = &*y;
-    ///
-    /// y.clone_from(&x);
-    ///
-    /// // The value is the same
-    /// assert_eq!(x, y);
-    ///
-    /// // And no allocation occurred
-    /// assert_eq!(yp, &*y);
-    /// ```
-    #[inline]
-    fn clone_from(&mut self, source: &Self) {}
-}
-
-#[cfg(not(no_global_oom_handling))]
-#[stable(feature = "box_slice_clone", since = "1.3.0")]
-impl Clone for Box<str> {
-    fn clone(&self) -> Self {}
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized + PartialEq, A: Allocator> PartialEq for Box<T, A> {
-    #[inline]
-    fn eq(&self, other: &Self) -> bool {}
-    #[inline]
-    fn ne(&self, other: &Self) -> bool {}
-}
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized + PartialOrd, A: Allocator> PartialOrd for Box<T, A> {
-    #[inline]
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {}
-    #[inline]
-    fn lt(&self, other: &Self) -> bool {}
-    #[inline]
-    fn le(&self, other: &Self) -> bool {}
-    #[inline]
-    fn ge(&self, other: &Self) -> bool {}
-    #[inline]
-    fn gt(&self, other: &Self) -> bool {}
-}
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized + Ord, A: Allocator> Ord for Box<T, A> {
-    #[inline]
-    fn cmp(&self, other: &Self) -> Ordering {}
-}
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized + Eq, A: Allocator> Eq for Box<T, A> {}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized + Hash, A: Allocator> Hash for Box<T, A> {
-    fn hash<H: Hasher>(&self, state: &mut H) {}
-}
-
-#[stable(feature = "indirect_hasher_impl", since = "1.22.0")]
-impl<T: ?Sized + Hasher, A: Allocator> Hasher for Box<T, A> {
-    fn finish(&self) -> u64 {}
-    fn write(&mut self, bytes: &[u8]) {}
-    fn write_u8(&mut self, i: u8) {}
-    fn write_u16(&mut self, i: u16) {}
-    fn write_u32(&mut self, i: u32) {}
-    fn write_u64(&mut self, i: u64) {}
-    fn write_u128(&mut self, i: u128) {}
-    fn write_usize(&mut self, i: usize) {}
-    fn write_i8(&mut self, i: i8) {}
-    fn write_i16(&mut self, i: i16) {}
-    fn write_i32(&mut self, i: i32) {}
-    fn write_i64(&mut self, i: i64) {}
-    fn write_i128(&mut self, i: i128) {}
-    fn write_isize(&mut self, i: isize) {}
-}
-
-#[cfg(not(no_global_oom_handling))]
-#[stable(feature = "from_for_ptrs", since = "1.6.0")]
-impl<T> From<T> for Box<T> {
-    /// Converts a `T` into a `Box<T>`
-    ///
-    /// The conversion allocates on the heap and moves `t`
-    /// from the stack into it.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// let x = 5;
-    /// let boxed = Box::new(5);
-    ///
-    /// assert_eq!(Box::from(x), boxed);
-    /// ```
-    fn from(t: T) -> Self {}
-}
-
-#[stable(feature = "pin", since = "1.33.0")]
-impl<T: ?Sized, A: Allocator> From<Box<T, A>> for Pin<Box<T, A>>
-where
-    A: 'static,
-{
-    /// Converts a `Box<T>` into a `Pin<Box<T>>`
-    ///
-    /// This conversion does not allocate on the heap and happens in place.
-    fn from(boxed: Box<T, A>) -> Self {}
-}
-
-#[cfg(not(no_global_oom_handling))]
-#[stable(feature = "box_from_slice", since = "1.17.0")]
-impl<T: Copy> From<&[T]> for Box<[T]> {
-    /// Converts a `&[T]` into a `Box<[T]>`
-    ///
-    /// This conversion allocates on the heap
-    /// and performs a copy of `slice`.
-    ///
-    /// # Examples
-    /// ```rust
-    /// // create a &[u8] which will be used to create a Box<[u8]>
-    /// let slice: &[u8] = &[104, 101, 108, 108, 111];
-    /// let boxed_slice: Box<[u8]> = Box::from(slice);
-    ///
-    /// println!("{:?}", boxed_slice);
-    /// ```
-    fn from(slice: &[T]) -> Box<[T]> {}
-}
-
-#[cfg(not(no_global_oom_handling))]
-#[stable(feature = "box_from_cow", since = "1.45.0")]
-impl<T: Copy> From<Cow<'_, [T]>> for Box<[T]> {
-    /// Converts a `Cow<'_, [T]>` into a `Box<[T]>`
-    ///
-    /// When `cow` is the `Cow::Borrowed` variant, this
-    /// conversion allocates on the heap and copies the
-    /// underlying slice. Otherwise, it will try to reuse the owned
-    /// `Vec`'s allocation.
-    #[inline]
-    fn from(cow: Cow<'_, [T]>) -> Box<[T]> {}
-}
-
-#[cfg(not(no_global_oom_handling))]
-#[stable(feature = "box_from_slice", since = "1.17.0")]
-impl From<&str> for Box<str> {
-    /// Converts a `&str` into a `Box<str>`
-    ///
-    /// This conversion allocates on the heap
-    /// and performs a copy of `s`.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// let boxed: Box<str> = Box::from("hello");
-    /// println!("{}", boxed);
-    /// ```
-    #[inline]
-    fn from(s: &str) -> Box<str> {}
-}
-
-#[cfg(not(no_global_oom_handling))]
-#[stable(feature = "box_from_cow", since = "1.45.0")]
-impl From<Cow<'_, str>> for Box<str> {
-    /// Converts a `Cow<'_, str>` into a `Box<str>`
-    ///
-    /// When `cow` is the `Cow::Borrowed` variant, this
-    /// conversion allocates on the heap and copies the
-    /// underlying `str`. Otherwise, it will try to reuse the owned
-    /// `String`'s allocation.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use std::borrow::Cow;
-    ///
-    /// let unboxed = Cow::Borrowed("hello");
-    /// let boxed: Box<str> = Box::from(unboxed);
-    /// println!("{}", boxed);
-    /// ```
-    ///
-    /// ```rust
-    /// # use std::borrow::Cow;
-    /// let unboxed = Cow::Owned("hello".to_string());
-    /// let boxed: Box<str> = Box::from(unboxed);
-    /// println!("{}", boxed);
-    /// ```
-    #[inline]
-    fn from(cow: Cow<'_, str>) -> Box<str> {}
-}
-
-#[stable(feature = "boxed_str_conv", since = "1.19.0")]
-impl<A: Allocator> From<Box<str, A>> for Box<[u8], A> {
-    /// Converts a `Box<str>` into a `Box<[u8]>`
-    ///
-    /// This conversion does not allocate on the heap and happens in place.
-    ///
-    /// # Examples
-    /// ```rust
-    /// // create a Box<str> which will be used to create a Box<[u8]>
-    /// let boxed: Box<str> = Box::from("hello");
-    /// let boxed_str: Box<[u8]> = Box::from(boxed);
-    ///
-    /// // create a &[u8] which will be used to create a Box<[u8]>
-    /// let slice: &[u8] = &[104, 101, 108, 108, 111];
-    /// let boxed_slice = Box::from(slice);
-    ///
-    /// assert_eq!(boxed_slice, boxed_str);
-    /// ```
-    #[inline]
-    fn from(s: Box<str, A>) -> Self {}
-}
-
-#[cfg(not(no_global_oom_handling))]
-#[stable(feature = "box_from_array", since = "1.45.0")]
-impl<T, const N: usize> From<[T; N]> for Box<[T]> {
-    /// Converts a `[T; N]` into a `Box<[T]>`
-    ///
-    /// This conversion moves the array to newly heap-allocated memory.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// let boxed: Box<[u8]> = Box::from([4, 2]);
-    /// println!("{:?}", boxed);
-    /// ```
-    fn from(array: [T; N]) -> Box<[T]> {}
-}
-
-#[stable(feature = "boxed_slice_try_from", since = "1.43.0")]
-impl<T, const N: usize> TryFrom<Box<[T]>> for Box<[T; N]> {
-    type Error = Box<[T]>;
-
-    /// Attempts to convert a `Box<[T]>` into a `Box<[T; N]>`.
-    ///
-    /// The conversion occurs in-place and does not require a
-    /// new memory allocation.
-    ///
-    /// # Errors
-    ///
-    /// Returns the old `Box<[T]>` in the `Err` variant if
-    /// `boxed_slice.len()` does not equal `N`.
-    fn try_from(boxed_slice: Box<[T]>) -> Result<Self, Self::Error> {}
-}
-
-impl<A: Allocator> Box<dyn Any, A> {
-    #[inline]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    /// Attempt to downcast the box to a concrete type.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::any::Any;
-    ///
-    /// fn print_if_string(value: Box<dyn Any>) {}
-    ///
-    /// let my_string = "Hello World".to_string();
-    /// print_if_string(Box::new(my_string));
-    /// print_if_string(Box::new(0i8));
-    /// ```
-    pub fn downcast<T: Any>(self) -> Result<Box<T, A>, Self> {}
-}
-
-impl<A: Allocator> Box<dyn Any + Send, A> {
-    #[inline]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    /// Attempt to downcast the box to a concrete type.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::any::Any;
-    ///
-    /// fn print_if_string(value: Box<dyn Any + Send>) {}
-    ///
-    /// let my_string = "Hello World".to_string();
-    /// print_if_string(Box::new(my_string));
-    /// print_if_string(Box::new(0i8));
-    /// ```
-    pub fn downcast<T: Any>(self) -> Result<Box<T, A>, Self> {}
-}
-
-impl<A: Allocator> Box<dyn Any + Send + Sync, A> {
-    #[inline]
-    #[stable(feature = "box_send_sync_any_downcast", since = "1.51.0")]
-    /// Attempt to downcast the box to a concrete type.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::any::Any;
-    ///
-    /// fn print_if_string(value: Box<dyn Any + Send + Sync>) {}
-    ///
-    /// let my_string = "Hello World".to_string();
-    /// print_if_string(Box::new(my_string));
-    /// print_if_string(Box::new(0i8));
-    /// ```
-    pub fn downcast<T: Any>(self) -> Result<Box<T, A>, Self> {}
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<T: fmt::Display + ?Sized, A: Allocator> fmt::Display for Box<T, A> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<T: fmt::Debug + ?Sized, A: Allocator> fmt::Debug for Box<T, A> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized, A: Allocator> fmt::Pointer for Box<T, A> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized, A: Allocator> Deref for Box<T, A> {
-    type Target = T;
-
-    fn deref(&self) -> &T {}
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized, A: Allocator> DerefMut for Box<T, A> {
-    fn deref_mut(&mut self) -> &mut T {}
-}
-
-#[unstable(feature = "receiver_trait", issue = "none")]
-impl<T: ?Sized, A: Allocator> Receiver for Box<T, A> {}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<I: Iterator + ?Sized, A: Allocator> Iterator for Box<I, A> {
-    type Item = I::Item;
-    fn next(&mut self) -> Option<I::Item> {}
-    fn size_hint(&self) -> (usize, Option<usize>) {}
-    fn nth(&mut self, n: usize) -> Option<I::Item> {}
-    fn last(self) -> Option<I::Item> {}
-}
-
-trait BoxIter {
-    type Item;
-    fn last(self) -> Option<Self::Item>;
-}
-
-impl<I: Iterator + ?Sized, A: Allocator> BoxIter for Box<I, A> {
-    type Item = I::Item;
-    default fn last(self) -> Option<I::Item> {}
-}
-
-/// Specialization for sized `I`s that uses `I`s implementation of `last()`
-/// instead of the default.
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<I: Iterator, A: Allocator> BoxIter for Box<I, A> {
-    fn last(self) -> Option<I::Item> {}
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<I: DoubleEndedIterator + ?Sized, A: Allocator> DoubleEndedIterator for Box<I, A> {
-    fn next_back(&mut self) -> Option<I::Item> {}
-    fn nth_back(&mut self, n: usize) -> Option<I::Item> {}
-}
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<I: ExactSizeIterator + ?Sized, A: Allocator> ExactSizeIterator for Box<I, A> {
-    fn len(&self) -> usize {}
-    fn is_empty(&self) -> bool {}
-}
-
-#[stable(feature = "fused", since = "1.26.0")]
-impl<I: FusedIterator + ?Sized, A: Allocator> FusedIterator for Box<I, A> {}
-
-#[stable(feature = "boxed_closure_impls", since = "1.35.0")]
-impl<Args, F: FnOnce<Args> + ?Sized, A: Allocator> FnOnce<Args> for Box<F, A> {
-    type Output = <F as FnOnce<Args>>::Output;
-
-    extern "rust-call" fn call_once(self, args: Args) -> Self::Output {}
-}
-
-#[stable(feature = "boxed_closure_impls", since = "1.35.0")]
-impl<Args, F: FnMut<Args> + ?Sized, A: Allocator> FnMut<Args> for Box<F, A> {
-    extern "rust-call" fn call_mut(&mut self, args: Args) -> Self::Output {}
-}
-
-#[stable(feature = "boxed_closure_impls", since = "1.35.0")]
-impl<Args, F: Fn<Args> + ?Sized, A: Allocator> Fn<Args> for Box<F, A> {
-    extern "rust-call" fn call(&self, args: Args) -> Self::Output {}
-}
-
-#[unstable(feature = "coerce_unsized", issue = "27732")]
-impl<T: ?Sized + Unsize<U>, U: ?Sized, A: Allocator> CoerceUnsized<Box<U, A>> for Box<T, A> {}
-
-#[unstable(feature = "dispatch_from_dyn", issue = "none")]
-impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Box<U>> for Box<T, Global> {}
-
-#[cfg(not(no_global_oom_handling))]
-#[stable(feature = "boxed_slice_from_iter", since = "1.32.0")]
-impl<I> FromIterator<I> for Box<[I]> {
-    fn from_iter<T: IntoIterator<Item = I>>(iter: T) -> Self {}
-}
-
-#[cfg(not(no_global_oom_handling))]
-#[stable(feature = "box_slice_clone", since = "1.3.0")]
-impl<T: Clone, A: Allocator + Clone> Clone for Box<[T], A> {
-    fn clone(&self) -> Self {}
-
-    fn clone_from(&mut self, other: &Self) {}
-}
-
-#[stable(feature = "box_borrow", since = "1.1.0")]
-impl<T: ?Sized, A: Allocator> borrow::Borrow<T> for Box<T, A> {
-    fn borrow(&self) -> &T {}
-}
-
-#[stable(feature = "box_borrow", since = "1.1.0")]
-impl<T: ?Sized, A: Allocator> borrow::BorrowMut<T> for Box<T, A> {
-    fn borrow_mut(&mut self) -> &mut T {}
-}
-
-#[stable(since = "1.5.0", feature = "smart_ptr_as_ref")]
-impl<T: ?Sized, A: Allocator> AsRef<T> for Box<T, A> {
-    fn as_ref(&self) -> &T {}
-}
-
-#[stable(since = "1.5.0", feature = "smart_ptr_as_ref")]
-impl<T: ?Sized, A: Allocator> AsMut<T> for Box<T, A> {
-    fn as_mut(&mut self) -> &mut T {}
-}
-
-/* Nota bene
- *
- *  We could have chosen not to add this impl, and instead have written a
- *  function of Pin<Box<T>> to Pin<T>. Such a function would not be sound,
- *  because Box<T> implements Unpin even when T does not, as a result of
- *  this impl.
- *
- *  We chose this API instead of the alternative for a few reasons:
- *      - Logically, it is helpful to understand pinning in regard to the
- *        memory region being pointed to. For this reason none of the
- *        standard library pointer types support projecting through a pin
- *        (Box<T> is the only pointer type in std for which this would be
- *        safe.)
- *      - It is in practice very useful to have Box<T> be unconditionally
- *        Unpin because of trait objects, for which the structural auto
- *        trait functionality does not apply (e.g., Box<dyn Foo> would
- *        otherwise not be Unpin).
- *
- *  Another type with the same semantics as Box but only a conditional
- *  implementation of `Unpin` (where `T: Unpin`) would be valid/safe, and
- *  could have a method to project a Pin<T> from it.
- */
-#[stable(feature = "pin", since = "1.33.0")]
-impl<T: ?Sized, A: Allocator> Unpin for Box<T, A> where A: 'static {}
-
-#[unstable(feature = "generator_trait", issue = "43122")]
-impl<G: ?Sized + Generator<R> + Unpin, R, A: Allocator> Generator<R> for Box<G, A>
-where
-    A: 'static,
-{
-    type Yield = G::Yield;
-    type Return = G::Return;
-
-    fn resume(mut self: Pin<&mut Self>, arg: R) -> GeneratorState<Self::Yield, Self::Return> {}
-}
-
-#[unstable(feature = "generator_trait", issue = "43122")]
-impl<G: ?Sized + Generator<R>, R, A: Allocator> Generator<R> for Pin<Box<G, A>>
-where
-    A: 'static,
-{
-    type Yield = G::Yield;
-    type Return = G::Return;
-
-    fn resume(mut self: Pin<&mut Self>, arg: R) -> GeneratorState<Self::Yield, Self::Return> {}
-}
-
-#[stable(feature = "futures_api", since = "1.36.0")]
-impl<F: ?Sized + Future + Unpin, A: Allocator> Future for Box<F, A>
-where
-    A: 'static,
-{
-    type Output = F::Output;
-
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {}
-}
-
-#[unstable(feature = "async_stream", issue = "79024")]
-impl<S: ?Sized + Stream + Unpin> Stream for Box<S> {
-    type Item = S::Item;
-
-    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {}
-
-    fn size_hint(&self) -> (usize, Option<usize>) {}
-}
-}
+//! pub extern "C" fn foo_delete(_: Option<Box<Foo>>) {}}
 #[cfg(test)]
 mod boxed {
     pub use std::boxed::Box;
@@ -2026,7 +752,8 @@ where
     B: ToOwned,
     <B as ToOwned>::Owned: 'a,
 {
-    fn borrow(&self) -> &B {}
+    fn borrow(&self) -> &B {
+}
 }
 
 /// A generalization of `Clone` to borrowed data.
@@ -2076,7 +803,8 @@ pub trait ToOwned {
     /// [1, 2][..].clone_into(&mut v);
     /// ```
     #[unstable(feature = "toowned_clone_into", reason = "recently added", issue = "41263")]
-    fn clone_into(&self, target: &mut Self::Owned) {}
+    fn clone_into(&self, target: &mut Self::Owned) {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -2085,9 +813,11 @@ where
     T: Clone,
 {
     type Owned = T;
-    fn to_owned(&self) -> T {}
+    fn to_owned(&self) -> T {
+}
 
-    fn clone_into(&self, target: &mut T) {}
+    fn clone_into(&self, target: &mut T) {
+}
 }
 
 /// A clone-on-write smart pointer.
@@ -2112,7 +842,15 @@ where
 /// ```
 /// use std::borrow::Cow;
 ///
-/// fn abs_all(input: &mut Cow<[i32]>) {}
+/// fn abs_all(input: &mut Cow<[i32]>) {
+///     for i in 0..input.len() {
+///         let v = input[i];
+///         if v < 0 {
+///             // Clones into a vector if not already owned.
+///             input.to_mut()[i] = -v;
+///         }
+///     }
+/// }
 ///
 /// // No clone occurs because `input` doesn't need to be mutated.
 /// let slice = [0, 1, 2];
@@ -2139,7 +877,9 @@ where
 /// }
 ///
 /// impl<'a, X: Clone + 'a> Items<'a, X> where [X]: ToOwned<Owned = Vec<X>> {
-///     fn new(v: Cow<'a, [X]>) -> Self {}
+///     fn new(v: Cow<'a, [X]>) -> Self {
+///         Items { values: v }
+///     }
 /// }
 ///
 /// // Creates a container from borrowed values of a slice
@@ -2178,9 +918,11 @@ where
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<B: ?Sized + ToOwned> Clone for Cow<'_, B> {
-    fn clone(&self) -> Self {}
+    fn clone(&self) -> Self {
+}
 
-    fn clone_from(&mut self, source: &Self) {}
+    fn clone_from(&mut self, source: &Self) {
+}
 }
 
 impl<B: ?Sized + ToOwned> Cow<'_, B> {
@@ -2200,7 +942,8 @@ impl<B: ?Sized + ToOwned> Cow<'_, B> {
     /// ```
     #[unstable(feature = "cow_is_borrowed", issue = "65143")]
     #[rustc_const_unstable(feature = "const_cow_is_borrowed", issue = "65143")]
-    pub const fn is_borrowed(&self) -> bool {}
+    pub const fn is_borrowed(&self) -> bool {
+}
 
     /// Returns true if the data is owned, i.e. if `to_mut` would be a no-op.
     ///
@@ -2218,7 +961,8 @@ impl<B: ?Sized + ToOwned> Cow<'_, B> {
     /// ```
     #[unstable(feature = "cow_is_borrowed", issue = "65143")]
     #[rustc_const_unstable(feature = "const_cow_is_borrowed", issue = "65143")]
-    pub const fn is_owned(&self) -> bool {}
+    pub const fn is_owned(&self) -> bool {
+}
 
     /// Acquires a mutable reference to the owned form of the data.
     ///
@@ -2238,7 +982,8 @@ impl<B: ?Sized + ToOwned> Cow<'_, B> {
     /// );
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn to_mut(&mut self) -> &mut <B as ToOwned>::Owned {}
+    pub fn to_mut(&mut self) -> &mut <B as ToOwned>::Owned {
+}
 
     /// Extracts the owned data.
     ///
@@ -2275,7 +1020,8 @@ impl<B: ?Sized + ToOwned> Cow<'_, B> {
     /// );
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn into_owned(self) -> <B as ToOwned>::Owned {}
+    pub fn into_owned(self) -> <B as ToOwned>::Owned {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -2286,7 +1032,8 @@ where
 {
     type Target = B;
 
-    fn deref(&self) -> &B {}
+    fn deref(&self) -> &B {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -2298,7 +1045,8 @@ where
     B: Ord + ToOwned,
 {
     #[inline]
-    fn cmp(&self, other: &Self) -> Ordering {}
+    fn cmp(&self, other: &Self) -> Ordering {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -2308,7 +1056,8 @@ where
     C: ToOwned,
 {
     #[inline]
-    fn eq(&self, other: &Cow<'b, C>) -> bool {}
+    fn eq(&self, other: &Cow<'b, C>) -> bool {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -2317,7 +1066,8 @@ where
     B: PartialOrd + ToOwned,
 {
     #[inline]
-    fn partial_cmp(&self, other: &Cow<'a, B>) -> Option<Ordering> {}
+    fn partial_cmp(&self, other: &Cow<'a, B>) -> Option<Ordering> {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -2325,7 +1075,8 @@ impl<B: ?Sized> fmt::Debug for Cow<'_, B>
 where
     B: fmt::Debug + ToOwned<Owned: fmt::Debug>,
 {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -2333,7 +1084,8 @@ impl<B: ?Sized> fmt::Display for Cow<'_, B>
 where
     B: fmt::Display + ToOwned<Owned: fmt::Display>,
 {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
 }
 
 #[stable(feature = "default", since = "1.11.0")]
@@ -2342,7 +1094,8 @@ where
     B: ToOwned<Owned: Default>,
 {
     /// Creates an owned Cow<'a, B> with the default value for the contained owned value.
-    fn default() -> Self {}
+    fn default() -> Self {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -2351,12 +1104,14 @@ where
     B: Hash + ToOwned,
 {
     #[inline]
-    fn hash<H: Hasher>(&self, state: &mut H) {}
+    fn hash<H: Hasher>(&self, state: &mut H) {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + ToOwned> AsRef<T> for Cow<'_, T> {
-    fn as_ref(&self) -> &T {}
+    fn as_ref(&self) -> &T {
+}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -2365,7 +1120,8 @@ impl<'a> Add<&'a str> for Cow<'a, str> {
     type Output = Cow<'a, str>;
 
     #[inline]
-    fn add(mut self, rhs: &'a str) -> Self::Output {}
+    fn add(mut self, rhs: &'a str) -> Self::Output {
+}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -2374,19 +1130,22 @@ impl<'a> Add<Cow<'a, str>> for Cow<'a, str> {
     type Output = Cow<'a, str>;
 
     #[inline]
-    fn add(mut self, rhs: Cow<'a, str>) -> Self::Output {}
+    fn add(mut self, rhs: Cow<'a, str>) -> Self::Output {
+}
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "cow_add", since = "1.14.0")]
 impl<'a> AddAssign<&'a str> for Cow<'a, str> {
-    fn add_assign(&mut self, rhs: &'a str) {}
+    fn add_assign(&mut self, rhs: &'a str) {
+}
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "cow_add", since = "1.14.0")]
 impl<'a> AddAssign<Cow<'a, str>> for Cow<'a, str> {
-    fn add_assign(&mut self, rhs: Cow<'a, str>) {}
+    fn add_assign(&mut self, rhs: Cow<'a, str>) {
+}
 }
 }
 pub mod collections {
@@ -2428,12 +1187,14 @@ pub mod binary_heap {
 //! // Explicitly implement the trait so the queue becomes a min-heap
 //! // instead of a max-heap.
 //! impl Ord for State {
-//!     fn cmp(&self, other: &Self) -> Ordering {}
+//!     fn cmp(&self, other: &Self) -> Ordering {
+}
 //! }
 //!
 //! // `PartialOrd` needs to be implemented as well.
 //! impl PartialOrd for State {
-//!     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {}
+//!     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+}
 //! }
 //!
 //! // Each node is represented as a `usize`, for a shorter implementation.
@@ -2448,9 +1209,11 @@ pub mod binary_heap {
 //! // to each node. This implementation isn't memory-efficient as it may leave duplicate
 //! // nodes in the queue. It also uses `usize::MAX` as a sentinel value,
 //! // for a simpler implementation.
-//! fn shortest_path(adj_list: &Vec<Vec<Edge>>, start: usize, goal: usize) -> Option<usize> {}
+//! fn shortest_path(adj_list: &Vec<Vec<Edge>>, start: usize, goal: usize) -> Option<usize> {
+}
 //!
-//! fn main() {}
+//! fn main() {
+}
 //! ```
 
 #![allow(missing_docs)]
@@ -2592,48 +1355,57 @@ pub struct PeekMut<'a, T: 'a + Ord> {
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<T: Ord + fmt::Debug> fmt::Debug for PeekMut<'_, T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
 }
 
 #[stable(feature = "binary_heap_peek_mut", since = "1.12.0")]
 impl<T: Ord> Drop for PeekMut<'_, T> {
-    fn drop(&mut self) {}
+    fn drop(&mut self) {
+}
 }
 
 #[stable(feature = "binary_heap_peek_mut", since = "1.12.0")]
 impl<T: Ord> Deref for PeekMut<'_, T> {
     type Target = T;
-    fn deref(&self) -> &T {}
+    fn deref(&self) -> &T {
+}
 }
 
 #[stable(feature = "binary_heap_peek_mut", since = "1.12.0")]
 impl<T: Ord> DerefMut for PeekMut<'_, T> {
-    fn deref_mut(&mut self) -> &mut T {}
+    fn deref_mut(&mut self) -> &mut T {
+}
 }
 
 impl<'a, T: Ord> PeekMut<'a, T> {
     /// Removes the peeked value from the heap and returns it.
     #[stable(feature = "binary_heap_peek_mut_pop", since = "1.18.0")]
-    pub fn pop(mut this: PeekMut<'a, T>) -> T {}
+    pub fn pop(mut this: PeekMut<'a, T>) -> T {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Clone> Clone for BinaryHeap<T> {
-    fn clone(&self) -> Self {}
+    fn clone(&self) -> Self {
+}
 
-    fn clone_from(&mut self, source: &Self) {}
+    fn clone_from(&mut self, source: &Self) {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Ord> Default for BinaryHeap<T> {
     /// Creates an empty `BinaryHeap<T>`.
     #[inline]
-    fn default() -> BinaryHeap<T> {}
+    fn default() -> BinaryHeap<T> {
+}
 }
 
 #[stable(feature = "binaryheap_debug", since = "1.4.0")]
 impl<T: fmt::Debug> fmt::Debug for BinaryHeap<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
 }
 
 impl<T: Ord> BinaryHeap<T> {
@@ -2650,7 +1422,8 @@ impl<T: Ord> BinaryHeap<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
-    pub fn new() -> BinaryHeap<T> {}
+    pub fn new() -> BinaryHeap<T> {
+}
 
     /// Creates an empty `BinaryHeap` with a specific capacity.
     /// This preallocates enough memory for `capacity` elements,
@@ -2668,7 +1441,8 @@ impl<T: Ord> BinaryHeap<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
-    pub fn with_capacity(capacity: usize) -> BinaryHeap<T> {}
+    pub fn with_capacity(capacity: usize) -> BinaryHeap<T> {
+}
 
     /// Returns a mutable reference to the greatest item in the binary heap, or
     /// `None` if it is empty.
@@ -2700,7 +1474,8 @@ impl<T: Ord> BinaryHeap<T> {
     /// If the item is modified then the worst case time complexity is *O*(log(*n*)),
     /// otherwise it's *O*(1).
     #[stable(feature = "binary_heap_peek_mut", since = "1.12.0")]
-    pub fn peek_mut(&mut self) -> Option<PeekMut<'_, T>> {}
+    pub fn peek_mut(&mut self) -> Option<PeekMut<'_, T>> {
+}
 
     /// Removes the greatest item from the binary heap and returns it, or `None` if it
     /// is empty.
@@ -2722,7 +1497,8 @@ impl<T: Ord> BinaryHeap<T> {
     ///
     /// The worst case cost of `pop` on a heap containing *n* elements is *O*(log(*n*)).
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn pop(&mut self) -> Option<T> {}
+    pub fn pop(&mut self) -> Option<T> {
+}
 
     /// Pushes an item onto the binary heap.
     ///
@@ -2757,7 +1533,8 @@ impl<T: Ord> BinaryHeap<T> {
     /// occurs when capacity is exhausted and needs a resize. The resize cost
     /// has been amortized in the previous figures.
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn push(&mut self, item: T) {}
+    pub fn push(&mut self, item: T) {
+}
 
     /// Consumes the `BinaryHeap` and returns a vector in sorted
     /// (ascending) order.
@@ -2778,7 +1555,8 @@ impl<T: Ord> BinaryHeap<T> {
     /// ```
     #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "binary_heap_extras_15", since = "1.5.0")]
-    pub fn into_sorted_vec(mut self) -> Vec<T> {}
+    pub fn into_sorted_vec(mut self) -> Vec<T> {
+}
 
     // The implementations of sift_up and sift_down use unsafe blocks in
     // order to move an element out of the vector (leaving behind a
@@ -2792,7 +1570,8 @@ impl<T: Ord> BinaryHeap<T> {
     /// # Safety
     ///
     /// The caller must guarantee that `pos < self.len()`.
-    unsafe fn sift_up(&mut self, start: usize, pos: usize) -> usize {}
+    unsafe fn sift_up(&mut self, start: usize, pos: usize) -> usize {
+}
 
     /// Take an element at `pos` and move it down the heap,
     /// while its children are larger.
@@ -2800,12 +1579,14 @@ impl<T: Ord> BinaryHeap<T> {
     /// # Safety
     ///
     /// The caller must guarantee that `pos < end <= self.len()`.
-    unsafe fn sift_down_range(&mut self, pos: usize, end: usize) {}
+    unsafe fn sift_down_range(&mut self, pos: usize, end: usize) {
+}
 
     /// # Safety
     ///
     /// The caller must guarantee that `pos < self.len()`.
-    unsafe fn sift_down(&mut self, pos: usize) {}
+    unsafe fn sift_down(&mut self, pos: usize) {
+}
 
     /// Take an element at `pos` and move it all the way down the heap,
     /// then sift it up to its position.
@@ -2816,12 +1597,15 @@ impl<T: Ord> BinaryHeap<T> {
     /// # Safety
     ///
     /// The caller must guarantee that `pos < self.len()`.
-    unsafe fn sift_down_to_bottom(&mut self, mut pos: usize) {}
+    unsafe fn sift_down_to_bottom(&mut self, mut pos: usize) {
+}
 
     /// Rebuild assuming data[0..start] is still a proper heap.
-    fn rebuild_tail(&mut self, start: usize) {}
+    fn rebuild_tail(&mut self, start: usize) {
+}
 
-    fn rebuild(&mut self) {}
+    fn rebuild(&mut self) {
+}
 
     /// Moves all the elements of `other` into `self`, leaving `other` empty.
     ///
@@ -2844,7 +1628,8 @@ impl<T: Ord> BinaryHeap<T> {
     /// assert!(b.is_empty());
     /// ```
     #[stable(feature = "binary_heap_append", since = "1.11.0")]
-    pub fn append(&mut self, other: &mut Self) {}
+    pub fn append(&mut self, other: &mut Self) {
+}
 
     /// Returns an iterator which retrieves elements in heap order.
     /// The retrieved elements are removed from the original heap.
@@ -2870,7 +1655,8 @@ impl<T: Ord> BinaryHeap<T> {
     /// ```
     #[inline]
     #[unstable(feature = "binary_heap_drain_sorted", issue = "59278")]
-    pub fn drain_sorted(&mut self) -> DrainSorted<'_, T> {}
+    pub fn drain_sorted(&mut self) -> DrainSorted<'_, T> {
+}
 
     /// Retains only the elements specified by the predicate.
     ///
@@ -2895,7 +1681,8 @@ impl<T: Ord> BinaryHeap<T> {
     pub fn retain<F>(&mut self, mut f: F)
     where
         F: FnMut(&T) -> bool,
-    {}
+    {
+}
 }
 
 impl<T> BinaryHeap<T> {
@@ -2916,7 +1703,8 @@ impl<T> BinaryHeap<T> {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn iter(&self) -> Iter<'_, T> {}
+    pub fn iter(&self) -> Iter<'_, T> {
+}
 
     /// Returns an iterator which retrieves elements in heap order.
     /// This method consumes the original heap.
@@ -2933,7 +1721,8 @@ impl<T> BinaryHeap<T> {
     /// assert_eq!(heap.into_iter_sorted().take(2).collect::<Vec<_>>(), vec![5, 4]);
     /// ```
     #[unstable(feature = "binary_heap_into_iter_sorted", issue = "59278")]
-    pub fn into_iter_sorted(self) -> IntoIterSorted<T> {}
+    pub fn into_iter_sorted(self) -> IntoIterSorted<T> {
+}
 
     /// Returns the greatest item in the binary heap, or `None` if it is empty.
     ///
@@ -2958,7 +1747,8 @@ impl<T> BinaryHeap<T> {
     /// Cost is *O*(1) in the worst case.
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn peek(&self) -> Option<&T> {}
+    pub fn peek(&self) -> Option<&T> {
+}
 
     /// Returns the number of elements the binary heap can hold without reallocating.
     ///
@@ -2974,7 +1764,8 @@ impl<T> BinaryHeap<T> {
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn capacity(&self) -> usize {}
+    pub fn capacity(&self) -> usize {
+}
 
     /// Reserves the minimum capacity for exactly `additional` more elements to be inserted in the
     /// given `BinaryHeap`. Does nothing if the capacity is already sufficient.
@@ -3001,7 +1792,8 @@ impl<T> BinaryHeap<T> {
     ///
     /// [`reserve`]: BinaryHeap::reserve
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn reserve_exact(&mut self, additional: usize) {}
+    pub fn reserve_exact(&mut self, additional: usize) {
+}
 
     /// Reserves capacity for at least `additional` more elements to be inserted in the
     /// `BinaryHeap`. The collection may reserve more space to avoid frequent reallocations.
@@ -3022,7 +1814,8 @@ impl<T> BinaryHeap<T> {
     /// heap.push(4);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn reserve(&mut self, additional: usize) {}
+    pub fn reserve(&mut self, additional: usize) {
+}
 
     /// Discards as much additional capacity as possible.
     ///
@@ -3039,7 +1832,8 @@ impl<T> BinaryHeap<T> {
     /// assert!(heap.capacity() == 0);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn shrink_to_fit(&mut self) {}
+    pub fn shrink_to_fit(&mut self) {
+}
 
     /// Discards capacity with a lower bound.
     ///
@@ -3060,7 +1854,8 @@ impl<T> BinaryHeap<T> {
     /// ```
     #[inline]
     #[stable(feature = "shrink_to", since = "1.56.0")]
-    pub fn shrink_to(&mut self, min_capacity: usize) {}
+    pub fn shrink_to(&mut self, min_capacity: usize) {
+}
 
     /// Returns a slice of all values in the underlying vector, in arbitrary
     /// order.
@@ -3080,7 +1875,8 @@ impl<T> BinaryHeap<T> {
     /// ```
     #[must_use]
     #[unstable(feature = "binary_heap_as_slice", issue = "83659")]
-    pub fn as_slice(&self) -> &[T] {}
+    pub fn as_slice(&self) -> &[T] {
+}
 
     /// Consumes the `BinaryHeap` and returns the underlying vector
     /// in arbitrary order.
@@ -3101,7 +1897,8 @@ impl<T> BinaryHeap<T> {
     /// ```
     #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "binary_heap_extras_15", since = "1.5.0")]
-    pub fn into_vec(self) -> Vec<T> {}
+    pub fn into_vec(self) -> Vec<T> {
+}
 
     /// Returns the length of the binary heap.
     ///
@@ -3117,7 +1914,8 @@ impl<T> BinaryHeap<T> {
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn len(&self) -> usize {}
+    pub fn len(&self) -> usize {
+}
 
     /// Checks if the binary heap is empty.
     ///
@@ -3139,7 +1937,8 @@ impl<T> BinaryHeap<T> {
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn is_empty(&self) -> bool {}
+    pub fn is_empty(&self) -> bool {
+}
 
     /// Clears the binary heap, returning an iterator over the removed elements.
     ///
@@ -3163,7 +1962,8 @@ impl<T> BinaryHeap<T> {
     /// ```
     #[inline]
     #[stable(feature = "drain", since = "1.6.0")]
-    pub fn drain(&mut self) -> Drain<'_, T> {}
+    pub fn drain(&mut self) -> Drain<'_, T> {
+}
 
     /// Drops all items from the binary heap.
     ///
@@ -3182,7 +1982,8 @@ impl<T> BinaryHeap<T> {
     /// assert!(heap.is_empty());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn clear(&mut self) {}
+    pub fn clear(&mut self) {
+}
 }
 
 /// Hole represents a hole in a slice i.e., an index without valid value
@@ -3200,31 +2001,37 @@ impl<'a, T> Hole<'a, T> {
     ///
     /// Unsafe because pos must be within the data slice.
     #[inline]
-    unsafe fn new(data: &'a mut [T], pos: usize) -> Self {}
+    unsafe fn new(data: &'a mut [T], pos: usize) -> Self {
+}
 
     #[inline]
-    fn pos(&self) -> usize {}
+    fn pos(&self) -> usize {
+}
 
     /// Returns a reference to the element removed.
     #[inline]
-    fn element(&self) -> &T {}
+    fn element(&self) -> &T {
+}
 
     /// Returns a reference to the element at `index`.
     ///
     /// Unsafe because index must be within the data slice and not equal to pos.
     #[inline]
-    unsafe fn get(&self, index: usize) -> &T {}
+    unsafe fn get(&self, index: usize) -> &T {
+}
 
     /// Move hole to new location
     ///
     /// Unsafe because index must be within the data slice and not equal to pos.
     #[inline]
-    unsafe fn move_to(&mut self, index: usize) {}
+    unsafe fn move_to(&mut self, index: usize) {
+}
 }
 
 impl<T> Drop for Hole<'_, T> {
     #[inline]
-    fn drop(&mut self) {}
+    fn drop(&mut self) {
+}
 }
 
 /// An iterator over the elements of a `BinaryHeap`.
@@ -3241,13 +2048,15 @@ pub struct Iter<'a, T: 'a> {
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<T: fmt::Debug> fmt::Debug for Iter<'_, T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
 }
 
 // FIXME(#26925) Remove in favor of `#[derive(Clone)]`
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Clone for Iter<'_, T> {
-    fn clone(&self) -> Self {}
+    fn clone(&self) -> Self {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -3255,24 +2064,29 @@ impl<'a, T> Iterator for Iter<'a, T> {
     type Item = &'a T;
 
     #[inline]
-    fn next(&mut self) -> Option<&'a T> {}
+    fn next(&mut self) -> Option<&'a T> {
+}
 
     #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {}
+    fn size_hint(&self) -> (usize, Option<usize>) {
+}
 
     #[inline]
-    fn last(self) -> Option<&'a T> {}
+    fn last(self) -> Option<&'a T> {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> DoubleEndedIterator for Iter<'a, T> {
     #[inline]
-    fn next_back(&mut self) -> Option<&'a T> {}
+    fn next_back(&mut self) -> Option<&'a T> {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ExactSizeIterator for Iter<'_, T> {
-    fn is_empty(&self) -> bool {}
+    fn is_empty(&self) -> bool {
+}
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -3293,7 +2107,8 @@ pub struct IntoIter<T> {
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<T: fmt::Debug> fmt::Debug for IntoIter<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -3301,21 +2116,25 @@ impl<T> Iterator for IntoIter<T> {
     type Item = T;
 
     #[inline]
-    fn next(&mut self) -> Option<T> {}
+    fn next(&mut self) -> Option<T> {
+}
 
     #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {}
+    fn size_hint(&self) -> (usize, Option<usize>) {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> DoubleEndedIterator for IntoIter<T> {
     #[inline]
-    fn next_back(&mut self) -> Option<T> {}
+    fn next_back(&mut self) -> Option<T> {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ExactSizeIterator for IntoIter<T> {
-    fn is_empty(&self) -> bool {}
+    fn is_empty(&self) -> bool {
+}
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -3327,7 +2146,8 @@ unsafe impl<T> SourceIter for IntoIter<T> {
     type Source = IntoIter<T>;
 
     #[inline]
-    unsafe fn as_inner(&mut self) -> &mut Self::Source {}
+    unsafe fn as_inner(&mut self) -> &mut Self::Source {
+}
 }
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
@@ -3337,7 +2157,8 @@ unsafe impl<I> InPlaceIterable for IntoIter<I> {}
 impl<I> AsIntoIter for IntoIter<I> {
     type Item = I;
 
-    fn as_into_iter(&mut self) -> &mut vec::IntoIter<Self::Item> {}
+    fn as_into_iter(&mut self) -> &mut vec::IntoIter<Self::Item> {
+}
 }
 
 #[must_use = "iterators are lazy and do nothing unless consumed"]
@@ -3352,10 +2173,12 @@ impl<T: Ord> Iterator for IntoIterSorted<T> {
     type Item = T;
 
     #[inline]
-    fn next(&mut self) -> Option<T> {}
+    fn next(&mut self) -> Option<T> {
+}
 
     #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {}
+    fn size_hint(&self) -> (usize, Option<usize>) {
+}
 }
 
 #[unstable(feature = "binary_heap_into_iter_sorted", issue = "59278")]
@@ -3384,21 +2207,25 @@ impl<T> Iterator for Drain<'_, T> {
     type Item = T;
 
     #[inline]
-    fn next(&mut self) -> Option<T> {}
+    fn next(&mut self) -> Option<T> {
+}
 
     #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {}
+    fn size_hint(&self) -> (usize, Option<usize>) {
+}
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
 impl<T> DoubleEndedIterator for Drain<'_, T> {
     #[inline]
-    fn next_back(&mut self) -> Option<T> {}
+    fn next_back(&mut self) -> Option<T> {
+}
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
 impl<T> ExactSizeIterator for Drain<'_, T> {
-    fn is_empty(&self) -> bool {}
+    fn is_empty(&self) -> bool {
+}
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -3419,7 +2246,8 @@ pub struct DrainSorted<'a, T: Ord> {
 #[unstable(feature = "binary_heap_drain_sorted", issue = "59278")]
 impl<'a, T: Ord> Drop for DrainSorted<'a, T> {
     /// Removes heap elements in heap order.
-    fn drop(&mut self) {}
+    fn drop(&mut self) {
+}
 }
 
 #[unstable(feature = "binary_heap_drain_sorted", issue = "59278")]
@@ -3427,10 +2255,12 @@ impl<T: Ord> Iterator for DrainSorted<'_, T> {
     type Item = T;
 
     #[inline]
-    fn next(&mut self) -> Option<T> {}
+    fn next(&mut self) -> Option<T> {
+}
 
     #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {}
+    fn size_hint(&self) -> (usize, Option<usize>) {
+}
 }
 
 #[unstable(feature = "binary_heap_drain_sorted", issue = "59278")]
@@ -3447,7 +2277,8 @@ impl<T: Ord> From<Vec<T>> for BinaryHeap<T> {
     /// Converts a `Vec<T>` into a `BinaryHeap<T>`.
     ///
     /// This conversion happens in-place, and has *O*(*n*) time complexity.
-    fn from(vec: Vec<T>) -> BinaryHeap<T> {}
+    fn from(vec: Vec<T>) -> BinaryHeap<T> {
+}
 }
 
 #[stable(feature = "std_collections_from_array", since = "1.56.0")]
@@ -3461,7 +2292,8 @@ impl<T: Ord, const N: usize> From<[T; N]> for BinaryHeap<T> {
     ///     assert_eq!(a, b);
     /// }
     /// ```
-    fn from(arr: [T; N]) -> Self {}
+    fn from(arr: [T; N]) -> Self {
+}
 }
 
 #[stable(feature = "binary_heap_extras_15", since = "1.5.0")]
@@ -3470,12 +2302,14 @@ impl<T> From<BinaryHeap<T>> for Vec<T> {
     ///
     /// This conversion requires no data movement or allocation, and has
     /// constant time complexity.
-    fn from(heap: BinaryHeap<T>) -> Vec<T> {}
+    fn from(heap: BinaryHeap<T>) -> Vec<T> {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Ord> FromIterator<T> for BinaryHeap<T> {
-    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> BinaryHeap<T> {}
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> BinaryHeap<T> {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -3501,7 +2335,8 @@ impl<T> IntoIterator for BinaryHeap<T> {
     ///     println!("{}", x);
     /// }
     /// ```
-    fn into_iter(self) -> IntoIter<T> {}
+    fn into_iter(self) -> IntoIter<T> {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -3509,42 +2344,52 @@ impl<'a, T> IntoIterator for &'a BinaryHeap<T> {
     type Item = &'a T;
     type IntoIter = Iter<'a, T>;
 
-    fn into_iter(self) -> Iter<'a, T> {}
+    fn into_iter(self) -> Iter<'a, T> {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Ord> Extend<T> for BinaryHeap<T> {
     #[inline]
-    fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {}
+    fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
+}
 
     #[inline]
-    fn extend_one(&mut self, item: T) {}
+    fn extend_one(&mut self, item: T) {
+}
 
     #[inline]
-    fn extend_reserve(&mut self, additional: usize) {}
+    fn extend_reserve(&mut self, additional: usize) {
+}
 }
 
 impl<T: Ord, I: IntoIterator<Item = T>> SpecExtend<I> for BinaryHeap<T> {
-    default fn spec_extend(&mut self, iter: I) {}
+    default fn spec_extend(&mut self, iter: I) {
+}
 }
 
 impl<T: Ord> SpecExtend<BinaryHeap<T>> for BinaryHeap<T> {
-    fn spec_extend(&mut self, ref mut other: BinaryHeap<T>) {}
+    fn spec_extend(&mut self, ref mut other: BinaryHeap<T>) {
+}
 }
 
 impl<T: Ord> BinaryHeap<T> {
-    fn extend_desugared<I: IntoIterator<Item = T>>(&mut self, iter: I) {}
+    fn extend_desugared<I: IntoIterator<Item = T>>(&mut self, iter: I) {
+}
 }
 
 #[stable(feature = "extend_ref", since = "1.2.0")]
 impl<'a, T: 'a + Ord + Copy> Extend<&'a T> for BinaryHeap<T> {
-    fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {}
+    fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
+}
 
     #[inline]
-    fn extend_one(&mut self, &item: &'a T) {}
+    fn extend_one(&mut self, &item: &'a T) {
+}
 
     #[inline]
-    fn extend_reserve(&mut self, additional: usize) {}
+    fn extend_reserve(&mut self, additional: usize) {
+}
 }
 }
 #[cfg(not(no_global_oom_handling))]
@@ -3570,7 +2415,8 @@ impl<K, V> Root<K, V> {
     where
         K: Ord,
         I: Iterator<Item = (K, V)> + FusedIterator,
-    {}
+    {
+}
 
     /// Pushes all key-value pairs to the end of the tree, incrementing a
     /// `length` variable along the way. The latter makes it easier for the
@@ -3578,7 +2424,8 @@ impl<K, V> Root<K, V> {
     pub fn bulk_push<I>(&mut self, iter: I, length: &mut usize)
     where
         I: Iterator<Item = (K, V)>,
-    {}
+    {
+}
 }
 
 // An iterator for merging two sorted sequences into one
@@ -3591,7 +2438,8 @@ where
     type Item = (K, V);
 
     /// If two keys are equal, returns the key-value pair from the right source.
-    fn next(&mut self) -> Option<(K, V)> {}
+    fn next(&mut self) -> Option<(K, V)> {
+}
 }
 }
 mod borrow {
@@ -3620,7 +2468,8 @@ impl<'a, T> DormantMutRef<'a, T> {
     /// Capture a unique borrow, and immediately reborrow it. For the compiler,
     /// the lifetime of the new reference is the same as the lifetime of the
     /// original reference, but you promise to use it for a shorter period.
-    pub fn new(t: &'a mut T) -> (&'a mut T, Self) {}
+    pub fn new(t: &'a mut T) -> (&'a mut T, Self) {
+}
 
     /// Revert to the unique borrow initially captured.
     ///
@@ -3628,15 +2477,12 @@ impl<'a, T> DormantMutRef<'a, T> {
     ///
     /// The reborrow must have ended, i.e., the reference returned by `new` and
     /// all pointers and references derived from it, must not be used anymore.
-    pub unsafe fn awaken(self) -> &'a mut T {}
+    pub unsafe fn awaken(self) -> &'a mut T {
+}
 }
 
 #[cfg(test)]
 mod tests {
-use super::DormantMutRef;
-
-#[test]
-fn test_borrow() {}
 }
 }
 mod dedup_sorted_iter {
@@ -3657,7 +2503,8 @@ impl<K, V, I> DedupSortedIter<K, V, I>
 where
     I: Iterator<Item = (K, V)>,
 {
-    pub fn new(iter: I) -> Self {}
+    pub fn new(iter: I) -> Self {
+}
 }
 
 impl<K, V, I> Iterator for DedupSortedIter<K, V, I>
@@ -3667,7 +2514,8 @@ where
 {
     type Item = (K, V);
 
-    fn next(&mut self) -> Option<(K, V)> {}
+    fn next(&mut self) -> Option<(K, V)> {
+}
 }
 }
 mod fix {
@@ -3681,7 +2529,8 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
     /// an empty root.
     fn fix_node_through_parent(
         self,
-    ) -> Result<Option<NodeRef<marker::Mut<'a>, K, V, marker::Internal>>, Self> {}
+    ) -> Result<Option<NodeRef<marker::Mut<'a>, K, V, marker::Internal>>, Self> {
+}
 }
 
 impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
@@ -3692,31 +2541,38 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
     ///
     /// This method does not expect ancestors to already be underfull upon entry
     /// and panics if it encounters an empty ancestor.
-    pub fn fix_node_and_affected_ancestors(mut self) -> bool {}
+    pub fn fix_node_and_affected_ancestors(mut self) -> bool {
+}
 }
 
 impl<K, V> Root<K, V> {
     /// Removes empty levels on the top, but keeps an empty leaf if the entire tree is empty.
-    pub fn fix_top(&mut self) {}
+    pub fn fix_top(&mut self) {
+}
 
     /// Stocks up or merge away any underfull nodes on the right border of the
     /// tree. The other nodes, those that are not the root nor a rightmost edge,
     /// must already have at least MIN_LEN elements.
-    pub fn fix_right_border(&mut self) {}
+    pub fn fix_right_border(&mut self) {
+}
 
     /// The symmetric clone of `fix_right_border`.
-    pub fn fix_left_border(&mut self) {}
+    pub fn fix_left_border(&mut self) {
+}
 
     /// Stock up any underfull nodes on the right border of the tree.
     /// The other nodes, those that are not the root nor a rightmost edge,
     /// must be prepared to have up to MIN_LEN elements stolen.
-    pub fn fix_right_border_of_plentiful(&mut self) {}
+    pub fn fix_right_border_of_plentiful(&mut self) {
+}
 }
 
 impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, marker::KV> {
-    fn fix_left_border_of_left_edge(mut self) {}
+    fn fix_left_border_of_left_edge(mut self) {
+}
 
-    fn fix_right_border_of_right_edge(mut self) {}
+    fn fix_right_border_of_right_edge(mut self) {
+}
 }
 
 impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::KV> {
@@ -3724,13 +2580,15 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, 
     /// provisions an extra element to allow merging its children in turn
     /// without becoming underfull.
     /// Returns the left child.
-    fn fix_left_child(self) -> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {}
+    fn fix_left_child(self) -> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
+}
 
     /// Stocks up the right child, assuming the left child isn't underfull, and
     /// provisions an extra element to allow merging its children in turn
     /// without becoming underfull.
     /// Returns wherever the right child ended up.
-    fn fix_right_child(self) -> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {}
+    fn fix_right_child(self) -> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
+}
 }
 }
 pub mod map {
@@ -3781,7 +2639,8 @@ pub enum Entry<'a, K: 'a, V: 'a> {
 
 #[stable(feature = "debug_btree_map", since = "1.12.0")]
 impl<K: Debug + Ord, V: Debug> Debug for Entry<'_, K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
 }
 
 /// A view into a vacant entry in a `BTreeMap`.
@@ -3798,7 +2657,8 @@ pub struct VacantEntry<'a, K: 'a, V: 'a> {
 
 #[stable(feature = "debug_btree_map", since = "1.12.0")]
 impl<K: Debug + Ord, V> Debug for VacantEntry<'_, K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
 }
 
 /// A view into an occupied entry in a `BTreeMap`.
@@ -3814,7 +2674,8 @@ pub struct OccupiedEntry<'a, K: 'a, V: 'a> {
 
 #[stable(feature = "debug_btree_map", since = "1.12.0")]
 impl<K: Debug + Ord, V: Debug> Debug for OccupiedEntry<'_, K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
 }
 
 /// The error returned by [`try_insert`](BTreeMap::try_insert) when the key already exists.
@@ -3830,12 +2691,14 @@ pub struct OccupiedError<'a, K: 'a, V: 'a> {
 
 #[unstable(feature = "map_try_insert", issue = "82766")]
 impl<K: Debug + Ord, V: Debug> Debug for OccupiedError<'_, K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
 }
 
 #[unstable(feature = "map_try_insert", issue = "82766")]
 impl<'a, K: Debug + Ord, V: Debug> fmt::Display for OccupiedError<'a, K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
 }
 
 impl<'a, K: Ord, V> Entry<'a, K, V> {
@@ -3853,7 +2716,8 @@ impl<'a, K: Ord, V> Entry<'a, K, V> {
     /// assert_eq!(map["poneyland"], 12);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn or_insert(self, default: V) -> &'a mut V {}
+    pub fn or_insert(self, default: V) -> &'a mut V {
+}
 
     /// Ensures a value is in the entry by inserting the result of the default function if empty,
     /// and returns a mutable reference to the value in the entry.
@@ -3871,7 +2735,8 @@ impl<'a, K: Ord, V> Entry<'a, K, V> {
     /// assert_eq!(map["poneyland"], "hoho".to_string());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn or_insert_with<F: FnOnce() -> V>(self, default: F) -> &'a mut V {}
+    pub fn or_insert_with<F: FnOnce() -> V>(self, default: F) -> &'a mut V {
+}
 
     /// Ensures a value is in the entry by inserting, if empty, the result of the default function.
     /// This method allows for generating key-derived values for insertion by providing the default
@@ -3893,7 +2758,8 @@ impl<'a, K: Ord, V> Entry<'a, K, V> {
     /// ```
     #[inline]
     #[stable(feature = "or_insert_with_key", since = "1.50.0")]
-    pub fn or_insert_with_key<F: FnOnce(&K) -> V>(self, default: F) -> &'a mut V {}
+    pub fn or_insert_with_key<F: FnOnce(&K) -> V>(self, default: F) -> &'a mut V {
+}
 
     /// Returns a reference to this entry's key.
     ///
@@ -3906,7 +2772,8 @@ impl<'a, K: Ord, V> Entry<'a, K, V> {
     /// assert_eq!(map.entry("poneyland").key(), &"poneyland");
     /// ```
     #[stable(feature = "map_entry_keys", since = "1.10.0")]
-    pub fn key(&self) -> &K {}
+    pub fn key(&self) -> &K {
+}
 
     /// Provides in-place mutable access to an occupied entry before any
     /// potential inserts into the map.
@@ -3932,7 +2799,8 @@ impl<'a, K: Ord, V> Entry<'a, K, V> {
     pub fn and_modify<F>(self, f: F) -> Self
     where
         F: FnOnce(&mut V),
-    {}
+    {
+}
 }
 
 impl<'a, K: Ord, V: Default> Entry<'a, K, V> {
@@ -3950,7 +2818,8 @@ impl<'a, K: Ord, V: Default> Entry<'a, K, V> {
     ///
     /// assert_eq!(map["poneyland"], None);
     /// ```
-    pub fn or_default(self) -> &'a mut V {}
+    pub fn or_default(self) -> &'a mut V {
+}
 }
 
 impl<'a, K: Ord, V> VacantEntry<'a, K, V> {
@@ -3966,7 +2835,8 @@ impl<'a, K: Ord, V> VacantEntry<'a, K, V> {
     /// assert_eq!(map.entry("poneyland").key(), &"poneyland");
     /// ```
     #[stable(feature = "map_entry_keys", since = "1.10.0")]
-    pub fn key(&self) -> &K {}
+    pub fn key(&self) -> &K {
+}
 
     /// Take ownership of the key.
     ///
@@ -3983,7 +2853,8 @@ impl<'a, K: Ord, V> VacantEntry<'a, K, V> {
     /// }
     /// ```
     #[stable(feature = "map_entry_recover_keys2", since = "1.12.0")]
-    pub fn into_key(self) -> K {}
+    pub fn into_key(self) -> K {
+}
 
     /// Sets the value of the entry with the `VacantEntry`'s key,
     /// and returns a mutable reference to it.
@@ -4002,7 +2873,8 @@ impl<'a, K: Ord, V> VacantEntry<'a, K, V> {
     /// assert_eq!(map["poneyland"], 37);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn insert(self, value: V) -> &'a mut V {}
+    pub fn insert(self, value: V) -> &'a mut V {
+}
 }
 
 impl<'a, K: Ord, V> OccupiedEntry<'a, K, V> {
@@ -4019,7 +2891,8 @@ impl<'a, K: Ord, V> OccupiedEntry<'a, K, V> {
     /// ```
     #[must_use]
     #[stable(feature = "map_entry_keys", since = "1.10.0")]
-    pub fn key(&self) -> &K {}
+    pub fn key(&self) -> &K {
+}
 
     /// Take ownership of the key and value from the map.
     ///
@@ -4041,7 +2914,8 @@ impl<'a, K: Ord, V> OccupiedEntry<'a, K, V> {
     /// // println!("{}", map["poneyland"]);
     /// ```
     #[stable(feature = "map_entry_recover_keys2", since = "1.12.0")]
-    pub fn remove_entry(self) -> (K, V) {}
+    pub fn remove_entry(self) -> (K, V) {
+}
 
     /// Gets a reference to the value in the entry.
     ///
@@ -4060,7 +2934,8 @@ impl<'a, K: Ord, V> OccupiedEntry<'a, K, V> {
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn get(&self) -> &V {}
+    pub fn get(&self) -> &V {
+}
 
     /// Gets a mutable reference to the value in the entry.
     ///
@@ -4089,7 +2964,8 @@ impl<'a, K: Ord, V> OccupiedEntry<'a, K, V> {
     /// assert_eq!(map["poneyland"], 24);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn get_mut(&mut self) -> &mut V {}
+    pub fn get_mut(&mut self) -> &mut V {
+}
 
     /// Converts the entry into a mutable reference to its value.
     ///
@@ -4114,7 +2990,8 @@ impl<'a, K: Ord, V> OccupiedEntry<'a, K, V> {
     /// ```
     #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn into_mut(self) -> &'a mut V {}
+    pub fn into_mut(self) -> &'a mut V {
+}
 
     /// Sets the value of the entry with the `OccupiedEntry`'s key,
     /// and returns the entry's old value.
@@ -4134,7 +3011,8 @@ impl<'a, K: Ord, V> OccupiedEntry<'a, K, V> {
     /// assert_eq!(map["poneyland"], 15);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn insert(&mut self, value: V) -> V {}
+    pub fn insert(&mut self, value: V) -> V {
+}
 
     /// Takes the value of the entry out of the map, and returns it.
     ///
@@ -4154,10 +3032,12 @@ impl<'a, K: Ord, V> OccupiedEntry<'a, K, V> {
     /// // println!("{}", map["poneyland"]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn remove(self) -> V {}
+    pub fn remove(self) -> V {
+}
 
     // Body of `remove_entry`, probably separate because the name reflects the returned pair.
-    pub(super) fn remove_kv(self) -> (K, V) {}
+    pub(super) fn remove_kv(self) -> (K, V) {
+}
 }
 }
 pub use entry::{Entry, OccupiedEntry, OccupiedError, VacantEntry};
@@ -4280,7 +3160,11 @@ pub(super) const MIN_LEN: usize = node::MIN_LEN_AFTER_SPLIT;
 /// // would be `BTreeMap<&str, u8>` in this example).
 /// let mut player_stats = BTreeMap::new();
 ///
-/// fn random_stat_buff() -> u8 {}
+/// fn random_stat_buff() -> u8 {
+///     // could actually return some random value here - let's just return
+///     // some fixed value for now
+///     42
+/// }
 ///
 /// // insert a key only if it doesn't already exist
 /// player_stats.entry("health").or_insert(100);
@@ -4303,12 +3187,14 @@ pub struct BTreeMap<K, V> {
 
 #[stable(feature = "btree_drop", since = "1.7.0")]
 unsafe impl<#[may_dangle] K, #[may_dangle] V> Drop for BTreeMap<K, V> {
-    fn drop(&mut self) {}
+    fn drop(&mut self) {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K: Clone, V: Clone> Clone for BTreeMap<K, V> {
-    fn clone(&self) -> BTreeMap<K, V> {}
+    fn clone(&self) -> BTreeMap<K, V> {
+}
 }
 
 impl<K, Q: ?Sized> super::Recover<Q> for BTreeMap<K, ()>
@@ -4318,11 +3204,14 @@ where
 {
     type Key = K;
 
-    fn get(&self, key: &Q) -> Option<&K> {}
+    fn get(&self, key: &Q) -> Option<&K> {
+}
 
-    fn take(&mut self, key: &Q) -> Option<K> {}
+    fn take(&mut self, key: &Q) -> Option<K> {
+}
 
-    fn replace(&mut self, key: K) -> Option<K> {}
+    fn replace(&mut self, key: K) -> Option<K> {
+}
 }
 
 /// An iterator over the entries of a `BTreeMap`.
@@ -4340,7 +3229,8 @@ pub struct Iter<'a, K: 'a, V: 'a> {
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<K: fmt::Debug, V: fmt::Debug> fmt::Debug for Iter<'_, K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
 }
 
 /// A mutable iterator over the entries of a `BTreeMap`.
@@ -4361,7 +3251,8 @@ pub struct IterMut<'a, K: 'a, V: 'a> {
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<K: fmt::Debug, V: fmt::Debug> fmt::Debug for IterMut<'_, K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
 }
 
 /// An owning iterator over the entries of a `BTreeMap`.
@@ -4381,12 +3272,14 @@ pub struct IntoIter<K, V> {
 impl<K, V> IntoIter<K, V> {
     /// Returns an iterator of references over the remaining items.
     #[inline]
-    pub(super) fn iter(&self) -> Iter<'_, K, V> {}
+    pub(super) fn iter(&self) -> Iter<'_, K, V> {
+}
 }
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<K: fmt::Debug, V: fmt::Debug> fmt::Debug for IntoIter<K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
 }
 
 /// An iterator over the keys of a `BTreeMap`.
@@ -4403,7 +3296,8 @@ pub struct Keys<'a, K: 'a, V: 'a> {
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<K: fmt::Debug, V> fmt::Debug for Keys<'_, K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
 }
 
 /// An iterator over the values of a `BTreeMap`.
@@ -4420,7 +3314,8 @@ pub struct Values<'a, K: 'a, V: 'a> {
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<K, V: fmt::Debug> fmt::Debug for Values<'_, K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
 }
 
 /// A mutable iterator over the values of a `BTreeMap`.
@@ -4437,7 +3332,8 @@ pub struct ValuesMut<'a, K: 'a, V: 'a> {
 
 #[stable(feature = "map_values_mut", since = "1.10.0")]
 impl<K, V: fmt::Debug> fmt::Debug for ValuesMut<'_, K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
 }
 
 /// An owning iterator over the keys of a `BTreeMap`.
@@ -4454,7 +3350,8 @@ pub struct IntoKeys<K, V> {
 
 #[stable(feature = "map_into_keys_values", since = "1.54.0")]
 impl<K: fmt::Debug, V> fmt::Debug for IntoKeys<K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
 }
 
 /// An owning iterator over the values of a `BTreeMap`.
@@ -4471,7 +3368,8 @@ pub struct IntoValues<K, V> {
 
 #[stable(feature = "map_into_keys_values", since = "1.54.0")]
 impl<K, V: fmt::Debug> fmt::Debug for IntoValues<K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
 }
 
 /// An iterator over a sub-range of entries in a `BTreeMap`.
@@ -4488,7 +3386,8 @@ pub struct Range<'a, K: 'a, V: 'a> {
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<K: fmt::Debug, V: fmt::Debug> fmt::Debug for Range<'_, K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
 }
 
 /// A mutable iterator over a sub-range of entries in a `BTreeMap`.
@@ -4508,7 +3407,8 @@ pub struct RangeMut<'a, K: 'a, V: 'a> {
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<K: fmt::Debug, V: fmt::Debug> fmt::Debug for RangeMut<'_, K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
 }
 
 impl<K, V> BTreeMap<K, V> {
@@ -4531,7 +3431,8 @@ impl<K, V> BTreeMap<K, V> {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_btree_new", issue = "71835")]
     #[must_use]
-    pub const fn new() -> BTreeMap<K, V> {}
+    pub const fn new() -> BTreeMap<K, V> {
+}
 
     /// Clears the map, removing all elements.
     ///
@@ -4548,7 +3449,8 @@ impl<K, V> BTreeMap<K, V> {
     /// assert!(a.is_empty());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn clear(&mut self) {}
+    pub fn clear(&mut self) {
+}
 
     /// Returns a reference to the value corresponding to the key.
     ///
@@ -4572,7 +3474,8 @@ impl<K, V> BTreeMap<K, V> {
     where
         K: Borrow<Q> + Ord,
         Q: Ord,
-    {}
+    {
+}
 
     /// Returns the key-value pair corresponding to the supplied key.
     ///
@@ -4594,7 +3497,8 @@ impl<K, V> BTreeMap<K, V> {
     where
         K: Borrow<Q> + Ord,
         Q: Ord,
-    {}
+    {
+}
 
     /// Returns the first key-value pair in the map.
     /// The key in this pair is the minimum key in the map.
@@ -4617,7 +3521,8 @@ impl<K, V> BTreeMap<K, V> {
     pub fn first_key_value(&self) -> Option<(&K, &V)>
     where
         K: Ord,
-    {}
+    {
+}
 
     /// Returns the first entry in the map for in-place manipulation.
     /// The key of this entry is the minimum key in the map.
@@ -4643,7 +3548,8 @@ impl<K, V> BTreeMap<K, V> {
     pub fn first_entry(&mut self) -> Option<OccupiedEntry<'_, K, V>>
     where
         K: Ord,
-    {}
+    {
+}
 
     /// Removes and returns the first element in the map.
     /// The key of this element is the minimum key that was in the map.
@@ -4668,7 +3574,8 @@ impl<K, V> BTreeMap<K, V> {
     pub fn pop_first(&mut self) -> Option<(K, V)>
     where
         K: Ord,
-    {}
+    {
+}
 
     /// Returns the last key-value pair in the map.
     /// The key in this pair is the maximum key in the map.
@@ -4690,7 +3597,8 @@ impl<K, V> BTreeMap<K, V> {
     pub fn last_key_value(&self) -> Option<(&K, &V)>
     where
         K: Ord,
-    {}
+    {
+}
 
     /// Returns the last entry in the map for in-place manipulation.
     /// The key of this entry is the maximum key in the map.
@@ -4716,7 +3624,8 @@ impl<K, V> BTreeMap<K, V> {
     pub fn last_entry(&mut self) -> Option<OccupiedEntry<'_, K, V>>
     where
         K: Ord,
-    {}
+    {
+}
 
     /// Removes and returns the last element in the map.
     /// The key of this element is the maximum key that was in the map.
@@ -4741,7 +3650,8 @@ impl<K, V> BTreeMap<K, V> {
     pub fn pop_last(&mut self) -> Option<(K, V)>
     where
         K: Ord,
-    {}
+    {
+}
 
     /// Returns `true` if the map contains a value for the specified key.
     ///
@@ -4765,7 +3675,8 @@ impl<K, V> BTreeMap<K, V> {
     where
         K: Borrow<Q> + Ord,
         Q: Ord,
-    {}
+    {
+}
 
     /// Returns a mutable reference to the value corresponding to the key.
     ///
@@ -4792,7 +3703,8 @@ impl<K, V> BTreeMap<K, V> {
     where
         K: Borrow<Q> + Ord,
         Q: Ord,
-    {}
+    {
+}
 
     /// Inserts a key-value pair into the map.
     ///
@@ -4824,7 +3736,8 @@ impl<K, V> BTreeMap<K, V> {
     pub fn insert(&mut self, key: K, value: V) -> Option<V>
     where
         K: Ord,
-    {}
+    {
+}
 
     /// Tries to insert a key-value pair into the map, and returns
     /// a mutable reference to the value in the entry.
@@ -4853,7 +3766,8 @@ impl<K, V> BTreeMap<K, V> {
     pub fn try_insert(&mut self, key: K, value: V) -> Result<&mut V, OccupiedError<'_, K, V>>
     where
         K: Ord,
-    {}
+    {
+}
 
     /// Removes a key from the map, returning the value at the key if the key
     /// was previously in the map.
@@ -4878,7 +3792,8 @@ impl<K, V> BTreeMap<K, V> {
     where
         K: Borrow<Q> + Ord,
         Q: Ord,
-    {}
+    {
+}
 
     /// Removes a key from the map, returning the stored key and value if the key
     /// was previously in the map.
@@ -4903,7 +3818,8 @@ impl<K, V> BTreeMap<K, V> {
     where
         K: Borrow<Q> + Ord,
         Q: Ord,
-    {}
+    {
+}
 
     /// Retains only the elements specified by the predicate.
     ///
@@ -4926,7 +3842,8 @@ impl<K, V> BTreeMap<K, V> {
     where
         K: Ord,
         F: FnMut(&K, &mut V) -> bool,
-    {}
+    {
+}
 
     /// Moves all elements from `other` into `Self`, leaving `other` empty.
     ///
@@ -4960,7 +3877,8 @@ impl<K, V> BTreeMap<K, V> {
     pub fn append(&mut self, other: &mut Self)
     where
         K: Ord,
-    {}
+    {
+}
 
     /// Constructs a double-ended iterator over a sub-range of elements in the map.
     /// The simplest way is to use the range syntax `min..max`, thus `range(min..max)` will
@@ -4997,7 +3915,8 @@ impl<K, V> BTreeMap<K, V> {
         T: Ord,
         K: Borrow<T> + Ord,
         R: RangeBounds<T>,
-    {}
+    {
+}
 
     /// Constructs a mutable double-ended iterator over a sub-range of elements in the map.
     /// The simplest way is to use the range syntax `min..max`, thus `range(min..max)` will
@@ -5035,7 +3954,8 @@ impl<K, V> BTreeMap<K, V> {
         T: Ord,
         K: Borrow<T> + Ord,
         R: RangeBounds<T>,
-    {}
+    {
+}
 
     /// Gets the given key's corresponding entry in the map for in-place manipulation.
     ///
@@ -5059,7 +3979,8 @@ impl<K, V> BTreeMap<K, V> {
     pub fn entry(&mut self, key: K) -> Entry<'_, K, V>
     where
         K: Ord,
-    {}
+    {
+}
 
     /// Splits the collection into two at the given key. Returns everything after the given key,
     /// including the key.
@@ -5094,7 +4015,8 @@ impl<K, V> BTreeMap<K, V> {
     pub fn split_off<Q: ?Sized + Ord>(&mut self, key: &Q) -> Self
     where
         K: Borrow<Q> + Ord,
-    {}
+    {
+}
 
     /// Creates an iterator that visits all elements (key-value pairs) in
     /// ascending key order and uses a closure to determine if an element should
@@ -5133,12 +4055,14 @@ impl<K, V> BTreeMap<K, V> {
     where
         K: Ord,
         F: FnMut(&K, &mut V) -> bool,
-    {}
+    {
+}
 
     pub(super) fn drain_filter_inner(&mut self) -> DrainFilterInner<'_, K, V>
     where
         K: Ord,
-    {}
+    {
+}
 
     /// Creates a consuming iterator visiting all the keys, in sorted order.
     /// The map cannot be used after calling this.
@@ -5158,7 +4082,8 @@ impl<K, V> BTreeMap<K, V> {
     /// ```
     #[inline]
     #[stable(feature = "map_into_keys_values", since = "1.54.0")]
-    pub fn into_keys(self) -> IntoKeys<K, V> {}
+    pub fn into_keys(self) -> IntoKeys<K, V> {
+}
 
     /// Creates a consuming iterator visiting all the values, in order by key.
     /// The map cannot be used after calling this.
@@ -5178,14 +4103,16 @@ impl<K, V> BTreeMap<K, V> {
     /// ```
     #[inline]
     #[stable(feature = "map_into_keys_values", since = "1.54.0")]
-    pub fn into_values(self) -> IntoValues<K, V> {}
+    pub fn into_values(self) -> IntoValues<K, V> {
+}
 
     /// Makes a `BTreeMap` from a sorted iterator.
     pub(crate) fn bulk_build_from_sorted_iter<I>(iter: I) -> Self
     where
         K: Ord,
         I: Iterator<Item = (K, V)>,
-    {}
+    {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -5193,22 +4120,28 @@ impl<'a, K, V> IntoIterator for &'a BTreeMap<K, V> {
     type Item = (&'a K, &'a V);
     type IntoIter = Iter<'a, K, V>;
 
-    fn into_iter(self) -> Iter<'a, K, V> {}
+    fn into_iter(self) -> Iter<'a, K, V> {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K: 'a, V: 'a> Iterator for Iter<'a, K, V> {
     type Item = (&'a K, &'a V);
 
-    fn next(&mut self) -> Option<(&'a K, &'a V)> {}
+    fn next(&mut self) -> Option<(&'a K, &'a V)> {
+}
 
-    fn size_hint(&self) -> (usize, Option<usize>) {}
+    fn size_hint(&self) -> (usize, Option<usize>) {
+}
 
-    fn last(mut self) -> Option<(&'a K, &'a V)> {}
+    fn last(mut self) -> Option<(&'a K, &'a V)> {
+}
 
-    fn min(mut self) -> Option<(&'a K, &'a V)> {}
+    fn min(mut self) -> Option<(&'a K, &'a V)> {
+}
 
-    fn max(mut self) -> Option<(&'a K, &'a V)> {}
+    fn max(mut self) -> Option<(&'a K, &'a V)> {
+}
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -5216,17 +4149,20 @@ impl<K, V> FusedIterator for Iter<'_, K, V> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K: 'a, V: 'a> DoubleEndedIterator for Iter<'a, K, V> {
-    fn next_back(&mut self) -> Option<(&'a K, &'a V)> {}
+    fn next_back(&mut self) -> Option<(&'a K, &'a V)> {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K, V> ExactSizeIterator for Iter<'_, K, V> {
-    fn len(&self) -> usize {}
+    fn len(&self) -> usize {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K, V> Clone for Iter<'_, K, V> {
-    fn clone(&self) -> Self {}
+    fn clone(&self) -> Self {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -5234,32 +4170,40 @@ impl<'a, K, V> IntoIterator for &'a mut BTreeMap<K, V> {
     type Item = (&'a K, &'a mut V);
     type IntoIter = IterMut<'a, K, V>;
 
-    fn into_iter(self) -> IterMut<'a, K, V> {}
+    fn into_iter(self) -> IterMut<'a, K, V> {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K: 'a, V: 'a> Iterator for IterMut<'a, K, V> {
     type Item = (&'a K, &'a mut V);
 
-    fn next(&mut self) -> Option<(&'a K, &'a mut V)> {}
+    fn next(&mut self) -> Option<(&'a K, &'a mut V)> {
+}
 
-    fn size_hint(&self) -> (usize, Option<usize>) {}
+    fn size_hint(&self) -> (usize, Option<usize>) {
+}
 
-    fn last(mut self) -> Option<(&'a K, &'a mut V)> {}
+    fn last(mut self) -> Option<(&'a K, &'a mut V)> {
+}
 
-    fn min(mut self) -> Option<(&'a K, &'a mut V)> {}
+    fn min(mut self) -> Option<(&'a K, &'a mut V)> {
+}
 
-    fn max(mut self) -> Option<(&'a K, &'a mut V)> {}
+    fn max(mut self) -> Option<(&'a K, &'a mut V)> {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K: 'a, V: 'a> DoubleEndedIterator for IterMut<'a, K, V> {
-    fn next_back(&mut self) -> Option<(&'a K, &'a mut V)> {}
+    fn next_back(&mut self) -> Option<(&'a K, &'a mut V)> {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K, V> ExactSizeIterator for IterMut<'_, K, V> {
-    fn len(&self) -> usize {}
+    fn len(&self) -> usize {
+}
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -5268,7 +4212,8 @@ impl<K, V> FusedIterator for IterMut<'_, K, V> {}
 impl<'a, K, V> IterMut<'a, K, V> {
     /// Returns an iterator of references over the remaining items.
     #[inline]
-    pub(super) fn iter(&self) -> Iter<'_, K, V> {}
+    pub(super) fn iter(&self) -> Iter<'_, K, V> {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -5276,12 +4221,14 @@ impl<K, V> IntoIterator for BTreeMap<K, V> {
     type Item = (K, V);
     type IntoIter = IntoIter<K, V>;
 
-    fn into_iter(self) -> IntoIter<K, V> {}
+    fn into_iter(self) -> IntoIter<K, V> {
+}
 }
 
 #[stable(feature = "btree_drop", since = "1.7.0")]
 impl<K, V> Drop for IntoIter<K, V> {
-    fn drop(&mut self) {}
+    fn drop(&mut self) {
+}
 }
 
 impl<K, V> IntoIter<K, V> {
@@ -5289,32 +4236,38 @@ impl<K, V> IntoIter<K, V> {
     /// invalidated by further calls to this function and some others.
     fn dying_next(
         &mut self,
-    ) -> Option<Handle<NodeRef<marker::Dying, K, V, marker::LeafOrInternal>, marker::KV>> {}
+    ) -> Option<Handle<NodeRef<marker::Dying, K, V, marker::LeafOrInternal>, marker::KV>> {
+}
 
     /// Core of a `next_back` method returning a dying KV handle,
     /// invalidated by further calls to this function and some others.
     fn dying_next_back(
         &mut self,
-    ) -> Option<Handle<NodeRef<marker::Dying, K, V, marker::LeafOrInternal>, marker::KV>> {}
+    ) -> Option<Handle<NodeRef<marker::Dying, K, V, marker::LeafOrInternal>, marker::KV>> {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K, V> Iterator for IntoIter<K, V> {
     type Item = (K, V);
 
-    fn next(&mut self) -> Option<(K, V)> {}
+    fn next(&mut self) -> Option<(K, V)> {
+}
 
-    fn size_hint(&self) -> (usize, Option<usize>) {}
+    fn size_hint(&self) -> (usize, Option<usize>) {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K, V> DoubleEndedIterator for IntoIter<K, V> {
-    fn next_back(&mut self) -> Option<(K, V)> {}
+    fn next_back(&mut self) -> Option<(K, V)> {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K, V> ExactSizeIterator for IntoIter<K, V> {
-    fn len(&self) -> usize {}
+    fn len(&self) -> usize {
+}
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -5324,25 +4277,32 @@ impl<K, V> FusedIterator for IntoIter<K, V> {}
 impl<'a, K, V> Iterator for Keys<'a, K, V> {
     type Item = &'a K;
 
-    fn next(&mut self) -> Option<&'a K> {}
+    fn next(&mut self) -> Option<&'a K> {
+}
 
-    fn size_hint(&self) -> (usize, Option<usize>) {}
+    fn size_hint(&self) -> (usize, Option<usize>) {
+}
 
-    fn last(mut self) -> Option<&'a K> {}
+    fn last(mut self) -> Option<&'a K> {
+}
 
-    fn min(mut self) -> Option<&'a K> {}
+    fn min(mut self) -> Option<&'a K> {
+}
 
-    fn max(mut self) -> Option<&'a K> {}
+    fn max(mut self) -> Option<&'a K> {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K, V> DoubleEndedIterator for Keys<'a, K, V> {
-    fn next_back(&mut self) -> Option<&'a K> {}
+    fn next_back(&mut self) -> Option<&'a K> {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K, V> ExactSizeIterator for Keys<'_, K, V> {
-    fn len(&self) -> usize {}
+    fn len(&self) -> usize {
+}
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -5350,28 +4310,34 @@ impl<K, V> FusedIterator for Keys<'_, K, V> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K, V> Clone for Keys<'_, K, V> {
-    fn clone(&self) -> Self {}
+    fn clone(&self) -> Self {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K, V> Iterator for Values<'a, K, V> {
     type Item = &'a V;
 
-    fn next(&mut self) -> Option<&'a V> {}
+    fn next(&mut self) -> Option<&'a V> {
+}
 
-    fn size_hint(&self) -> (usize, Option<usize>) {}
+    fn size_hint(&self) -> (usize, Option<usize>) {
+}
 
-    fn last(mut self) -> Option<&'a V> {}
+    fn last(mut self) -> Option<&'a V> {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K, V> DoubleEndedIterator for Values<'a, K, V> {
-    fn next_back(&mut self) -> Option<&'a V> {}
+    fn next_back(&mut self) -> Option<&'a V> {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K, V> ExactSizeIterator for Values<'_, K, V> {
-    fn len(&self) -> usize {}
+    fn len(&self) -> usize {
+}
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -5379,7 +4345,8 @@ impl<K, V> FusedIterator for Values<'_, K, V> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K, V> Clone for Values<'_, K, V> {
-    fn clone(&self) -> Self {}
+    fn clone(&self) -> Self {
+}
 }
 
 /// An iterator produced by calling `drain_filter` on BTreeMap.
@@ -5412,7 +4379,8 @@ impl<K, V, F> Drop for DrainFilter<'_, K, V, F>
 where
     F: FnMut(&K, &mut V) -> bool,
 {
-    fn drop(&mut self) {}
+    fn drop(&mut self) {
+}
 }
 
 #[unstable(feature = "btree_drain_filter", issue = "70530")]
@@ -5422,7 +4390,8 @@ where
     V: fmt::Debug,
     F: FnMut(&K, &mut V) -> bool,
 {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
 }
 
 #[unstable(feature = "btree_drain_filter", issue = "70530")]
@@ -5432,23 +4401,28 @@ where
 {
     type Item = (K, V);
 
-    fn next(&mut self) -> Option<(K, V)> {}
+    fn next(&mut self) -> Option<(K, V)> {
+}
 
-    fn size_hint(&self) -> (usize, Option<usize>) {}
+    fn size_hint(&self) -> (usize, Option<usize>) {
+}
 }
 
 impl<'a, K: 'a, V: 'a> DrainFilterInner<'a, K, V> {
     /// Allow Debug implementations to predict the next element.
-    pub(super) fn peek(&self) -> Option<(&K, &V)> {}
+    pub(super) fn peek(&self) -> Option<(&K, &V)> {
+}
 
     /// Implementation of a typical `DrainFilter::next` method, given the predicate.
     pub(super) fn next<F>(&mut self, pred: &mut F) -> Option<(K, V)>
     where
         F: FnMut(&K, &mut V) -> bool,
-    {}
+    {
+}
 
     /// Implementation of a typical `DrainFilter::size_hint` method.
-    pub(super) fn size_hint(&self) -> (usize, Option<usize>) {}
+    pub(super) fn size_hint(&self) -> (usize, Option<usize>) {
+}
 }
 
 #[unstable(feature = "btree_drain_filter", issue = "70530")]
@@ -5458,34 +4432,43 @@ impl<K, V, F> FusedIterator for DrainFilter<'_, K, V, F> where F: FnMut(&K, &mut
 impl<'a, K, V> Iterator for Range<'a, K, V> {
     type Item = (&'a K, &'a V);
 
-    fn next(&mut self) -> Option<(&'a K, &'a V)> {}
+    fn next(&mut self) -> Option<(&'a K, &'a V)> {
+}
 
-    fn last(mut self) -> Option<(&'a K, &'a V)> {}
+    fn last(mut self) -> Option<(&'a K, &'a V)> {
+}
 
-    fn min(mut self) -> Option<(&'a K, &'a V)> {}
+    fn min(mut self) -> Option<(&'a K, &'a V)> {
+}
 
-    fn max(mut self) -> Option<(&'a K, &'a V)> {}
+    fn max(mut self) -> Option<(&'a K, &'a V)> {
+}
 }
 
 #[stable(feature = "map_values_mut", since = "1.10.0")]
 impl<'a, K, V> Iterator for ValuesMut<'a, K, V> {
     type Item = &'a mut V;
 
-    fn next(&mut self) -> Option<&'a mut V> {}
+    fn next(&mut self) -> Option<&'a mut V> {
+}
 
-    fn size_hint(&self) -> (usize, Option<usize>) {}
+    fn size_hint(&self) -> (usize, Option<usize>) {
+}
 
-    fn last(mut self) -> Option<&'a mut V> {}
+    fn last(mut self) -> Option<&'a mut V> {
+}
 }
 
 #[stable(feature = "map_values_mut", since = "1.10.0")]
 impl<'a, K, V> DoubleEndedIterator for ValuesMut<'a, K, V> {
-    fn next_back(&mut self) -> Option<&'a mut V> {}
+    fn next_back(&mut self) -> Option<&'a mut V> {
+}
 }
 
 #[stable(feature = "map_values_mut", since = "1.10.0")]
 impl<K, V> ExactSizeIterator for ValuesMut<'_, K, V> {
-    fn len(&self) -> usize {}
+    fn len(&self) -> usize {
+}
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -5495,25 +4478,32 @@ impl<K, V> FusedIterator for ValuesMut<'_, K, V> {}
 impl<K, V> Iterator for IntoKeys<K, V> {
     type Item = K;
 
-    fn next(&mut self) -> Option<K> {}
+    fn next(&mut self) -> Option<K> {
+}
 
-    fn size_hint(&self) -> (usize, Option<usize>) {}
+    fn size_hint(&self) -> (usize, Option<usize>) {
+}
 
-    fn last(mut self) -> Option<K> {}
+    fn last(mut self) -> Option<K> {
+}
 
-    fn min(mut self) -> Option<K> {}
+    fn min(mut self) -> Option<K> {
+}
 
-    fn max(mut self) -> Option<K> {}
+    fn max(mut self) -> Option<K> {
+}
 }
 
 #[stable(feature = "map_into_keys_values", since = "1.54.0")]
 impl<K, V> DoubleEndedIterator for IntoKeys<K, V> {
-    fn next_back(&mut self) -> Option<K> {}
+    fn next_back(&mut self) -> Option<K> {
+}
 }
 
 #[stable(feature = "map_into_keys_values", since = "1.54.0")]
 impl<K, V> ExactSizeIterator for IntoKeys<K, V> {
-    fn len(&self) -> usize {}
+    fn len(&self) -> usize {
+}
 }
 
 #[stable(feature = "map_into_keys_values", since = "1.54.0")]
@@ -5523,21 +4513,26 @@ impl<K, V> FusedIterator for IntoKeys<K, V> {}
 impl<K, V> Iterator for IntoValues<K, V> {
     type Item = V;
 
-    fn next(&mut self) -> Option<V> {}
+    fn next(&mut self) -> Option<V> {
+}
 
-    fn size_hint(&self) -> (usize, Option<usize>) {}
+    fn size_hint(&self) -> (usize, Option<usize>) {
+}
 
-    fn last(mut self) -> Option<V> {}
+    fn last(mut self) -> Option<V> {
+}
 }
 
 #[stable(feature = "map_into_keys_values", since = "1.54.0")]
 impl<K, V> DoubleEndedIterator for IntoValues<K, V> {
-    fn next_back(&mut self) -> Option<V> {}
+    fn next_back(&mut self) -> Option<V> {
+}
 }
 
 #[stable(feature = "map_into_keys_values", since = "1.54.0")]
 impl<K, V> ExactSizeIterator for IntoValues<K, V> {
-    fn len(&self) -> usize {}
+    fn len(&self) -> usize {
+}
 }
 
 #[stable(feature = "map_into_keys_values", since = "1.54.0")]
@@ -5545,7 +4540,8 @@ impl<K, V> FusedIterator for IntoValues<K, V> {}
 
 #[stable(feature = "btree_range", since = "1.17.0")]
 impl<'a, K, V> DoubleEndedIterator for Range<'a, K, V> {
-    fn next_back(&mut self) -> Option<(&'a K, &'a V)> {}
+    fn next_back(&mut self) -> Option<(&'a K, &'a V)> {
+}
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -5553,25 +4549,31 @@ impl<K, V> FusedIterator for Range<'_, K, V> {}
 
 #[stable(feature = "btree_range", since = "1.17.0")]
 impl<K, V> Clone for Range<'_, K, V> {
-    fn clone(&self) -> Self {}
+    fn clone(&self) -> Self {
+}
 }
 
 #[stable(feature = "btree_range", since = "1.17.0")]
 impl<'a, K, V> Iterator for RangeMut<'a, K, V> {
     type Item = (&'a K, &'a mut V);
 
-    fn next(&mut self) -> Option<(&'a K, &'a mut V)> {}
+    fn next(&mut self) -> Option<(&'a K, &'a mut V)> {
+}
 
-    fn last(mut self) -> Option<(&'a K, &'a mut V)> {}
+    fn last(mut self) -> Option<(&'a K, &'a mut V)> {
+}
 
-    fn min(mut self) -> Option<(&'a K, &'a mut V)> {}
+    fn min(mut self) -> Option<(&'a K, &'a mut V)> {
+}
 
-    fn max(mut self) -> Option<(&'a K, &'a mut V)> {}
+    fn max(mut self) -> Option<(&'a K, &'a mut V)> {
+}
 }
 
 #[stable(feature = "btree_range", since = "1.17.0")]
 impl<'a, K, V> DoubleEndedIterator for RangeMut<'a, K, V> {
-    fn next_back(&mut self) -> Option<(&'a K, &'a mut V)> {}
+    fn next_back(&mut self) -> Option<(&'a K, &'a mut V)> {
+}
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -5579,40 +4581,48 @@ impl<K, V> FusedIterator for RangeMut<'_, K, V> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K: Ord, V> FromIterator<(K, V)> for BTreeMap<K, V> {
-    fn from_iter<T: IntoIterator<Item = (K, V)>>(iter: T) -> BTreeMap<K, V> {}
+    fn from_iter<T: IntoIterator<Item = (K, V)>>(iter: T) -> BTreeMap<K, V> {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K: Ord, V> Extend<(K, V)> for BTreeMap<K, V> {
     #[inline]
-    fn extend<T: IntoIterator<Item = (K, V)>>(&mut self, iter: T) {}
+    fn extend<T: IntoIterator<Item = (K, V)>>(&mut self, iter: T) {
+}
 
     #[inline]
-    fn extend_one(&mut self, (k, v): (K, V)) {}
+    fn extend_one(&mut self, (k, v): (K, V)) {
+}
 }
 
 #[stable(feature = "extend_ref", since = "1.2.0")]
 impl<'a, K: Ord + Copy, V: Copy> Extend<(&'a K, &'a V)> for BTreeMap<K, V> {
-    fn extend<I: IntoIterator<Item = (&'a K, &'a V)>>(&mut self, iter: I) {}
+    fn extend<I: IntoIterator<Item = (&'a K, &'a V)>>(&mut self, iter: I) {
+}
 
     #[inline]
-    fn extend_one(&mut self, (&k, &v): (&'a K, &'a V)) {}
+    fn extend_one(&mut self, (&k, &v): (&'a K, &'a V)) {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K: Hash, V: Hash> Hash for BTreeMap<K, V> {
-    fn hash<H: Hasher>(&self, state: &mut H) {}
+    fn hash<H: Hasher>(&self, state: &mut H) {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K, V> Default for BTreeMap<K, V> {
     /// Creates an empty `BTreeMap`.
-    fn default() -> BTreeMap<K, V> {}
+    fn default() -> BTreeMap<K, V> {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K: PartialEq, V: PartialEq> PartialEq for BTreeMap<K, V> {
-    fn eq(&self, other: &BTreeMap<K, V>) -> bool {}
+    fn eq(&self, other: &BTreeMap<K, V>) -> bool {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -5621,18 +4631,21 @@ impl<K: Eq, V: Eq> Eq for BTreeMap<K, V> {}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K: PartialOrd, V: PartialOrd> PartialOrd for BTreeMap<K, V> {
     #[inline]
-    fn partial_cmp(&self, other: &BTreeMap<K, V>) -> Option<Ordering> {}
+    fn partial_cmp(&self, other: &BTreeMap<K, V>) -> Option<Ordering> {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K: Ord, V: Ord> Ord for BTreeMap<K, V> {
     #[inline]
-    fn cmp(&self, other: &BTreeMap<K, V>) -> Ordering {}
+    fn cmp(&self, other: &BTreeMap<K, V>) -> Ordering {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K: Debug, V: Debug> Debug for BTreeMap<K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -5649,7 +4662,8 @@ where
     ///
     /// Panics if the key is not present in the `BTreeMap`.
     #[inline]
-    fn index(&self, key: &Q) -> &V {}
+    fn index(&self, key: &Q) -> &V {
+}
 }
 
 #[stable(feature = "std_collections_from_array", since = "1.56.0")]
@@ -5661,7 +4675,8 @@ impl<K: Ord, V, const N: usize> From<[(K, V); N]> for BTreeMap<K, V> {
     /// let map2: BTreeMap<_, _> = [(1, 2), (3, 4)].into();
     /// assert_eq!(map1, map2);
     /// ```
-    fn from(mut arr: [(K, V); N]) -> Self {}
+    fn from(mut arr: [(K, V); N]) -> Self {
+}
 }
 
 impl<K, V> BTreeMap<K, V> {
@@ -5687,7 +4702,8 @@ impl<K, V> BTreeMap<K, V> {
     /// assert_eq!((*first_key, *first_value), (1, "a"));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn iter(&self) -> Iter<'_, K, V> {}
+    pub fn iter(&self) -> Iter<'_, K, V> {
+}
 
     /// Gets a mutable iterator over the entries of the map, sorted by key.
     ///
@@ -5711,7 +4727,8 @@ impl<K, V> BTreeMap<K, V> {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn iter_mut(&mut self) -> IterMut<'_, K, V> {}
+    pub fn iter_mut(&mut self) -> IterMut<'_, K, V> {
+}
 
     /// Gets an iterator over the keys of the map, in sorted order.
     ///
@@ -5730,7 +4747,8 @@ impl<K, V> BTreeMap<K, V> {
     /// assert_eq!(keys, [1, 2]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn keys(&self) -> Keys<'_, K, V> {}
+    pub fn keys(&self) -> Keys<'_, K, V> {
+}
 
     /// Gets an iterator over the values of the map, in order by key.
     ///
@@ -5749,7 +4767,8 @@ impl<K, V> BTreeMap<K, V> {
     /// assert_eq!(values, ["hello", "goodbye"]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn values(&self) -> Values<'_, K, V> {}
+    pub fn values(&self) -> Values<'_, K, V> {
+}
 
     /// Gets a mutable iterator over the values of the map, in order by key.
     ///
@@ -5773,7 +4792,8 @@ impl<K, V> BTreeMap<K, V> {
     ///                     String::from("goodbye!")]);
     /// ```
     #[stable(feature = "map_values_mut", since = "1.10.0")]
-    pub fn values_mut(&mut self) -> ValuesMut<'_, K, V> {}
+    pub fn values_mut(&mut self) -> ValuesMut<'_, K, V> {
+}
 
     /// Returns the number of elements in the map.
     ///
@@ -5792,7 +4812,8 @@ impl<K, V> BTreeMap<K, V> {
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_btree_new", issue = "71835")]
-    pub const fn len(&self) -> usize {}
+    pub const fn len(&self) -> usize {
+}
 
     /// Returns `true` if the map contains no elements.
     ///
@@ -5811,436 +4832,17 @@ impl<K, V> BTreeMap<K, V> {
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_btree_new", issue = "71835")]
-    pub const fn is_empty(&self) -> bool {}
+    pub const fn is_empty(&self) -> bool {
+}
 
     /// If the root node is the empty (non-allocated) root node, allocate our
     /// own node. Is an associated function to avoid borrowing the entire BTreeMap.
-    fn ensure_is_owned(root: &mut Option<Root<K, V>>) -> &mut Root<K, V> {}
+    fn ensure_is_owned(root: &mut Option<Root<K, V>>) -> &mut Root<K, V> {
+}
 }
 
 #[cfg(test)]
 mod tests {
-use super::super::testing::crash_test::{CrashTestDummy, Panic};
-use super::super::testing::ord_chaos::{Cyclic3, Governed, Governor};
-use super::super::testing::rng::DeterministicRng;
-use super::Entry::{Occupied, Vacant};
-use super::*;
-use crate::boxed::Box;
-use crate::fmt::Debug;
-use crate::rc::Rc;
-use crate::string::{String, ToString};
-use crate::vec::Vec;
-use std::cmp::Ordering;
-use std::convert::TryFrom;
-use std::iter::{self, FromIterator};
-use std::mem;
-use std::ops::Bound::{self, Excluded, Included, Unbounded};
-use std::ops::RangeBounds;
-use std::panic::{catch_unwind, AssertUnwindSafe};
-use std::sync::atomic::{AtomicUsize, Ordering::SeqCst};
-
-// Capacity of a tree with a single level,
-// i.e., a tree who's root is a leaf node at height 0.
-const NODE_CAPACITY: usize = node::CAPACITY;
-
-// Minimum number of elements to insert, to guarantee a tree with 2 levels,
-// i.e., a tree who's root is an internal node at height 1, with edges to leaf nodes.
-// It's not the minimum size: removing an element from such a tree does not always reduce height.
-const MIN_INSERTS_HEIGHT_1: usize = NODE_CAPACITY + 1;
-
-// Minimum number of elements to insert in ascending order, to guarantee a tree with 3 levels,
-// i.e., a tree who's root is an internal node at height 2, with edges to more internal nodes.
-// It's not the minimum size: removing an element from such a tree does not always reduce height.
-const MIN_INSERTS_HEIGHT_2: usize = 89;
-
-// Gathers all references from a mutable iterator and makes sure Miri notices if
-// using them is dangerous.
-fn test_all_refs<'a, T: 'a>(dummy: &mut T, iter: impl Iterator<Item = &'a mut T>) {}
-
-impl<K, V> BTreeMap<K, V> {
-    // Panics if the map (or the code navigating it) is corrupted.
-    fn check_invariants(&self) {}
-
-    // Panics if the map is corrupted or if the keys are not in strictly
-    // ascending order, in the current opinion of the `Ord` implementation.
-    // If the `Ord` implementation violates transitivity, this method does not
-    // guarantee that all keys are unique, just that adjacent keys are unique.
-    fn check(&self)
-    where
-        K: Debug + Ord,
-    {}
-
-    // Returns the height of the root, if any.
-    fn height(&self) -> Option<usize> {}
-
-    fn dump_keys(&self) -> String
-    where
-        K: Debug,
-    {}
-
-    // Panics if the keys are not in strictly ascending order.
-    fn assert_strictly_ascending(&self)
-    where
-        K: Debug + Ord,
-    {}
-
-    // Transform the tree to minimize wasted space, obtaining fewer nodes that
-    // are mostly filled up to their capacity. The same compact tree could have
-    // been obtained by inserting keys in a shrewd order.
-    fn compact(&mut self)
-    where
-        K: Ord,
-    {}
-}
-
-impl<'a, K: 'a, V: 'a> NodeRef<marker::Immut<'a>, K, V, marker::LeafOrInternal> {
-    fn assert_min_len(self, min_len: usize) {}
-}
-
-// Tests our value of MIN_INSERTS_HEIGHT_2. Failure may mean you just need to
-// adapt that value to match a change in node::CAPACITY or the choices made
-// during insertion, otherwise other test cases may fail or be less useful.
-#[test]
-fn test_levels() {}
-
-// Ensures the testing infrastructure usually notices order violations.
-#[test]
-#[should_panic]
-fn test_check_ord_chaos() {}
-
-// Ensures the testing infrastructure doesn't always mind order violations.
-#[test]
-fn test_check_invariants_ord_chaos() {}
-
-#[test]
-fn test_basic_large() {}
-
-#[test]
-fn test_basic_small() {}
-
-#[test]
-fn test_iter() {}
-
-#[test]
-fn test_iter_rev() {}
-
-// Specifically tests iter_mut's ability to mutate the value of pairs in-line.
-fn do_test_iter_mut_mutation<T>(size: usize)
-where
-    T: Copy + Debug + Ord + TryFrom<usize>,
-    <T as TryFrom<usize>>::Error: Debug,
-{}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd, Ord)]
-#[repr(align(32))]
-struct Align32(usize);
-
-impl TryFrom<usize> for Align32 {
-    type Error = ();
-
-    fn try_from(s: usize) -> Result<Align32, ()> {}
-}
-
-#[test]
-fn test_iter_mut_mutation() {}
-
-#[test]
-fn test_values_mut() {}
-
-#[test]
-fn test_values_mut_mutation() {}
-
-#[test]
-fn test_iter_entering_root_twice() {}
-
-#[test]
-fn test_iter_descending_to_same_node_twice() {}
-
-#[test]
-fn test_iter_mixed() {}
-
-#[test]
-fn test_iter_min_max() {}
-
-fn range_keys(map: &BTreeMap<i32, i32>, range: impl RangeBounds<i32>) -> Vec<i32> {}
-
-#[test]
-fn test_range_small() {}
-
-#[test]
-fn test_range_height_1() {}
-
-#[test]
-fn test_range_large() {}
-
-#[test]
-fn test_range_inclusive_max_value() {}
-
-#[test]
-fn test_range_equal_empty_cases() {}
-
-#[test]
-#[should_panic]
-fn test_range_equal_excluded() {}
-
-#[test]
-#[should_panic]
-fn test_range_backwards_1() {}
-
-#[test]
-#[should_panic]
-fn test_range_backwards_2() {}
-
-#[test]
-#[should_panic]
-fn test_range_backwards_3() {}
-
-#[test]
-#[should_panic]
-fn test_range_backwards_4() {}
-
-#[test]
-fn test_range_finding_ill_order_in_map() {}
-
-#[test]
-fn test_range_finding_ill_order_in_range_ord() {}
-
-#[test]
-fn test_range_1000() {}
-
-#[test]
-fn test_range_borrowed_key() {}
-
-#[test]
-fn test_range() {}
-
-#[test]
-fn test_range_mut() {}
-
-#[test]
-fn test_retain() {}
-
-mod test_drain_filter {
-    use super::*;
-
-    #[test]
-    fn empty() {}
-
-    // Explicitly consumes the iterator, where most test cases drop it instantly.
-    #[test]
-    fn consumed_keeping_all() {}
-
-    // Explicitly consumes the iterator, where most test cases drop it instantly.
-    #[test]
-    fn consumed_removing_all() {}
-
-    // Explicitly consumes the iterator and modifies values through it.
-    #[test]
-    fn mutating_and_keeping() {}
-
-    // Explicitly consumes the iterator and modifies values through it.
-    #[test]
-    fn mutating_and_removing() {}
-
-    #[test]
-    fn underfull_keeping_all() {}
-
-    #[test]
-    fn underfull_removing_one() {}
-
-    #[test]
-    fn underfull_keeping_one() {}
-
-    #[test]
-    fn underfull_removing_all() {}
-
-    #[test]
-    fn height_0_keeping_all() {}
-
-    #[test]
-    fn height_0_removing_one() {}
-
-    #[test]
-    fn height_0_keeping_one() {}
-
-    #[test]
-    fn height_0_removing_all() {}
-
-    #[test]
-    fn height_0_keeping_half() {}
-
-    #[test]
-    fn height_1_removing_all() {}
-
-    #[test]
-    fn height_1_removing_one() {}
-
-    #[test]
-    fn height_1_keeping_one() {}
-
-    #[test]
-    fn height_2_removing_one() {}
-
-    #[test]
-    fn height_2_keeping_one() {}
-
-    #[test]
-    fn height_2_removing_all() {}
-
-    #[test]
-    fn drop_panic_leak() {}
-
-    #[test]
-    fn pred_panic_leak() {}
-
-    // Same as above, but attempt to use the iterator again after the panic in the predicate
-    #[test]
-    fn pred_panic_reuse() {}
-}
-
-#[test]
-fn test_borrow() {}
-
-#[test]
-fn test_entry() {}
-
-#[test]
-fn test_extend_ref() {}
-
-#[test]
-fn test_zst() {}
-
-// This test's only purpose is to ensure that zero-sized keys with nonsensical orderings
-// do not cause segfaults when used with zero-sized values. All other map behavior is
-// undefined.
-#[test]
-fn test_bad_zst() {}
-
-#[test]
-fn test_clear() {}
-
-#[test]
-fn test_clear_drop_panic_leak() {}
-
-#[test]
-fn test_clone() {}
-
-fn test_clone_panic_leak(size: usize) {}
-
-#[test]
-fn test_clone_panic_leak_height_0() {}
-
-#[test]
-fn test_clone_panic_leak_height_1() {}
-
-#[test]
-fn test_clone_from() {}
-
-#[allow(dead_code)]
-fn test_variance() {}
-
-#[allow(dead_code)]
-fn test_sync() {}
-
-#[allow(dead_code)]
-fn test_send() {}
-
-#[test]
-fn test_ord_absence() {}
-
-#[test]
-fn test_occupied_entry_key() {}
-
-#[test]
-fn test_vacant_entry_key() {}
-
-#[test]
-fn test_first_last_entry() {}
-
-#[test]
-fn test_insert_into_full_height_0() {}
-
-#[test]
-fn test_insert_into_full_height_1() {}
-
-macro_rules! create_append_test {
-    ($name:ident, $len:expr) => {
-        #[test]
-        fn $name() {}
-    };
-}
-
-// These are mostly for testing the algorithm that "fixes" the right edge after insertion.
-// Single node.
-create_append_test!(test_append_9, 9);
-// Two leafs that don't need fixing.
-create_append_test!(test_append_17, 17);
-// Two leafs where the second one ends up underfull and needs stealing at the end.
-create_append_test!(test_append_14, 14);
-// Two leafs where the second one ends up empty because the insertion finished at the root.
-create_append_test!(test_append_12, 12);
-// Three levels; insertion finished at the root.
-create_append_test!(test_append_144, 144);
-// Three levels; insertion finished at leaf while there is an empty node on the second level.
-create_append_test!(test_append_145, 145);
-// Tests for several randomly chosen sizes.
-create_append_test!(test_append_170, 170);
-create_append_test!(test_append_181, 181);
-#[cfg(not(miri))] // Miri is too slow
-create_append_test!(test_append_239, 239);
-#[cfg(not(miri))] // Miri is too slow
-create_append_test!(test_append_1700, 1700);
-
-#[test]
-fn test_append_drop_leak() {}
-
-#[test]
-fn test_append_ord_chaos() {}
-
-fn rand_data(len: usize) -> Vec<(u32, u32)> {}
-
-#[test]
-fn test_split_off_empty_right() {}
-
-#[test]
-fn test_split_off_empty_left() {}
-
-// In a tree with 3 levels, if all but a part of the first leaf node is split off,
-// make sure fix_top eliminates both top levels.
-#[test]
-fn test_split_off_tiny_left_height_2() {}
-
-// In a tree with 3 levels, if only part of the last leaf node is split off,
-// make sure fix_top eliminates both top levels.
-#[test]
-fn test_split_off_tiny_right_height_2() {}
-
-#[test]
-fn test_split_off_halfway() {}
-
-#[test]
-fn test_split_off_large_random_sorted() {}
-
-#[test]
-fn test_into_iter_drop_leak_height_0() {}
-
-#[test]
-fn test_into_iter_drop_leak_height_1() {}
-
-#[test]
-fn test_into_keys() {}
-
-#[test]
-fn test_into_values() {}
-
-#[test]
-fn test_insert_remove_intertwined() {}
-
-#[test]
-fn test_insert_remove_intertwined_ord_chaos() {}
-
-#[test]
-fn from_array() {}
 }
 }
 mod mem {
@@ -6254,14 +4856,16 @@ use core::ptr;
 /// If a panic occurs in the `change` closure, the entire process will be aborted.
 #[allow(dead_code)] // keep as illustration and for future use
 #[inline]
-pub fn take_mut<T>(v: &mut T, change: impl FnOnce(T) -> T) {}
+pub fn take_mut<T>(v: &mut T, change: impl FnOnce(T) -> T) {
+}
 
 /// This replaces the value behind the `v` unique reference by calling the
 /// relevant function, and returns a result obtained along the way.
 ///
 /// If a panic occurs in the `change` closure, the entire process will be aborted.
 #[inline]
-pub fn replace<T, R>(v: &mut T, change: impl FnOnce(T) -> (T, R)) -> R {}
+pub fn replace<T, R>(v: &mut T, change: impl FnOnce(T) -> (T, R)) -> R {
+}
 }
 mod merge_iter {
 use core::cmp::Ordering;
@@ -6289,7 +4893,8 @@ where
     I: Clone,
     I::Item: Clone,
 {
-    fn clone(&self) -> Self {}
+    fn clone(&self) -> Self {
+}
 }
 
 impl<I: Iterator> Debug for MergeIterInner<I>
@@ -6297,12 +4902,14 @@ where
     I: Debug,
     I::Item: Debug,
 {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
 }
 
 impl<I: Iterator> MergeIterInner<I> {
     /// Creates a new core for an iterator merging a pair of sources.
-    pub fn new(a: I, b: I) -> Self {}
+    pub fn new(a: I, b: I) -> Self {
+}
 
     /// Returns the next pair of items stemming from the pair of sources
     /// being merged. If both returned options contain a value, that value
@@ -6317,13 +4924,15 @@ impl<I: Iterator> MergeIterInner<I> {
     ) -> (Option<I::Item>, Option<I::Item>)
     where
         I: FusedIterator,
-    {}
+    {
+}
 
     /// Returns a pair of upper bounds for the `size_hint` of the final iterator.
     pub fn lens(&self) -> (usize, usize)
     where
         I: ExactSizeIterator,
-    {}
+    {
+}
 }
 }
 mod navigate {
@@ -6341,32 +4950,40 @@ pub struct LeafRange<BorrowType, K, V> {
 }
 
 impl<'a, K: 'a, V: 'a> Clone for LeafRange<marker::Immut<'a>, K, V> {
-    fn clone(&self) -> Self {}
+    fn clone(&self) -> Self {
+}
 }
 
 impl<BorrowType, K, V> LeafRange<BorrowType, K, V> {
-    pub fn none() -> Self {}
+    pub fn none() -> Self {
+}
 
-    fn is_empty(&self) -> bool {}
+    fn is_empty(&self) -> bool {
+}
 
     /// Temporarily takes out another, immutable equivalent of the same range.
-    pub fn reborrow(&self) -> LeafRange<marker::Immut<'_>, K, V> {}
+    pub fn reborrow(&self) -> LeafRange<marker::Immut<'_>, K, V> {
+}
 }
 
 impl<'a, K, V> LeafRange<marker::Immut<'a>, K, V> {
     #[inline]
-    pub fn next_checked(&mut self) -> Option<(&'a K, &'a V)> {}
+    pub fn next_checked(&mut self) -> Option<(&'a K, &'a V)> {
+}
 
     #[inline]
-    pub fn next_back_checked(&mut self) -> Option<(&'a K, &'a V)> {}
+    pub fn next_back_checked(&mut self) -> Option<(&'a K, &'a V)> {
+}
 }
 
 impl<'a, K, V> LeafRange<marker::ValMut<'a>, K, V> {
     #[inline]
-    pub fn next_checked(&mut self) -> Option<(&'a K, &'a mut V)> {}
+    pub fn next_checked(&mut self) -> Option<(&'a K, &'a mut V)> {
+}
 
     #[inline]
-    pub fn next_back_checked(&mut self) -> Option<(&'a K, &'a mut V)> {}
+    pub fn next_back_checked(&mut self) -> Option<(&'a K, &'a mut V)> {
+}
 }
 
 impl<BorrowType: marker::BorrowType, K, V> LeafRange<BorrowType, K, V> {
@@ -6374,13 +4991,15 @@ impl<BorrowType: marker::BorrowType, K, V> LeafRange<BorrowType, K, V> {
     fn perform_next_checked<F, R>(&mut self, f: F) -> Option<R>
     where
         F: Fn(&Handle<NodeRef<BorrowType, K, V, marker::LeafOrInternal>, marker::KV>) -> R,
-    {}
+    {
+}
 
     /// If possible, extract some result from the preceding KV and move to the edge beyond it.
     fn perform_next_back_checked<F, R>(&mut self, f: F) -> Option<R>
     where
         F: Fn(&Handle<NodeRef<BorrowType, K, V, marker::LeafOrInternal>, marker::KV>) -> R,
-    {}
+    {
+}
 }
 
 enum LazyLeafHandle<BorrowType, K, V> {
@@ -6389,11 +5008,13 @@ enum LazyLeafHandle<BorrowType, K, V> {
 }
 
 impl<'a, K: 'a, V: 'a> Clone for LazyLeafHandle<marker::Immut<'a>, K, V> {
-    fn clone(&self) -> Self {}
+    fn clone(&self) -> Self {
+}
 }
 
 impl<BorrowType, K, V> LazyLeafHandle<BorrowType, K, V> {
-    fn reborrow(&self) -> LazyLeafHandle<marker::Immut<'_>, K, V> {}
+    fn reborrow(&self) -> LazyLeafHandle<marker::Immut<'_>, K, V> {
+}
 }
 
 // `front` and `back` are always both `None` or both `Some`.
@@ -6403,59 +5024,72 @@ pub struct LazyLeafRange<BorrowType, K, V> {
 }
 
 impl<'a, K: 'a, V: 'a> Clone for LazyLeafRange<marker::Immut<'a>, K, V> {
-    fn clone(&self) -> Self {}
+    fn clone(&self) -> Self {
+}
 }
 
 impl<BorrowType, K, V> LazyLeafRange<BorrowType, K, V> {
-    pub fn none() -> Self {}
+    pub fn none() -> Self {
+}
 
     /// Temporarily takes out another, immutable equivalent of the same range.
-    pub fn reborrow(&self) -> LazyLeafRange<marker::Immut<'_>, K, V> {}
+    pub fn reborrow(&self) -> LazyLeafRange<marker::Immut<'_>, K, V> {
+}
 }
 
 impl<'a, K, V> LazyLeafRange<marker::Immut<'a>, K, V> {
     #[inline]
-    pub unsafe fn next_unchecked(&mut self) -> (&'a K, &'a V) {}
+    pub unsafe fn next_unchecked(&mut self) -> (&'a K, &'a V) {
+}
 
     #[inline]
-    pub unsafe fn next_back_unchecked(&mut self) -> (&'a K, &'a V) {}
+    pub unsafe fn next_back_unchecked(&mut self) -> (&'a K, &'a V) {
+}
 }
 
 impl<'a, K, V> LazyLeafRange<marker::ValMut<'a>, K, V> {
     #[inline]
-    pub unsafe fn next_unchecked(&mut self) -> (&'a K, &'a mut V) {}
+    pub unsafe fn next_unchecked(&mut self) -> (&'a K, &'a mut V) {
+}
 
     #[inline]
-    pub unsafe fn next_back_unchecked(&mut self) -> (&'a K, &'a mut V) {}
+    pub unsafe fn next_back_unchecked(&mut self) -> (&'a K, &'a mut V) {
+}
 }
 
 impl<K, V> LazyLeafRange<marker::Dying, K, V> {
     fn take_front(
         &mut self,
-    ) -> Option<Handle<NodeRef<marker::Dying, K, V, marker::Leaf>, marker::Edge>> {}
+    ) -> Option<Handle<NodeRef<marker::Dying, K, V, marker::Leaf>, marker::Edge>> {
+}
 
     #[inline]
     pub unsafe fn deallocating_next_unchecked(
         &mut self,
-    ) -> Handle<NodeRef<marker::Dying, K, V, marker::LeafOrInternal>, marker::KV> {}
+    ) -> Handle<NodeRef<marker::Dying, K, V, marker::LeafOrInternal>, marker::KV> {
+}
 
     #[inline]
     pub unsafe fn deallocating_next_back_unchecked(
         &mut self,
-    ) -> Handle<NodeRef<marker::Dying, K, V, marker::LeafOrInternal>, marker::KV> {}
+    ) -> Handle<NodeRef<marker::Dying, K, V, marker::LeafOrInternal>, marker::KV> {
+}
 
     #[inline]
-    pub fn deallocating_end(&mut self) {}
+    pub fn deallocating_end(&mut self) {
+}
 }
 
 impl<BorrowType: marker::BorrowType, K, V> LazyLeafRange<BorrowType, K, V> {
     fn init_front(
         &mut self,
-    ) -> Option<&mut Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge>> {}
+    ) -> Option<&mut Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge>> {
+}
 
     fn init_back(
         &mut self,
-    ) -> Option<&mut Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge>> {}
+    ) -> Option<&mut Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge>> {
+}
 }
 
 impl<BorrowType: marker::BorrowType, K, V> NodeRef<BorrowType, K, V, marker::LeafOrInternal> {
@@ -6480,13 +5114,15 @@ impl<BorrowType: marker::BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Lea
         Q: Ord,
         K: Borrow<Q>,
         R: RangeBounds<Q>,
-    {}
+    {
+}
 }
 
 fn full_range<BorrowType: marker::BorrowType, K, V>(
     root1: NodeRef<BorrowType, K, V, marker::LeafOrInternal>,
     root2: NodeRef<BorrowType, K, V, marker::LeafOrInternal>,
-) -> LazyLeafRange<BorrowType, K, V> {}
+) -> LazyLeafRange<BorrowType, K, V> {
+}
 
 impl<'a, K: 'a, V: 'a> NodeRef<marker::Immut<'a>, K, V, marker::LeafOrInternal> {
     /// Finds the pair of leaf edges delimiting a specific range in a tree.
@@ -6498,10 +5134,12 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Immut<'a>, K, V, marker::LeafOrInternal> 
         Q: ?Sized + Ord,
         K: Borrow<Q>,
         R: RangeBounds<Q>,
-    {}
+    {
+}
 
     /// Finds the pair of leaf edges delimiting an entire tree.
-    pub fn full_range(self) -> LazyLeafRange<marker::Immut<'a>, K, V> {}
+    pub fn full_range(self) -> LazyLeafRange<marker::Immut<'a>, K, V> {
+}
 }
 
 impl<'a, K: 'a, V: 'a> NodeRef<marker::ValMut<'a>, K, V, marker::LeafOrInternal> {
@@ -6519,19 +5157,22 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::ValMut<'a>, K, V, marker::LeafOrInternal>
         Q: ?Sized + Ord,
         K: Borrow<Q>,
         R: RangeBounds<Q>,
-    {}
+    {
+}
 
     /// Splits a unique reference into a pair of leaf edges delimiting the full range of the tree.
     /// The results are non-unique references allowing mutation (of values only), so must be used
     /// with care.
-    pub fn full_range(self) -> LazyLeafRange<marker::ValMut<'a>, K, V> {}
+    pub fn full_range(self) -> LazyLeafRange<marker::ValMut<'a>, K, V> {
+}
 }
 
 impl<K, V> NodeRef<marker::Dying, K, V, marker::LeafOrInternal> {
     /// Splits a unique reference into a pair of leaf edges delimiting the full range of the tree.
     /// The results are non-unique references allowing massively destructive mutation, so must be
     /// used with the utmost care.
-    pub fn full_range(self) -> LazyLeafRange<marker::Dying, K, V> {}
+    pub fn full_range(self) -> LazyLeafRange<marker::Dying, K, V> {
+}
 }
 
 impl<BorrowType: marker::BorrowType, K, V>
@@ -6545,7 +5186,8 @@ impl<BorrowType: marker::BorrowType, K, V>
     ) -> Result<
         Handle<NodeRef<BorrowType, K, V, marker::LeafOrInternal>, marker::KV>,
         NodeRef<BorrowType, K, V, marker::LeafOrInternal>,
-    > {}
+    > {
+}
 
     /// Given a leaf edge handle, returns [`Result::Ok`] with a handle to the neighboring KV
     /// on the left side, which is either in the same leaf node or in an ancestor node.
@@ -6555,7 +5197,8 @@ impl<BorrowType: marker::BorrowType, K, V>
     ) -> Result<
         Handle<NodeRef<BorrowType, K, V, marker::LeafOrInternal>, marker::KV>,
         NodeRef<BorrowType, K, V, marker::LeafOrInternal>,
-    > {}
+    > {
+}
 }
 
 impl<BorrowType: marker::BorrowType, K, V>
@@ -6569,7 +5212,8 @@ impl<BorrowType: marker::BorrowType, K, V>
     ) -> Result<
         Handle<NodeRef<BorrowType, K, V, marker::Internal>, marker::KV>,
         NodeRef<BorrowType, K, V, marker::Internal>,
-    > {}
+    > {
+}
 }
 
 impl<K, V> Handle<NodeRef<marker::Dying, K, V, marker::Leaf>, marker::Edge> {
@@ -6589,7 +5233,8 @@ impl<K, V> Handle<NodeRef<marker::Dying, K, V, marker::Leaf>, marker::Edge> {
     unsafe fn deallocating_next(
         self,
     ) -> Option<(Self, Handle<NodeRef<marker::Dying, K, V, marker::LeafOrInternal>, marker::KV>)>
-    {}
+    {
+}
 
     /// Given a leaf edge handle into a dying tree, returns the next leaf edge
     /// on the left side, and the key-value pair in between, if they exist.
@@ -6607,7 +5252,8 @@ impl<K, V> Handle<NodeRef<marker::Dying, K, V, marker::Leaf>, marker::Edge> {
     unsafe fn deallocating_next_back(
         self,
     ) -> Option<(Self, Handle<NodeRef<marker::Dying, K, V, marker::LeafOrInternal>, marker::KV>)>
-    {}
+    {
+}
 
     /// Deallocates a pile of nodes from the leaf up to the root.
     /// This is the only way to deallocate the remainder of a tree after
@@ -6615,7 +5261,8 @@ impl<K, V> Handle<NodeRef<marker::Dying, K, V, marker::Leaf>, marker::Edge> {
     /// both sides of the tree, and have hit the same edge. As it is intended
     /// only to be called when all keys and values have been returned,
     /// no cleanup is done on any of the keys or values.
-    fn deallocating_end(self) {}
+    fn deallocating_end(self) {
+}
 }
 
 impl<'a, K, V> Handle<NodeRef<marker::Immut<'a>, K, V, marker::Leaf>, marker::Edge> {
@@ -6624,14 +5271,16 @@ impl<'a, K, V> Handle<NodeRef<marker::Immut<'a>, K, V, marker::Leaf>, marker::Ed
     ///
     /// # Safety
     /// There must be another KV in the direction travelled.
-    unsafe fn next_unchecked(&mut self) -> (&'a K, &'a V) {}
+    unsafe fn next_unchecked(&mut self) -> (&'a K, &'a V) {
+}
 
     /// Moves the leaf edge handle to the previous leaf edge and returns references to the
     /// key and value in between.
     ///
     /// # Safety
     /// There must be another KV in the direction travelled.
-    unsafe fn next_back_unchecked(&mut self) -> (&'a K, &'a V) {}
+    unsafe fn next_back_unchecked(&mut self) -> (&'a K, &'a V) {
+}
 }
 
 impl<'a, K, V> Handle<NodeRef<marker::ValMut<'a>, K, V, marker::Leaf>, marker::Edge> {
@@ -6640,14 +5289,16 @@ impl<'a, K, V> Handle<NodeRef<marker::ValMut<'a>, K, V, marker::Leaf>, marker::E
     ///
     /// # Safety
     /// There must be another KV in the direction travelled.
-    unsafe fn next_unchecked(&mut self) -> (&'a K, &'a mut V) {}
+    unsafe fn next_unchecked(&mut self) -> (&'a K, &'a mut V) {
+}
 
     /// Moves the leaf edge handle to the previous leaf and returns references to the
     /// key and value in between.
     ///
     /// # Safety
     /// There must be another KV in the direction travelled.
-    unsafe fn next_back_unchecked(&mut self) -> (&'a K, &'a mut V) {}
+    unsafe fn next_back_unchecked(&mut self) -> (&'a K, &'a mut V) {
+}
 }
 
 impl<K, V> Handle<NodeRef<marker::Dying, K, V, marker::Leaf>, marker::Edge> {
@@ -6665,7 +5316,8 @@ impl<K, V> Handle<NodeRef<marker::Dying, K, V, marker::Leaf>, marker::Edge> {
     /// or call this method or counterpart `deallocating_next_back_unchecked` again.
     unsafe fn deallocating_next_unchecked(
         &mut self,
-    ) -> Handle<NodeRef<marker::Dying, K, V, marker::LeafOrInternal>, marker::KV> {}
+    ) -> Handle<NodeRef<marker::Dying, K, V, marker::LeafOrInternal>, marker::KV> {
+}
 
     /// Moves the leaf edge handle to the previous leaf edge and returns the key and value
     /// in between, deallocating any node left behind while leaving the corresponding
@@ -6681,19 +5333,22 @@ impl<K, V> Handle<NodeRef<marker::Dying, K, V, marker::Leaf>, marker::Edge> {
     /// or call this method or counterpart `deallocating_next_unchecked` again.
     unsafe fn deallocating_next_back_unchecked(
         &mut self,
-    ) -> Handle<NodeRef<marker::Dying, K, V, marker::LeafOrInternal>, marker::KV> {}
+    ) -> Handle<NodeRef<marker::Dying, K, V, marker::LeafOrInternal>, marker::KV> {
+}
 }
 
 impl<BorrowType: marker::BorrowType, K, V> NodeRef<BorrowType, K, V, marker::LeafOrInternal> {
     /// Returns the leftmost leaf edge in or underneath a node - in other words, the edge
     /// you need first when navigating forward (or last when navigating backward).
     #[inline]
-    pub fn first_leaf_edge(self) -> Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge> {}
+    pub fn first_leaf_edge(self) -> Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge> {
+}
 
     /// Returns the rightmost leaf edge in or underneath a node - in other words, the edge
     /// you need last when navigating forward (or first when navigating backward).
     #[inline]
-    pub fn last_leaf_edge(self) -> Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge> {}
+    pub fn last_leaf_edge(self) -> Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge> {
+}
 }
 
 pub enum Position<BorrowType, K, V> {
@@ -6709,20 +5364,24 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Immut<'a>, K, V, marker::LeafOrInternal> 
     pub fn visit_nodes_in_order<F>(self, mut visit: F)
     where
         F: FnMut(Position<marker::Immut<'a>, K, V>),
-    {}
+    {
+}
 
     /// Calculates the number of elements in a (sub)tree.
-    pub fn calc_length(self) -> usize {}
+    pub fn calc_length(self) -> usize {
+}
 }
 
 impl<BorrowType: marker::BorrowType, K, V>
     Handle<NodeRef<BorrowType, K, V, marker::LeafOrInternal>, marker::KV>
 {
     /// Returns the leaf edge closest to a KV for forward navigation.
-    pub fn next_leaf_edge(self) -> Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge> {}
+    pub fn next_leaf_edge(self) -> Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge> {
+}
 
     /// Returns the leaf edge closest to a KV for backward navigation.
-    fn next_back_leaf_edge(self) -> Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge> {}
+    fn next_back_leaf_edge(self) -> Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge> {
+}
 }
 }
 mod node {
@@ -6795,10 +5454,12 @@ struct LeafNode<K, V> {
 
 impl<K, V> LeafNode<K, V> {
     /// Initializes a new `LeafNode` in-place.
-    unsafe fn init(this: *mut Self) {}
+    unsafe fn init(this: *mut Self) {
+}
 
     /// Creates a new boxed `LeafNode`.
-    fn new() -> Box<Self> {}
+    fn new() -> Box<Self> {
+}
 }
 
 /// The underlying representation of internal nodes. As with `LeafNode`s, these should be hidden
@@ -6824,7 +5485,8 @@ impl<K, V> InternalNode<K, V> {
     /// An invariant of internal nodes is that they have at least one
     /// initialized and valid edge. This function does not set up
     /// such an edge.
-    unsafe fn new() -> Box<Self> {}
+    unsafe fn new() -> Box<Self> {
+}
 }
 
 /// A managed, non-null pointer to a node. This is either an owned pointer to
@@ -6906,7 +5568,8 @@ pub type Root<K, V> = NodeRef<marker::Owned, K, V, marker::LeafOrInternal>;
 
 impl<'a, K: 'a, V: 'a, Type> Copy for NodeRef<marker::Immut<'a>, K, V, Type> {}
 impl<'a, K: 'a, V: 'a, Type> Clone for NodeRef<marker::Immut<'a>, K, V, Type> {
-    fn clone(&self) -> Self {}
+    fn clone(&self) -> Self {
+}
 }
 
 unsafe impl<BorrowType, K: Sync, V: Sync, Type> Sync for NodeRef<BorrowType, K, V, Type> {}
@@ -6918,34 +5581,41 @@ unsafe impl<K: Send, V: Send, Type> Send for NodeRef<marker::Owned, K, V, Type> 
 unsafe impl<K: Send, V: Send, Type> Send for NodeRef<marker::Dying, K, V, Type> {}
 
 impl<K, V> NodeRef<marker::Owned, K, V, marker::Leaf> {
-    fn new_leaf() -> Self {}
+    fn new_leaf() -> Self {
+}
 
-    fn from_new_leaf(leaf: Box<LeafNode<K, V>>) -> Self {}
+    fn from_new_leaf(leaf: Box<LeafNode<K, V>>) -> Self {
+}
 }
 
 impl<K, V> NodeRef<marker::Owned, K, V, marker::Internal> {
-    fn new_internal(child: Root<K, V>) -> Self {}
+    fn new_internal(child: Root<K, V>) -> Self {
+}
 
     /// # Safety
     /// `height` must not be zero.
-    unsafe fn from_new_internal(internal: Box<InternalNode<K, V>>, height: usize) -> Self {}
+    unsafe fn from_new_internal(internal: Box<InternalNode<K, V>>, height: usize) -> Self {
+}
 }
 
 impl<BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Internal> {
     /// Unpack a node reference that was packed as `NodeRef::parent`.
-    fn from_internal(node: NonNull<InternalNode<K, V>>, height: usize) -> Self {}
+    fn from_internal(node: NonNull<InternalNode<K, V>>, height: usize) -> Self {
+}
 }
 
 impl<BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Internal> {
     /// Exposes the data of an internal node.
     ///
     /// Returns a raw ptr to avoid invalidating other references to this node.
-    fn as_internal_ptr(this: &Self) -> *mut InternalNode<K, V> {}
+    fn as_internal_ptr(this: &Self) -> *mut InternalNode<K, V> {
+}
 }
 
 impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
     /// Borrows exclusive access to the data of an internal node.
-    fn as_internal_mut(&mut self) -> &mut InternalNode<K, V> {}
+    fn as_internal_mut(&mut self) -> &mut InternalNode<K, V> {
+}
 }
 
 impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
@@ -6953,22 +5623,26 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
     /// The number of edges is `len() + 1`.
     /// Note that, despite being safe, calling this function can have the side effect
     /// of invalidating mutable references that unsafe code has created.
-    pub fn len(&self) -> usize {}
+    pub fn len(&self) -> usize {
+}
 
     /// Returns the number of levels that the node and leaves are apart. Zero
     /// height means the node is a leaf itself. If you picture trees with the
     /// root on top, the number says at which elevation the node appears.
     /// If you picture trees with leaves on top, the number says how high
     /// the tree extends above the node.
-    pub fn height(&self) -> usize {}
+    pub fn height(&self) -> usize {
+}
 
     /// Temporarily takes out another, immutable reference to the same node.
-    pub fn reborrow(&self) -> NodeRef<marker::Immut<'_>, K, V, Type> {}
+    pub fn reborrow(&self) -> NodeRef<marker::Immut<'_>, K, V, Type> {
+}
 
     /// Exposes the leaf portion of any leaf or internal node.
     ///
     /// Returns a raw ptr to avoid invalidating other references to this node.
-    fn as_leaf_ptr(this: &Self) -> *mut LeafNode<K, V> {}
+    fn as_leaf_ptr(this: &Self) -> *mut LeafNode<K, V> {
+}
 }
 
 impl<BorrowType: marker::BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
@@ -6983,30 +5657,38 @@ impl<BorrowType: marker::BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type>
     /// both, upon success, do nothing.
     pub fn ascend(
         self,
-    ) -> Result<Handle<NodeRef<BorrowType, K, V, marker::Internal>, marker::Edge>, Self> {}
+    ) -> Result<Handle<NodeRef<BorrowType, K, V, marker::Internal>, marker::Edge>, Self> {
+}
 
-    pub fn first_edge(self) -> Handle<Self, marker::Edge> {}
+    pub fn first_edge(self) -> Handle<Self, marker::Edge> {
+}
 
-    pub fn last_edge(self) -> Handle<Self, marker::Edge> {}
+    pub fn last_edge(self) -> Handle<Self, marker::Edge> {
+}
 
     /// Note that `self` must be nonempty.
-    pub fn first_kv(self) -> Handle<Self, marker::KV> {}
+    pub fn first_kv(self) -> Handle<Self, marker::KV> {
+}
 
     /// Note that `self` must be nonempty.
-    pub fn last_kv(self) -> Handle<Self, marker::KV> {}
+    pub fn last_kv(self) -> Handle<Self, marker::KV> {
+}
 }
 
 impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
     /// Could be a public implementation of PartialEq, but only used in this module.
-    fn eq(&self, other: &Self) -> bool {}
+    fn eq(&self, other: &Self) -> bool {
+}
 }
 
 impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Immut<'a>, K, V, Type> {
     /// Exposes the leaf portion of any leaf or internal node in an immutable tree.
-    fn into_leaf(self) -> &'a LeafNode<K, V> {}
+    fn into_leaf(self) -> &'a LeafNode<K, V> {
+}
 
     /// Borrows a view into the keys stored in the node.
-    pub fn keys(&self) -> &[K] {}
+    pub fn keys(&self) -> &[K] {
+}
 }
 
 impl<K, V> NodeRef<marker::Dying, K, V, marker::LeafOrInternal> {
@@ -7015,7 +5697,8 @@ impl<K, V> NodeRef<marker::Dying, K, V, marker::LeafOrInternal> {
     /// current node will still be accessible despite being deallocated.
     pub unsafe fn deallocate_and_ascend(
         self,
-    ) -> Option<Handle<NodeRef<marker::Dying, K, V, marker::Internal>, marker::Edge>> {}
+    ) -> Option<Handle<NodeRef<marker::Dying, K, V, marker::Internal>, marker::Edge>> {
+}
 }
 
 impl<'a, K, V, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
@@ -7029,18 +5712,22 @@ impl<'a, K, V, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
     // FIXME(@gereeter) consider adding yet another type parameter to `NodeRef`
     // that restricts the use of navigation methods on reborrowed pointers,
     // preventing this unsafety.
-    unsafe fn reborrow_mut(&mut self) -> NodeRef<marker::Mut<'_>, K, V, Type> {}
+    unsafe fn reborrow_mut(&mut self) -> NodeRef<marker::Mut<'_>, K, V, Type> {
+}
 
     /// Borrows exclusive access to the leaf portion of a leaf or internal node.
-    fn as_leaf_mut(&mut self) -> &mut LeafNode<K, V> {}
+    fn as_leaf_mut(&mut self) -> &mut LeafNode<K, V> {
+}
 
     /// Offers exclusive access to the leaf portion of a leaf or internal node.
-    fn into_leaf_mut(mut self) -> &'a mut LeafNode<K, V> {}
+    fn into_leaf_mut(mut self) -> &'a mut LeafNode<K, V> {
+}
 }
 
 impl<K, V, Type> NodeRef<marker::Dying, K, V, Type> {
     /// Borrows exclusive access to the leaf portion of a dying leaf or internal node.
-    fn as_leaf_dying(&mut self) -> &mut LeafNode<K, V> {}
+    fn as_leaf_dying(&mut self) -> &mut LeafNode<K, V> {
+}
 }
 
 impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
@@ -7051,7 +5738,8 @@ impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
     unsafe fn key_area_mut<I, Output: ?Sized>(&mut self, index: I) -> &mut Output
     where
         I: SliceIndex<[MaybeUninit<K>], Output = Output>,
-    {}
+    {
+}
 
     /// Borrows exclusive access to an element or slice of the node's value storage area.
     ///
@@ -7060,7 +5748,8 @@ impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
     unsafe fn val_area_mut<I, Output: ?Sized>(&mut self, index: I) -> &mut Output
     where
         I: SliceIndex<[MaybeUninit<V>], Output = Output>,
-    {}
+    {
+}
 }
 
 impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
@@ -7071,47 +5760,56 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
     unsafe fn edge_area_mut<I, Output: ?Sized>(&mut self, index: I) -> &mut Output
     where
         I: SliceIndex<[MaybeUninit<BoxedNode<K, V>>], Output = Output>,
-    {}
+    {
+}
 }
 
 impl<'a, K, V, Type> NodeRef<marker::ValMut<'a>, K, V, Type> {
     /// # Safety
     /// - The node has more than `idx` initialized elements.
-    unsafe fn into_key_val_mut_at(mut self, idx: usize) -> (&'a K, &'a mut V) {}
+    unsafe fn into_key_val_mut_at(mut self, idx: usize) -> (&'a K, &'a mut V) {
+}
 }
 
 impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
     /// Borrows exclusive access to the length of the node.
-    pub fn len_mut(&mut self) -> &mut u16 {}
+    pub fn len_mut(&mut self) -> &mut u16 {
+}
 }
 
 impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
     /// # Safety
     /// Every item returned by `range` is a valid edge index for the node.
-    unsafe fn correct_childrens_parent_links<R: Iterator<Item = usize>>(&mut self, range: R) {}
+    unsafe fn correct_childrens_parent_links<R: Iterator<Item = usize>>(&mut self, range: R) {
+}
 
-    fn correct_all_childrens_parent_links(&mut self) {}
+    fn correct_all_childrens_parent_links(&mut self) {
+}
 }
 
 impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
     /// Sets the node's link to its parent edge,
     /// without invalidating other references to the node.
-    fn set_parent_link(&mut self, parent: NonNull<InternalNode<K, V>>, parent_idx: usize) {}
+    fn set_parent_link(&mut self, parent: NonNull<InternalNode<K, V>>, parent_idx: usize) {
+}
 }
 
 impl<K, V> NodeRef<marker::Owned, K, V, marker::LeafOrInternal> {
     /// Clears the root's link to its parent edge.
-    fn clear_parent_link(&mut self) {}
+    fn clear_parent_link(&mut self) {
+}
 }
 
 impl<K, V> NodeRef<marker::Owned, K, V, marker::LeafOrInternal> {
     /// Returns a new owned tree, with its own root node that is initially empty.
-    pub fn new() -> Self {}
+    pub fn new() -> Self {
+}
 
     /// Adds a new internal node with a single edge pointing to the previous root node,
     /// make that new node the root node, and return it. This increases the height by 1
     /// and is the opposite of `pop_internal_level`.
-    pub fn push_internal_level(&mut self) -> NodeRef<marker::Mut<'_>, K, V, marker::Internal> {}
+    pub fn push_internal_level(&mut self) -> NodeRef<marker::Mut<'_>, K, V, marker::Internal> {
+}
 
     /// Removes the internal root node, using its first child as the new root node.
     /// As it is intended only to be called when the root node has only one child,
@@ -7122,42 +5820,50 @@ impl<K, V> NodeRef<marker::Owned, K, V, marker::LeafOrInternal> {
     /// it will not invalidate other handles or references to the root node.
     ///
     /// Panics if there is no internal level, i.e., if the root node is a leaf.
-    pub fn pop_internal_level(&mut self) {}
+    pub fn pop_internal_level(&mut self) {
+}
 }
 
 impl<K, V, Type> NodeRef<marker::Owned, K, V, Type> {
     /// Mutably borrows the owned root node. Unlike `reborrow_mut`, this is safe
     /// because the return value cannot be used to destroy the root, and there
     /// cannot be other references to the tree.
-    pub fn borrow_mut(&mut self) -> NodeRef<marker::Mut<'_>, K, V, Type> {}
+    pub fn borrow_mut(&mut self) -> NodeRef<marker::Mut<'_>, K, V, Type> {
+}
 
     /// Slightly mutably borrows the owned root node.
-    pub fn borrow_valmut(&mut self) -> NodeRef<marker::ValMut<'_>, K, V, Type> {}
+    pub fn borrow_valmut(&mut self) -> NodeRef<marker::ValMut<'_>, K, V, Type> {
+}
 
     /// Irreversibly transitions to a reference that permits traversal and offers
     /// destructive methods and little else.
-    pub fn into_dying(self) -> NodeRef<marker::Dying, K, V, Type> {}
+    pub fn into_dying(self) -> NodeRef<marker::Dying, K, V, Type> {
+}
 }
 
 impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::Leaf> {
     /// Adds a key-value pair to the end of the node.
-    pub fn push(&mut self, key: K, val: V) {}
+    pub fn push(&mut self, key: K, val: V) {
+}
 }
 
 impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
     /// Adds a key-value pair, and an edge to go to the right of that pair,
     /// to the end of the node.
-    pub fn push(&mut self, key: K, val: V, edge: Root<K, V>) {}
+    pub fn push(&mut self, key: K, val: V, edge: Root<K, V>) {
+}
 }
 
 impl<BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Leaf> {
     /// Removes any static information asserting that this node is a `Leaf` node.
-    pub fn forget_type(self) -> NodeRef<BorrowType, K, V, marker::LeafOrInternal> {}
+    pub fn forget_type(self) -> NodeRef<BorrowType, K, V, marker::LeafOrInternal> {
+}
 }
 
 impl<BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Internal> {
     /// Removes any static information asserting that this node is an `Internal` node.
-    pub fn forget_type(self) -> NodeRef<BorrowType, K, V, marker::LeafOrInternal> {}
+    pub fn forget_type(self) -> NodeRef<BorrowType, K, V, marker::LeafOrInternal> {
+}
 }
 
 impl<BorrowType, K, V> NodeRef<BorrowType, K, V, marker::LeafOrInternal> {
@@ -7167,15 +5873,18 @@ impl<BorrowType, K, V> NodeRef<BorrowType, K, V, marker::LeafOrInternal> {
     ) -> ForceResult<
         NodeRef<BorrowType, K, V, marker::Leaf>,
         NodeRef<BorrowType, K, V, marker::Internal>,
-    > {}
+    > {
+}
 }
 
 impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
     /// Unsafely asserts to the compiler the static information that this node is a `Leaf`.
-    unsafe fn cast_to_leaf_unchecked(self) -> NodeRef<marker::Mut<'a>, K, V, marker::Leaf> {}
+    unsafe fn cast_to_leaf_unchecked(self) -> NodeRef<marker::Mut<'a>, K, V, marker::Leaf> {
+}
 
     /// Unsafely asserts to the compiler the static information that this node is an `Internal`.
-    unsafe fn cast_to_internal_unchecked(self) -> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {}
+    unsafe fn cast_to_internal_unchecked(self) -> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
+}
 }
 
 /// A reference to a specific key-value pair or edge within a node. The `Node` parameter
@@ -7196,38 +5905,46 @@ impl<Node: Copy, Type> Copy for Handle<Node, Type> {}
 // We don't need the full generality of `#[derive(Clone)]`, as the only time `Node` will be
 // `Clone`able is when it is an immutable reference and therefore `Copy`.
 impl<Node: Copy, Type> Clone for Handle<Node, Type> {
-    fn clone(&self) -> Self {}
+    fn clone(&self) -> Self {
+}
 }
 
 impl<Node, Type> Handle<Node, Type> {
     /// Retrieves the node that contains the edge or key-value pair this handle points to.
-    pub fn into_node(self) -> Node {}
+    pub fn into_node(self) -> Node {
+}
 
     /// Returns the position of this handle in the node.
-    pub fn idx(&self) -> usize {}
+    pub fn idx(&self) -> usize {
+}
 }
 
 impl<BorrowType, K, V, NodeType> Handle<NodeRef<BorrowType, K, V, NodeType>, marker::KV> {
     /// Creates a new handle to a key-value pair in `node`.
     /// Unsafe because the caller must ensure that `idx < node.len()`.
-    pub unsafe fn new_kv(node: NodeRef<BorrowType, K, V, NodeType>, idx: usize) -> Self {}
+    pub unsafe fn new_kv(node: NodeRef<BorrowType, K, V, NodeType>, idx: usize) -> Self {
+}
 
-    pub fn left_edge(self) -> Handle<NodeRef<BorrowType, K, V, NodeType>, marker::Edge> {}
+    pub fn left_edge(self) -> Handle<NodeRef<BorrowType, K, V, NodeType>, marker::Edge> {
+}
 
-    pub fn right_edge(self) -> Handle<NodeRef<BorrowType, K, V, NodeType>, marker::Edge> {}
+    pub fn right_edge(self) -> Handle<NodeRef<BorrowType, K, V, NodeType>, marker::Edge> {
+}
 }
 
 impl<BorrowType, K, V, NodeType, HandleType> PartialEq
     for Handle<NodeRef<BorrowType, K, V, NodeType>, HandleType>
 {
-    fn eq(&self, other: &Self) -> bool {}
+    fn eq(&self, other: &Self) -> bool {
+}
 }
 
 impl<BorrowType, K, V, NodeType, HandleType>
     Handle<NodeRef<BorrowType, K, V, NodeType>, HandleType>
 {
     /// Temporarily takes out another immutable handle on the same location.
-    pub fn reborrow(&self) -> Handle<NodeRef<marker::Immut<'_>, K, V, NodeType>, HandleType> {}
+    pub fn reborrow(&self) -> Handle<NodeRef<marker::Immut<'_>, K, V, NodeType>, HandleType> {
+}
 }
 
 impl<'a, K, V, NodeType, HandleType> Handle<NodeRef<marker::Mut<'a>, K, V, NodeType>, HandleType> {
@@ -7238,17 +5955,21 @@ impl<'a, K, V, NodeType, HandleType> Handle<NodeRef<marker::Mut<'a>, K, V, NodeT
     /// For details, see `NodeRef::reborrow_mut`.
     pub unsafe fn reborrow_mut(
         &mut self,
-    ) -> Handle<NodeRef<marker::Mut<'_>, K, V, NodeType>, HandleType> {}
+    ) -> Handle<NodeRef<marker::Mut<'_>, K, V, NodeType>, HandleType> {
+}
 }
 
 impl<BorrowType, K, V, NodeType> Handle<NodeRef<BorrowType, K, V, NodeType>, marker::Edge> {
     /// Creates a new handle to an edge in `node`.
     /// Unsafe because the caller must ensure that `idx <= node.len()`.
-    pub unsafe fn new_edge(node: NodeRef<BorrowType, K, V, NodeType>, idx: usize) -> Self {}
+    pub unsafe fn new_edge(node: NodeRef<BorrowType, K, V, NodeType>, idx: usize) -> Self {
+}
 
-    pub fn left_kv(self) -> Result<Handle<NodeRef<BorrowType, K, V, NodeType>, marker::KV>, Self> {}
+    pub fn left_kv(self) -> Result<Handle<NodeRef<BorrowType, K, V, NodeType>, marker::KV>, Self> {
+}
 
-    pub fn right_kv(self) -> Result<Handle<NodeRef<BorrowType, K, V, NodeType>, marker::KV>, Self> {}
+    pub fn right_kv(self) -> Result<Handle<NodeRef<BorrowType, K, V, NodeType>, marker::KV>, Self> {
+}
 }
 
 pub enum LeftOrRight<T> {
@@ -7261,7 +5982,8 @@ pub enum LeftOrRight<T> {
 /// The goal of the split point is for its key and value to end up in a parent node;
 /// the keys, values and edges to the left of the split point become the left child;
 /// the keys, values and edges to the right of the split point become the right child.
-fn splitpoint(edge_idx: usize) -> (usize, LeftOrRight<usize>) {}
+fn splitpoint(edge_idx: usize) -> (usize, LeftOrRight<usize>) {
+}
 
 impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge> {
     /// Inserts a new key-value pair between the key-value pairs to the right and left of
@@ -7269,7 +5991,8 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, mark
     /// pair to fit.
     ///
     /// The returned pointer points to the inserted value.
-    fn insert_fit(&mut self, key: K, val: V) -> *mut V {}
+    fn insert_fit(&mut self, key: K, val: V) -> *mut V {
+}
 }
 
 impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge> {
@@ -7277,20 +6000,23 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, mark
     /// this edge. This method splits the node if there isn't enough room.
     ///
     /// The returned pointer points to the inserted value.
-    fn insert(mut self, key: K, val: V) -> (InsertResult<'a, K, V, marker::Leaf>, *mut V) {}
+    fn insert(mut self, key: K, val: V) -> (InsertResult<'a, K, V, marker::Leaf>, *mut V) {
+}
 }
 
 impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::Edge> {
     /// Fixes the parent pointer and index in the child node that this edge
     /// links to. This is useful when the ordering of edges has been changed,
-    fn correct_parent_link(self) {}
+    fn correct_parent_link(self) {
+}
 }
 
 impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::Edge> {
     /// Inserts a new key-value pair and an edge that will go to the right of that new pair
     /// between this edge and the key-value pair to the right of this edge. This method assumes
     /// that there is enough space in the node for the new pair to fit.
-    fn insert_fit(&mut self, key: K, val: V, edge: Root<K, V>) {}
+    fn insert_fit(&mut self, key: K, val: V, edge: Root<K, V>) {
+}
 
     /// Inserts a new key-value pair and an edge that will go to the right of that new pair
     /// between this edge and the key-value pair to the right of this edge. This method splits
@@ -7300,7 +6026,8 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, 
         key: K,
         val: V,
         edge: Root<K, V>,
-    ) -> InsertResult<'a, K, V, marker::Internal> {}
+    ) -> InsertResult<'a, K, V, marker::Internal> {
+}
 }
 
 impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge> {
@@ -7315,7 +6042,8 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, mark
         self,
         key: K,
         value: V,
-    ) -> (InsertResult<'a, K, V, marker::LeafOrInternal>, *mut V) {}
+    ) -> (InsertResult<'a, K, V, marker::LeafOrInternal>, *mut V) {
+}
 }
 
 impl<BorrowType: marker::BorrowType, K, V>
@@ -7327,47 +6055,57 @@ impl<BorrowType: marker::BorrowType, K, V>
     ///
     /// `edge.descend().ascend().unwrap()` and `node.ascend().unwrap().descend()` should
     /// both, upon success, do nothing.
-    pub fn descend(self) -> NodeRef<BorrowType, K, V, marker::LeafOrInternal> {}
+    pub fn descend(self) -> NodeRef<BorrowType, K, V, marker::LeafOrInternal> {
+}
 }
 
 impl<'a, K: 'a, V: 'a, NodeType> Handle<NodeRef<marker::Immut<'a>, K, V, NodeType>, marker::KV> {
-    pub fn into_kv(self) -> (&'a K, &'a V) {}
+    pub fn into_kv(self) -> (&'a K, &'a V) {
+}
 }
 
 impl<'a, K: 'a, V: 'a, NodeType> Handle<NodeRef<marker::Mut<'a>, K, V, NodeType>, marker::KV> {
-    pub fn key_mut(&mut self) -> &mut K {}
+    pub fn key_mut(&mut self) -> &mut K {
+}
 
-    pub fn into_val_mut(self) -> &'a mut V {}
+    pub fn into_val_mut(self) -> &'a mut V {
+}
 }
 
 impl<'a, K, V, NodeType> Handle<NodeRef<marker::ValMut<'a>, K, V, NodeType>, marker::KV> {
-    pub fn into_kv_valmut(self) -> (&'a K, &'a mut V) {}
+    pub fn into_kv_valmut(self) -> (&'a K, &'a mut V) {
+}
 }
 
 impl<'a, K: 'a, V: 'a, NodeType> Handle<NodeRef<marker::Mut<'a>, K, V, NodeType>, marker::KV> {
-    pub fn kv_mut(&mut self) -> (&mut K, &mut V) {}
+    pub fn kv_mut(&mut self) -> (&mut K, &mut V) {
+}
 
     /// Replaces the key and value that the KV handle refers to.
-    pub fn replace_kv(&mut self, k: K, v: V) -> (K, V) {}
+    pub fn replace_kv(&mut self, k: K, v: V) -> (K, V) {
+}
 }
 
 impl<K, V, NodeType> Handle<NodeRef<marker::Dying, K, V, NodeType>, marker::KV> {
     /// Extracts the key and value that the KV handle refers to.
     /// # Safety
     /// The node that the handle refers to must not yet have been deallocated.
-    pub unsafe fn into_key_val(mut self) -> (K, V) {}
+    pub unsafe fn into_key_val(mut self) -> (K, V) {
+}
 
     /// Drops the key and value that the KV handle refers to.
     /// # Safety
     /// The node that the handle refers to must not yet have been deallocated.
     #[inline]
-    pub unsafe fn drop_key_val(mut self) {}
+    pub unsafe fn drop_key_val(mut self) {
+}
 }
 
 impl<'a, K: 'a, V: 'a, NodeType> Handle<NodeRef<marker::Mut<'a>, K, V, NodeType>, marker::KV> {
     /// Helps implementations of `split` for a particular `NodeType`,
     /// by taking care of leaf data.
-    fn split_leaf_data(&mut self, new_node: &mut LeafNode<K, V>) -> (K, V) {}
+    fn split_leaf_data(&mut self, new_node: &mut LeafNode<K, V>) -> (K, V) {
+}
 }
 
 impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::KV> {
@@ -7378,13 +6116,15 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, mark
     /// - The key and value pointed to by this handle are extracted.
     /// - All the key-value pairs to the right of this handle are put into a newly
     ///   allocated node.
-    pub fn split(mut self) -> SplitResult<'a, K, V, marker::Leaf> {}
+    pub fn split(mut self) -> SplitResult<'a, K, V, marker::Leaf> {
+}
 
     /// Removes the key-value pair pointed to by this handle and returns it, along with the edge
     /// that the key-value pair collapsed into.
     pub fn remove(
         mut self,
-    ) -> ((K, V), Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>) {}
+    ) -> ((K, V), Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>) {
+}
 }
 
 impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::KV> {
@@ -7395,7 +6135,8 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, 
     /// - The key and value pointed to by this handle are extracted.
     /// - All the edges and key-value pairs to the right of this handle are put into
     ///   a newly allocated node.
-    pub fn split(mut self) -> SplitResult<'a, K, V, marker::Internal> {}
+    pub fn split(mut self) -> SplitResult<'a, K, V, marker::Internal> {
+}
 }
 
 /// Represents a session for evaluating and performing a balancing operation
@@ -7407,7 +6148,8 @@ pub struct BalancingContext<'a, K, V> {
 }
 
 impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::KV> {
-    pub fn consider_for_balancing(self) -> BalancingContext<'a, K, V> {}
+    pub fn consider_for_balancing(self) -> BalancingContext<'a, K, V> {
+}
 }
 
 impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
@@ -7425,21 +6167,27 @@ impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
     /// typically faster, since we only need to shift the node's N elements to
     /// the right, instead of shifting at least N of the sibling's elements to
     /// the left.
-    pub fn choose_parent_kv(self) -> Result<LeftOrRight<BalancingContext<'a, K, V>>, Self> {}
+    pub fn choose_parent_kv(self) -> Result<LeftOrRight<BalancingContext<'a, K, V>>, Self> {
+}
 }
 
 impl<'a, K, V> BalancingContext<'a, K, V> {
-    pub fn left_child_len(&self) -> usize {}
+    pub fn left_child_len(&self) -> usize {
+}
 
-    pub fn right_child_len(&self) -> usize {}
+    pub fn right_child_len(&self) -> usize {
+}
 
-    pub fn into_left_child(self) -> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {}
+    pub fn into_left_child(self) -> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
+}
 
-    pub fn into_right_child(self) -> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {}
+    pub fn into_right_child(self) -> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
+}
 
     /// Returns whether merging is possible, i.e., whether there is enough room
     /// in a node to combine the central KV with both adjacent child nodes.
-    pub fn can_merge(&self) -> bool {}
+    pub fn can_merge(&self) -> bool {
+}
 }
 
 impl<'a, K: 'a, V: 'a> BalancingContext<'a, K, V> {
@@ -7453,19 +6201,22 @@ impl<'a, K: 'a, V: 'a> BalancingContext<'a, K, V> {
     >(
         self,
         result: F,
-    ) -> R {}
+    ) -> R {
+}
 
     /// Merges the parent's key-value pair and both adjacent child nodes into
     /// the left child node and returns the shrunk parent node.
     ///
     /// Panics unless we `.can_merge()`.
-    pub fn merge_tracking_parent(self) -> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {}
+    pub fn merge_tracking_parent(self) -> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
+}
 
     /// Merges the parent's key-value pair and both adjacent child nodes into
     /// the left child node and returns that child node.
     ///
     /// Panics unless we `.can_merge()`.
-    pub fn merge_tracking_child(self) -> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {}
+    pub fn merge_tracking_child(self) -> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
+}
 
     /// Merges the parent's key-value pair and both adjacent child nodes into
     /// the left child node and returns the edge handle in that child node
@@ -7475,7 +6226,8 @@ impl<'a, K: 'a, V: 'a> BalancingContext<'a, K, V> {
     pub fn merge_tracking_child_edge(
         self,
         track_edge_idx: LeftOrRight<usize>,
-    ) -> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, marker::Edge> {}
+    ) -> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, marker::Edge> {
+}
 
     /// Removes a key-value pair from the left child and places it in the key-value storage
     /// of the parent, while pushing the old parent key-value pair into the right child.
@@ -7484,7 +6236,8 @@ impl<'a, K: 'a, V: 'a> BalancingContext<'a, K, V> {
     pub fn steal_left(
         mut self,
         track_right_edge_idx: usize,
-    ) -> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, marker::Edge> {}
+    ) -> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, marker::Edge> {
+}
 
     /// Removes a key-value pair from the right child and places it in the key-value storage
     /// of the parent, while pushing the old parent key-value pair onto the left child.
@@ -7493,37 +6246,44 @@ impl<'a, K: 'a, V: 'a> BalancingContext<'a, K, V> {
     pub fn steal_right(
         mut self,
         track_left_edge_idx: usize,
-    ) -> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, marker::Edge> {}
+    ) -> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, marker::Edge> {
+}
 
     /// This does stealing similar to `steal_left` but steals multiple elements at once.
-    pub fn bulk_steal_left(&mut self, count: usize) {}
+    pub fn bulk_steal_left(&mut self, count: usize) {
+}
 
     /// The symmetric clone of `bulk_steal_left`.
-    pub fn bulk_steal_right(&mut self, count: usize) {}
+    pub fn bulk_steal_right(&mut self, count: usize) {
+}
 }
 
 impl<BorrowType, K, V> Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge> {
     pub fn forget_node_type(
         self,
-    ) -> Handle<NodeRef<BorrowType, K, V, marker::LeafOrInternal>, marker::Edge> {}
+    ) -> Handle<NodeRef<BorrowType, K, V, marker::LeafOrInternal>, marker::Edge> {
+}
 }
 
 impl<BorrowType, K, V> Handle<NodeRef<BorrowType, K, V, marker::Internal>, marker::Edge> {
     pub fn forget_node_type(
         self,
-    ) -> Handle<NodeRef<BorrowType, K, V, marker::LeafOrInternal>, marker::Edge> {}
+    ) -> Handle<NodeRef<BorrowType, K, V, marker::LeafOrInternal>, marker::Edge> {
+}
 }
 
 impl<BorrowType, K, V> Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::KV> {
     pub fn forget_node_type(
         self,
-    ) -> Handle<NodeRef<BorrowType, K, V, marker::LeafOrInternal>, marker::KV> {}
+    ) -> Handle<NodeRef<BorrowType, K, V, marker::LeafOrInternal>, marker::KV> {
+}
 }
 
 impl<BorrowType, K, V> Handle<NodeRef<BorrowType, K, V, marker::Internal>, marker::KV> {
     pub fn forget_node_type(
         self,
-    ) -> Handle<NodeRef<BorrowType, K, V, marker::LeafOrInternal>, marker::KV> {}
+    ) -> Handle<NodeRef<BorrowType, K, V, marker::LeafOrInternal>, marker::KV> {
+}
 }
 
 impl<BorrowType, K, V, Type> Handle<NodeRef<BorrowType, K, V, marker::LeafOrInternal>, Type> {
@@ -7533,14 +6293,16 @@ impl<BorrowType, K, V, Type> Handle<NodeRef<BorrowType, K, V, marker::LeafOrInte
     ) -> ForceResult<
         Handle<NodeRef<BorrowType, K, V, marker::Leaf>, Type>,
         Handle<NodeRef<BorrowType, K, V, marker::Internal>, Type>,
-    > {}
+    > {
+}
 }
 
 impl<'a, K, V, Type> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, Type> {
     /// Unsafely asserts to the compiler the static information that the handle's node is a `Leaf`.
     pub unsafe fn cast_to_leaf_unchecked(
         self,
-    ) -> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, Type> {}
+    ) -> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, Type> {
+}
 }
 
 impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, marker::Edge> {
@@ -7549,7 +6311,8 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, ma
     pub fn move_suffix(
         &mut self,
         right: &mut NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>,
-    ) {}
+    ) {
+}
 }
 
 pub enum ForceResult<Leaf, Internal> {
@@ -7568,11 +6331,13 @@ pub struct SplitResult<'a, K, V, NodeType> {
 }
 
 impl<'a, K, V> SplitResult<'a, K, V, marker::Leaf> {
-    pub fn forget_node_type(self) -> SplitResult<'a, K, V, marker::LeafOrInternal> {}
+    pub fn forget_node_type(self) -> SplitResult<'a, K, V, marker::LeafOrInternal> {
+}
 }
 
 impl<'a, K, V> SplitResult<'a, K, V, marker::Internal> {
-    pub fn forget_node_type(self) -> SplitResult<'a, K, V, marker::LeafOrInternal> {}
+    pub fn forget_node_type(self) -> SplitResult<'a, K, V, marker::LeafOrInternal> {
+}
 }
 
 pub enum InsertResult<'a, K, V, NodeType> {
@@ -7617,61 +6382,39 @@ pub mod marker {
 ///
 /// # Safety
 /// The slice has more than `idx` elements.
-unsafe fn slice_insert<T>(slice: &mut [MaybeUninit<T>], idx: usize, val: T) {}
+unsafe fn slice_insert<T>(slice: &mut [MaybeUninit<T>], idx: usize, val: T) {
+}
 
 /// Removes and returns a value from a slice of all initialized elements, leaving behind one
 /// trailing uninitialized element.
 ///
 /// # Safety
 /// The slice has more than `idx` elements.
-unsafe fn slice_remove<T>(slice: &mut [MaybeUninit<T>], idx: usize) -> T {}
+unsafe fn slice_remove<T>(slice: &mut [MaybeUninit<T>], idx: usize) -> T {
+}
 
 /// Shifts the elements in a slice `distance` positions to the left.
 ///
 /// # Safety
 /// The slice has at least `distance` elements.
-unsafe fn slice_shl<T>(slice: &mut [MaybeUninit<T>], distance: usize) {}
+unsafe fn slice_shl<T>(slice: &mut [MaybeUninit<T>], distance: usize) {
+}
 
 /// Shifts the elements in a slice `distance` positions to the right.
 ///
 /// # Safety
 /// The slice has at least `distance` elements.
-unsafe fn slice_shr<T>(slice: &mut [MaybeUninit<T>], distance: usize) {}
+unsafe fn slice_shr<T>(slice: &mut [MaybeUninit<T>], distance: usize) {
+}
 
 /// Moves all values from a slice of initialized elements to a slice
 /// of uninitialized elements, leaving behind `src` as all uninitialized.
 /// Works like `dst.copy_from_slice(src)` but does not require `T` to be `Copy`.
-fn move_to_slice<T>(src: &mut [MaybeUninit<T>], dst: &mut [MaybeUninit<T>]) {}
+fn move_to_slice<T>(src: &mut [MaybeUninit<T>], dst: &mut [MaybeUninit<T>]) {
+}
 
 #[cfg(test)]
 mod tests {
-use super::super::navigate;
-use super::*;
-use crate::fmt::Debug;
-use crate::string::String;
-
-impl<'a, K: 'a, V: 'a> NodeRef<marker::Immut<'a>, K, V, marker::LeafOrInternal> {
-    // Asserts that the back pointer in each reachable node points to its parent.
-    pub fn assert_back_pointers(self) {}
-
-    // Renders a multi-line display of the keys in order and in tree hierarchy,
-    // picturing the tree growing sideways from its root on the left to its
-    // leaves on the right.
-    pub fn dump_keys(self) -> String
-    where
-        K: Debug,
-    {}
-}
-
-#[test]
-fn test_splitpoint() {}
-
-#[test]
-fn test_partial_eq() {}
-
-#[test]
-#[cfg(target_arch = "x86_64")]
-fn test_sizes() {}
 }
 }
 mod remove {
@@ -7686,21 +6429,24 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInter
     pub fn remove_kv_tracking<F: FnOnce()>(
         self,
         handle_emptied_internal_root: F,
-    ) -> ((K, V), Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>) {}
+    ) -> ((K, V), Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>) {
+}
 }
 
 impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::KV> {
     fn remove_leaf_kv<F: FnOnce()>(
         self,
         handle_emptied_internal_root: F,
-    ) -> ((K, V), Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>) {}
+    ) -> ((K, V), Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>) {
+}
 }
 
 impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::KV> {
     fn remove_internal_kv<F: FnOnce()>(
         self,
         handle_emptied_internal_root: F,
-    ) -> ((K, V), Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>) {}
+    ) -> ((K, V), Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>) {
+}
 }
 }
 mod search {
@@ -7725,7 +6471,8 @@ pub enum SearchBound<T> {
 }
 
 impl<T> SearchBound<T> {
-    pub fn from_range(range_bound: Bound<T>) -> Self {}
+    pub fn from_range(range_bound: Bound<T>) -> Self {
+}
 }
 
 pub enum SearchResult<BorrowType, K, V, FoundType, GoDownType> {
@@ -7752,7 +6499,8 @@ impl<BorrowType: marker::BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Lea
     where
         Q: Ord,
         K: Borrow<Q>,
-    {}
+    {
+}
 
     /// Descends to the nearest node where the edge matching the lower bound
     /// of the range is different from the edge matching the upper bound, i.e.,
@@ -7786,7 +6534,8 @@ impl<BorrowType: marker::BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Lea
         Q: Ord,
         K: Borrow<Q>,
         R: RangeBounds<Q>,
-    {}
+    {
+}
 
     /// Finds an edge in the node delimiting the lower bound of a range.
     /// Also returns the lower bound to be used for continuing the search in
@@ -7800,7 +6549,8 @@ impl<BorrowType: marker::BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Lea
     where
         Q: ?Sized + Ord,
         K: Borrow<Q>,
-    {}
+    {
+}
 
     /// Clone of `find_lower_bound_edge` for the upper bound.
     pub fn find_upper_bound_edge<'r, Q>(
@@ -7810,7 +6560,8 @@ impl<BorrowType: marker::BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Lea
     where
         Q: ?Sized + Ord,
         K: Borrow<Q>,
-    {}
+    {
+}
 }
 
 impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
@@ -7825,7 +6576,8 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
     where
         Q: Ord,
         K: Borrow<Q>,
-    {}
+    {
+}
 
     /// Returns either the KV index in the node at which the key (or an equivalent)
     /// exists, or the edge index where the key belongs, starting from a particular index.
@@ -7839,7 +6591,8 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
     where
         Q: Ord,
         K: Borrow<Q>,
-    {}
+    {
+}
 
     /// Finds an edge index in the node delimiting the lower bound of a range.
     /// Also returns the lower bound to be used for continuing the search in
@@ -7853,7 +6606,8 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
     where
         Q: ?Sized + Ord,
         K: Borrow<Q>,
-    {}
+    {
+}
 
     /// Mirror image of `find_lower_bound_index` for the upper bound,
     /// with an additional parameter to skip part of the key array.
@@ -7868,7 +6622,8 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
     where
         Q: ?Sized + Ord,
         K: Borrow<Q>,
-    {}
+    {
+}
 }
 }
 pub mod set {
@@ -7951,9 +6706,11 @@ pub struct BTreeSet<T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Clone> Clone for BTreeSet<T> {
-    fn clone(&self) -> Self {}
+    fn clone(&self) -> Self {
+}
 
-    fn clone_from(&mut self, other: &Self) {}
+    fn clone_from(&mut self, other: &Self) {
+}
 }
 
 /// An iterator over the items of a `BTreeSet`.
@@ -7970,7 +6727,8 @@ pub struct Iter<'a, T: 'a> {
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<T: fmt::Debug> fmt::Debug for Iter<'_, T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
 }
 
 /// An owning iterator over the items of a `BTreeSet`.
@@ -8028,7 +6786,8 @@ enum DifferenceInner<'a, T: 'a> {
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<T: fmt::Debug> fmt::Debug for Difference<'_, T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
 }
 
 /// A lazy iterator producing elements in the symmetric difference of `BTreeSet`s.
@@ -8044,7 +6803,8 @@ pub struct SymmetricDifference<'a, T: 'a>(MergeIterInner<Iter<'a, T>>);
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<T: fmt::Debug> fmt::Debug for SymmetricDifference<'_, T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
 }
 
 /// A lazy iterator producing elements in the intersection of `BTreeSet`s.
@@ -8076,7 +6836,8 @@ enum IntersectionInner<'a, T: 'a> {
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<T: fmt::Debug> fmt::Debug for Intersection<'_, T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
 }
 
 /// A lazy iterator producing elements in the union of `BTreeSet`s.
@@ -8092,7 +6853,8 @@ pub struct Union<'a, T: 'a>(MergeIterInner<Iter<'a, T>>);
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<T: fmt::Debug> fmt::Debug for Union<'_, T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
 }
 
 // This constant is used by functions that compare two sets.
@@ -8119,7 +6881,8 @@ impl<T> BTreeSet<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_btree_new", issue = "71835")]
     #[must_use]
-    pub const fn new() -> BTreeSet<T> {}
+    pub const fn new() -> BTreeSet<T> {
+}
 
     /// Constructs a double-ended iterator over a sub-range of elements in the set.
     /// The simplest way is to use the range syntax `min..max`, thus `range(min..max)` will
@@ -8149,7 +6912,8 @@ impl<T> BTreeSet<T> {
         K: Ord,
         T: Borrow<K> + Ord,
         R: RangeBounds<K>,
-    {}
+    {
+}
 
     /// Visits the values representing the difference,
     /// i.e., the values that are in `self` but not in `other`,
@@ -8175,7 +6939,8 @@ impl<T> BTreeSet<T> {
     pub fn difference<'a>(&'a self, other: &'a BTreeSet<T>) -> Difference<'a, T>
     where
         T: Ord,
-    {}
+    {
+}
 
     /// Visits the values representing the symmetric difference,
     /// i.e., the values that are in `self` or in `other` but not in both,
@@ -8201,7 +6966,8 @@ impl<T> BTreeSet<T> {
     pub fn symmetric_difference<'a>(&'a self, other: &'a BTreeSet<T>) -> SymmetricDifference<'a, T>
     where
         T: Ord,
-    {}
+    {
+}
 
     /// Visits the values representing the intersection,
     /// i.e., the values that are both in `self` and `other`,
@@ -8227,7 +6993,8 @@ impl<T> BTreeSet<T> {
     pub fn intersection<'a>(&'a self, other: &'a BTreeSet<T>) -> Intersection<'a, T>
     where
         T: Ord,
-    {}
+    {
+}
 
     /// Visits the values representing the union,
     /// i.e., all the values in `self` or `other`, without duplicates,
@@ -8251,7 +7018,8 @@ impl<T> BTreeSet<T> {
     pub fn union<'a>(&'a self, other: &'a BTreeSet<T>) -> Union<'a, T>
     where
         T: Ord,
-    {}
+    {
+}
 
     /// Clears the set, removing all values.
     ///
@@ -8266,7 +7034,8 @@ impl<T> BTreeSet<T> {
     /// assert!(v.is_empty());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn clear(&mut self) {}
+    pub fn clear(&mut self) {
+}
 
     /// Returns `true` if the set contains a value.
     ///
@@ -8288,7 +7057,8 @@ impl<T> BTreeSet<T> {
     where
         T: Borrow<Q> + Ord,
         Q: Ord,
-    {}
+    {
+}
 
     /// Returns a reference to the value in the set, if any, that is equal to the given value.
     ///
@@ -8310,7 +7080,8 @@ impl<T> BTreeSet<T> {
     where
         T: Borrow<Q> + Ord,
         Q: Ord,
-    {}
+    {
+}
 
     /// Returns `true` if `self` has no elements in common with `other`.
     /// This is equivalent to checking for an empty intersection.
@@ -8334,7 +7105,8 @@ impl<T> BTreeSet<T> {
     pub fn is_disjoint(&self, other: &BTreeSet<T>) -> bool
     where
         T: Ord,
-    {}
+    {
+}
 
     /// Returns `true` if the set is a subset of another,
     /// i.e., `other` contains at least all the values in `self`.
@@ -8358,7 +7130,8 @@ impl<T> BTreeSet<T> {
     pub fn is_subset(&self, other: &BTreeSet<T>) -> bool
     where
         T: Ord,
-    {}
+    {
+}
 
     /// Returns `true` if the set is a superset of another,
     /// i.e., `self` contains at least all the values in `other`.
@@ -8385,7 +7158,8 @@ impl<T> BTreeSet<T> {
     pub fn is_superset(&self, other: &BTreeSet<T>) -> bool
     where
         T: Ord,
-    {}
+    {
+}
 
     /// Returns a reference to the first value in the set, if any.
     /// This value is always the minimum of all values in the set.
@@ -8410,7 +7184,8 @@ impl<T> BTreeSet<T> {
     pub fn first(&self) -> Option<&T>
     where
         T: Ord,
-    {}
+    {
+}
 
     /// Returns a reference to the last value in the set, if any.
     /// This value is always the maximum of all values in the set.
@@ -8435,7 +7210,8 @@ impl<T> BTreeSet<T> {
     pub fn last(&self) -> Option<&T>
     where
         T: Ord,
-    {}
+    {
+}
 
     /// Removes the first value from the set and returns it, if any.
     /// The first value is always the minimum value in the set.
@@ -8458,7 +7234,8 @@ impl<T> BTreeSet<T> {
     pub fn pop_first(&mut self) -> Option<T>
     where
         T: Ord,
-    {}
+    {
+}
 
     /// Removes the last value from the set and returns it, if any.
     /// The last value is always the maximum value in the set.
@@ -8481,7 +7258,8 @@ impl<T> BTreeSet<T> {
     pub fn pop_last(&mut self) -> Option<T>
     where
         T: Ord,
-    {}
+    {
+}
 
     /// Adds a value to the set.
     ///
@@ -8507,7 +7285,8 @@ impl<T> BTreeSet<T> {
     pub fn insert(&mut self, value: T) -> bool
     where
         T: Ord,
-    {}
+    {
+}
 
     /// Adds a value to the set, replacing the existing value, if any, that is equal to the given
     /// one. Returns the replaced value.
@@ -8528,7 +7307,8 @@ impl<T> BTreeSet<T> {
     pub fn replace(&mut self, value: T) -> Option<T>
     where
         T: Ord,
-    {}
+    {
+}
 
     /// Removes a value from the set. Returns whether the value was
     /// present in the set.
@@ -8553,7 +7333,8 @@ impl<T> BTreeSet<T> {
     where
         T: Borrow<Q> + Ord,
         Q: Ord,
-    {}
+    {
+}
 
     /// Removes and returns the value in the set, if any, that is equal to the given one.
     ///
@@ -8575,7 +7356,8 @@ impl<T> BTreeSet<T> {
     where
         T: Borrow<Q> + Ord,
         Q: Ord,
-    {}
+    {
+}
 
     /// Retains only the elements specified by the predicate.
     ///
@@ -8598,7 +7380,8 @@ impl<T> BTreeSet<T> {
     where
         T: Ord,
         F: FnMut(&T) -> bool,
-    {}
+    {
+}
 
     /// Moves all elements from `other` into `Self`, leaving `other` empty.
     ///
@@ -8632,7 +7415,8 @@ impl<T> BTreeSet<T> {
     pub fn append(&mut self, other: &mut Self)
     where
         T: Ord,
-    {}
+    {
+}
 
     /// Splits the collection into two at the given value. Returns everything after the given value,
     /// including the value.
@@ -8667,7 +7451,8 @@ impl<T> BTreeSet<T> {
     pub fn split_off<Q: ?Sized + Ord>(&mut self, value: &Q) -> Self
     where
         T: Borrow<Q> + Ord,
-    {}
+    {
+}
 
     /// Creates an iterator that visits all values in ascending order and uses a closure
     /// to determine if a value should be removed.
@@ -8703,7 +7488,8 @@ impl<T> BTreeSet<T> {
     where
         T: Ord,
         F: 'a + FnMut(&T) -> bool,
-    {}
+    {
+}
 
     /// Gets an iterator that visits the values in the `BTreeSet` in ascending order.
     ///
@@ -8733,7 +7519,8 @@ impl<T> BTreeSet<T> {
     /// assert_eq!(set_iter.next(), None);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn iter(&self) -> Iter<'_, T> {}
+    pub fn iter(&self) -> Iter<'_, T> {
+}
 
     /// Returns the number of elements in the set.
     ///
@@ -8750,7 +7537,8 @@ impl<T> BTreeSet<T> {
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_btree_new", issue = "71835")]
-    pub const fn len(&self) -> usize {}
+    pub const fn len(&self) -> usize {
+}
 
     /// Returns `true` if the set contains no elements.
     ///
@@ -8767,12 +7555,14 @@ impl<T> BTreeSet<T> {
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_btree_new", issue = "71835")]
-    pub const fn is_empty(&self) -> bool {}
+    pub const fn is_empty(&self) -> bool {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Ord> FromIterator<T> for BTreeSet<T> {
-    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> BTreeSet<T> {}
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> BTreeSet<T> {
+}
 }
 
 #[stable(feature = "std_collections_from_array", since = "1.56.0")]
@@ -8784,7 +7574,8 @@ impl<T: Ord, const N: usize> From<[T; N]> for BTreeSet<T> {
     /// let set2: BTreeSet<_> = [1, 2, 3, 4].into();
     /// assert_eq!(set1, set2);
     /// ```
-    fn from(mut arr: [T; N]) -> Self {}
+    fn from(mut arr: [T; N]) -> Self {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -8804,7 +7595,8 @@ impl<T> IntoIterator for BTreeSet<T> {
     /// let v: Vec<_> = set.into_iter().collect();
     /// assert_eq!(v, [1, 2, 3, 4]);
     /// ```
-    fn into_iter(self) -> IntoIter<T> {}
+    fn into_iter(self) -> IntoIter<T> {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -8812,7 +7604,8 @@ impl<'a, T> IntoIterator for &'a BTreeSet<T> {
     type Item = &'a T;
     type IntoIter = Iter<'a, T>;
 
-    fn into_iter(self) -> Iter<'a, T> {}
+    fn into_iter(self) -> Iter<'a, T> {
+}
 }
 
 /// An iterator produced by calling `drain_filter` on BTreeSet.
@@ -8831,7 +7624,8 @@ impl<T, F> Drop for DrainFilter<'_, T, F>
 where
     F: FnMut(&T) -> bool,
 {
-    fn drop(&mut self) {}
+    fn drop(&mut self) {
+}
 }
 
 #[unstable(feature = "btree_drain_filter", issue = "70530")]
@@ -8840,7 +7634,8 @@ where
     T: fmt::Debug,
     F: FnMut(&T) -> bool,
 {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
 }
 
 #[unstable(feature = "btree_drain_filter", issue = "70530")]
@@ -8850,9 +7645,11 @@ where
 {
     type Item = T;
 
-    fn next(&mut self) -> Option<T> {}
+    fn next(&mut self) -> Option<T> {
+}
 
-    fn size_hint(&self) -> (usize, Option<usize>) {}
+    fn size_hint(&self) -> (usize, Option<usize>) {
+}
 }
 
 #[unstable(feature = "btree_drain_filter", issue = "70530")]
@@ -8861,24 +7658,29 @@ impl<T, F> FusedIterator for DrainFilter<'_, T, F> where F: FnMut(&T) -> bool {}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Ord> Extend<T> for BTreeSet<T> {
     #[inline]
-    fn extend<Iter: IntoIterator<Item = T>>(&mut self, iter: Iter) {}
+    fn extend<Iter: IntoIterator<Item = T>>(&mut self, iter: Iter) {
+}
 
     #[inline]
-    fn extend_one(&mut self, elem: T) {}
+    fn extend_one(&mut self, elem: T) {
+}
 }
 
 #[stable(feature = "extend_ref", since = "1.2.0")]
 impl<'a, T: 'a + Ord + Copy> Extend<&'a T> for BTreeSet<T> {
-    fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {}
+    fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
+}
 
     #[inline]
-    fn extend_one(&mut self, &elem: &'a T) {}
+    fn extend_one(&mut self, &elem: &'a T) {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Default for BTreeSet<T> {
     /// Creates an empty `BTreeSet`.
-    fn default() -> BTreeSet<T> {}
+    fn default() -> BTreeSet<T> {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -8899,7 +7701,8 @@ impl<T: Ord + Clone> Sub<&BTreeSet<T>> for &BTreeSet<T> {
     /// let result_vec: Vec<_> = result.into_iter().collect();
     /// assert_eq!(result_vec, [1, 2]);
     /// ```
-    fn sub(self, rhs: &BTreeSet<T>) -> BTreeSet<T> {}
+    fn sub(self, rhs: &BTreeSet<T>) -> BTreeSet<T> {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -8920,7 +7723,8 @@ impl<T: Ord + Clone> BitXor<&BTreeSet<T>> for &BTreeSet<T> {
     /// let result_vec: Vec<_> = result.into_iter().collect();
     /// assert_eq!(result_vec, [1, 4]);
     /// ```
-    fn bitxor(self, rhs: &BTreeSet<T>) -> BTreeSet<T> {}
+    fn bitxor(self, rhs: &BTreeSet<T>) -> BTreeSet<T> {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -8941,7 +7745,8 @@ impl<T: Ord + Clone> BitAnd<&BTreeSet<T>> for &BTreeSet<T> {
     /// let result_vec: Vec<_> = result.into_iter().collect();
     /// assert_eq!(result_vec, [2, 3]);
     /// ```
-    fn bitand(self, rhs: &BTreeSet<T>) -> BTreeSet<T> {}
+    fn bitand(self, rhs: &BTreeSet<T>) -> BTreeSet<T> {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -8962,39 +7767,49 @@ impl<T: Ord + Clone> BitOr<&BTreeSet<T>> for &BTreeSet<T> {
     /// let result_vec: Vec<_> = result.into_iter().collect();
     /// assert_eq!(result_vec, [1, 2, 3, 4, 5]);
     /// ```
-    fn bitor(self, rhs: &BTreeSet<T>) -> BTreeSet<T> {}
+    fn bitor(self, rhs: &BTreeSet<T>) -> BTreeSet<T> {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Debug> Debug for BTreeSet<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Clone for Iter<'_, T> {
-    fn clone(&self) -> Self {}
+    fn clone(&self) -> Self {
+}
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> Iterator for Iter<'a, T> {
     type Item = &'a T;
 
-    fn next(&mut self) -> Option<&'a T> {}
+    fn next(&mut self) -> Option<&'a T> {
+}
 
-    fn size_hint(&self) -> (usize, Option<usize>) {}
+    fn size_hint(&self) -> (usize, Option<usize>) {
+}
 
-    fn last(mut self) -> Option<&'a T> {}
+    fn last(mut self) -> Option<&'a T> {
+}
 
-    fn min(mut self) -> Option<&'a T> {}
+    fn min(mut self) -> Option<&'a T> {
+}
 
-    fn max(mut self) -> Option<&'a T> {}
+    fn max(mut self) -> Option<&'a T> {
+}
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> DoubleEndedIterator for Iter<'a, T> {
-    fn next_back(&mut self) -> Option<&'a T> {}
+    fn next_back(&mut self) -> Option<&'a T> {
+}
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ExactSizeIterator for Iter<'_, T> {
-    fn len(&self) -> usize {}
+    fn len(&self) -> usize {
+}
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -9004,17 +7819,21 @@ impl<T> FusedIterator for Iter<'_, T> {}
 impl<T> Iterator for IntoIter<T> {
     type Item = T;
 
-    fn next(&mut self) -> Option<T> {}
+    fn next(&mut self) -> Option<T> {
+}
 
-    fn size_hint(&self) -> (usize, Option<usize>) {}
+    fn size_hint(&self) -> (usize, Option<usize>) {
+}
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> DoubleEndedIterator for IntoIter<T> {
-    fn next_back(&mut self) -> Option<T> {}
+    fn next_back(&mut self) -> Option<T> {
+}
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ExactSizeIterator for IntoIter<T> {
-    fn len(&self) -> usize {}
+    fn len(&self) -> usize {
+}
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -9022,25 +7841,31 @@ impl<T> FusedIterator for IntoIter<T> {}
 
 #[stable(feature = "btree_range", since = "1.17.0")]
 impl<T> Clone for Range<'_, T> {
-    fn clone(&self) -> Self {}
+    fn clone(&self) -> Self {
+}
 }
 
 #[stable(feature = "btree_range", since = "1.17.0")]
 impl<'a, T> Iterator for Range<'a, T> {
     type Item = &'a T;
 
-    fn next(&mut self) -> Option<&'a T> {}
+    fn next(&mut self) -> Option<&'a T> {
+}
 
-    fn last(mut self) -> Option<&'a T> {}
+    fn last(mut self) -> Option<&'a T> {
+}
 
-    fn min(mut self) -> Option<&'a T> {}
+    fn min(mut self) -> Option<&'a T> {
+}
 
-    fn max(mut self) -> Option<&'a T> {}
+    fn max(mut self) -> Option<&'a T> {
+}
 }
 
 #[stable(feature = "btree_range", since = "1.17.0")]
 impl<'a, T> DoubleEndedIterator for Range<'a, T> {
-    fn next_back(&mut self) -> Option<&'a T> {}
+    fn next_back(&mut self) -> Option<&'a T> {
+}
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -9048,17 +7873,21 @@ impl<T> FusedIterator for Range<'_, T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Clone for Difference<'_, T> {
-    fn clone(&self) -> Self {}
+    fn clone(&self) -> Self {
+}
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T: Ord> Iterator for Difference<'a, T> {
     type Item = &'a T;
 
-    fn next(&mut self) -> Option<&'a T> {}
+    fn next(&mut self) -> Option<&'a T> {
+}
 
-    fn size_hint(&self) -> (usize, Option<usize>) {}
+    fn size_hint(&self) -> (usize, Option<usize>) {
+}
 
-    fn min(mut self) -> Option<&'a T> {}
+    fn min(mut self) -> Option<&'a T> {
+}
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -9066,17 +7895,21 @@ impl<T: Ord> FusedIterator for Difference<'_, T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Clone for SymmetricDifference<'_, T> {
-    fn clone(&self) -> Self {}
+    fn clone(&self) -> Self {
+}
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T: Ord> Iterator for SymmetricDifference<'a, T> {
     type Item = &'a T;
 
-    fn next(&mut self) -> Option<&'a T> {}
+    fn next(&mut self) -> Option<&'a T> {
+}
 
-    fn size_hint(&self) -> (usize, Option<usize>) {}
+    fn size_hint(&self) -> (usize, Option<usize>) {
+}
 
-    fn min(mut self) -> Option<&'a T> {}
+    fn min(mut self) -> Option<&'a T> {
+}
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -9084,17 +7917,21 @@ impl<T: Ord> FusedIterator for SymmetricDifference<'_, T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Clone for Intersection<'_, T> {
-    fn clone(&self) -> Self {}
+    fn clone(&self) -> Self {
+}
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T: Ord> Iterator for Intersection<'a, T> {
     type Item = &'a T;
 
-    fn next(&mut self) -> Option<&'a T> {}
+    fn next(&mut self) -> Option<&'a T> {
+}
 
-    fn size_hint(&self) -> (usize, Option<usize>) {}
+    fn size_hint(&self) -> (usize, Option<usize>) {
+}
 
-    fn min(mut self) -> Option<&'a T> {}
+    fn min(mut self) -> Option<&'a T> {
+}
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -9102,17 +7939,21 @@ impl<T: Ord> FusedIterator for Intersection<'_, T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Clone for Union<'_, T> {
-    fn clone(&self) -> Self {}
+    fn clone(&self) -> Self {
+}
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T: Ord> Iterator for Union<'a, T> {
     type Item = &'a T;
 
-    fn next(&mut self) -> Option<&'a T> {}
+    fn next(&mut self) -> Option<&'a T> {
+}
 
-    fn size_hint(&self) -> (usize, Option<usize>) {}
+    fn size_hint(&self) -> (usize, Option<usize>) {
+}
 
-    fn min(mut self) -> Option<&'a T> {}
+    fn min(mut self) -> Option<&'a T> {
+}
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -9120,121 +7961,6 @@ impl<T: Ord> FusedIterator for Union<'_, T> {}
 
 #[cfg(test)]
 mod tests {
-use super::super::testing::crash_test::{CrashTestDummy, Panic};
-use super::super::testing::rng::DeterministicRng;
-use super::*;
-use crate::vec::Vec;
-use std::cmp::Ordering;
-use std::iter::FromIterator;
-use std::panic::{catch_unwind, AssertUnwindSafe};
-
-#[test]
-fn test_clone_eq() {}
-
-#[test]
-fn test_iter_min_max() {}
-
-fn check<F>(a: &[i32], b: &[i32], expected: &[i32], f: F)
-where
-    F: FnOnce(&BTreeSet<i32>, &BTreeSet<i32>, &mut dyn FnMut(&i32) -> bool) -> bool,
-{}
-
-#[test]
-fn test_intersection() {}
-
-#[test]
-fn test_intersection_size_hint() {}
-
-#[test]
-fn test_difference() {}
-
-#[test]
-fn test_difference_size_hint() {}
-
-#[test]
-fn test_symmetric_difference() {}
-
-#[test]
-fn test_symmetric_difference_size_hint() {}
-
-#[test]
-fn test_union() {}
-
-#[test]
-fn test_union_size_hint() {}
-
-#[test]
-// Only tests the simple function definition with respect to intersection
-fn test_is_disjoint() {}
-
-#[test]
-// Also implicitly tests the trivial function definition of is_superset
-fn test_is_subset() {}
-
-#[test]
-fn test_retain() {}
-
-#[test]
-fn test_drain_filter() {}
-
-#[test]
-fn test_drain_filter_drop_panic_leak() {}
-
-#[test]
-fn test_drain_filter_pred_panic_leak() {}
-
-#[test]
-fn test_clear() {}
-
-#[test]
-fn test_zip() {}
-
-#[test]
-fn test_from_iter() {}
-
-#[test]
-fn test_show() {}
-
-#[test]
-fn test_extend_ref() {}
-
-#[test]
-fn test_recovery() {}
-
-#[allow(dead_code)]
-fn test_variance() {}
-
-#[allow(dead_code)]
-fn test_sync() {}
-
-#[allow(dead_code)]
-fn test_send() {}
-
-#[test]
-fn test_ord_absence() {}
-
-#[test]
-fn test_append() {}
-
-#[test]
-fn test_first_last() {}
-
-// Unlike the function with the same name in map/tests, returns no values.
-// Which also means it returns different predetermined pseudo-random keys,
-// and the test cases using this function explore slightly different trees.
-fn rand_data(len: usize) -> Vec<u32> {}
-
-#[test]
-fn test_split_off_empty_right() {}
-
-#[test]
-fn test_split_off_empty_left() {}
-
-#[test]
-fn test_split_off_large_random_sorted() {}
-
-#[test]
-fn from_array() {}
 }
 }
 mod split {
@@ -9249,7 +7975,8 @@ impl<K, V> Root<K, V> {
         total_num: usize,
         root_a: &Root<K, V>,
         root_b: &Root<K, V>,
-    ) -> (usize, usize) {}
+    ) -> (usize, usize) {
+}
 
     /// Split off a tree with key-value pairs at and after the given key.
     /// The result is meaningful only if the tree is ordered by key,
@@ -9259,10 +7986,12 @@ impl<K, V> Root<K, V> {
     pub fn split_off<Q: ?Sized + Ord>(&mut self, key: &Q) -> Self
     where
         K: Borrow<Q>,
-    {}
+    {
+}
 
     /// Creates a tree consisting of empty nodes.
-    fn new_pillar(height: usize) -> Self {}
+    fn new_pillar(height: usize) -> Self {
+}
 }
 }
 
@@ -9277,164 +8006,6 @@ trait Recover<Q: ?Sized> {
 
 #[cfg(test)]
 mod testing {
-pub mod crash_test {
-use crate::fmt::Debug;
-use std::cmp::Ordering;
-use std::sync::atomic::{AtomicUsize, Ordering::SeqCst};
-
-/// A blueprint for crash test dummy instances that monitor particular events.
-/// Some instances may be configured to panic at some point.
-/// Events are `clone`, `drop` or some anonymous `query`.
-///
-/// Crash test dummies are identified and ordered by an id, so they can be used
-/// as keys in a BTreeMap. The implementation intentionally uses does not rely
-/// on anything defined in the crate, apart from the `Debug` trait.
-#[derive(Debug)]
-pub struct CrashTestDummy {
-    pub id: usize,
-    cloned: AtomicUsize,
-    dropped: AtomicUsize,
-    queried: AtomicUsize,
-}
-
-impl CrashTestDummy {
-    /// Creates a crash test dummy design. The `id` determines order and equality of instances.
-    pub fn new(id: usize) -> CrashTestDummy {}
-
-    /// Creates an instance of a crash test dummy that records what events it experiences
-    /// and optionally panics.
-    pub fn spawn(&self, panic: Panic) -> Instance<'_> {}
-
-    /// Returns how many times instances of the dummy have been cloned.
-    pub fn cloned(&self) -> usize {}
-
-    /// Returns how many times instances of the dummy have been dropped.
-    pub fn dropped(&self) -> usize {}
-
-    /// Returns how many times instances of the dummy have had their `query` member invoked.
-    pub fn queried(&self) -> usize {}
-}
-
-#[derive(Debug)]
-pub struct Instance<'a> {
-    origin: &'a CrashTestDummy,
-    panic: Panic,
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum Panic {
-    Never,
-    InClone,
-    InDrop,
-    InQuery,
-}
-
-impl Instance<'_> {
-    pub fn id(&self) -> usize {}
-
-    /// Some anonymous query, the result of which is already given.
-    pub fn query<R>(&self, result: R) -> R {}
-}
-
-impl Clone for Instance<'_> {
-    fn clone(&self) -> Self {}
-}
-
-impl Drop for Instance<'_> {
-    fn drop(&mut self) {}
-}
-
-impl PartialOrd for Instance<'_> {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {}
-}
-
-impl Ord for Instance<'_> {
-    fn cmp(&self, other: &Self) -> Ordering {}
-}
-
-impl PartialEq for Instance<'_> {
-    fn eq(&self, other: &Self) -> bool {}
-}
-
-impl Eq for Instance<'_> {}
-}
-pub mod ord_chaos {
-use std::cell::Cell;
-use std::cmp::Ordering::{self, *};
-use std::ptr;
-
-// Minimal type with an `Ord` implementation violating transitivity.
-#[derive(Debug)]
-pub enum Cyclic3 {
-    A,
-    B,
-    C,
-}
-use Cyclic3::*;
-
-impl PartialOrd for Cyclic3 {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {}
-}
-
-impl Ord for Cyclic3 {
-    fn cmp(&self, other: &Self) -> Ordering {}
-}
-
-impl PartialEq for Cyclic3 {
-    fn eq(&self, other: &Self) -> bool {}
-}
-
-impl Eq for Cyclic3 {}
-
-// Controls the ordering of values wrapped by `Governed`.
-#[derive(Debug)]
-pub struct Governor {
-    flipped: Cell<bool>,
-}
-
-impl Governor {
-    pub fn new() -> Self {}
-
-    pub fn flip(&self) {}
-}
-
-// Type with an `Ord` implementation that forms a total order at any moment
-// (assuming that `T` respects total order), but can suddenly be made to invert
-// that total order.
-#[derive(Debug)]
-pub struct Governed<'a, T>(pub T, pub &'a Governor);
-
-impl<T: Ord> PartialOrd for Governed<'_, T> {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {}
-}
-
-impl<T: Ord> Ord for Governed<'_, T> {
-    fn cmp(&self, other: &Self) -> Ordering {}
-}
-
-impl<T: PartialEq> PartialEq for Governed<'_, T> {
-    fn eq(&self, other: &Self) -> bool {}
-}
-
-impl<T: Eq> Eq for Governed<'_, T> {}
-}
-pub mod rng {
-/// XorShiftRng
-pub struct DeterministicRng {
-    count: usize,
-    x: u32,
-    y: u32,
-    z: u32,
-    w: u32,
-}
-
-impl DeterministicRng {
-    pub fn new() -> Self {}
-
-    /// Guarantees that each returned number is unique.
-    pub fn next(&mut self) -> u32 {}
-}
-}
 }
 }
 #[cfg(not(no_global_oom_handling))]
@@ -9466,55 +8037,6 @@ use crate::boxed::Box;
 
 #[cfg(test)]
 mod tests {
-use super::*;
-
-use std::thread;
-use std::vec::Vec;
-
-use rand::{thread_rng, RngCore};
-
-fn list_from<T: Clone>(v: &[T]) -> LinkedList<T> {}
-
-pub fn check_links<T>(list: &LinkedList<T>) {}
-
-#[test]
-fn test_append() {}
-
-#[test]
-fn test_clone_from() {}
-
-#[test]
-#[cfg_attr(target_os = "emscripten", ignore)]
-fn test_send() {}
-
-#[test]
-fn test_fuzz() {}
-
-#[test]
-fn test_26021() {}
-
-#[test]
-fn test_split_off() {}
-
-fn fuzz_test(sz: i32) {}
-
-#[test]
-fn drain_filter_test() {}
-
-#[test]
-fn drain_to_empty_test() {}
-
-#[test]
-fn test_cursor_move_peek() {}
-
-#[test]
-fn test_cursor_mut_insert() {}
-
-#[test]
-fn test_cursor_push_front_back() {}
-
-#[test]
-fn test_cursor_pop_front_back() {}
 }
 
 /// A doubly-linked list with owned nodes.
@@ -9566,13 +8088,15 @@ pub struct Iter<'a, T: 'a> {
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<T: fmt::Debug> fmt::Debug for Iter<'_, T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
 }
 
 // FIXME(#26925) Remove in favor of `#[derive(Clone)]`
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Clone for Iter<'_, T> {
-    fn clone(&self) -> Self {}
+    fn clone(&self) -> Self {
+}
 }
 
 /// A mutable iterator over the elements of a `LinkedList`.
@@ -9590,7 +8114,8 @@ pub struct IterMut<'a, T: 'a> {
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<T: fmt::Debug> fmt::Debug for IterMut<'_, T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
 }
 
 /// An owning iterator over the elements of a `LinkedList`.
@@ -9608,32 +8133,39 @@ pub struct IntoIter<T> {
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<T: fmt::Debug> fmt::Debug for IntoIter<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
 }
 
 impl<T> Node<T> {
-    fn new(element: T) -> Self {}
+    fn new(element: T) -> Self {
+}
 
-    fn into_element(self: Box<Self>) -> T {}
+    fn into_element(self: Box<Self>) -> T {
+}
 }
 
 // private methods
 impl<T> LinkedList<T> {
     /// Adds the given node to the front of the list.
     #[inline]
-    fn push_front_node(&mut self, mut node: Box<Node<T>>) {}
+    fn push_front_node(&mut self, mut node: Box<Node<T>>) {
+}
 
     /// Removes and returns the node at the front of the list.
     #[inline]
-    fn pop_front_node(&mut self) -> Option<Box<Node<T>>> {}
+    fn pop_front_node(&mut self) -> Option<Box<Node<T>>> {
+}
 
     /// Adds the given node to the back of the list.
     #[inline]
-    fn push_back_node(&mut self, mut node: Box<Node<T>>) {}
+    fn push_back_node(&mut self, mut node: Box<Node<T>>) {
+}
 
     /// Removes and returns the node at the back of the list.
     #[inline]
-    fn pop_back_node(&mut self) -> Option<Box<Node<T>>> {}
+    fn pop_back_node(&mut self) -> Option<Box<Node<T>>> {
+}
 
     /// Unlinks the specified node from the current list.
     ///
@@ -9642,7 +8174,8 @@ impl<T> LinkedList<T> {
     /// This method takes care not to create mutable references to `element`, to
     /// maintain validity of aliasing pointers.
     #[inline]
-    unsafe fn unlink_node(&mut self, mut node: NonNull<Node<T>>) {}
+    unsafe fn unlink_node(&mut self, mut node: NonNull<Node<T>>) {
+}
 
     /// Splices a series of nodes between two existing nodes.
     ///
@@ -9655,32 +8188,37 @@ impl<T> LinkedList<T> {
         mut splice_start: NonNull<Node<T>>,
         mut splice_end: NonNull<Node<T>>,
         splice_length: usize,
-    ) {}
+    ) {
+}
 
     /// Detaches all nodes from a linked list as a series of nodes.
     #[inline]
-    fn detach_all_nodes(mut self) -> Option<(NonNull<Node<T>>, NonNull<Node<T>>, usize)> {}
+    fn detach_all_nodes(mut self) -> Option<(NonNull<Node<T>>, NonNull<Node<T>>, usize)> {
+}
 
     #[inline]
     unsafe fn split_off_before_node(
         &mut self,
         split_node: Option<NonNull<Node<T>>>,
         at: usize,
-    ) -> Self {}
+    ) -> Self {
+}
 
     #[inline]
     unsafe fn split_off_after_node(
         &mut self,
         split_node: Option<NonNull<Node<T>>>,
         at: usize,
-    ) -> Self {}
+    ) -> Self {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Default for LinkedList<T> {
     /// Creates an empty `LinkedList<T>`.
     #[inline]
-    fn default() -> Self {}
+    fn default() -> Self {
+}
 }
 
 impl<T> LinkedList<T> {
@@ -9697,7 +8235,8 @@ impl<T> LinkedList<T> {
     #[rustc_const_stable(feature = "const_linked_list_new", since = "1.32.0")]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
-    pub const fn new() -> Self {}
+    pub const fn new() -> Self {
+}
 
     /// Moves all elements from `other` to the end of the list.
     ///
@@ -9729,7 +8268,8 @@ impl<T> LinkedList<T> {
     /// assert!(list2.is_empty());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn append(&mut self, other: &mut Self) {}
+    pub fn append(&mut self, other: &mut Self) {
+}
 
     /// Provides a forward iterator.
     ///
@@ -9752,7 +8292,8 @@ impl<T> LinkedList<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn iter(&self) -> Iter<'_, T> {}
+    pub fn iter(&self) -> Iter<'_, T> {
+}
 
     /// Provides a forward iterator with mutable references.
     ///
@@ -9779,7 +8320,8 @@ impl<T> LinkedList<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn iter_mut(&mut self) -> IterMut<'_, T> {}
+    pub fn iter_mut(&mut self) -> IterMut<'_, T> {
+}
 
     /// Provides a cursor at the front element.
     ///
@@ -9787,7 +8329,8 @@ impl<T> LinkedList<T> {
     #[inline]
     #[must_use]
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn cursor_front(&self) -> Cursor<'_, T> {}
+    pub fn cursor_front(&self) -> Cursor<'_, T> {
+}
 
     /// Provides a cursor with editing operations at the front element.
     ///
@@ -9795,7 +8338,8 @@ impl<T> LinkedList<T> {
     #[inline]
     #[must_use]
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn cursor_front_mut(&mut self) -> CursorMut<'_, T> {}
+    pub fn cursor_front_mut(&mut self) -> CursorMut<'_, T> {
+}
 
     /// Provides a cursor at the back element.
     ///
@@ -9803,7 +8347,8 @@ impl<T> LinkedList<T> {
     #[inline]
     #[must_use]
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn cursor_back(&self) -> Cursor<'_, T> {}
+    pub fn cursor_back(&self) -> Cursor<'_, T> {
+}
 
     /// Provides a cursor with editing operations at the back element.
     ///
@@ -9811,7 +8356,8 @@ impl<T> LinkedList<T> {
     #[inline]
     #[must_use]
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn cursor_back_mut(&mut self) -> CursorMut<'_, T> {}
+    pub fn cursor_back_mut(&mut self) -> CursorMut<'_, T> {
+}
 
     /// Returns `true` if the `LinkedList` is empty.
     ///
@@ -9831,7 +8377,8 @@ impl<T> LinkedList<T> {
     #[inline]
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn is_empty(&self) -> bool {}
+    pub fn is_empty(&self) -> bool {
+}
 
     /// Returns the length of the `LinkedList`.
     ///
@@ -9856,7 +8403,8 @@ impl<T> LinkedList<T> {
     #[inline]
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn len(&self) -> usize {}
+    pub fn len(&self) -> usize {
+}
 
     /// Removes all elements from the `LinkedList`.
     ///
@@ -9880,7 +8428,8 @@ impl<T> LinkedList<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn clear(&mut self) {}
+    pub fn clear(&mut self) {
+}
 
     /// Returns `true` if the `LinkedList` contains an element equal to the
     /// given value.
@@ -9905,7 +8454,8 @@ impl<T> LinkedList<T> {
     pub fn contains(&self, x: &T) -> bool
     where
         T: PartialEq<T>,
-    {}
+    {
+}
 
     /// Provides a reference to the front element, or `None` if the list is
     /// empty.
@@ -9926,7 +8476,8 @@ impl<T> LinkedList<T> {
     #[inline]
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn front(&self) -> Option<&T> {}
+    pub fn front(&self) -> Option<&T> {
+}
 
     /// Provides a mutable reference to the front element, or `None` if the list
     /// is empty.
@@ -9953,7 +8504,8 @@ impl<T> LinkedList<T> {
     #[inline]
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn front_mut(&mut self) -> Option<&mut T> {}
+    pub fn front_mut(&mut self) -> Option<&mut T> {
+}
 
     /// Provides a reference to the back element, or `None` if the list is
     /// empty.
@@ -9974,7 +8526,8 @@ impl<T> LinkedList<T> {
     #[inline]
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn back(&self) -> Option<&T> {}
+    pub fn back(&self) -> Option<&T> {
+}
 
     /// Provides a mutable reference to the back element, or `None` if the list
     /// is empty.
@@ -10000,7 +8553,8 @@ impl<T> LinkedList<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn back_mut(&mut self) -> Option<&mut T> {}
+    pub fn back_mut(&mut self) -> Option<&mut T> {
+}
 
     /// Adds an element first in the list.
     ///
@@ -10020,7 +8574,8 @@ impl<T> LinkedList<T> {
     /// assert_eq!(dl.front().unwrap(), &1);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn push_front(&mut self, elt: T) {}
+    pub fn push_front(&mut self, elt: T) {
+}
 
     /// Removes the first element and returns it, or `None` if the list is
     /// empty.
@@ -10042,7 +8597,8 @@ impl<T> LinkedList<T> {
     /// assert_eq!(d.pop_front(), None);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn pop_front(&mut self) -> Option<T> {}
+    pub fn pop_front(&mut self) -> Option<T> {
+}
 
     /// Appends an element to the back of a list.
     ///
@@ -10059,7 +8615,8 @@ impl<T> LinkedList<T> {
     /// assert_eq!(3, *d.back().unwrap());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn push_back(&mut self, elt: T) {}
+    pub fn push_back(&mut self, elt: T) {
+}
 
     /// Removes the last element from a list and returns it, or `None` if
     /// it is empty.
@@ -10078,7 +8635,8 @@ impl<T> LinkedList<T> {
     /// assert_eq!(d.pop_back(), Some(3));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn pop_back(&mut self) -> Option<T> {}
+    pub fn pop_back(&mut self) -> Option<T> {
+}
 
     /// Splits the list into two at the given index. Returns everything after the given index,
     /// including the index.
@@ -10106,7 +8664,8 @@ impl<T> LinkedList<T> {
     /// assert_eq!(split.pop_front(), None);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn split_off(&mut self, at: usize) -> LinkedList<T> {}
+    pub fn split_off(&mut self, at: usize) -> LinkedList<T> {
+}
 
     /// Removes the element at the given index and returns it.
     ///
@@ -10132,7 +8691,8 @@ impl<T> LinkedList<T> {
     /// assert_eq!(d.remove(0), 1);
     /// ```
     #[unstable(feature = "linked_list_remove", issue = "69210")]
-    pub fn remove(&mut self, at: usize) -> T {}
+    pub fn remove(&mut self, at: usize) -> T {
+}
 
     /// Creates an iterator which uses a closure to determine if an element should be removed.
     ///
@@ -10164,12 +8724,14 @@ impl<T> LinkedList<T> {
     pub fn drain_filter<F>(&mut self, filter: F) -> DrainFilter<'_, T, F>
     where
         F: FnMut(&mut T) -> bool,
-    {}
+    {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<#[may_dangle] T> Drop for LinkedList<T> {
-    fn drop(&mut self) {}
+    fn drop(&mut self) {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -10177,19 +8739,23 @@ impl<'a, T> Iterator for Iter<'a, T> {
     type Item = &'a T;
 
     #[inline]
-    fn next(&mut self) -> Option<&'a T> {}
+    fn next(&mut self) -> Option<&'a T> {
+}
 
     #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {}
+    fn size_hint(&self) -> (usize, Option<usize>) {
+}
 
     #[inline]
-    fn last(mut self) -> Option<&'a T> {}
+    fn last(mut self) -> Option<&'a T> {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> DoubleEndedIterator for Iter<'a, T> {
     #[inline]
-    fn next_back(&mut self) -> Option<&'a T> {}
+    fn next_back(&mut self) -> Option<&'a T> {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -10203,19 +8769,23 @@ impl<'a, T> Iterator for IterMut<'a, T> {
     type Item = &'a mut T;
 
     #[inline]
-    fn next(&mut self) -> Option<&'a mut T> {}
+    fn next(&mut self) -> Option<&'a mut T> {
+}
 
     #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {}
+    fn size_hint(&self) -> (usize, Option<usize>) {
+}
 
     #[inline]
-    fn last(mut self) -> Option<&'a mut T> {}
+    fn last(mut self) -> Option<&'a mut T> {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> DoubleEndedIterator for IterMut<'a, T> {
     #[inline]
-    fn next_back(&mut self) -> Option<&'a mut T> {}
+    fn next_back(&mut self) -> Option<&'a mut T> {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -10242,12 +8812,14 @@ pub struct Cursor<'a, T: 'a> {
 
 #[unstable(feature = "linked_list_cursors", issue = "58533")]
 impl<T> Clone for Cursor<'_, T> {
-    fn clone(&self) -> Self {}
+    fn clone(&self) -> Self {
+}
 }
 
 #[unstable(feature = "linked_list_cursors", issue = "58533")]
 impl<T: fmt::Debug> fmt::Debug for Cursor<'_, T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
 }
 
 /// A cursor over a `LinkedList` with editing operations.
@@ -10269,7 +8841,8 @@ pub struct CursorMut<'a, T: 'a> {
 
 #[unstable(feature = "linked_list_cursors", issue = "58533")]
 impl<T: fmt::Debug> fmt::Debug for CursorMut<'_, T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
 }
 
 impl<'a, T> Cursor<'a, T> {
@@ -10279,7 +8852,8 @@ impl<'a, T> Cursor<'a, T> {
     /// "ghost" non-element.
     #[must_use]
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn index(&self) -> Option<usize> {}
+    pub fn index(&self) -> Option<usize> {
+}
 
     /// Moves the cursor to the next element of the `LinkedList`.
     ///
@@ -10287,7 +8861,8 @@ impl<'a, T> Cursor<'a, T> {
     /// the first element of the `LinkedList`. If it is pointing to the last
     /// element of the `LinkedList` then this will move it to the "ghost" non-element.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn move_next(&mut self) {}
+    pub fn move_next(&mut self) {
+}
 
     /// Moves the cursor to the previous element of the `LinkedList`.
     ///
@@ -10295,7 +8870,8 @@ impl<'a, T> Cursor<'a, T> {
     /// the last element of the `LinkedList`. If it is pointing to the first
     /// element of the `LinkedList` then this will move it to the "ghost" non-element.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn move_prev(&mut self) {}
+    pub fn move_prev(&mut self) {
+}
 
     /// Returns a reference to the element that the cursor is currently
     /// pointing to.
@@ -10304,7 +8880,8 @@ impl<'a, T> Cursor<'a, T> {
     /// "ghost" non-element.
     #[must_use]
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn current(&self) -> Option<&'a T> {}
+    pub fn current(&self) -> Option<&'a T> {
+}
 
     /// Returns a reference to the next element.
     ///
@@ -10313,7 +8890,8 @@ impl<'a, T> Cursor<'a, T> {
     /// element of the `LinkedList` then this returns `None`.
     #[must_use]
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn peek_next(&self) -> Option<&'a T> {}
+    pub fn peek_next(&self) -> Option<&'a T> {
+}
 
     /// Returns a reference to the previous element.
     ///
@@ -10322,19 +8900,22 @@ impl<'a, T> Cursor<'a, T> {
     /// element of the `LinkedList` then this returns `None`.
     #[must_use]
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn peek_prev(&self) -> Option<&'a T> {}
+    pub fn peek_prev(&self) -> Option<&'a T> {
+}
 
     /// Provides a reference to the front element of the cursor's parent list,
     /// or None if the list is empty.
     #[must_use]
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn front(&self) -> Option<&'a T> {}
+    pub fn front(&self) -> Option<&'a T> {
+}
 
     /// Provides a reference to the back element of the cursor's parent list,
     /// or None if the list is empty.
     #[must_use]
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn back(&self) -> Option<&'a T> {}
+    pub fn back(&self) -> Option<&'a T> {
+}
 }
 
 impl<'a, T> CursorMut<'a, T> {
@@ -10344,7 +8925,8 @@ impl<'a, T> CursorMut<'a, T> {
     /// "ghost" non-element.
     #[must_use]
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn index(&self) -> Option<usize> {}
+    pub fn index(&self) -> Option<usize> {
+}
 
     /// Moves the cursor to the next element of the `LinkedList`.
     ///
@@ -10352,7 +8934,8 @@ impl<'a, T> CursorMut<'a, T> {
     /// the first element of the `LinkedList`. If it is pointing to the last
     /// element of the `LinkedList` then this will move it to the "ghost" non-element.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn move_next(&mut self) {}
+    pub fn move_next(&mut self) {
+}
 
     /// Moves the cursor to the previous element of the `LinkedList`.
     ///
@@ -10360,7 +8943,8 @@ impl<'a, T> CursorMut<'a, T> {
     /// the last element of the `LinkedList`. If it is pointing to the first
     /// element of the `LinkedList` then this will move it to the "ghost" non-element.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn move_prev(&mut self) {}
+    pub fn move_prev(&mut self) {
+}
 
     /// Returns a reference to the element that the cursor is currently
     /// pointing to.
@@ -10369,7 +8953,8 @@ impl<'a, T> CursorMut<'a, T> {
     /// "ghost" non-element.
     #[must_use]
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn current(&mut self) -> Option<&mut T> {}
+    pub fn current(&mut self) -> Option<&mut T> {
+}
 
     /// Returns a reference to the next element.
     ///
@@ -10377,7 +8962,8 @@ impl<'a, T> CursorMut<'a, T> {
     /// the first element of the `LinkedList`. If it is pointing to the last
     /// element of the `LinkedList` then this returns `None`.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn peek_next(&mut self) -> Option<&mut T> {}
+    pub fn peek_next(&mut self) -> Option<&mut T> {
+}
 
     /// Returns a reference to the previous element.
     ///
@@ -10385,7 +8971,8 @@ impl<'a, T> CursorMut<'a, T> {
     /// the last element of the `LinkedList`. If it is pointing to the first
     /// element of the `LinkedList` then this returns `None`.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn peek_prev(&mut self) -> Option<&mut T> {}
+    pub fn peek_prev(&mut self) -> Option<&mut T> {
+}
 
     /// Returns a read-only cursor pointing to the current element.
     ///
@@ -10394,7 +8981,8 @@ impl<'a, T> CursorMut<'a, T> {
     /// `CursorMut` is frozen for the lifetime of the `Cursor`.
     #[must_use]
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn as_cursor(&self) -> Cursor<'_, T> {}
+    pub fn as_cursor(&self) -> Cursor<'_, T> {
+}
 }
 
 // Now the list editing operations
@@ -10405,14 +8993,16 @@ impl<'a, T> CursorMut<'a, T> {
     /// If the cursor is pointing at the "ghost" non-element then the new element is
     /// inserted at the front of the `LinkedList`.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn insert_after(&mut self, item: T) {}
+    pub fn insert_after(&mut self, item: T) {
+}
 
     /// Inserts a new element into the `LinkedList` before the current one.
     ///
     /// If the cursor is pointing at the "ghost" non-element then the new element is
     /// inserted at the end of the `LinkedList`.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn insert_before(&mut self, item: T) {}
+    pub fn insert_before(&mut self, item: T) {
+}
 
     /// Removes the current element from the `LinkedList`.
     ///
@@ -10422,7 +9012,8 @@ impl<'a, T> CursorMut<'a, T> {
     /// If the cursor is currently pointing to the "ghost" non-element then no element
     /// is removed and `None` is returned.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn remove_current(&mut self) -> Option<T> {}
+    pub fn remove_current(&mut self) -> Option<T> {
+}
 
     /// Removes the current element from the `LinkedList` without deallocating the list node.
     ///
@@ -10432,21 +9023,24 @@ impl<'a, T> CursorMut<'a, T> {
     /// If the cursor is currently pointing to the "ghost" non-element then no element
     /// is removed and `None` is returned.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn remove_current_as_list(&mut self) -> Option<LinkedList<T>> {}
+    pub fn remove_current_as_list(&mut self) -> Option<LinkedList<T>> {
+}
 
     /// Inserts the elements from the given `LinkedList` after the current one.
     ///
     /// If the cursor is pointing at the "ghost" non-element then the new elements are
     /// inserted at the start of the `LinkedList`.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn splice_after(&mut self, list: LinkedList<T>) {}
+    pub fn splice_after(&mut self, list: LinkedList<T>) {
+}
 
     /// Inserts the elements from the given `LinkedList` before the current one.
     ///
     /// If the cursor is pointing at the "ghost" non-element then the new elements are
     /// inserted at the end of the `LinkedList`.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn splice_before(&mut self, list: LinkedList<T>) {}
+    pub fn splice_before(&mut self, list: LinkedList<T>) {
+}
 
     /// Splits the list into two after the current element. This will return a
     /// new list consisting of everything after the cursor, with the original
@@ -10455,7 +9049,8 @@ impl<'a, T> CursorMut<'a, T> {
     /// If the cursor is pointing at the "ghost" non-element then the entire contents
     /// of the `LinkedList` are moved.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn split_after(&mut self) -> LinkedList<T> {}
+    pub fn split_after(&mut self) -> LinkedList<T> {
+}
 
     /// Splits the list into two before the current element. This will return a
     /// new list consisting of everything before the cursor, with the original
@@ -10464,7 +9059,8 @@ impl<'a, T> CursorMut<'a, T> {
     /// If the cursor is pointing at the "ghost" non-element then the entire contents
     /// of the `LinkedList` are moved.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn split_before(&mut self) -> LinkedList<T> {}
+    pub fn split_before(&mut self) -> LinkedList<T> {
+}
 
     /// Appends an element to the front of the cursor's parent list. The node
     /// that the cursor points to is unchanged, even if it is the "ghost" node.
@@ -10473,14 +9069,16 @@ impl<'a, T> CursorMut<'a, T> {
     // `push_front` continues to point to "ghost" when it addes a node to mimic
     // the behavior of `insert_before` on an empty list.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn push_front(&mut self, elt: T) {}
+    pub fn push_front(&mut self, elt: T) {
+}
 
     /// Appends an element to the back of the cursor's parent list. The node
     /// that the cursor points to is unchanged, even if it is the "ghost" node.
     ///
     /// This operation should compute in O(1) time.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn push_back(&mut self, elt: T) {}
+    pub fn push_back(&mut self, elt: T) {
+}
 
     /// Removes the first element from the cursor's parent list and returns it,
     /// or None if the list is empty. The element the cursor points to remains
@@ -10489,7 +9087,8 @@ impl<'a, T> CursorMut<'a, T> {
     ///
     /// This operation should compute in O(1) time.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn pop_front(&mut self) -> Option<T> {}
+    pub fn pop_front(&mut self) -> Option<T> {
+}
 
     /// Removes the last element from the cursor's parent list and returns it,
     /// or None if the list is empty. The element the cursor points to remains
@@ -10498,25 +9097,29 @@ impl<'a, T> CursorMut<'a, T> {
     ///
     /// This operation should compute in O(1) time.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn pop_back(&mut self) -> Option<T> {}
+    pub fn pop_back(&mut self) -> Option<T> {
+}
 
     /// Provides a reference to the front element of the cursor's parent list,
     /// or None if the list is empty.
     #[must_use]
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn front(&self) -> Option<&T> {}
+    pub fn front(&self) -> Option<&T> {
+}
 
     /// Provides a mutable reference to the front element of the cursor's
     /// parent list, or None if the list is empty.
     #[must_use]
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn front_mut(&mut self) -> Option<&mut T> {}
+    pub fn front_mut(&mut self) -> Option<&mut T> {
+}
 
     /// Provides a reference to the back element of the cursor's parent list,
     /// or None if the list is empty.
     #[must_use]
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn back(&self) -> Option<&T> {}
+    pub fn back(&self) -> Option<&T> {
+}
 
     /// Provides a mutable reference to back element of the cursor's parent
     /// list, or `None` if the list is empty.
@@ -10541,7 +9144,8 @@ impl<'a, T> CursorMut<'a, T> {
     /// ```
     #[must_use]
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn back_mut(&mut self) -> Option<&mut T> {}
+    pub fn back_mut(&mut self) -> Option<&mut T> {
+}
 }
 
 /// An iterator produced by calling `drain_filter` on LinkedList.
@@ -10564,9 +9168,11 @@ where
 {
     type Item = T;
 
-    fn next(&mut self) -> Option<T> {}
+    fn next(&mut self) -> Option<T> {
+}
 
-    fn size_hint(&self) -> (usize, Option<usize>) {}
+    fn size_hint(&self) -> (usize, Option<usize>) {
+}
 }
 
 #[unstable(feature = "drain_filter", reason = "recently added", issue = "43244")]
@@ -10574,7 +9180,8 @@ impl<T, F> Drop for DrainFilter<'_, T, F>
 where
     F: FnMut(&mut T) -> bool,
 {
-    fn drop(&mut self) {}
+    fn drop(&mut self) {
+}
 }
 
 #[unstable(feature = "drain_filter", reason = "recently added", issue = "43244")]
@@ -10582,7 +9189,8 @@ impl<T: fmt::Debug, F> fmt::Debug for DrainFilter<'_, T, F>
 where
     F: FnMut(&mut T) -> bool,
 {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -10590,16 +9198,19 @@ impl<T> Iterator for IntoIter<T> {
     type Item = T;
 
     #[inline]
-    fn next(&mut self) -> Option<T> {}
+    fn next(&mut self) -> Option<T> {
+}
 
     #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {}
+    fn size_hint(&self) -> (usize, Option<usize>) {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> DoubleEndedIterator for IntoIter<T> {
     #[inline]
-    fn next_back(&mut self) -> Option<T> {}
+    fn next_back(&mut self) -> Option<T> {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -10610,7 +9221,8 @@ impl<T> FusedIterator for IntoIter<T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> FromIterator<T> for LinkedList<T> {
-    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {}
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -10620,7 +9232,8 @@ impl<T> IntoIterator for LinkedList<T> {
 
     /// Consumes the list into an iterator yielding elements by value.
     #[inline]
-    fn into_iter(self) -> IntoIter<T> {}
+    fn into_iter(self) -> IntoIter<T> {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -10628,7 +9241,8 @@ impl<'a, T> IntoIterator for &'a LinkedList<T> {
     type Item = &'a T;
     type IntoIter = Iter<'a, T>;
 
-    fn into_iter(self) -> Iter<'a, T> {}
+    fn into_iter(self) -> Iter<'a, T> {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -10636,38 +9250,47 @@ impl<'a, T> IntoIterator for &'a mut LinkedList<T> {
     type Item = &'a mut T;
     type IntoIter = IterMut<'a, T>;
 
-    fn into_iter(self) -> IterMut<'a, T> {}
+    fn into_iter(self) -> IterMut<'a, T> {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Extend<T> for LinkedList<T> {
-    fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {}
+    fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
+}
 
     #[inline]
-    fn extend_one(&mut self, elem: T) {}
+    fn extend_one(&mut self, elem: T) {
+}
 }
 
 impl<I: IntoIterator> SpecExtend<I> for LinkedList<I::Item> {
-    default fn spec_extend(&mut self, iter: I) {}
+    default fn spec_extend(&mut self, iter: I) {
+}
 }
 
 impl<T> SpecExtend<LinkedList<T>> for LinkedList<T> {
-    fn spec_extend(&mut self, ref mut other: LinkedList<T>) {}
+    fn spec_extend(&mut self, ref mut other: LinkedList<T>) {
+}
 }
 
 #[stable(feature = "extend_ref", since = "1.2.0")]
 impl<'a, T: 'a + Copy> Extend<&'a T> for LinkedList<T> {
-    fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {}
+    fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
+}
 
     #[inline]
-    fn extend_one(&mut self, &elem: &'a T) {}
+    fn extend_one(&mut self, &elem: &'a T) {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: PartialEq> PartialEq for LinkedList<T> {
-    fn eq(&self, other: &Self) -> bool {}
+    fn eq(&self, other: &Self) -> bool {
+}
 
-    fn ne(&self, other: &Self) -> bool {}
+    fn ne(&self, other: &Self) -> bool {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -10675,30 +9298,36 @@ impl<T: Eq> Eq for LinkedList<T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: PartialOrd> PartialOrd for LinkedList<T> {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {}
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Ord> Ord for LinkedList<T> {
     #[inline]
-    fn cmp(&self, other: &Self) -> Ordering {}
+    fn cmp(&self, other: &Self) -> Ordering {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Clone> Clone for LinkedList<T> {
-    fn clone(&self) -> Self {}
+    fn clone(&self) -> Self {
+}
 
-    fn clone_from(&mut self, other: &Self) {}
+    fn clone_from(&mut self, other: &Self) {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: fmt::Debug> fmt::Debug for LinkedList<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Hash> Hash for LinkedList<T> {
-    fn hash<H: Hasher>(&self, state: &mut H) {}
+    fn hash<H: Hasher>(&self, state: &mut H) {
+}
 }
 
 #[stable(feature = "std_collections_from_array", since = "1.56.0")]
@@ -10710,12 +9339,14 @@ impl<T, const N: usize> From<[T; N]> for LinkedList<T> {
     /// let list2: LinkedList<_> = [1, 2, 3, 4].into();
     /// assert_eq!(list1, list2);
     /// ```
-    fn from(arr: [T; N]) -> Self {}
+    fn from(arr: [T; N]) -> Self {
+}
 }
 
 // Ensure that `LinkedList` and its read-only iterators are covariant in their type parameters.
 #[allow(dead_code)]
-fn assert_covariance() {}
+fn assert_covariance() {
+}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<T: Send> Send for LinkedList<T> {}
@@ -10784,7 +9415,8 @@ macro_rules! __impl_slice_eq1 {
             T: PartialEq<U>,
             $($constraints)*
         {
-            fn eq(&self, other: &$rhs) -> bool {}
+            fn eq(&self, other: &$rhs) -> bool {
+}
         }
     }
 }
@@ -10826,12 +9458,14 @@ impl<'a, T, A: Allocator> Drain<'a, T, A> {
         after_head: usize,
         iter: Iter<'a, T>,
         deque: NonNull<VecDeque<T, A>>,
-    ) -> Self {}
+    ) -> Self {
+}
 }
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<T: fmt::Debug, A: Allocator> fmt::Debug for Drain<'_, T, A> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
@@ -10841,7 +9475,8 @@ unsafe impl<T: Send, A: Allocator + Send> Send for Drain<'_, T, A> {}
 
 #[stable(feature = "drain", since = "1.6.0")]
 impl<T, A: Allocator> Drop for Drain<'_, T, A> {
-    fn drop(&mut self) {}
+    fn drop(&mut self) {
+}
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
@@ -10849,16 +9484,19 @@ impl<T, A: Allocator> Iterator for Drain<'_, T, A> {
     type Item = T;
 
     #[inline]
-    fn next(&mut self) -> Option<T> {}
+    fn next(&mut self) -> Option<T> {
+}
 
     #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {}
+    fn size_hint(&self) -> (usize, Option<usize>) {
+}
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
 impl<T, A: Allocator> DoubleEndedIterator for Drain<'_, T, A> {
     #[inline]
-    fn next_back(&mut self) -> Option<T> {}
+    fn next_back(&mut self) -> Option<T> {
+}
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
@@ -10899,7 +9537,8 @@ impl<'a, T> IterMut<'a, T> {
         tail: usize,
         head: usize,
         phantom: PhantomData<&'a mut [T]>,
-    ) -> Self {}
+    ) -> Self {
+}
 }
 
 // SAFETY: we do nothing thread-local and there is no interior mutability,
@@ -10911,7 +9550,8 @@ unsafe impl<T: Sync> Sync for IterMut<'_, T> {}
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<T: fmt::Debug> fmt::Debug for IterMut<'_, T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -10919,40 +9559,49 @@ impl<'a, T> Iterator for IterMut<'a, T> {
     type Item = &'a mut T;
 
     #[inline]
-    fn next(&mut self) -> Option<&'a mut T> {}
+    fn next(&mut self) -> Option<&'a mut T> {
+}
 
     #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {}
+    fn size_hint(&self) -> (usize, Option<usize>) {
+}
 
     fn fold<Acc, F>(self, mut accum: Acc, mut f: F) -> Acc
     where
         F: FnMut(Acc, Self::Item) -> Acc,
-    {}
+    {
+}
 
-    fn nth(&mut self, n: usize) -> Option<Self::Item> {}
+    fn nth(&mut self, n: usize) -> Option<Self::Item> {
+}
 
     #[inline]
-    fn last(mut self) -> Option<&'a mut T> {}
+    fn last(mut self) -> Option<&'a mut T> {
+}
 
     #[inline]
     #[doc(hidden)]
-    unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item {}
+    unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> DoubleEndedIterator for IterMut<'a, T> {
     #[inline]
-    fn next_back(&mut self) -> Option<&'a mut T> {}
+    fn next_back(&mut self) -> Option<&'a mut T> {
+}
 
     fn rfold<Acc, F>(self, mut accum: Acc, mut f: F) -> Acc
     where
         F: FnMut(Acc, Self::Item) -> Acc,
-    {}
+    {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ExactSizeIterator for IterMut<'_, T> {
-    fn is_empty(&self) -> bool {}
+    fn is_empty(&self) -> bool {
+}
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -11000,12 +9649,14 @@ pub struct IntoIter<
 }
 
 impl<T, A: Allocator> IntoIter<T, A> {
-    pub(super) fn new(inner: VecDeque<T, A>) -> Self {}
+    pub(super) fn new(inner: VecDeque<T, A>) -> Self {
+}
 }
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<T: fmt::Debug, A: Allocator> fmt::Debug for IntoIter<T, A> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -11013,21 +9664,25 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
     type Item = T;
 
     #[inline]
-    fn next(&mut self) -> Option<T> {}
+    fn next(&mut self) -> Option<T> {
+}
 
     #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {}
+    fn size_hint(&self) -> (usize, Option<usize>) {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, A: Allocator> DoubleEndedIterator for IntoIter<T, A> {
     #[inline]
-    fn next_back(&mut self) -> Option<T> {}
+    fn next_back(&mut self) -> Option<T> {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, A: Allocator> ExactSizeIterator for IntoIter<T, A> {
-    fn is_empty(&self) -> bool {}
+    fn is_empty(&self) -> bool {
+}
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -11062,13 +9717,15 @@ pub struct Iter<'a, T: 'a> {
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<T: fmt::Debug> fmt::Debug for Iter<'_, T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
 }
 
 // FIXME(#26925) Remove in favor of `#[derive(Clone)]`
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Clone for Iter<'_, T> {
-    fn clone(&self) -> Self {}
+    fn clone(&self) -> Self {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -11076,54 +9733,65 @@ impl<'a, T> Iterator for Iter<'a, T> {
     type Item = &'a T;
 
     #[inline]
-    fn next(&mut self) -> Option<&'a T> {}
+    fn next(&mut self) -> Option<&'a T> {
+}
 
     #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {}
+    fn size_hint(&self) -> (usize, Option<usize>) {
+}
 
     fn fold<Acc, F>(self, mut accum: Acc, mut f: F) -> Acc
     where
         F: FnMut(Acc, Self::Item) -> Acc,
-    {}
+    {
+}
 
     fn try_fold<B, F, R>(&mut self, init: B, mut f: F) -> R
     where
         Self: Sized,
         F: FnMut(B, Self::Item) -> R,
         R: Try<Output = B>,
-    {}
+    {
+}
 
-    fn nth(&mut self, n: usize) -> Option<Self::Item> {}
+    fn nth(&mut self, n: usize) -> Option<Self::Item> {
+}
 
     #[inline]
-    fn last(mut self) -> Option<&'a T> {}
+    fn last(mut self) -> Option<&'a T> {
+}
 
     #[inline]
     #[doc(hidden)]
-    unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item {}
+    unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> DoubleEndedIterator for Iter<'a, T> {
     #[inline]
-    fn next_back(&mut self) -> Option<&'a T> {}
+    fn next_back(&mut self) -> Option<&'a T> {
+}
 
     fn rfold<Acc, F>(self, mut accum: Acc, mut f: F) -> Acc
     where
         F: FnMut(Acc, Self::Item) -> Acc,
-    {}
+    {
+}
 
     fn try_rfold<B, F, R>(&mut self, init: B, mut f: F) -> R
     where
         Self: Sized,
         F: FnMut(B, Self::Item) -> R,
         R: Try<Output = B>,
-    {}
+    {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ExactSizeIterator for Iter<'_, T> {
-    fn is_empty(&self) -> bool {}
+    fn is_empty(&self) -> bool {
+}
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -11175,16 +9843,20 @@ pub struct PairSlices<'a, 'b, T> {
 }
 
 impl<'a, 'b, T> PairSlices<'a, 'b, T> {
-    pub fn from<A: Allocator>(to: &'a mut VecDeque<T, A>, from: &'b VecDeque<T, A>) -> Self {}
+    pub fn from<A: Allocator>(to: &'a mut VecDeque<T, A>, from: &'b VecDeque<T, A>) -> Self {
+}
 
-    pub fn has_remainder(&self) -> bool {}
+    pub fn has_remainder(&self) -> bool {
+}
 
-    pub fn remainder(self) -> impl Iterator<Item = &'b [T]> {}
+    pub fn remainder(self) -> impl Iterator<Item = &'b [T]> {
+}
 }
 
 impl<'a, 'b, T> Iterator for PairSlices<'a, 'b, T> {
     type Item = (&'a mut [T], &'b [T]);
-    fn next(&mut self) -> Option<Self::Item> {}
+    fn next(&mut self) -> Option<Self::Item> {
+}
 }
 }
 
@@ -11198,121 +9870,35 @@ pub trait RingSlices: Sized {
     fn slice(self, from: usize, to: usize) -> Self;
     fn split_at(self, i: usize) -> (Self, Self);
 
-    fn ring_slices(buf: Self, head: usize, tail: usize) -> (Self, Self) {}
+    fn ring_slices(buf: Self, head: usize, tail: usize) -> (Self, Self) {
+}
 }
 
 impl<T> RingSlices for &[T] {
-    fn slice(self, from: usize, to: usize) -> Self {}
-    fn split_at(self, i: usize) -> (Self, Self) {}
+    fn slice(self, from: usize, to: usize) -> Self {
+}
+    fn split_at(self, i: usize) -> (Self, Self) {
+}
 }
 
 impl<T> RingSlices for &mut [T] {
-    fn slice(self, from: usize, to: usize) -> Self {}
-    fn split_at(self, i: usize) -> (Self, Self) {}
+    fn slice(self, from: usize, to: usize) -> Self {
+}
+    fn split_at(self, i: usize) -> (Self, Self) {
+}
 }
 
 impl<T> RingSlices for *mut [T] {
-    fn slice(self, from: usize, to: usize) -> Self {}
+    fn slice(self, from: usize, to: usize) -> Self {
+}
 
-    fn split_at(self, mid: usize) -> (Self, Self) {}
+    fn split_at(self, mid: usize) -> (Self, Self) {
+}
 }
 }
 
 #[cfg(test)]
 mod tests {
-use super::*;
-
-#[bench]
-#[cfg_attr(miri, ignore)] // isolated Miri does not support benchmarks
-fn bench_push_back_100(b: &mut test::Bencher) {}
-
-#[bench]
-#[cfg_attr(miri, ignore)] // isolated Miri does not support benchmarks
-fn bench_push_front_100(b: &mut test::Bencher) {}
-
-#[bench]
-#[cfg_attr(miri, ignore)] // isolated Miri does not support benchmarks
-fn bench_pop_back_100(b: &mut test::Bencher) {}
-
-#[bench]
-#[cfg_attr(miri, ignore)] // isolated Miri does not support benchmarks
-fn bench_retain_whole_10000(b: &mut test::Bencher) {}
-
-#[bench]
-#[cfg_attr(miri, ignore)] // isolated Miri does not support benchmarks
-fn bench_retain_odd_10000(b: &mut test::Bencher) {}
-
-#[bench]
-#[cfg_attr(miri, ignore)] // isolated Miri does not support benchmarks
-fn bench_retain_half_10000(b: &mut test::Bencher) {}
-
-#[bench]
-#[cfg_attr(miri, ignore)] // isolated Miri does not support benchmarks
-fn bench_pop_front_100(b: &mut test::Bencher) {}
-
-#[test]
-fn test_swap_front_back_remove() {}
-
-#[test]
-fn test_insert() {}
-
-#[test]
-fn make_contiguous_big_tail() {}
-
-#[test]
-fn make_contiguous_big_head() {}
-
-#[test]
-fn make_contiguous_small_free() {}
-
-#[test]
-fn make_contiguous_head_to_end() {}
-
-#[test]
-fn make_contiguous_head_to_end_2() {}
-
-#[test]
-fn test_remove() {}
-
-#[test]
-fn test_range() {}
-
-#[test]
-fn test_range_mut() {}
-
-#[test]
-fn test_drain() {}
-
-#[test]
-fn test_shrink_to_fit() {}
-
-#[test]
-fn test_split_off() {}
-
-#[test]
-fn test_from_vec() {}
-
-#[test]
-#[should_panic = "capacity overflow"]
-fn test_from_vec_zst_overflow() {}
-
-#[test]
-fn test_from_array() {}
-
-#[test]
-fn test_vec_from_vecdeque() {}
-
-#[test]
-fn test_clone_from() {}
-
-#[test]
-fn test_vec_deque_truncate_drop() {}
-
-#[test]
-fn issue_53529() {}
-
-#[test]
-fn issue_80303() {}
 }
 
 const INITIAL_CAPACITY: usize = 7; // 2^3 - 1
@@ -11365,89 +9951,108 @@ pub struct VecDeque<
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Clone, A: Allocator + Clone> Clone for VecDeque<T, A> {
-    fn clone(&self) -> Self {}
+    fn clone(&self) -> Self {
+}
 
-    fn clone_from(&mut self, other: &Self) {}
+    fn clone_from(&mut self, other: &Self) {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<#[may_dangle] T, A: Allocator> Drop for VecDeque<T, A> {
-    fn drop(&mut self) {}
+    fn drop(&mut self) {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Default for VecDeque<T> {
     /// Creates an empty `VecDeque<T>`.
     #[inline]
-    fn default() -> VecDeque<T> {}
+    fn default() -> VecDeque<T> {
+}
 }
 
 impl<T, A: Allocator> VecDeque<T, A> {
     /// Marginally more convenient
     #[inline]
-    fn ptr(&self) -> *mut T {}
+    fn ptr(&self) -> *mut T {
+}
 
     /// Marginally more convenient
     #[inline]
-    fn cap(&self) -> usize {}
+    fn cap(&self) -> usize {
+}
 
     /// Turn ptr into a slice
     #[inline]
-    unsafe fn buffer_as_slice(&self) -> &[T] {}
+    unsafe fn buffer_as_slice(&self) -> &[T] {
+}
 
     /// Turn ptr into a mut slice
     #[inline]
-    unsafe fn buffer_as_mut_slice(&mut self) -> &mut [T] {}
+    unsafe fn buffer_as_mut_slice(&mut self) -> &mut [T] {
+}
 
     /// Moves an element out of the buffer
     #[inline]
-    unsafe fn buffer_read(&mut self, off: usize) -> T {}
+    unsafe fn buffer_read(&mut self, off: usize) -> T {
+}
 
     /// Writes an element into the buffer, moving it.
     #[inline]
-    unsafe fn buffer_write(&mut self, off: usize, value: T) {}
+    unsafe fn buffer_write(&mut self, off: usize, value: T) {
+}
 
     /// Returns `true` if the buffer is at full capacity.
     #[inline]
-    fn is_full(&self) -> bool {}
+    fn is_full(&self) -> bool {
+}
 
     /// Returns the index in the underlying buffer for a given logical element
     /// index.
     #[inline]
-    fn wrap_index(&self, idx: usize) -> usize {}
+    fn wrap_index(&self, idx: usize) -> usize {
+}
 
     /// Returns the index in the underlying buffer for a given logical element
     /// index + addend.
     #[inline]
-    fn wrap_add(&self, idx: usize, addend: usize) -> usize {}
+    fn wrap_add(&self, idx: usize, addend: usize) -> usize {
+}
 
     /// Returns the index in the underlying buffer for a given logical element
     /// index - subtrahend.
     #[inline]
-    fn wrap_sub(&self, idx: usize, subtrahend: usize) -> usize {}
+    fn wrap_sub(&self, idx: usize, subtrahend: usize) -> usize {
+}
 
     /// Copies a contiguous block of memory len long from src to dst
     #[inline]
-    unsafe fn copy(&self, dst: usize, src: usize, len: usize) {}
+    unsafe fn copy(&self, dst: usize, src: usize, len: usize) {
+}
 
     /// Copies a contiguous block of memory len long from src to dst
     #[inline]
-    unsafe fn copy_nonoverlapping(&self, dst: usize, src: usize, len: usize) {}
+    unsafe fn copy_nonoverlapping(&self, dst: usize, src: usize, len: usize) {
+}
 
     /// Copies a potentially wrapping block of memory len long from src to dest.
     /// (abs(dst - src) + len) must be no larger than cap() (There must be at
     /// most one continuous overlapping region between src and dest).
-    unsafe fn wrap_copy(&self, dst: usize, src: usize, len: usize) {}
+    unsafe fn wrap_copy(&self, dst: usize, src: usize, len: usize) {
+}
 
     /// Copies all values from `src` to `dst`, wrapping around if needed.
     /// Assumes capacity is sufficient.
     #[inline]
-    unsafe fn copy_slice(&mut self, dst: usize, src: &[T]) {}
+    unsafe fn copy_slice(&mut self, dst: usize, src: &[T]) {
+}
 
     /// Frobs the head and tail sections around to handle the fact that we
     /// just reallocated. Unsafe because it trusts old_capacity.
     #[inline]
-    unsafe fn handle_capacity_increase(&mut self, old_capacity: usize) {}
+    unsafe fn handle_capacity_increase(&mut self, old_capacity: usize) {
+}
 }
 
 impl<T> VecDeque<T> {
@@ -11463,7 +10068,8 @@ impl<T> VecDeque<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
-    pub fn new() -> VecDeque<T> {}
+    pub fn new() -> VecDeque<T> {
+}
 
     /// Creates an empty `VecDeque` with space for at least `capacity` elements.
     ///
@@ -11477,7 +10083,8 @@ impl<T> VecDeque<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
-    pub fn with_capacity(capacity: usize) -> VecDeque<T> {}
+    pub fn with_capacity(capacity: usize) -> VecDeque<T> {
+}
 }
 
 impl<T, A: Allocator> VecDeque<T, A> {
@@ -11492,7 +10099,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// ```
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
-    pub fn new_in(alloc: A) -> VecDeque<T, A> {}
+    pub fn new_in(alloc: A) -> VecDeque<T, A> {
+}
 
     /// Creates an empty `VecDeque` with space for at least `capacity` elements.
     ///
@@ -11504,7 +10112,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// let vector: VecDeque<u32> = VecDeque::with_capacity(10);
     /// ```
     #[unstable(feature = "allocator_api", issue = "32838")]
-    pub fn with_capacity_in(capacity: usize, alloc: A) -> VecDeque<T, A> {}
+    pub fn with_capacity_in(capacity: usize, alloc: A) -> VecDeque<T, A> {
+}
 
     /// Provides a reference to the element at the given index.
     ///
@@ -11522,7 +10131,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(buf.get(1), Some(&4));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn get(&self, index: usize) -> Option<&T> {}
+    pub fn get(&self, index: usize) -> Option<&T> {
+}
 
     /// Provides a mutable reference to the element at the given index.
     ///
@@ -11544,7 +10154,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(buf[1], 7);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn get_mut(&mut self, index: usize) -> Option<&mut T> {}
+    pub fn get_mut(&mut self, index: usize) -> Option<&mut T> {
+}
 
     /// Swaps elements at indices `i` and `j`.
     ///
@@ -11570,7 +10181,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(buf, [5, 4, 3]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn swap(&mut self, i: usize, j: usize) {}
+    pub fn swap(&mut self, i: usize, j: usize) {
+}
 
     /// Returns the number of elements the `VecDeque` can hold without
     /// reallocating.
@@ -11585,7 +10197,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn capacity(&self) -> usize {}
+    pub fn capacity(&self) -> usize {
+}
 
     /// Reserves the minimum capacity for exactly `additional` more elements to be inserted in the
     /// given `VecDeque`. Does nothing if the capacity is already sufficient.
@@ -11610,7 +10223,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     ///
     /// [`reserve`]: VecDeque::reserve
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn reserve_exact(&mut self, additional: usize) {}
+    pub fn reserve_exact(&mut self, additional: usize) {
+}
 
     /// Reserves capacity for at least `additional` more elements to be inserted in the given
     /// `VecDeque`. The collection may reserve more space to avoid frequent reallocations.
@@ -11629,7 +10243,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert!(buf.capacity() >= 11);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn reserve(&mut self, additional: usize) {}
+    pub fn reserve(&mut self, additional: usize) {
+}
 
     /// Tries to reserve the minimum capacity for exactly `additional` more elements to
     /// be inserted in the given `VecDeque<T>`. After calling `try_reserve_exact`,
@@ -11653,11 +10268,24 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// use std::collections::TryReserveError;
     /// use std::collections::VecDeque;
     ///
-    /// fn process_data(data: &[u32]) -> Result<VecDeque<u32>, TryReserveError> {}
+    /// fn process_data(data: &[u32]) -> Result<VecDeque<u32>, TryReserveError> {
+    ///     let mut output = VecDeque::new();
+    ///
+    ///     // Pre-reserve the memory, exiting if we can't
+    ///     output.try_reserve_exact(data.len())?;
+    ///
+    ///     // Now we know this can't OOM(Out-Of-Memory) in the middle of our complex work
+    ///     output.extend(data.iter().map(|&val| {
+    ///         val * 2 + 5 // very complicated
+    ///     }));
+    ///
+    ///     Ok(output)
+    /// }
     /// # process_data(&[1, 2, 3]).expect("why is the test harness OOMing on 12 bytes?");
     /// ```
     #[stable(feature = "try_reserve", since = "1.57.0")]
-    pub fn try_reserve_exact(&mut self, additional: usize) -> Result<(), TryReserveError> {}
+    pub fn try_reserve_exact(&mut self, additional: usize) -> Result<(), TryReserveError> {
+}
 
     /// Tries to reserve capacity for at least `additional` more elements to be inserted
     /// in the given `VecDeque<T>`. The collection may reserve more space to avoid
@@ -11676,11 +10304,24 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// use std::collections::TryReserveError;
     /// use std::collections::VecDeque;
     ///
-    /// fn process_data(data: &[u32]) -> Result<VecDeque<u32>, TryReserveError> {}
+    /// fn process_data(data: &[u32]) -> Result<VecDeque<u32>, TryReserveError> {
+    ///     let mut output = VecDeque::new();
+    ///
+    ///     // Pre-reserve the memory, exiting if we can't
+    ///     output.try_reserve(data.len())?;
+    ///
+    ///     // Now we know this can't OOM in the middle of our complex work
+    ///     output.extend(data.iter().map(|&val| {
+    ///         val * 2 + 5 // very complicated
+    ///     }));
+    ///
+    ///     Ok(output)
+    /// }
     /// # process_data(&[1, 2, 3]).expect("why is the test harness OOMing on 12 bytes?");
     /// ```
     #[stable(feature = "try_reserve", since = "1.57.0")]
-    pub fn try_reserve(&mut self, additional: usize) -> Result<(), TryReserveError> {}
+    pub fn try_reserve(&mut self, additional: usize) -> Result<(), TryReserveError> {
+}
 
     /// Shrinks the capacity of the `VecDeque` as much as possible.
     ///
@@ -11699,7 +10340,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert!(buf.capacity() >= 4);
     /// ```
     #[stable(feature = "deque_extras_15", since = "1.5.0")]
-    pub fn shrink_to_fit(&mut self) {}
+    pub fn shrink_to_fit(&mut self) {
+}
 
     /// Shrinks the capacity of the `VecDeque` with a lower bound.
     ///
@@ -11722,7 +10364,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert!(buf.capacity() >= 4);
     /// ```
     #[stable(feature = "shrink_to", since = "1.56.0")]
-    pub fn shrink_to(&mut self, min_capacity: usize) {}
+    pub fn shrink_to(&mut self, min_capacity: usize) {
+}
 
     /// Shortens the `VecDeque`, keeping the first `len` elements and dropping
     /// the rest.
@@ -11744,12 +10387,14 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(buf, [5]);
     /// ```
     #[stable(feature = "deque_extras", since = "1.16.0")]
-    pub fn truncate(&mut self, len: usize) {}
+    pub fn truncate(&mut self, len: usize) {
+}
 
     /// Returns a reference to the underlying allocator.
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
-    pub fn allocator(&self) -> &A {}
+    pub fn allocator(&self) -> &A {
+}
 
     /// Returns a front-to-back iterator.
     ///
@@ -11767,7 +10412,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(&c[..], b);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn iter(&self) -> Iter<'_, T> {}
+    pub fn iter(&self) -> Iter<'_, T> {
+}
 
     /// Returns a front-to-back iterator that returns mutable references.
     ///
@@ -11787,7 +10433,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(&buf.iter_mut().collect::<Vec<&mut i32>>()[..], b);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn iter_mut(&mut self) -> IterMut<'_, T> {}
+    pub fn iter_mut(&mut self) -> IterMut<'_, T> {
+}
 
     /// Returns a pair of slices which contain, in order, the contents of the
     /// `VecDeque`.
@@ -11817,7 +10464,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// ```
     #[inline]
     #[stable(feature = "deque_extras_15", since = "1.5.0")]
-    pub fn as_slices(&self) -> (&[T], &[T]) {}
+    pub fn as_slices(&self) -> (&[T], &[T]) {
+}
 
     /// Returns a pair of slices which contain, in order, the contents of the
     /// `VecDeque`.
@@ -11846,7 +10494,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// ```
     #[inline]
     #[stable(feature = "deque_extras_15", since = "1.5.0")]
-    pub fn as_mut_slices(&mut self) -> (&mut [T], &mut [T]) {}
+    pub fn as_mut_slices(&mut self) -> (&mut [T], &mut [T]) {
+}
 
     /// Returns the number of elements in the `VecDeque`.
     ///
@@ -11861,7 +10510,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(v.len(), 1);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn len(&self) -> usize {}
+    pub fn len(&self) -> usize {
+}
 
     /// Returns `true` if the `VecDeque` is empty.
     ///
@@ -11876,12 +10526,14 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert!(!v.is_empty());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn is_empty(&self) -> bool {}
+    pub fn is_empty(&self) -> bool {
+}
 
     fn range_tail_head<R>(&self, range: R) -> (usize, usize)
     where
         R: RangeBounds<usize>,
-    {}
+    {
+}
 
     /// Creates an iterator that covers the specified range in the `VecDeque`.
     ///
@@ -11908,7 +10560,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     pub fn range<R>(&self, range: R) -> Iter<'_, T>
     where
         R: RangeBounds<usize>,
-    {}
+    {
+}
 
     /// Creates an iterator that covers the specified mutable range in the `VecDeque`.
     ///
@@ -11939,7 +10592,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     pub fn range_mut<R>(&mut self, range: R) -> IterMut<'_, T>
     where
         R: RangeBounds<usize>,
-    {}
+    {
+}
 
     /// Creates a draining iterator that removes the specified range in the
     /// `VecDeque` and yields the removed items.
@@ -11975,7 +10629,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     pub fn drain<R>(&mut self, range: R) -> Drain<'_, T, A>
     where
         R: RangeBounds<usize>,
-    {}
+    {
+}
 
     /// Clears the `VecDeque`, removing all values.
     ///
@@ -11991,7 +10646,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn clear(&mut self) {}
+    pub fn clear(&mut self) {
+}
 
     /// Returns `true` if the `VecDeque` contains an element equal to the
     /// given value.
@@ -12013,7 +10669,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     pub fn contains(&self, x: &T) -> bool
     where
         T: PartialEq<T>,
-    {}
+    {
+}
 
     /// Provides a reference to the front element, or `None` if the `VecDeque` is
     /// empty.
@@ -12031,7 +10688,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(d.front(), Some(&1));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn front(&self) -> Option<&T> {}
+    pub fn front(&self) -> Option<&T> {
+}
 
     /// Provides a mutable reference to the front element, or `None` if the
     /// `VecDeque` is empty.
@@ -12053,7 +10711,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(d.front(), Some(&9));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn front_mut(&mut self) -> Option<&mut T> {}
+    pub fn front_mut(&mut self) -> Option<&mut T> {
+}
 
     /// Provides a reference to the back element, or `None` if the `VecDeque` is
     /// empty.
@@ -12071,7 +10730,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(d.back(), Some(&2));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn back(&self) -> Option<&T> {}
+    pub fn back(&self) -> Option<&T> {
+}
 
     /// Provides a mutable reference to the back element, or `None` if the
     /// `VecDeque` is empty.
@@ -12093,7 +10753,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(d.back(), Some(&9));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn back_mut(&mut self) -> Option<&mut T> {}
+    pub fn back_mut(&mut self) -> Option<&mut T> {
+}
 
     /// Removes the first element and returns it, or `None` if the `VecDeque` is
     /// empty.
@@ -12112,7 +10773,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(d.pop_front(), None);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn pop_front(&mut self) -> Option<T> {}
+    pub fn pop_front(&mut self) -> Option<T> {
+}
 
     /// Removes the last element from the `VecDeque` and returns it, or `None` if
     /// it is empty.
@@ -12129,7 +10791,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(buf.pop_back(), Some(3));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn pop_back(&mut self) -> Option<T> {}
+    pub fn pop_back(&mut self) -> Option<T> {
+}
 
     /// Prepends an element to the `VecDeque`.
     ///
@@ -12144,7 +10807,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(d.front(), Some(&2));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn push_front(&mut self, value: T) {}
+    pub fn push_front(&mut self, value: T) {
+}
 
     /// Appends an element to the back of the `VecDeque`.
     ///
@@ -12159,10 +10823,12 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(3, *buf.back().unwrap());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn push_back(&mut self, value: T) {}
+    pub fn push_back(&mut self, value: T) {
+}
 
     #[inline]
-    fn is_contiguous(&self) -> bool {}
+    fn is_contiguous(&self) -> bool {
+}
 
     /// Removes an element from anywhere in the `VecDeque` and returns it,
     /// replacing it with the first element.
@@ -12189,7 +10855,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(buf, [2, 1]);
     /// ```
     #[stable(feature = "deque_extras_15", since = "1.5.0")]
-    pub fn swap_remove_front(&mut self, index: usize) -> Option<T> {}
+    pub fn swap_remove_front(&mut self, index: usize) -> Option<T> {
+}
 
     /// Removes an element from anywhere in the `VecDeque` and returns it, replacing it with the
     /// last element.
@@ -12216,7 +10883,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(buf, [3, 2]);
     /// ```
     #[stable(feature = "deque_extras_15", since = "1.5.0")]
-    pub fn swap_remove_back(&mut self, index: usize) -> Option<T> {}
+    pub fn swap_remove_back(&mut self, index: usize) -> Option<T> {
+}
 
     /// Inserts an element at `index` within the `VecDeque`, shifting all elements with indices
     /// greater than or equal to `index` towards the back.
@@ -12242,7 +10910,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(vec_deque, &['a', 'd', 'b', 'c']);
     /// ```
     #[stable(feature = "deque_extras_15", since = "1.5.0")]
-    pub fn insert(&mut self, index: usize, value: T) {}
+    pub fn insert(&mut self, index: usize, value: T) {
+}
 
     /// Removes and returns the element at `index` from the `VecDeque`.
     /// Whichever end is closer to the removal point will be moved to make
@@ -12266,7 +10935,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(buf, [1, 3]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn remove(&mut self, index: usize) -> Option<T> {}
+    pub fn remove(&mut self, index: usize) -> Option<T> {
+}
 
     /// Splits the `VecDeque` into two at the given index.
     ///
@@ -12297,7 +10967,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     pub fn split_off(&mut self, at: usize) -> Self
     where
         A: Clone,
-    {}
+    {
+}
 
     /// Moves all the elements of `other` into `self`, leaving `other` empty.
     ///
@@ -12318,7 +10989,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// ```
     #[inline]
     #[stable(feature = "append", since = "1.4.0")]
-    pub fn append(&mut self, other: &mut Self) {}
+    pub fn append(&mut self, other: &mut Self) {
+}
 
     /// Retains only the elements specified by the predicate.
     ///
@@ -12355,11 +11027,13 @@ impl<T, A: Allocator> VecDeque<T, A> {
     pub fn retain<F>(&mut self, mut f: F)
     where
         F: FnMut(&T) -> bool,
-    {}
+    {
+}
 
     // This may panic or abort
     #[inline(never)]
-    fn grow(&mut self) {}
+    fn grow(&mut self) {
+}
 
     /// Modifies the `VecDeque` in-place so that `len()` is equal to `new_len`,
     /// either by removing excess elements from the back or by appending
@@ -12387,7 +11061,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(buf, [5, 10, 101, 102, 103]);
     /// ```
     #[stable(feature = "vec_resize_with", since = "1.33.0")]
-    pub fn resize_with(&mut self, new_len: usize, generator: impl FnMut() -> T) {}
+    pub fn resize_with(&mut self, new_len: usize, generator: impl FnMut() -> T) {
+}
 
     /// Rearranges the internal storage of this deque so it is one contiguous
     /// slice, which is then returned.
@@ -12445,7 +11120,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// }
     /// ```
     #[stable(feature = "deque_make_contiguous", since = "1.48.0")]
-    pub fn make_contiguous(&mut self) -> &mut [T] {}
+    pub fn make_contiguous(&mut self) -> &mut [T] {
+}
 
     /// Rotates the double-ended queue `mid` places to the left.
     ///
@@ -12480,7 +11156,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(buf, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
     /// ```
     #[stable(feature = "vecdeque_rotate", since = "1.36.0")]
-    pub fn rotate_left(&mut self, mid: usize) {}
+    pub fn rotate_left(&mut self, mid: usize) {
+}
 
     /// Rotates the double-ended queue `k` places to the right.
     ///
@@ -12515,7 +11192,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(buf, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
     /// ```
     #[stable(feature = "vecdeque_rotate", since = "1.36.0")]
-    pub fn rotate_right(&mut self, k: usize) {}
+    pub fn rotate_right(&mut self, k: usize) {
+}
 
     // SAFETY: the following two methods require that the rotation amount
     // be less than half the length of the deque.
@@ -12525,9 +11203,11 @@ impl<T, A: Allocator> VecDeque<T, A> {
     // so it's sound to call here because we're calling with something
     // less than half the length, which is never above half the capacity.
 
-    unsafe fn rotate_left_inner(&mut self, mid: usize) {}
+    unsafe fn rotate_left_inner(&mut self, mid: usize) {
+}
 
-    unsafe fn rotate_right_inner(&mut self, k: usize) {}
+    unsafe fn rotate_right_inner(&mut self, k: usize) {
+}
 
     /// Binary searches this sorted `VecDeque` for a given element.
     ///
@@ -12578,7 +11258,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     pub fn binary_search(&self, x: &T) -> Result<usize, usize>
     where
         T: Ord,
-    {}
+    {
+}
 
     /// Binary searches this sorted `VecDeque` with a comparator function.
     ///
@@ -12620,7 +11301,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     pub fn binary_search_by<'a, F>(&'a self, mut f: F) -> Result<usize, usize>
     where
         F: FnMut(&'a T) -> Ordering,
-    {}
+    {
+}
 
     /// Binary searches this sorted `VecDeque` with a key extraction function.
     ///
@@ -12666,7 +11348,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     where
         F: FnMut(&'a T) -> B,
         B: Ord,
-    {}
+    {
+}
 
     /// Returns the index of the partition point according to the given predicate
     /// (the index of the first element of the second partition).
@@ -12702,7 +11385,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     pub fn partition_point<P>(&self, mut pred: P) -> usize
     where
         P: FnMut(&T) -> bool,
-    {}
+    {
+}
 }
 
 impl<T: Clone, A: Allocator> VecDeque<T, A> {
@@ -12728,20 +11412,24 @@ impl<T: Clone, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(buf, [5, 10, 20, 20, 20]);
     /// ```
     #[stable(feature = "deque_extras", since = "1.16.0")]
-    pub fn resize(&mut self, new_len: usize, value: T) {}
+    pub fn resize(&mut self, new_len: usize, value: T) {
+}
 }
 
 /// Returns the index in the underlying buffer for a given logical element index.
 #[inline]
-fn wrap_index(index: usize, size: usize) -> usize {}
+fn wrap_index(index: usize, size: usize) -> usize {
+}
 
 /// Calculate the number of elements left to be read in the buffer
 #[inline]
-fn count(tail: usize, head: usize, size: usize) -> usize {}
+fn count(tail: usize, head: usize, size: usize) -> usize {
+}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: PartialEq, A: Allocator> PartialEq for VecDeque<T, A> {
-    fn eq(&self, other: &Self) -> bool {}
+    fn eq(&self, other: &Self) -> bool {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -12756,18 +11444,21 @@ __impl_slice_eq1! { [const N: usize] VecDeque<T, A>, &mut [U; N], }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: PartialOrd, A: Allocator> PartialOrd for VecDeque<T, A> {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {}
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Ord, A: Allocator> Ord for VecDeque<T, A> {
     #[inline]
-    fn cmp(&self, other: &Self) -> Ordering {}
+    fn cmp(&self, other: &Self) -> Ordering {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Hash, A: Allocator> Hash for VecDeque<T, A> {
-    fn hash<H: Hasher>(&self, state: &mut H) {}
+    fn hash<H: Hasher>(&self, state: &mut H) {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -12775,18 +11466,21 @@ impl<T, A: Allocator> Index<usize> for VecDeque<T, A> {
     type Output = T;
 
     #[inline]
-    fn index(&self, index: usize) -> &T {}
+    fn index(&self, index: usize) -> &T {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, A: Allocator> IndexMut<usize> for VecDeque<T, A> {
     #[inline]
-    fn index_mut(&mut self, index: usize) -> &mut T {}
+    fn index_mut(&mut self, index: usize) -> &mut T {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> FromIterator<T> for VecDeque<T> {
-    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> VecDeque<T> {}
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> VecDeque<T> {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -12796,7 +11490,8 @@ impl<T, A: Allocator> IntoIterator for VecDeque<T, A> {
 
     /// Consumes the `VecDeque` into a front-to-back iterator yielding elements by
     /// value.
-    fn into_iter(self) -> IntoIter<T, A> {}
+    fn into_iter(self) -> IntoIter<T, A> {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -12804,7 +11499,8 @@ impl<'a, T, A: Allocator> IntoIterator for &'a VecDeque<T, A> {
     type Item = &'a T;
     type IntoIter = Iter<'a, T>;
 
-    fn into_iter(self) -> Iter<'a, T> {}
+    fn into_iter(self) -> Iter<'a, T> {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -12812,34 +11508,42 @@ impl<'a, T, A: Allocator> IntoIterator for &'a mut VecDeque<T, A> {
     type Item = &'a mut T;
     type IntoIter = IterMut<'a, T>;
 
-    fn into_iter(self) -> IterMut<'a, T> {}
+    fn into_iter(self) -> IterMut<'a, T> {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, A: Allocator> Extend<T> for VecDeque<T, A> {
-    fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {}
+    fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
+}
 
     #[inline]
-    fn extend_one(&mut self, elem: T) {}
+    fn extend_one(&mut self, elem: T) {
+}
 
     #[inline]
-    fn extend_reserve(&mut self, additional: usize) {}
+    fn extend_reserve(&mut self, additional: usize) {
+}
 }
 
 #[stable(feature = "extend_ref", since = "1.2.0")]
 impl<'a, T: 'a + Copy, A: Allocator> Extend<&'a T> for VecDeque<T, A> {
-    fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {}
+    fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
+}
 
     #[inline]
-    fn extend_one(&mut self, &elem: &T) {}
+    fn extend_one(&mut self, &elem: &T) {
+}
 
     #[inline]
-    fn extend_reserve(&mut self, additional: usize) {}
+    fn extend_reserve(&mut self, additional: usize) {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: fmt::Debug, A: Allocator> fmt::Debug for VecDeque<T, A> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
 }
 
 #[stable(feature = "vecdeque_vec_conversions", since = "1.10.0")]
@@ -12852,7 +11556,8 @@ impl<T, A: Allocator> From<Vec<T, A>> for VecDeque<T, A> {
     /// This avoids reallocating where possible, but the conditions for that are
     /// strict, and subject to change, and so shouldn't be relied upon unless the
     /// `Vec<T>` came from `From<VecDeque<T>>` and hasn't been reallocated.
-    fn from(mut other: Vec<T, A>) -> Self {}
+    fn from(mut other: Vec<T, A>) -> Self {
+}
 }
 
 #[stable(feature = "vecdeque_vec_conversions", since = "1.10.0")]
@@ -12886,7 +11591,8 @@ impl<T, A: Allocator> From<VecDeque<T, A>> for Vec<T, A> {
     /// assert_eq!(vec, [8, 9, 1, 2, 3, 4]);
     /// assert_eq!(vec.as_ptr(), ptr);
     /// ```
-    fn from(mut other: VecDeque<T, A>) -> Self {}
+    fn from(mut other: VecDeque<T, A>) -> Self {
+}
 }
 
 #[stable(feature = "std_collections_from_array", since = "1.56.0")]
@@ -12898,7 +11604,8 @@ impl<T, const N: usize> From<[T; N]> for VecDeque<T> {
     /// let deq2: VecDeque<_> = [1, 2, 3, 4].into();
     /// assert_eq!(deq1, deq2);
     /// ```
-    fn from(arr: [T; N]) -> Self {}
+    fn from(arr: [T; N]) -> Self {
+}
 }
 }
 
@@ -12962,7 +11669,8 @@ impl TryReserveError {
         reason = "Uncertain how much info should be exposed",
         issue = "48043"
     )]
-    pub fn kind(&self) -> TryReserveErrorKind {}
+    pub fn kind(&self) -> TryReserveErrorKind {
+}
 }
 
 /// Details of the allocation that caused a `TryReserveError`
@@ -13002,14 +11710,16 @@ pub enum TryReserveErrorKind {
 )]
 impl From<TryReserveErrorKind> for TryReserveError {
     #[inline]
-    fn from(kind: TryReserveErrorKind) -> Self {}
+    fn from(kind: TryReserveErrorKind) -> Self {
+}
 }
 
 #[unstable(feature = "try_reserve_kind", reason = "new API", issue = "48043")]
 impl From<LayoutError> for TryReserveErrorKind {
     /// Always evaluates to [`TryReserveErrorKind::CapacityOverflow`].
     #[inline]
-    fn from(_: LayoutError) -> Self {}
+    fn from(_: LayoutError) -> Self {
+}
 }
 
 #[stable(feature = "try_reserve", since = "1.57.0")]
@@ -13017,7 +11727,8 @@ impl Display for TryReserveError {
     fn fmt(
         &self,
         fmt: &mut core::fmt::Formatter<'_>,
-    ) -> core::result::Result<(), core::fmt::Error> {}
+    ) -> core::result::Result<(), core::fmt::Error> {
+}
 }
 
 /// An intermediate trait for specialization of `Extend`.
@@ -13365,7 +12076,8 @@ pub mod fmt {
 //! # use std::fmt;
 //! # struct Foo; // our custom type
 //! # impl fmt::Display for Foo {
-//! fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {} }
+//! fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+} }
 //! ```
 //!
 //! Your type will be passed as `self` by-reference, and then the function
@@ -13399,16 +12111,19 @@ pub mod fmt {
 //! }
 //!
 //! impl fmt::Display for Vector2D {
-//!     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {}
+//!     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+}
 //! }
 //!
 //! // Different traits allow different forms of output of a type. The meaning
 //! // of this format is to print the magnitude of a vector.
 //! impl fmt::Binary for Vector2D {
-//!     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {}
+//!     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+}
 //! }
 //!
-//! fn main() {}
+//! fn main() {
+}
 //! ```
 //!
 //! ### `fmt::Display` vs `fmt::Debug`
@@ -13495,7 +12210,8 @@ pub mod fmt {
 //! let mut some_writer = io::stdout();
 //! write!(&mut some_writer, "{}", format_args!("print with a {}", "macro"));
 //!
-//! fn my_fmt_fn(args: fmt::Arguments) {}
+//! fn my_fmt_fn(args: fmt::Arguments) {
+}
 //! my_fmt_fn(format_args!(", or a {} too", "function"));
 //! ```
 //!
@@ -13578,7 +12294,8 @@ use crate::string;
 #[cfg(not(no_global_oom_handling))]
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn format(args: Arguments<'_>) -> string::String {}
+pub fn format(args: Arguments<'_>) -> string::String {
+}
 }
 pub mod raw_vec {
 #![unstable(feature = "raw_vec_internals", reason = "implementation detail", issue = "none")]
@@ -13601,14 +12318,6 @@ use crate::collections::TryReserveErrorKind::*;
 
 #[cfg(test)]
 mod tests {
-use super::*;
-use std::cell::Cell;
-
-#[test]
-fn allocator_param() {}
-
-#[test]
-fn reserve_does_not_overallocate() {}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -13662,7 +12371,8 @@ impl<T> RawVec<T, Global> {
     /// `RawVec` with capacity `usize::MAX`. Useful for implementing
     /// delayed allocation.
     #[must_use]
-    pub const fn new() -> Self {}
+    pub const fn new() -> Self {
+}
 
     /// Creates a `RawVec` (on the system heap) with exactly the
     /// capacity and alignment requirements for a `[T; capacity]`. This is
@@ -13680,13 +12390,15 @@ impl<T> RawVec<T, Global> {
     #[cfg(not(no_global_oom_handling))]
     #[must_use]
     #[inline]
-    pub fn with_capacity(capacity: usize) -> Self {}
+    pub fn with_capacity(capacity: usize) -> Self {
+}
 
     /// Like `with_capacity`, but guarantees the buffer is zeroed.
     #[cfg(not(no_global_oom_handling))]
     #[must_use]
     #[inline]
-    pub fn with_capacity_zeroed(capacity: usize) -> Self {}
+    pub fn with_capacity_zeroed(capacity: usize) -> Self {
+}
 
     /// Reconstitutes a `RawVec` from a pointer and capacity.
     ///
@@ -13697,7 +12409,8 @@ impl<T> RawVec<T, Global> {
     /// systems). ZST vectors may have a capacity up to `usize::MAX`.
     /// If the `ptr` and `capacity` come from a `RawVec`, then this is guaranteed.
     #[inline]
-    pub unsafe fn from_raw_parts(ptr: *mut T, capacity: usize) -> Self {}
+    pub unsafe fn from_raw_parts(ptr: *mut T, capacity: usize) -> Self {
+}
 }
 
 impl<T, A: Allocator> RawVec<T, A> {
@@ -13717,22 +12430,26 @@ impl<T, A: Allocator> RawVec<T, A> {
     /// Like `new`, but parameterized over the choice of allocator for
     /// the returned `RawVec`.
     #[rustc_allow_const_fn_unstable(const_fn)]
-    pub const fn new_in(alloc: A) -> Self {}
+    pub const fn new_in(alloc: A) -> Self {
+}
 
     /// Like `with_capacity`, but parameterized over the choice of
     /// allocator for the returned `RawVec`.
     #[cfg(not(no_global_oom_handling))]
     #[inline]
-    pub fn with_capacity_in(capacity: usize, alloc: A) -> Self {}
+    pub fn with_capacity_in(capacity: usize, alloc: A) -> Self {
+}
 
     /// Like `with_capacity_zeroed`, but parameterized over the choice
     /// of allocator for the returned `RawVec`.
     #[cfg(not(no_global_oom_handling))]
     #[inline]
-    pub fn with_capacity_zeroed_in(capacity: usize, alloc: A) -> Self {}
+    pub fn with_capacity_zeroed_in(capacity: usize, alloc: A) -> Self {
+}
 
     /// Converts a `Box<[T]>` into a `RawVec<T>`.
-    pub fn from_box(slice: Box<[T], A>) -> Self {}
+    pub fn from_box(slice: Box<[T], A>) -> Self {
+}
 
     /// Converts the entire buffer into `Box<[MaybeUninit<T>]>` with the specified `len`.
     ///
@@ -13746,10 +12463,12 @@ impl<T, A: Allocator> RawVec<T, A> {
     ///
     /// Note, that the requested capacity and `self.capacity()` could differ, as
     /// an allocator could overallocate and return a greater memory block than requested.
-    pub unsafe fn into_box(self, len: usize) -> Box<[MaybeUninit<T>], A> {}
+    pub unsafe fn into_box(self, len: usize) -> Box<[MaybeUninit<T>], A> {
+}
 
     #[cfg(not(no_global_oom_handling))]
-    fn allocate_in(capacity: usize, init: AllocInit, alloc: A) -> Self {}
+    fn allocate_in(capacity: usize, init: AllocInit, alloc: A) -> Self {
+}
 
     /// Reconstitutes a `RawVec` from a pointer, capacity, and allocator.
     ///
@@ -13762,24 +12481,29 @@ impl<T, A: Allocator> RawVec<T, A> {
     /// If the `ptr` and `capacity` come from a `RawVec` created via `alloc`, then this is
     /// guaranteed.
     #[inline]
-    pub unsafe fn from_raw_parts_in(ptr: *mut T, capacity: usize, alloc: A) -> Self {}
+    pub unsafe fn from_raw_parts_in(ptr: *mut T, capacity: usize, alloc: A) -> Self {
+}
 
     /// Gets a raw pointer to the start of the allocation. Note that this is
     /// `Unique::dangling()` if `capacity == 0` or `T` is zero-sized. In the former case, you must
     /// be careful.
     #[inline]
-    pub fn ptr(&self) -> *mut T {}
+    pub fn ptr(&self) -> *mut T {
+}
 
     /// Gets the capacity of the allocation.
     ///
     /// This will always be `usize::MAX` if `T` is zero-sized.
     #[inline(always)]
-    pub fn capacity(&self) -> usize {}
+    pub fn capacity(&self) -> usize {
+}
 
     /// Returns a shared reference to the allocator backing this `RawVec`.
-    pub fn allocator(&self) -> &A {}
+    pub fn allocator(&self) -> &A {
+}
 
-    fn current_memory(&self) -> Option<(NonNull<u8>, Layout)> {}
+    fn current_memory(&self) -> Option<(NonNull<u8>, Layout)> {
+}
 
     /// Ensures that the buffer contains at least enough space to hold `len +
     /// additional` elements. If it doesn't already have enough capacity, will
@@ -13814,16 +12538,31 @@ impl<T, A: Allocator> RawVec<T, A> {
     /// }
     ///
     /// impl<T: Clone> MyVec<T> {
-    ///     pub fn push_all(&mut self, elems: &[T]) {}
+    ///     pub fn push_all(&mut self, elems: &[T]) {
+    ///         self.buf.reserve(self.len, elems.len());
+    ///         // reserve would have aborted or panicked if the len exceeded
+    ///         // `isize::MAX` so this is safe to do unchecked now.
+    ///         for x in elems {
+    ///             unsafe {
+    ///                 ptr::write(self.buf.ptr().add(self.len), x.clone());
+    ///             }
+    ///             self.len += 1;
+    ///         }
+    ///     }
     /// }
-    /// # fn main() {}
+    /// # fn main() {
+    /// #   let mut vector = MyVec { buf: RawVec::new(), len: 0 };
+    /// #   vector.push_all(&[1, 3, 5, 7, 9]);
+    /// # }
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[inline]
-    pub fn reserve(&mut self, len: usize, additional: usize) {}
+    pub fn reserve(&mut self, len: usize, additional: usize) {
+}
 
     /// The same as `reserve`, but returns on errors instead of panicking or aborting.
-    pub fn try_reserve(&mut self, len: usize, additional: usize) -> Result<(), TryReserveError> {}
+    pub fn try_reserve(&mut self, len: usize, additional: usize) -> Result<(), TryReserveError> {
+}
 
     /// Ensures that the buffer contains at least enough space to hold `len +
     /// additional` elements. If it doesn't already, will reallocate the
@@ -13843,14 +12582,16 @@ impl<T, A: Allocator> RawVec<T, A> {
     ///
     /// Aborts on OOM.
     #[cfg(not(no_global_oom_handling))]
-    pub fn reserve_exact(&mut self, len: usize, additional: usize) {}
+    pub fn reserve_exact(&mut self, len: usize, additional: usize) {
+}
 
     /// The same as `reserve_exact`, but returns on errors instead of panicking or aborting.
     pub fn try_reserve_exact(
         &mut self,
         len: usize,
         additional: usize,
-    ) -> Result<(), TryReserveError> {}
+    ) -> Result<(), TryReserveError> {
+}
 
     /// Shrinks the allocation down to the specified amount. If the given amount
     /// is 0, actually completely deallocates.
@@ -13863,17 +12604,21 @@ impl<T, A: Allocator> RawVec<T, A> {
     ///
     /// Aborts on OOM.
     #[cfg(not(no_global_oom_handling))]
-    pub fn shrink_to_fit(&mut self, amount: usize) {}
+    pub fn shrink_to_fit(&mut self, amount: usize) {
+}
 }
 
 impl<T, A: Allocator> RawVec<T, A> {
     /// Returns if the buffer needs to grow to fulfill the needed extra capacity.
     /// Mainly used to make inlining reserve-calls possible without inlining `grow`.
-    fn needs_to_grow(&self, len: usize, additional: usize) -> bool {}
+    fn needs_to_grow(&self, len: usize, additional: usize) -> bool {
+}
 
-    fn capacity_from_bytes(excess: usize) -> usize {}
+    fn capacity_from_bytes(excess: usize) -> usize {
+}
 
-    fn set_ptr(&mut self, ptr: NonNull<[u8]>) {}
+    fn set_ptr(&mut self, ptr: NonNull<[u8]>) {
+}
 
     // This method is usually instantiated many times. So we want it to be as
     // small as possible, to improve compile times. But we also want as much of
@@ -13882,14 +12627,17 @@ impl<T, A: Allocator> RawVec<T, A> {
     // so that all of the code that depends on `T` is within it, while as much
     // of the code that doesn't depend on `T` as possible is in functions that
     // are non-generic over `T`.
-    fn grow_amortized(&mut self, len: usize, additional: usize) -> Result<(), TryReserveError> {}
+    fn grow_amortized(&mut self, len: usize, additional: usize) -> Result<(), TryReserveError> {
+}
 
     // The constraints on this method are much the same as those on
     // `grow_amortized`, but this method is usually instantiated less often so
     // it's less critical.
-    fn grow_exact(&mut self, len: usize, additional: usize) -> Result<(), TryReserveError> {}
+    fn grow_exact(&mut self, len: usize, additional: usize) -> Result<(), TryReserveError> {
+}
 
-    fn shrink(&mut self, amount: usize) -> Result<(), TryReserveError> {}
+    fn shrink(&mut self, amount: usize) -> Result<(), TryReserveError> {
+}
 }
 
 // This function is outside `RawVec` to minimize compile times. See the comment
@@ -13904,17 +12652,20 @@ fn finish_grow<A>(
 ) -> Result<NonNull<[u8]>, TryReserveError>
 where
     A: Allocator,
-{}
+{
+}
 
 unsafe impl<#[may_dangle] T, A: Allocator> Drop for RawVec<T, A> {
     /// Frees the memory owned by the `RawVec` *without* trying to drop its contents.
-    fn drop(&mut self) {}
+    fn drop(&mut self) {
+}
 }
 
 // Central function for reserve error handling.
 #[cfg(not(no_global_oom_handling))]
 #[inline]
-fn handle_reserve(result: Result<(), TryReserveError>) {}
+fn handle_reserve(result: Result<(), TryReserveError>) {
+}
 
 // We need to guarantee the following:
 // * We don't ever allocate `> isize::MAX` byte-size objects.
@@ -13926,13 +12677,15 @@ fn handle_reserve(result: Result<(), TryReserveError>) {}
 // all 4GB in user-space, e.g., PAE or x32.
 
 #[inline]
-fn alloc_guard(alloc_size: usize) -> Result<(), TryReserveError> {}
+fn alloc_guard(alloc_size: usize) -> Result<(), TryReserveError> {
+}
 
 // One central function responsible for reporting capacity overflows. This'll
 // ensure that the code generation related to these panics is minimal as there's
 // only one location which panics rather than a bunch throughout the module.
 #[cfg(not(no_global_oom_handling))]
-fn capacity_overflow() -> ! {}
+fn capacity_overflow() -> ! {
+}
 }
 pub mod rc {
 //! Single-threaded reference-counting pointers. 'Rc' stands for 'Reference
@@ -14039,7 +12792,8 @@ pub mod rc {
 //!     // ...other fields
 //! }
 //!
-//! fn main() {}
+//! fn main() {
+}
 //! ```
 //!
 //! If our requirements change, and we also need to be able to traverse from
@@ -14075,7 +12829,8 @@ pub mod rc {
 //!     // ...other fields
 //! }
 //!
-//! fn main() {}
+//! fn main() {
+}
 //! ```
 //!
 //! [clone]: Clone::clone
@@ -14131,139 +12886,6 @@ use crate::vec::Vec;
 
 #[cfg(test)]
 mod tests {
-use super::*;
-
-use std::boxed::Box;
-use std::cell::RefCell;
-use std::clone::Clone;
-use std::convert::{From, TryInto};
-use std::mem::drop;
-use std::option::Option::{self, None, Some};
-use std::result::Result::{Err, Ok};
-
-#[test]
-fn test_clone() {}
-
-#[test]
-fn test_simple() {}
-
-#[test]
-fn test_simple_clone() {}
-
-#[test]
-fn test_destructor() {}
-
-#[test]
-fn test_live() {}
-
-#[test]
-fn test_dead() {}
-
-#[test]
-fn weak_self_cyclic() {}
-
-#[test]
-fn is_unique() {}
-
-#[test]
-fn test_strong_count() {}
-
-#[test]
-fn test_weak_count() {}
-
-#[test]
-fn weak_counts() {}
-
-#[test]
-fn try_unwrap() {}
-
-#[test]
-fn into_from_raw() {}
-
-#[test]
-fn test_into_from_raw_unsized() {}
-
-#[test]
-fn into_from_weak_raw() {}
-
-#[test]
-fn test_into_from_weak_raw_unsized() {}
-
-#[test]
-fn get_mut() {}
-
-#[test]
-fn test_cowrc_clone_make_unique() {}
-
-#[test]
-fn test_cowrc_clone_unique2() {}
-
-#[test]
-fn test_cowrc_clone_weak() {}
-
-#[test]
-fn test_show() {}
-
-#[test]
-fn test_unsized() {}
-
-#[test]
-fn test_maybe_thin_unsized() {}
-
-#[test]
-fn test_from_owned() {}
-
-#[test]
-fn test_new_weak() {}
-
-#[test]
-fn test_ptr_eq() {}
-
-#[test]
-fn test_from_str() {}
-
-#[test]
-fn test_copy_from_slice() {}
-
-#[test]
-fn test_clone_from_slice() {}
-
-#[test]
-#[should_panic]
-fn test_clone_from_slice_panic() {}
-
-#[test]
-fn test_from_box() {}
-
-#[test]
-fn test_from_box_str() {}
-
-#[test]
-fn test_from_box_slice() {}
-
-#[test]
-fn test_from_box_trait() {}
-
-#[test]
-fn test_from_box_trait_zero_sized() {}
-
-#[test]
-fn test_from_vec() {}
-
-#[test]
-fn test_downcast() {}
-
-#[test]
-fn test_array_from_slice() {}
-
-#[test]
-fn test_rc_cyclic_with_zero_refs() {}
-
-#[test]
-fn test_rc_cyclic_with_one_ref() {}
-
-#[test]
-fn test_rc_cyclic_with_two_ref() {}
 }
 
 // This is repr(C) to future-proof against possible field-reordering, which
@@ -14310,11 +12932,14 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Rc<U>> for Rc<T> {}
 
 impl<T: ?Sized> Rc<T> {
     #[inline(always)]
-    fn inner(&self) -> &RcBox<T> {}
+    fn inner(&self) -> &RcBox<T> {
+}
 
-    fn from_inner(ptr: NonNull<RcBox<T>>) -> Self {}
+    fn from_inner(ptr: NonNull<RcBox<T>>) -> Self {
+}
 
-    unsafe fn from_ptr(ptr: *mut RcBox<T>) -> Self {}
+    unsafe fn from_ptr(ptr: *mut RcBox<T>) -> Self {
+}
 }
 
 impl<T> Rc<T> {
@@ -14329,7 +12954,8 @@ impl<T> Rc<T> {
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn new(value: T) -> Rc<T> {}
+    pub fn new(value: T) -> Rc<T> {
+}
 
     /// Constructs a new `Rc<T>` using a weak reference to itself. Attempting
     /// to upgrade the weak reference before this function returns will result
@@ -14348,12 +12974,17 @@ impl<T> Rc<T> {
     ///     // ... more fields
     /// }
     /// impl Gadget {
-    ///     pub fn new() -> Rc<Self> {}
+    ///     pub fn new() -> Rc<Self> {
+    ///         Rc::new_cyclic(|self_weak| {
+    ///             Gadget { self_weak: self_weak.clone(), /* ... */ }
+    ///         })
+    ///     }
     /// }
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "arc_new_cyclic", issue = "75861")]
-    pub fn new_cyclic(data_fn: impl FnOnce(&Weak<T>) -> T) -> Rc<T> {}
+    pub fn new_cyclic(data_fn: impl FnOnce(&Weak<T>) -> T) -> Rc<T> {
+}
 
     /// Constructs a new `Rc` with uninitialized contents.
     ///
@@ -14379,7 +13010,8 @@ impl<T> Rc<T> {
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "new_uninit", issue = "63291")]
     #[must_use]
-    pub fn new_uninit() -> Rc<mem::MaybeUninit<T>> {}
+    pub fn new_uninit() -> Rc<mem::MaybeUninit<T>> {
+}
 
     /// Constructs a new `Rc` with uninitialized contents, with the memory
     /// being filled with `0` bytes.
@@ -14404,7 +13036,8 @@ impl<T> Rc<T> {
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "new_uninit", issue = "63291")]
     #[must_use]
-    pub fn new_zeroed() -> Rc<mem::MaybeUninit<T>> {}
+    pub fn new_zeroed() -> Rc<mem::MaybeUninit<T>> {
+}
 
     /// Constructs a new `Rc<T>`, returning an error if the allocation fails
     ///
@@ -14418,7 +13051,8 @@ impl<T> Rc<T> {
     /// # Ok::<(), std::alloc::AllocError>(())
     /// ```
     #[unstable(feature = "allocator_api", issue = "32838")]
-    pub fn try_new(value: T) -> Result<Rc<T>, AllocError> {}
+    pub fn try_new(value: T) -> Result<Rc<T>, AllocError> {
+}
 
     /// Constructs a new `Rc` with uninitialized contents, returning an error if the allocation fails
     ///
@@ -14444,7 +13078,8 @@ impl<T> Rc<T> {
     /// ```
     #[unstable(feature = "allocator_api", issue = "32838")]
     // #[unstable(feature = "new_uninit", issue = "63291")]
-    pub fn try_new_uninit() -> Result<Rc<mem::MaybeUninit<T>>, AllocError> {}
+    pub fn try_new_uninit() -> Result<Rc<mem::MaybeUninit<T>>, AllocError> {
+}
 
     /// Constructs a new `Rc` with uninitialized contents, with the memory
     /// being filled with `0` bytes, returning an error if the allocation fails
@@ -14469,13 +13104,15 @@ impl<T> Rc<T> {
     /// [zeroed]: mem::MaybeUninit::zeroed
     #[unstable(feature = "allocator_api", issue = "32838")]
     //#[unstable(feature = "new_uninit", issue = "63291")]
-    pub fn try_new_zeroed() -> Result<Rc<mem::MaybeUninit<T>>, AllocError> {}
+    pub fn try_new_zeroed() -> Result<Rc<mem::MaybeUninit<T>>, AllocError> {
+}
     /// Constructs a new `Pin<Rc<T>>`. If `T` does not implement `Unpin`, then
     /// `value` will be pinned in memory and unable to be moved.
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "pin", since = "1.33.0")]
     #[must_use]
-    pub fn pin(value: T) -> Pin<Rc<T>> {}
+    pub fn pin(value: T) -> Pin<Rc<T>> {
+}
 
     /// Returns the inner value, if the `Rc` has exactly one strong reference.
     ///
@@ -14498,7 +13135,8 @@ impl<T> Rc<T> {
     /// ```
     #[inline]
     #[stable(feature = "rc_unique", since = "1.4.0")]
-    pub fn try_unwrap(this: Self) -> Result<T, Self> {}
+    pub fn try_unwrap(this: Self) -> Result<T, Self> {
+}
 }
 
 impl<T> Rc<[T]> {
@@ -14528,7 +13166,8 @@ impl<T> Rc<[T]> {
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "new_uninit", issue = "63291")]
     #[must_use]
-    pub fn new_uninit_slice(len: usize) -> Rc<[mem::MaybeUninit<T>]> {}
+    pub fn new_uninit_slice(len: usize) -> Rc<[mem::MaybeUninit<T>]> {
+}
 
     /// Constructs a new reference-counted slice with uninitialized contents, with the memory being
     /// filled with `0` bytes.
@@ -14553,7 +13192,8 @@ impl<T> Rc<[T]> {
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "new_uninit", issue = "63291")]
     #[must_use]
-    pub fn new_zeroed_slice(len: usize) -> Rc<[mem::MaybeUninit<T>]> {}
+    pub fn new_zeroed_slice(len: usize) -> Rc<[mem::MaybeUninit<T>]> {
+}
 }
 
 impl<T> Rc<mem::MaybeUninit<T>> {
@@ -14590,7 +13230,8 @@ impl<T> Rc<mem::MaybeUninit<T>> {
     /// ```
     #[unstable(feature = "new_uninit", issue = "63291")]
     #[inline]
-    pub unsafe fn assume_init(self) -> Rc<T> {}
+    pub unsafe fn assume_init(self) -> Rc<T> {
+}
 }
 
 impl<T> Rc<[mem::MaybeUninit<T>]> {
@@ -14629,7 +13270,8 @@ impl<T> Rc<[mem::MaybeUninit<T>]> {
     /// ```
     #[unstable(feature = "new_uninit", issue = "63291")]
     #[inline]
-    pub unsafe fn assume_init(self) -> Rc<[T]> {}
+    pub unsafe fn assume_init(self) -> Rc<[T]> {
+}
 }
 
 impl<T: ?Sized> Rc<T> {
@@ -14648,7 +13290,8 @@ impl<T: ?Sized> Rc<T> {
     /// assert_eq!(unsafe { &*x_ptr }, "hello");
     /// ```
     #[stable(feature = "rc_raw", since = "1.17.0")]
-    pub fn into_raw(this: Self) -> *const T {}
+    pub fn into_raw(this: Self) -> *const T {
+}
 
     /// Provides a raw pointer to the data.
     ///
@@ -14667,7 +13310,8 @@ impl<T: ?Sized> Rc<T> {
     /// assert_eq!(unsafe { &*x_ptr }, "hello");
     /// ```
     #[stable(feature = "weak_into_raw", since = "1.45.0")]
-    pub fn as_ptr(this: &Self) -> *const T {}
+    pub fn as_ptr(this: &Self) -> *const T {
+}
 
     /// Constructs an `Rc<T>` from a raw pointer.
     ///
@@ -14706,7 +13350,8 @@ impl<T: ?Sized> Rc<T> {
     /// // The memory was freed when `x` went out of scope above, so `x_ptr` is now dangling!
     /// ```
     #[stable(feature = "rc_raw", since = "1.17.0")]
-    pub unsafe fn from_raw(ptr: *const T) -> Self {}
+    pub unsafe fn from_raw(ptr: *const T) -> Self {
+}
 
     /// Creates a new [`Weak`] pointer to this allocation.
     ///
@@ -14722,7 +13367,8 @@ impl<T: ?Sized> Rc<T> {
     #[must_use = "this returns a new `Weak` pointer, \
                   without modifying the original `Rc`"]
     #[stable(feature = "rc_weak", since = "1.4.0")]
-    pub fn downgrade(this: &Self) -> Weak<T> {}
+    pub fn downgrade(this: &Self) -> Weak<T> {
+}
 
     /// Gets the number of [`Weak`] pointers to this allocation.
     ///
@@ -14738,7 +13384,8 @@ impl<T: ?Sized> Rc<T> {
     /// ```
     #[inline]
     #[stable(feature = "rc_counts", since = "1.15.0")]
-    pub fn weak_count(this: &Self) -> usize {}
+    pub fn weak_count(this: &Self) -> usize {
+}
 
     /// Gets the number of strong (`Rc`) pointers to this allocation.
     ///
@@ -14754,7 +13401,8 @@ impl<T: ?Sized> Rc<T> {
     /// ```
     #[inline]
     #[stable(feature = "rc_counts", since = "1.15.0")]
-    pub fn strong_count(this: &Self) -> usize {}
+    pub fn strong_count(this: &Self) -> usize {
+}
 
     /// Increments the strong reference count on the `Rc<T>` associated with the
     /// provided pointer by one.
@@ -14782,7 +13430,8 @@ impl<T: ?Sized> Rc<T> {
     /// ```
     #[inline]
     #[stable(feature = "rc_mutate_strong_count", since = "1.53.0")]
-    pub unsafe fn increment_strong_count(ptr: *const T) {}
+    pub unsafe fn increment_strong_count(ptr: *const T) {
+}
 
     /// Decrements the strong reference count on the `Rc<T>` associated with the
     /// provided pointer by one.
@@ -14814,12 +13463,14 @@ impl<T: ?Sized> Rc<T> {
     /// ```
     #[inline]
     #[stable(feature = "rc_mutate_strong_count", since = "1.53.0")]
-    pub unsafe fn decrement_strong_count(ptr: *const T) {}
+    pub unsafe fn decrement_strong_count(ptr: *const T) {
+}
 
     /// Returns `true` if there are no other `Rc` or [`Weak`] pointers to
     /// this allocation.
     #[inline]
-    fn is_unique(this: &Self) -> bool {}
+    fn is_unique(this: &Self) -> bool {
+}
 
     /// Returns a mutable reference into the given `Rc`, if there are
     /// no other `Rc` or [`Weak`] pointers to the same allocation.
@@ -14847,7 +13498,8 @@ impl<T: ?Sized> Rc<T> {
     /// ```
     #[inline]
     #[stable(feature = "rc_unique", since = "1.4.0")]
-    pub fn get_mut(this: &mut Self) -> Option<&mut T> {}
+    pub fn get_mut(this: &mut Self) -> Option<&mut T> {
+}
 
     /// Returns a mutable reference into the given `Rc`,
     /// without any check.
@@ -14878,7 +13530,8 @@ impl<T: ?Sized> Rc<T> {
     /// ```
     #[inline]
     #[unstable(feature = "get_mut_unchecked", issue = "63292")]
-    pub unsafe fn get_mut_unchecked(this: &mut Self) -> &mut T {}
+    pub unsafe fn get_mut_unchecked(this: &mut Self) -> &mut T {
+}
 
     #[inline]
     #[stable(feature = "ptr_eq", since = "1.17.0")]
@@ -14897,7 +13550,8 @@ impl<T: ?Sized> Rc<T> {
     /// assert!(Rc::ptr_eq(&five, &same_five));
     /// assert!(!Rc::ptr_eq(&five, &other_five));
     /// ```
-    pub fn ptr_eq(this: &Self, other: &Self) -> bool {}
+    pub fn ptr_eq(this: &Self, other: &Self) -> bool {
+}
 }
 
 impl<T: Clone> Rc<T> {
@@ -14954,7 +13608,8 @@ impl<T: Clone> Rc<T> {
     #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[stable(feature = "rc_unique", since = "1.4.0")]
-    pub fn make_mut(this: &mut Self) -> &mut T {}
+    pub fn make_mut(this: &mut Self) -> &mut T {
+}
 }
 
 impl Rc<dyn Any> {
@@ -14968,13 +13623,18 @@ impl Rc<dyn Any> {
     /// use std::any::Any;
     /// use std::rc::Rc;
     ///
-    /// fn print_if_string(value: Rc<dyn Any>) {}
+    /// fn print_if_string(value: Rc<dyn Any>) {
+    ///     if let Ok(string) = value.downcast::<String>() {
+    ///         println!("String ({}): {}", string.len(), string);
+    ///     }
+    /// }
     ///
     /// let my_string = "Hello World".to_string();
     /// print_if_string(Rc::new(my_string));
     /// print_if_string(Rc::new(0i8));
     /// ```
-    pub fn downcast<T: Any>(self) -> Result<Rc<T>, Rc<dyn Any>> {}
+    pub fn downcast<T: Any>(self) -> Result<Rc<T>, Rc<dyn Any>> {
+}
 }
 
 impl<T: ?Sized> Rc<T> {
@@ -14988,7 +13648,8 @@ impl<T: ?Sized> Rc<T> {
         value_layout: Layout,
         allocate: impl FnOnce(Layout) -> Result<NonNull<[u8]>, AllocError>,
         mem_to_rcbox: impl FnOnce(*mut u8) -> *mut RcBox<T>,
-    ) -> *mut RcBox<T> {}
+    ) -> *mut RcBox<T> {
+}
 
     /// Allocates an `RcBox<T>` with sufficient space for
     /// a possibly-unsized inner value where the value has the layout provided,
@@ -15001,32 +13662,38 @@ impl<T: ?Sized> Rc<T> {
         value_layout: Layout,
         allocate: impl FnOnce(Layout) -> Result<NonNull<[u8]>, AllocError>,
         mem_to_rcbox: impl FnOnce(*mut u8) -> *mut RcBox<T>,
-    ) -> Result<*mut RcBox<T>, AllocError> {}
+    ) -> Result<*mut RcBox<T>, AllocError> {
+}
 
     /// Allocates an `RcBox<T>` with sufficient space for an unsized inner value
     #[cfg(not(no_global_oom_handling))]
-    unsafe fn allocate_for_ptr(ptr: *const T) -> *mut RcBox<T> {}
+    unsafe fn allocate_for_ptr(ptr: *const T) -> *mut RcBox<T> {
+}
 
     #[cfg(not(no_global_oom_handling))]
-    fn from_box(v: Box<T>) -> Rc<T> {}
+    fn from_box(v: Box<T>) -> Rc<T> {
+}
 }
 
 impl<T> Rc<[T]> {
     /// Allocates an `RcBox<[T]>` with the given length.
     #[cfg(not(no_global_oom_handling))]
-    unsafe fn allocate_for_slice(len: usize) -> *mut RcBox<[T]> {}
+    unsafe fn allocate_for_slice(len: usize) -> *mut RcBox<[T]> {
+}
 
     /// Copy elements from slice into newly allocated Rc<\[T\]>
     ///
     /// Unsafe because the caller must either take ownership or bind `T: Copy`
     #[cfg(not(no_global_oom_handling))]
-    unsafe fn copy_from_slice(v: &[T]) -> Rc<[T]> {}
+    unsafe fn copy_from_slice(v: &[T]) -> Rc<[T]> {
+}
 
     /// Constructs an `Rc<[T]>` from an iterator known to be of a certain size.
     ///
     /// Behavior is undefined should the size be wrong.
     #[cfg(not(no_global_oom_handling))]
-    unsafe fn from_iter_exact(iter: impl iter::Iterator<Item = T>, len: usize) -> Rc<[T]> {}
+    unsafe fn from_iter_exact(iter: impl iter::Iterator<Item = T>, len: usize) -> Rc<[T]> {
+}
 }
 
 /// Specialization trait used for `From<&[T]>`.
@@ -15037,13 +13704,15 @@ trait RcFromSlice<T> {
 #[cfg(not(no_global_oom_handling))]
 impl<T: Clone> RcFromSlice<T> for Rc<[T]> {
     #[inline]
-    default fn from_slice(v: &[T]) -> Self {}
+    default fn from_slice(v: &[T]) -> Self {
+}
 }
 
 #[cfg(not(no_global_oom_handling))]
 impl<T: Copy> RcFromSlice<T> for Rc<[T]> {
     #[inline]
-    fn from_slice(v: &[T]) -> Self {}
+    fn from_slice(v: &[T]) -> Self {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -15051,7 +13720,8 @@ impl<T: ?Sized> Deref for Rc<T> {
     type Target = T;
 
     #[inline(always)]
-    fn deref(&self) -> &T {}
+    fn deref(&self) -> &T {
+}
 }
 
 #[unstable(feature = "receiver_trait", issue = "none")]
@@ -15073,7 +13743,9 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for Rc<T> {
     /// struct Foo;
     ///
     /// impl Drop for Foo {
-    ///     fn drop(&mut self) {}
+    ///     fn drop(&mut self) {
+    ///         println!("dropped!");
+    ///     }
     /// }
     ///
     /// let foo  = Rc::new(Foo);
@@ -15082,7 +13754,8 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for Rc<T> {
     /// drop(foo);    // Doesn't print anything
     /// drop(foo2);   // Prints "dropped!"
     /// ```
-    fn drop(&mut self) {}
+    fn drop(&mut self) {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -15102,7 +13775,8 @@ impl<T: ?Sized> Clone for Rc<T> {
     /// let _ = Rc::clone(&five);
     /// ```
     #[inline]
-    fn clone(&self) -> Rc<T> {}
+    fn clone(&self) -> Rc<T> {
+}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -15119,7 +13793,8 @@ impl<T: Default> Default for Rc<T> {
     /// assert_eq!(*x, 0);
     /// ```
     #[inline]
-    fn default() -> Rc<T> {}
+    fn default() -> Rc<T> {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -15131,10 +13806,12 @@ trait RcEqIdent<T: ?Sized + PartialEq> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + PartialEq> RcEqIdent<T> for Rc<T> {
     #[inline]
-    default fn eq(&self, other: &Rc<T>) -> bool {}
+    default fn eq(&self, other: &Rc<T>) -> bool {
+}
 
     #[inline]
-    default fn ne(&self, other: &Rc<T>) -> bool {}
+    default fn ne(&self, other: &Rc<T>) -> bool {
+}
 }
 
 // Hack to allow specializing on `Eq` even though `Eq` has a method.
@@ -15153,10 +13830,12 @@ impl<T: Eq> MarkerEq for T {}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + MarkerEq> RcEqIdent<T> for Rc<T> {
     #[inline]
-    fn eq(&self, other: &Rc<T>) -> bool {}
+    fn eq(&self, other: &Rc<T>) -> bool {
+}
 
     #[inline]
-    fn ne(&self, other: &Rc<T>) -> bool {}
+    fn ne(&self, other: &Rc<T>) -> bool {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -15180,7 +13859,8 @@ impl<T: ?Sized + PartialEq> PartialEq for Rc<T> {
     /// assert!(five == Rc::new(5));
     /// ```
     #[inline]
-    fn eq(&self, other: &Rc<T>) -> bool {}
+    fn eq(&self, other: &Rc<T>) -> bool {
+}
 
     /// Inequality for two `Rc`s.
     ///
@@ -15200,7 +13880,8 @@ impl<T: ?Sized + PartialEq> PartialEq for Rc<T> {
     /// assert!(five != Rc::new(6));
     /// ```
     #[inline]
-    fn ne(&self, other: &Rc<T>) -> bool {}
+    fn ne(&self, other: &Rc<T>) -> bool {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -15223,7 +13904,8 @@ impl<T: ?Sized + PartialOrd> PartialOrd for Rc<T> {
     /// assert_eq!(Some(Ordering::Less), five.partial_cmp(&Rc::new(6)));
     /// ```
     #[inline(always)]
-    fn partial_cmp(&self, other: &Rc<T>) -> Option<Ordering> {}
+    fn partial_cmp(&self, other: &Rc<T>) -> Option<Ordering> {
+}
 
     /// Less-than comparison for two `Rc`s.
     ///
@@ -15239,7 +13921,8 @@ impl<T: ?Sized + PartialOrd> PartialOrd for Rc<T> {
     /// assert!(five < Rc::new(6));
     /// ```
     #[inline(always)]
-    fn lt(&self, other: &Rc<T>) -> bool {}
+    fn lt(&self, other: &Rc<T>) -> bool {
+}
 
     /// 'Less than or equal to' comparison for two `Rc`s.
     ///
@@ -15255,7 +13938,8 @@ impl<T: ?Sized + PartialOrd> PartialOrd for Rc<T> {
     /// assert!(five <= Rc::new(5));
     /// ```
     #[inline(always)]
-    fn le(&self, other: &Rc<T>) -> bool {}
+    fn le(&self, other: &Rc<T>) -> bool {
+}
 
     /// Greater-than comparison for two `Rc`s.
     ///
@@ -15271,7 +13955,8 @@ impl<T: ?Sized + PartialOrd> PartialOrd for Rc<T> {
     /// assert!(five > Rc::new(4));
     /// ```
     #[inline(always)]
-    fn gt(&self, other: &Rc<T>) -> bool {}
+    fn gt(&self, other: &Rc<T>) -> bool {
+}
 
     /// 'Greater than or equal to' comparison for two `Rc`s.
     ///
@@ -15287,7 +13972,8 @@ impl<T: ?Sized + PartialOrd> PartialOrd for Rc<T> {
     /// assert!(five >= Rc::new(5));
     /// ```
     #[inline(always)]
-    fn ge(&self, other: &Rc<T>) -> bool {}
+    fn ge(&self, other: &Rc<T>) -> bool {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -15307,27 +13993,32 @@ impl<T: ?Sized + Ord> Ord for Rc<T> {
     /// assert_eq!(Ordering::Less, five.cmp(&Rc::new(6)));
     /// ```
     #[inline]
-    fn cmp(&self, other: &Rc<T>) -> Ordering {}
+    fn cmp(&self, other: &Rc<T>) -> Ordering {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + Hash> Hash for Rc<T> {
-    fn hash<H: Hasher>(&self, state: &mut H) {}
+    fn hash<H: Hasher>(&self, state: &mut H) {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + fmt::Display> fmt::Display for Rc<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + fmt::Debug> fmt::Debug for Rc<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> fmt::Pointer for Rc<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -15346,7 +14037,8 @@ impl<T> From<T> for Rc<T> {
     ///
     /// assert_eq!(Rc::from(x), rc);
     /// ```
-    fn from(t: T) -> Self {}
+    fn from(t: T) -> Self {
+}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -15363,7 +14055,8 @@ impl<T: Clone> From<&[T]> for Rc<[T]> {
     /// assert_eq!(&[1, 2, 3], &shared[..]);
     /// ```
     #[inline]
-    fn from(v: &[T]) -> Rc<[T]> {}
+    fn from(v: &[T]) -> Rc<[T]> {
+}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -15379,7 +14072,8 @@ impl From<&str> for Rc<str> {
     /// assert_eq!("statue", &shared[..]);
     /// ```
     #[inline]
-    fn from(v: &str) -> Rc<str> {}
+    fn from(v: &str) -> Rc<str> {
+}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -15396,7 +14090,8 @@ impl From<String> for Rc<str> {
     /// assert_eq!("statue", &shared[..]);
     /// ```
     #[inline]
-    fn from(v: String) -> Rc<str> {}
+    fn from(v: String) -> Rc<str> {
+}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -15413,7 +14108,8 @@ impl<T: ?Sized> From<Box<T>> for Rc<T> {
     /// assert_eq!(1, *shared);
     /// ```
     #[inline]
-    fn from(v: Box<T>) -> Rc<T> {}
+    fn from(v: Box<T>) -> Rc<T> {
+}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -15430,7 +14126,8 @@ impl<T> From<Vec<T>> for Rc<[T]> {
     /// assert_eq!(vec![1, 2, 3], *shared);
     /// ```
     #[inline]
-    fn from(mut v: Vec<T>) -> Rc<[T]> {}
+    fn from(mut v: Vec<T>) -> Rc<[T]> {
+}
 }
 
 #[stable(feature = "shared_from_cow", since = "1.45.0")]
@@ -15452,14 +14149,16 @@ where
     /// assert_eq!("eggplant", &shared[..]);
     /// ```
     #[inline]
-    fn from(cow: Cow<'a, B>) -> Rc<B> {}
+    fn from(cow: Cow<'a, B>) -> Rc<B> {
+}
 }
 
 #[stable(feature = "boxed_slice_try_from", since = "1.43.0")]
 impl<T, const N: usize> TryFrom<Rc<[T]>> for Rc<[T; N]> {
     type Error = Rc<[T]>;
 
-    fn try_from(boxed_slice: Rc<[T]>) -> Result<Self, Self::Error> {}
+    fn try_from(boxed_slice: Rc<[T]>) -> Result<Self, Self::Error> {
+}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -15503,7 +14202,8 @@ impl<T> iter::FromIterator<T> for Rc<[T]> {
     /// let evens: Rc<[u8]> = (0..10).collect(); // Just a single allocation happens here.
     /// # assert_eq!(&*evens, &*(0..10).collect::<Vec<_>>());
     /// ```
-    fn from_iter<I: iter::IntoIterator<Item = T>>(iter: I) -> Self {}
+    fn from_iter<I: iter::IntoIterator<Item = T>>(iter: I) -> Self {
+}
 }
 
 /// Specialization trait used for collecting into `Rc<[T]>`.
@@ -15514,12 +14214,14 @@ trait ToRcSlice<T>: Iterator<Item = T> + Sized {
 
 #[cfg(not(no_global_oom_handling))]
 impl<T, I: Iterator<Item = T>> ToRcSlice<T> for I {
-    default fn to_rc_slice(self) -> Rc<[T]> {}
+    default fn to_rc_slice(self) -> Rc<[T]> {
+}
 }
 
 #[cfg(not(no_global_oom_handling))]
 impl<T, I: iter::TrustedLen<Item = T>> ToRcSlice<T> for I {
-    fn to_rc_slice(self) -> Rc<[T]> {}
+    fn to_rc_slice(self) -> Rc<[T]> {
+}
 }
 
 /// `Weak` is a version of [`Rc`] that holds a non-owning reference to the
@@ -15580,10 +14282,12 @@ impl<T> Weak<T> {
     /// ```
     #[stable(feature = "downgraded_weak", since = "1.10.0")]
     #[must_use]
-    pub fn new() -> Weak<T> {}
+    pub fn new() -> Weak<T> {
+}
 }
 
-pub(crate) fn is_dangling<T: ?Sized>(ptr: *mut T) -> bool {}
+pub(crate) fn is_dangling<T: ?Sized>(ptr: *mut T) -> bool {
+}
 
 /// Helper type to allow accessing the reference counts without
 /// making any assertions about the data field.
@@ -15620,7 +14324,8 @@ impl<T: ?Sized> Weak<T> {
     /// [`null`]: ptr::null
     #[must_use]
     #[stable(feature = "rc_as_ptr", since = "1.45.0")]
-    pub fn as_ptr(&self) -> *const T {}
+    pub fn as_ptr(&self) -> *const T {
+}
 
     /// Consumes the `Weak<T>` and turns it into a raw pointer.
     ///
@@ -15651,7 +14356,8 @@ impl<T: ?Sized> Weak<T> {
     /// [`as_ptr`]: Weak::as_ptr
     #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "weak_into_raw", since = "1.45.0")]
-    pub fn into_raw(self) -> *const T {}
+    pub fn into_raw(self) -> *const T {
+}
 
     /// Converts a raw pointer previously created by [`into_raw`] back into `Weak<T>`.
     ///
@@ -15696,7 +14402,8 @@ impl<T: ?Sized> Weak<T> {
     /// [`upgrade`]: Weak::upgrade
     /// [`new`]: Weak::new
     #[stable(feature = "weak_into_raw", since = "1.45.0")]
-    pub unsafe fn from_raw(ptr: *const T) -> Self {}
+    pub unsafe fn from_raw(ptr: *const T) -> Self {
+}
 
     /// Attempts to upgrade the `Weak` pointer to an [`Rc`], delaying
     /// dropping of the inner value if successful.
@@ -15724,26 +14431,30 @@ impl<T: ?Sized> Weak<T> {
     #[must_use = "this returns a new `Rc`, \
                   without modifying the original weak pointer"]
     #[stable(feature = "rc_weak", since = "1.4.0")]
-    pub fn upgrade(&self) -> Option<Rc<T>> {}
+    pub fn upgrade(&self) -> Option<Rc<T>> {
+}
 
     /// Gets the number of strong (`Rc`) pointers pointing to this allocation.
     ///
     /// If `self` was created using [`Weak::new`], this will return 0.
     #[must_use]
     #[stable(feature = "weak_counts", since = "1.41.0")]
-    pub fn strong_count(&self) -> usize {}
+    pub fn strong_count(&self) -> usize {
+}
 
     /// Gets the number of `Weak` pointers pointing to this allocation.
     ///
     /// If no strong pointers remain, this will return zero.
     #[must_use]
     #[stable(feature = "weak_counts", since = "1.41.0")]
-    pub fn weak_count(&self) -> usize {}
+    pub fn weak_count(&self) -> usize {
+}
 
     /// Returns `None` when the pointer is dangling and there is no allocated `RcBox`,
     /// (i.e., when this `Weak` was created by `Weak::new`).
     #[inline]
-    fn inner(&self) -> Option<WeakInner<'_>> {}
+    fn inner(&self) -> Option<WeakInner<'_>> {
+}
 
     /// Returns `true` if the two `Weak`s point to the same allocation (similar to
     /// [`ptr::eq`]), or if both don't point to any allocation
@@ -15787,7 +14498,8 @@ impl<T: ?Sized> Weak<T> {
     #[inline]
     #[must_use]
     #[stable(feature = "weak_ptr_eq", since = "1.39.0")]
-    pub fn ptr_eq(&self, other: &Self) -> bool {}
+    pub fn ptr_eq(&self, other: &Self) -> bool {
+}
 }
 
 #[stable(feature = "rc_weak", since = "1.4.0")]
@@ -15802,7 +14514,9 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for Weak<T> {
     /// struct Foo;
     ///
     /// impl Drop for Foo {
-    ///     fn drop(&mut self) {}
+    ///     fn drop(&mut self) {
+    ///         println!("dropped!");
+    ///     }
     /// }
     ///
     /// let foo = Rc::new(Foo);
@@ -15814,7 +14528,8 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for Weak<T> {
     ///
     /// assert!(other_weak_foo.upgrade().is_none());
     /// ```
-    fn drop(&mut self) {}
+    fn drop(&mut self) {
+}
 }
 
 #[stable(feature = "rc_weak", since = "1.4.0")]
@@ -15831,12 +14546,14 @@ impl<T: ?Sized> Clone for Weak<T> {
     /// let _ = Weak::clone(&weak_five);
     /// ```
     #[inline]
-    fn clone(&self) -> Weak<T> {}
+    fn clone(&self) -> Weak<T> {
+}
 }
 
 #[stable(feature = "rc_weak", since = "1.4.0")]
 impl<T: ?Sized + fmt::Debug> fmt::Debug for Weak<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
 }
 
 #[stable(feature = "downgraded_weak", since = "1.10.0")]
@@ -15854,7 +14571,8 @@ impl<T> Default for Weak<T> {
     /// let empty: Weak<i64> = Default::default();
     /// assert!(empty.upgrade().is_none());
     /// ```
-    fn default() -> Weak<T> {}
+    fn default() -> Weak<T> {
+}
 }
 
 // NOTE: We checked_add here to deal with mem::forget safely. In particular
@@ -15872,48 +14590,60 @@ trait RcInnerPtr {
     fn strong_ref(&self) -> &Cell<usize>;
 
     #[inline]
-    fn strong(&self) -> usize {}
+    fn strong(&self) -> usize {
+}
 
     #[inline]
-    fn inc_strong(&self) {}
+    fn inc_strong(&self) {
+}
 
     #[inline]
-    fn dec_strong(&self) {}
+    fn dec_strong(&self) {
+}
 
     #[inline]
-    fn weak(&self) -> usize {}
+    fn weak(&self) -> usize {
+}
 
     #[inline]
-    fn inc_weak(&self) {}
+    fn inc_weak(&self) {
+}
 
     #[inline]
-    fn dec_weak(&self) {}
+    fn dec_weak(&self) {
+}
 }
 
 impl<T: ?Sized> RcInnerPtr for RcBox<T> {
     #[inline(always)]
-    fn weak_ref(&self) -> &Cell<usize> {}
+    fn weak_ref(&self) -> &Cell<usize> {
+}
 
     #[inline(always)]
-    fn strong_ref(&self) -> &Cell<usize> {}
+    fn strong_ref(&self) -> &Cell<usize> {
+}
 }
 
 impl<'a> RcInnerPtr for WeakInner<'a> {
     #[inline(always)]
-    fn weak_ref(&self) -> &Cell<usize> {}
+    fn weak_ref(&self) -> &Cell<usize> {
+}
 
     #[inline(always)]
-    fn strong_ref(&self) -> &Cell<usize> {}
+    fn strong_ref(&self) -> &Cell<usize> {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> borrow::Borrow<T> for Rc<T> {
-    fn borrow(&self) -> &T {}
+    fn borrow(&self) -> &T {
+}
 }
 
 #[stable(since = "1.5.0", feature = "smart_ptr_as_ref")]
 impl<T: ?Sized> AsRef<T> for Rc<T> {
-    fn as_ref(&self) -> &T {}
+    fn as_ref(&self) -> &T {
+}
 }
 
 #[stable(feature = "pin", since = "1.33.0")]
@@ -15925,10 +14655,12 @@ impl<T: ?Sized> Unpin for Rc<T> {}
 ///
 /// The pointer must point to (and have valid metadata for) a previously
 /// valid instance of T, but the T is allowed to be dropped.
-unsafe fn data_offset<T: ?Sized>(ptr: *const T) -> isize {}
+unsafe fn data_offset<T: ?Sized>(ptr: *const T) -> isize {
+}
 
 #[inline]
-fn data_offset_align(align: usize) -> isize {}
+fn data_offset_align(align: usize) -> isize {
+}
 }
 pub mod slice {
 //! A dynamically-sized view into a contiguous sequence, `[T]`.
@@ -16091,11 +14823,13 @@ mod hack {
     // We shouldn't add inline attribute to this since this is used in
     // `vec!` macro mostly and causes perf regression. See #71204 for
     // discussion and perf results.
-    pub fn into_vec<T, A: Allocator>(b: Box<[T], A>) -> Vec<T, A> {}
+    pub fn into_vec<T, A: Allocator>(b: Box<[T], A>) -> Vec<T, A> {
+}
 
     #[cfg(not(no_global_oom_handling))]
     #[inline]
-    pub fn to_vec<T: ConvertVec, A: Allocator>(s: &[T], alloc: A) -> Vec<T, A> {}
+    pub fn to_vec<T: ConvertVec, A: Allocator>(s: &[T], alloc: A) -> Vec<T, A> {
+}
 
     #[cfg(not(no_global_oom_handling))]
     pub trait ConvertVec {
@@ -16107,13 +14841,15 @@ mod hack {
     #[cfg(not(no_global_oom_handling))]
     impl<T: Clone> ConvertVec for T {
         #[inline]
-        default fn to_vec<A: Allocator>(s: &[Self], alloc: A) -> Vec<Self, A> {}
+        default fn to_vec<A: Allocator>(s: &[Self], alloc: A) -> Vec<Self, A> {
+}
     }
 
     #[cfg(not(no_global_oom_handling))]
     impl<T: Copy> ConvertVec for T {
         #[inline]
-        fn to_vec<A: Allocator>(s: &[Self], alloc: A) -> Vec<Self, A> {}
+        fn to_vec<A: Allocator>(s: &[Self], alloc: A) -> Vec<Self, A> {
+}
     }
 }
 
@@ -16152,7 +14888,8 @@ impl<T> [T] {
     pub fn sort(&mut self)
     where
         T: Ord,
-    {}
+    {
+}
 
     /// Sorts the slice with a comparator function.
     ///
@@ -16205,7 +14942,8 @@ impl<T> [T] {
     pub fn sort_by<F>(&mut self, mut compare: F)
     where
         F: FnMut(&T, &T) -> Ordering,
-    {}
+    {
+}
 
     /// Sorts the slice with a key extraction function.
     ///
@@ -16245,7 +14983,8 @@ impl<T> [T] {
     where
         F: FnMut(&T) -> K,
         K: Ord,
-    {}
+    {
+}
 
     /// Sorts the slice with a key extraction function.
     ///
@@ -16286,7 +15025,8 @@ impl<T> [T] {
     where
         F: FnMut(&T) -> K,
         K: Ord,
-    {}
+    {
+}
 
     /// Copies `self` into a new `Vec`.
     ///
@@ -16304,7 +15044,8 @@ impl<T> [T] {
     pub fn to_vec(&self) -> Vec<T>
     where
         T: Clone,
-    {}
+    {
+}
 
     /// Copies `self` into a new `Vec` with an allocator.
     ///
@@ -16325,7 +15066,8 @@ impl<T> [T] {
     pub fn to_vec_in<A: Allocator>(&self, alloc: A) -> Vec<T, A>
     where
         T: Clone,
-    {}
+    {
+}
 
     /// Converts `self` into a vector without clones or allocation.
     ///
@@ -16343,7 +15085,8 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn into_vec<A: Allocator>(self: Box<Self, A>) -> Vec<T, A> {}
+    pub fn into_vec<A: Allocator>(self: Box<Self, A>) -> Vec<T, A> {
+}
 
     /// Creates a vector by repeating a slice `n` times.
     ///
@@ -16370,7 +15113,8 @@ impl<T> [T] {
     pub fn repeat(&self, n: usize) -> Vec<T>
     where
         T: Copy,
-    {}
+    {
+}
 
     /// Flattens a slice of `T` into a single value `Self::Output`.
     ///
@@ -16384,7 +15128,8 @@ impl<T> [T] {
     pub fn concat<Item: ?Sized>(&self) -> <Self as Concat<Item>>::Output
     where
         Self: Concat<Item>,
-    {}
+    {
+}
 
     /// Flattens a slice of `T` into a single value `Self::Output`, placing a
     /// given separator between each.
@@ -16400,7 +15145,8 @@ impl<T> [T] {
     pub fn join<Separator>(&self, sep: Separator) -> <Self as Join<Separator>>::Output
     where
         Self: Join<Separator>,
-    {}
+    {
+}
 
     /// Flattens a slice of `T` into a single value `Self::Output`, placing a
     /// given separator between each.
@@ -16417,7 +15163,8 @@ impl<T> [T] {
     pub fn connect<Separator>(&self, sep: Separator) -> <Self as Join<Separator>>::Output
     where
         Self: Join<Separator>,
-    {}
+    {
+}
 }
 
 #[lang = "slice_u8_alloc"]
@@ -16437,7 +15184,8 @@ impl [u8] {
                   without modifying the original"]
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
-    pub fn to_ascii_uppercase(&self) -> Vec<u8> {}
+    pub fn to_ascii_uppercase(&self) -> Vec<u8> {
+}
 
     /// Returns a vector containing a copy of this slice where each byte
     /// is mapped to its ASCII lower case equivalent.
@@ -16453,7 +15201,8 @@ impl [u8] {
                   without modifying the original"]
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
-    pub fn to_ascii_lowercase(&self) -> Vec<u8> {}
+    pub fn to_ascii_lowercase(&self) -> Vec<u8> {
+}
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -16482,11 +15231,11 @@ impl [u8] {
 /// pub struct Foo(Vec<u32>, Vec<String>);
 ///
 /// impl std::borrow::Borrow<[u32]> for Foo {
-///     fn borrow(&self) -> &[u32] {}
+///     fn borrow(&self) -> &[u32] { &self.0 }
 /// }
 ///
 /// impl std::borrow::Borrow<[String]> for Foo {
-///     fn borrow(&self) -> &[String] {}
+///     fn borrow(&self) -> &[String] { &self.1 }
 /// }
 /// ```
 #[unstable(feature = "slice_concat_trait", issue = "27747")]
@@ -16517,7 +15266,8 @@ pub trait Join<Separator> {
 impl<T: Clone, V: Borrow<[T]>> Concat<T> for [V] {
     type Output = Vec<T>;
 
-    fn concat(slice: &Self) -> Vec<T> {}
+    fn concat(slice: &Self) -> Vec<T> {
+}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -16525,7 +15275,8 @@ impl<T: Clone, V: Borrow<[T]>> Concat<T> for [V] {
 impl<T: Clone, V: Borrow<[T]>> Join<&T> for [V] {
     type Output = Vec<T>;
 
-    fn join(slice: &Self, sep: &T) -> Vec<T> {}
+    fn join(slice: &Self, sep: &T) -> Vec<T> {
+}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -16533,7 +15284,8 @@ impl<T: Clone, V: Borrow<[T]>> Join<&T> for [V] {
 impl<T: Clone, V: Borrow<[T]>> Join<&[T]> for [V] {
     type Output = Vec<T>;
 
-    fn join(slice: &Self, sep: &[T]) -> Vec<T> {}
+    fn join(slice: &Self, sep: &[T]) -> Vec<T> {
+}
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -16542,12 +15294,14 @@ impl<T: Clone, V: Borrow<[T]>> Join<&[T]> for [V] {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Borrow<[T]> for Vec<T> {
-    fn borrow(&self) -> &[T] {}
+    fn borrow(&self) -> &[T] {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> BorrowMut<[T]> for Vec<T> {
-    fn borrow_mut(&mut self) -> &mut [T] {}
+    fn borrow_mut(&mut self) -> &mut [T] {
+}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -16555,12 +15309,15 @@ impl<T> BorrowMut<[T]> for Vec<T> {
 impl<T: Clone> ToOwned for [T] {
     type Owned = Vec<T>;
     #[cfg(not(test))]
-    fn to_owned(&self) -> Vec<T> {}
+    fn to_owned(&self) -> Vec<T> {
+}
 
     #[cfg(test)]
-    fn to_owned(&self) -> Vec<T> {}
+    fn to_owned(&self) -> Vec<T> {
+}
 
-    fn clone_into(&self, target: &mut Vec<T>) {}
+    fn clone_into(&self, target: &mut Vec<T>) {
+}
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -16574,7 +15331,8 @@ impl<T: Clone> ToOwned for [T] {
 fn insert_head<T, F>(v: &mut [T], is_less: &mut F)
 where
     F: FnMut(&T, &T) -> bool,
-{}
+{
+}
 
 /// Merges non-decreasing runs `v[..mid]` and `v[mid..]` using `buf` as temporary storage, and
 /// stores the result into `v[..]`.
@@ -16587,7 +15345,8 @@ where
 unsafe fn merge<T, F>(v: &mut [T], mid: usize, buf: *mut T, is_less: &mut F)
 where
     F: FnMut(&T, &T) -> bool,
-{}
+{
+}
 
 /// This merge sort borrows some (but not all) ideas from TimSort, which is described in detail
 /// [here](https://github.com/python/cpython/blob/main/Objects/listsort.txt).
@@ -16605,7 +15364,8 @@ where
 fn merge_sort<T, F>(v: &mut [T], mut is_less: F)
 where
     F: FnMut(&T, &T) -> bool,
-{}
+{
+}
 }
 pub mod str {
 //! Unicode string slices.
@@ -16689,7 +15449,8 @@ pub use core::str::{RSplitTerminator, SplitTerminator};
 impl<S: Borrow<str>> Concat<str> for [S] {
     type Output = String;
 
-    fn concat(slice: &Self) -> String {}
+    fn concat(slice: &Self) -> String {
+}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -16697,7 +15458,8 @@ impl<S: Borrow<str>> Concat<str> for [S] {
 impl<S: Borrow<str>> Join<&str> for [S] {
     type Output = String;
 
-    fn join(slice: &Self, sep: &str) -> String {}
+    fn join(slice: &Self, sep: &str) -> String {
+}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -16755,18 +15517,21 @@ where
     T: Copy,
     B: AsRef<[T]> + ?Sized,
     S: Borrow<B>,
-{}
+{
+}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Borrow<str> for String {
     #[inline]
-    fn borrow(&self) -> &str {}
+    fn borrow(&self) -> &str {
+}
 }
 
 #[stable(feature = "string_borrow_mut", since = "1.36.0")]
 impl BorrowMut<str> for String {
     #[inline]
-    fn borrow_mut(&mut self) -> &mut str {}
+    fn borrow_mut(&mut self) -> &mut str {
+}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -16774,9 +15539,11 @@ impl BorrowMut<str> for String {
 impl ToOwned for str {
     type Owned = String;
     #[inline]
-    fn to_owned(&self) -> String {}
+    fn to_owned(&self) -> String {
+}
 
-    fn clone_into(&self, target: &mut String) {}
+    fn clone_into(&self, target: &mut String) {
+}
 }
 
 /// Methods for string slices.
@@ -16798,7 +15565,8 @@ impl str {
     #[stable(feature = "str_box_extras", since = "1.20.0")]
     #[must_use = "`self` will be dropped if the result is not used"]
     #[inline]
-    pub fn into_boxed_bytes(self: Box<str>) -> Box<[u8]> {}
+    pub fn into_boxed_bytes(self: Box<str>) -> Box<[u8]> {
+}
 
     /// Replaces all matches of a pattern with another string.
     ///
@@ -16827,7 +15595,8 @@ impl str {
                   without modifying the original"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn replace<'a, P: Pattern<'a>>(&'a self, from: P, to: &str) -> String {}
+    pub fn replace<'a, P: Pattern<'a>>(&'a self, from: P, to: &str) -> String {
+}
 
     /// Replaces first N matches of a pattern with another string.
     ///
@@ -16856,7 +15625,8 @@ impl str {
     #[must_use = "this returns the replaced string as a new allocation, \
                   without modifying the original"]
     #[stable(feature = "str_replacen", since = "1.16.0")]
-    pub fn replacen<'a, P: Pattern<'a>>(&'a self, pat: P, to: &str, count: usize) -> String {}
+    pub fn replacen<'a, P: Pattern<'a>>(&'a self, pat: P, to: &str, count: usize) -> String {
+}
 
     /// Returns the lowercase equivalent of this string slice, as a new [`String`].
     ///
@@ -16901,7 +15671,8 @@ impl str {
     #[must_use = "this returns the lowercase string as a new String, \
                   without modifying the original"]
     #[stable(feature = "unicode_case_mapping", since = "1.2.0")]
-    pub fn to_lowercase(&self) -> String {}
+    pub fn to_lowercase(&self) -> String {
+}
 
     /// Returns the uppercase equivalent of this string slice, as a new [`String`].
     ///
@@ -16940,7 +15711,8 @@ impl str {
     #[must_use = "this returns the uppercase string as a new String, \
                   without modifying the original"]
     #[stable(feature = "unicode_case_mapping", since = "1.2.0")]
-    pub fn to_uppercase(&self) -> String {}
+    pub fn to_uppercase(&self) -> String {
+}
 
     /// Converts a [`Box<str>`] into a [`String`] without copying or allocating.
     ///
@@ -16957,7 +15729,8 @@ impl str {
     #[stable(feature = "box_str", since = "1.4.0")]
     #[must_use = "`self` will be dropped if the result is not used"]
     #[inline]
-    pub fn into_string(self: Box<str>) -> String {}
+    pub fn into_string(self: Box<str>) -> String {
+}
 
     /// Creates a new [`String`] by repeating a string `n` times.
     ///
@@ -16982,7 +15755,8 @@ impl str {
     #[cfg(not(no_global_oom_handling))]
     #[must_use]
     #[stable(feature = "repeat_str", since = "1.16.0")]
-    pub fn repeat(&self, n: usize) -> String {}
+    pub fn repeat(&self, n: usize) -> String {
+}
 
     /// Returns a copy of this string where each character is mapped to its
     /// ASCII upper case equivalent.
@@ -17009,7 +15783,8 @@ impl str {
     #[must_use = "to uppercase the value in-place, use `make_ascii_uppercase()`"]
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
-    pub fn to_ascii_uppercase(&self) -> String {}
+    pub fn to_ascii_uppercase(&self) -> String {
+}
 
     /// Returns a copy of this string where each character is mapped to its
     /// ASCII lower case equivalent.
@@ -17036,7 +15811,8 @@ impl str {
     #[must_use = "to lowercase the value in-place, use `make_ascii_lowercase()`"]
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
-    pub fn to_ascii_lowercase(&self) -> String {}
+    pub fn to_ascii_lowercase(&self) -> String {
+}
 }
 
 /// Converts a boxed slice of bytes to a boxed string slice without checking
@@ -17055,7 +15831,8 @@ impl str {
 #[stable(feature = "str_box_extras", since = "1.20.0")]
 #[must_use]
 #[inline]
-pub unsafe fn from_boxed_utf8_unchecked(v: Box<[u8]>) -> Box<str> {}
+pub unsafe fn from_boxed_utf8_unchecked(v: Box<[u8]>) -> Box<str> {
+}
 }
 pub mod string {
 //! A UTF-8–encoded, growable string.
@@ -17206,7 +15983,7 @@ use crate::vec::Vec;
 /// function which takes a [`&str`] by using an ampersand (`&`):
 ///
 /// ```
-/// fn takes_str(s: &str) {}
+/// fn takes_str(s: &str) { }
 ///
 /// let s = String::from("Hello");
 ///
@@ -17439,7 +16216,8 @@ impl String {
     #[rustc_const_stable(feature = "const_string_new", since = "1.39.0")]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
-    pub const fn new() -> String {}
+    pub const fn new() -> String {
+}
 
     /// Creates a new empty `String` with a particular capacity.
     ///
@@ -17482,7 +16260,8 @@ impl String {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
-    pub fn with_capacity(capacity: usize) -> String {}
+    pub fn with_capacity(capacity: usize) -> String {
+}
 
     // HACK(japaric): with cfg(test) the inherent `[T]::to_vec` method, which is
     // required for this method definition, is not available. Since we don't
@@ -17490,7 +16269,8 @@ impl String {
     // NB see the slice::hack module in slice.rs for more information
     #[inline]
     #[cfg(test)]
-    pub fn from_str(_: &str) -> String {}
+    pub fn from_str(_: &str) -> String {
+}
 
     /// Converts a vector of bytes to a `String`.
     ///
@@ -17550,7 +16330,8 @@ impl String {
     /// [`into_bytes`]: String::into_bytes
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn from_utf8(vec: Vec<u8>) -> Result<String, FromUtf8Error> {}
+    pub fn from_utf8(vec: Vec<u8>) -> Result<String, FromUtf8Error> {
+}
 
     /// Converts a slice of bytes to a string, including invalid characters.
     ///
@@ -17604,7 +16385,8 @@ impl String {
     #[must_use]
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn from_utf8_lossy(v: &[u8]) -> Cow<'_, str> {}
+    pub fn from_utf8_lossy(v: &[u8]) -> Cow<'_, str> {
+}
 
     /// Decode a UTF-16–encoded vector `v` into a `String`, returning [`Err`]
     /// if `v` contains any invalid data.
@@ -17627,7 +16409,8 @@ impl String {
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn from_utf16(v: &[u16]) -> Result<String, FromUtf16Error> {}
+    pub fn from_utf16(v: &[u16]) -> Result<String, FromUtf16Error> {
+}
 
     /// Decode a UTF-16–encoded slice `v` into a `String`, replacing
     /// invalid data with [the replacement character (`U+FFFD`)][U+FFFD].
@@ -17657,7 +16440,8 @@ impl String {
     #[must_use]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn from_utf16_lossy(v: &[u16]) -> String {}
+    pub fn from_utf16_lossy(v: &[u16]) -> String {
+}
 
     /// Decomposes a `String` into its raw components.
     ///
@@ -17687,7 +16471,8 @@ impl String {
     /// ```
     #[must_use = "`self` will be dropped if the result is not used"]
     #[unstable(feature = "vec_into_raw_parts", reason = "new API", issue = "65816")]
-    pub fn into_raw_parts(self) -> (*mut u8, usize, usize) {}
+    pub fn into_raw_parts(self) -> (*mut u8, usize, usize) {
+}
 
     /// Creates a new `String` from a length, capacity, and pointer.
     ///
@@ -17736,7 +16521,8 @@ impl String {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub unsafe fn from_raw_parts(buf: *mut u8, length: usize, capacity: usize) -> String {}
+    pub unsafe fn from_raw_parts(buf: *mut u8, length: usize, capacity: usize) -> String {
+}
 
     /// Converts a vector of bytes to a `String` without checking that the
     /// string contains valid UTF-8.
@@ -17769,7 +16555,8 @@ impl String {
     #[inline]
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub unsafe fn from_utf8_unchecked(bytes: Vec<u8>) -> String {}
+    pub unsafe fn from_utf8_unchecked(bytes: Vec<u8>) -> String {
+}
 
     /// Converts a `String` into a byte vector.
     ///
@@ -17788,7 +16575,8 @@ impl String {
     #[inline]
     #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn into_bytes(self) -> Vec<u8> {}
+    pub fn into_bytes(self) -> Vec<u8> {
+}
 
     /// Extracts a string slice containing the entire `String`.
     ///
@@ -17804,7 +16592,8 @@ impl String {
     #[inline]
     #[must_use]
     #[stable(feature = "string_as_str", since = "1.7.0")]
-    pub fn as_str(&self) -> &str {}
+    pub fn as_str(&self) -> &str {
+}
 
     /// Converts a `String` into a mutable string slice.
     ///
@@ -17823,7 +16612,8 @@ impl String {
     #[inline]
     #[must_use]
     #[stable(feature = "string_as_str", since = "1.7.0")]
-    pub fn as_mut_str(&mut self) -> &mut str {}
+    pub fn as_mut_str(&mut self) -> &mut str {
+}
 
     /// Appends a given string slice onto the end of this `String`.
     ///
@@ -17841,7 +16631,8 @@ impl String {
     #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn push_str(&mut self, string: &str) {}
+    pub fn push_str(&mut self, string: &str) {
+}
 
     /// Copies elements from `src` range to the end of the string.
     ///
@@ -17870,7 +16661,8 @@ impl String {
     pub fn extend_from_within<R>(&mut self, src: R)
     where
         R: RangeBounds<usize>,
-    {}
+    {
+}
 
     /// Returns this `String`'s capacity, in bytes.
     ///
@@ -17886,7 +16678,8 @@ impl String {
     #[inline]
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn capacity(&self) -> usize {}
+    pub fn capacity(&self) -> usize {
+}
 
     /// Ensures that this `String`'s capacity is at least `additional` bytes
     /// larger than its length.
@@ -17935,7 +16728,8 @@ impl String {
     #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn reserve(&mut self, additional: usize) {}
+    pub fn reserve(&mut self, additional: usize) {
+}
 
     /// Ensures that this `String`'s capacity is `additional` bytes
     /// larger than its length.
@@ -17981,7 +16775,8 @@ impl String {
     #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn reserve_exact(&mut self, additional: usize) {}
+    pub fn reserve_exact(&mut self, additional: usize) {
+}
 
     /// Tries to reserve capacity for at least `additional` more elements to be inserted
     /// in the given `String`. The collection may reserve more space to avoid
@@ -17999,11 +16794,22 @@ impl String {
     /// ```
     /// use std::collections::TryReserveError;
     ///
-    /// fn process_data(data: &str) -> Result<String, TryReserveError> {}
+    /// fn process_data(data: &str) -> Result<String, TryReserveError> {
+    ///     let mut output = String::new();
+    ///
+    ///     // Pre-reserve the memory, exiting if we can't
+    ///     output.try_reserve(data.len())?;
+    ///
+    ///     // Now we know this can't OOM in the middle of our complex work
+    ///     output.push_str(data);
+    ///
+    ///     Ok(output)
+    /// }
     /// # process_data("rust").expect("why is the test harness OOMing on 4 bytes?");
     /// ```
     #[stable(feature = "try_reserve", since = "1.57.0")]
-    pub fn try_reserve(&mut self, additional: usize) -> Result<(), TryReserveError> {}
+    pub fn try_reserve(&mut self, additional: usize) -> Result<(), TryReserveError> {
+}
 
     /// Tries to reserve the minimum capacity for exactly `additional` more elements to
     /// be inserted in the given `String`. After calling `reserve_exact`,
@@ -18026,11 +16832,22 @@ impl String {
     /// ```
     /// use std::collections::TryReserveError;
     ///
-    /// fn process_data(data: &str) -> Result<String, TryReserveError> {}
+    /// fn process_data(data: &str) -> Result<String, TryReserveError> {
+    ///     let mut output = String::new();
+    ///
+    ///     // Pre-reserve the memory, exiting if we can't
+    ///     output.try_reserve(data.len())?;
+    ///
+    ///     // Now we know this can't OOM in the middle of our complex work
+    ///     output.push_str(data);
+    ///
+    ///     Ok(output)
+    /// }
     /// # process_data("rust").expect("why is the test harness OOMing on 4 bytes?");
     /// ```
     #[stable(feature = "try_reserve", since = "1.57.0")]
-    pub fn try_reserve_exact(&mut self, additional: usize) -> Result<(), TryReserveError> {}
+    pub fn try_reserve_exact(&mut self, additional: usize) -> Result<(), TryReserveError> {
+}
 
     /// Shrinks the capacity of this `String` to match its length.
     ///
@@ -18050,7 +16867,8 @@ impl String {
     #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn shrink_to_fit(&mut self) {}
+    pub fn shrink_to_fit(&mut self) {
+}
 
     /// Shrinks the capacity of this `String` with a lower bound.
     ///
@@ -18075,7 +16893,8 @@ impl String {
     #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[stable(feature = "shrink_to", since = "1.56.0")]
-    pub fn shrink_to(&mut self, min_capacity: usize) {}
+    pub fn shrink_to(&mut self, min_capacity: usize) {
+}
 
     /// Appends the given [`char`] to the end of this `String`.
     ///
@@ -18095,7 +16914,8 @@ impl String {
     #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn push(&mut self, ch: char) {}
+    pub fn push(&mut self, ch: char) {
+}
 
     /// Returns a byte slice of this `String`'s contents.
     ///
@@ -18115,7 +16935,8 @@ impl String {
     #[inline]
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn as_bytes(&self) -> &[u8] {}
+    pub fn as_bytes(&self) -> &[u8] {
+}
 
     /// Shortens this `String` to the specified length.
     ///
@@ -18142,7 +16963,8 @@ impl String {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn truncate(&mut self, new_len: usize) {}
+    pub fn truncate(&mut self, new_len: usize) {
+}
 
     /// Removes the last character from the string buffer and returns it.
     ///
@@ -18163,7 +16985,8 @@ impl String {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn pop(&mut self) -> Option<char> {}
+    pub fn pop(&mut self) -> Option<char> {
+}
 
     /// Removes a [`char`] from this `String` at a byte position and returns it.
     ///
@@ -18188,7 +17011,8 @@ impl String {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn remove(&mut self, idx: usize) -> char {}
+    pub fn remove(&mut self, idx: usize) -> char {
+}
 
     /// Remove all matches of pattern `pat` in the `String`.
     ///
@@ -18215,7 +17039,8 @@ impl String {
     pub fn remove_matches<'a, P>(&'a mut self, pat: P)
     where
         P: for<'x> Pattern<'x>,
-    {}
+    {
+}
 
     /// Retains only the characters specified by the predicate.
     ///
@@ -18248,7 +17073,8 @@ impl String {
     pub fn retain<F>(&mut self, mut f: F)
     where
         F: FnMut(char) -> bool,
-    {}
+    {
+}
 
     /// Inserts a character into this `String` at a byte position.
     ///
@@ -18276,10 +17102,12 @@ impl String {
     #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn insert(&mut self, idx: usize, ch: char) {}
+    pub fn insert(&mut self, idx: usize, ch: char) {
+}
 
     #[cfg(not(no_global_oom_handling))]
-    unsafe fn insert_bytes(&mut self, idx: usize, bytes: &[u8]) {}
+    unsafe fn insert_bytes(&mut self, idx: usize, bytes: &[u8]) {
+}
 
     /// Inserts a string slice into this `String` at a byte position.
     ///
@@ -18305,7 +17133,8 @@ impl String {
     #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[stable(feature = "insert_str", since = "1.16.0")]
-    pub fn insert_str(&mut self, idx: usize, string: &str) {}
+    pub fn insert_str(&mut self, idx: usize, string: &str) {
+}
 
     /// Returns a mutable reference to the contents of this `String`.
     ///
@@ -18334,7 +17163,8 @@ impl String {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub unsafe fn as_mut_vec(&mut self) -> &mut Vec<u8> {}
+    pub unsafe fn as_mut_vec(&mut self) -> &mut Vec<u8> {
+}
 
     /// Returns the length of this `String`, in bytes, not [`char`]s or
     /// graphemes. In other words, it might not be what a human considers the
@@ -18355,7 +17185,8 @@ impl String {
     #[inline]
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn len(&self) -> usize {}
+    pub fn len(&self) -> usize {
+}
 
     /// Returns `true` if this `String` has a length of zero, and `false` otherwise.
     ///
@@ -18373,7 +17204,8 @@ impl String {
     #[inline]
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn is_empty(&self) -> bool {}
+    pub fn is_empty(&self) -> bool {
+}
 
     /// Splits the string into two at the given byte index.
     ///
@@ -18391,13 +17223,19 @@ impl String {
     /// # Examples
     ///
     /// ```
-    /// # fn main() {}
+    /// # fn main() {
+    /// let mut hello = String::from("Hello, World!");
+    /// let world = hello.split_off(7);
+    /// assert_eq!(hello, "Hello, ");
+    /// assert_eq!(world, "World!");
+    /// # }
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[stable(feature = "string_split_off", since = "1.16.0")]
     #[must_use = "use `.truncate()` if you don't need the other half"]
-    pub fn split_off(&mut self, at: usize) -> String {}
+    pub fn split_off(&mut self, at: usize) -> String {
+}
 
     /// Truncates this `String`, removing all contents.
     ///
@@ -18419,7 +17257,8 @@ impl String {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn clear(&mut self) {}
+    pub fn clear(&mut self) {
+}
 
     /// Creates a draining iterator that removes the specified range in the `String`
     /// and yields the removed `chars`.
@@ -18453,7 +17292,8 @@ impl String {
     pub fn drain<R>(&mut self, range: R) -> Drain<'_>
     where
         R: RangeBounds<usize>,
-    {}
+    {
+}
 
     /// Removes the specified range in the string,
     /// and replaces it with the given string.
@@ -18481,7 +17321,8 @@ impl String {
     pub fn replace_range<R>(&mut self, range: R, replace_with: &str)
     where
         R: RangeBounds<usize>,
-    {}
+    {
+}
 
     /// Converts this `String` into a <code>[Box]<[str]></code>.
     ///
@@ -18502,7 +17343,8 @@ impl String {
     #[stable(feature = "box_str", since = "1.4.0")]
     #[must_use = "`self` will be dropped if the result is not used"]
     #[inline]
-    pub fn into_boxed_str(self) -> Box<str> {}
+    pub fn into_boxed_str(self) -> Box<str> {
+}
 }
 
 impl FromUtf8Error {
@@ -18522,7 +17364,8 @@ impl FromUtf8Error {
     /// ```
     #[must_use]
     #[stable(feature = "from_utf8_error_as_bytes", since = "1.26.0")]
-    pub fn as_bytes(&self) -> &[u8] {}
+    pub fn as_bytes(&self) -> &[u8] {
+}
 
     /// Returns the bytes that were attempted to convert to a `String`.
     ///
@@ -18544,7 +17387,8 @@ impl FromUtf8Error {
     /// ```
     #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn into_bytes(self) -> Vec<u8> {}
+    pub fn into_bytes(self) -> Vec<u8> {
+}
 
     /// Fetch a `Utf8Error` to get more details about the conversion failure.
     ///
@@ -18571,118 +17415,142 @@ impl FromUtf8Error {
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn utf8_error(&self) -> Utf8Error {}
+    pub fn utf8_error(&self) -> Utf8Error {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for FromUtf8Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for FromUtf16Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Clone for String {
-    fn clone(&self) -> Self {}
+    fn clone(&self) -> Self {
+}
 
-    fn clone_from(&mut self, source: &Self) {}
+    fn clone_from(&mut self, source: &Self) {
+}
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl FromIterator<char> for String {
-    fn from_iter<I: IntoIterator<Item = char>>(iter: I) -> String {}
+    fn from_iter<I: IntoIterator<Item = char>>(iter: I) -> String {
+}
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "string_from_iter_by_ref", since = "1.17.0")]
 impl<'a> FromIterator<&'a char> for String {
-    fn from_iter<I: IntoIterator<Item = &'a char>>(iter: I) -> String {}
+    fn from_iter<I: IntoIterator<Item = &'a char>>(iter: I) -> String {
+}
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> FromIterator<&'a str> for String {
-    fn from_iter<I: IntoIterator<Item = &'a str>>(iter: I) -> String {}
+    fn from_iter<I: IntoIterator<Item = &'a str>>(iter: I) -> String {
+}
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "extend_string", since = "1.4.0")]
 impl FromIterator<String> for String {
-    fn from_iter<I: IntoIterator<Item = String>>(iter: I) -> String {}
+    fn from_iter<I: IntoIterator<Item = String>>(iter: I) -> String {
+}
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "box_str2", since = "1.45.0")]
 impl FromIterator<Box<str>> for String {
-    fn from_iter<I: IntoIterator<Item = Box<str>>>(iter: I) -> String {}
+    fn from_iter<I: IntoIterator<Item = Box<str>>>(iter: I) -> String {
+}
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "herd_cows", since = "1.19.0")]
 impl<'a> FromIterator<Cow<'a, str>> for String {
-    fn from_iter<I: IntoIterator<Item = Cow<'a, str>>>(iter: I) -> String {}
+    fn from_iter<I: IntoIterator<Item = Cow<'a, str>>>(iter: I) -> String {
+}
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Extend<char> for String {
-    fn extend<I: IntoIterator<Item = char>>(&mut self, iter: I) {}
+    fn extend<I: IntoIterator<Item = char>>(&mut self, iter: I) {
+}
 
     #[inline]
-    fn extend_one(&mut self, c: char) {}
+    fn extend_one(&mut self, c: char) {
+}
 
     #[inline]
-    fn extend_reserve(&mut self, additional: usize) {}
+    fn extend_reserve(&mut self, additional: usize) {
+}
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "extend_ref", since = "1.2.0")]
 impl<'a> Extend<&'a char> for String {
-    fn extend<I: IntoIterator<Item = &'a char>>(&mut self, iter: I) {}
+    fn extend<I: IntoIterator<Item = &'a char>>(&mut self, iter: I) {
+}
 
     #[inline]
-    fn extend_one(&mut self, &c: &'a char) {}
+    fn extend_one(&mut self, &c: &'a char) {
+}
 
     #[inline]
-    fn extend_reserve(&mut self, additional: usize) {}
+    fn extend_reserve(&mut self, additional: usize) {
+}
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Extend<&'a str> for String {
-    fn extend<I: IntoIterator<Item = &'a str>>(&mut self, iter: I) {}
+    fn extend<I: IntoIterator<Item = &'a str>>(&mut self, iter: I) {
+}
 
     #[inline]
-    fn extend_one(&mut self, s: &'a str) {}
+    fn extend_one(&mut self, s: &'a str) {
+}
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "box_str2", since = "1.45.0")]
 impl Extend<Box<str>> for String {
-    fn extend<I: IntoIterator<Item = Box<str>>>(&mut self, iter: I) {}
+    fn extend<I: IntoIterator<Item = Box<str>>>(&mut self, iter: I) {
+}
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "extend_string", since = "1.4.0")]
 impl Extend<String> for String {
-    fn extend<I: IntoIterator<Item = String>>(&mut self, iter: I) {}
+    fn extend<I: IntoIterator<Item = String>>(&mut self, iter: I) {
+}
 
     #[inline]
-    fn extend_one(&mut self, s: String) {}
+    fn extend_one(&mut self, s: String) {
+}
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "herd_cows", since = "1.19.0")]
 impl<'a> Extend<Cow<'a, str>> for String {
-    fn extend<I: IntoIterator<Item = Cow<'a, str>>>(&mut self, iter: I) {}
+    fn extend<I: IntoIterator<Item = Cow<'a, str>>>(&mut self, iter: I) {
+}
 
     #[inline]
-    fn extend_one(&mut self, s: Cow<'a, str>) {}
+    fn extend_one(&mut self, s: Cow<'a, str>) {
+}
 }
 
 /// A convenience impl that delegates to the impl for `&str`.
@@ -18700,30 +17568,38 @@ impl<'a> Extend<Cow<'a, str>> for String {
 impl<'a, 'b> Pattern<'a> for &'b String {
     type Searcher = <&'b str as Pattern<'a>>::Searcher;
 
-    fn into_searcher(self, haystack: &'a str) -> <&'b str as Pattern<'a>>::Searcher {}
+    fn into_searcher(self, haystack: &'a str) -> <&'b str as Pattern<'a>>::Searcher {
+}
 
     #[inline]
-    fn is_contained_in(self, haystack: &'a str) -> bool {}
+    fn is_contained_in(self, haystack: &'a str) -> bool {
+}
 
     #[inline]
-    fn is_prefix_of(self, haystack: &'a str) -> bool {}
+    fn is_prefix_of(self, haystack: &'a str) -> bool {
+}
 
     #[inline]
-    fn strip_prefix_of(self, haystack: &'a str) -> Option<&'a str> {}
+    fn strip_prefix_of(self, haystack: &'a str) -> Option<&'a str> {
+}
 
     #[inline]
-    fn is_suffix_of(self, haystack: &'a str) -> bool {}
+    fn is_suffix_of(self, haystack: &'a str) -> bool {
+}
 
     #[inline]
-    fn strip_suffix_of(self, haystack: &'a str) -> Option<&'a str> {}
+    fn strip_suffix_of(self, haystack: &'a str) -> Option<&'a str> {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl PartialEq for String {
     #[inline]
-    fn eq(&self, other: &String) -> bool {}
+    fn eq(&self, other: &String) -> bool {
+}
     #[inline]
-    fn ne(&self, other: &String) -> bool {}
+    fn ne(&self, other: &String) -> bool {
+}
 }
 
 macro_rules! impl_eq {
@@ -18732,18 +17608,22 @@ macro_rules! impl_eq {
         #[allow(unused_lifetimes)]
         impl<'a, 'b> PartialEq<$rhs> for $lhs {
             #[inline]
-            fn eq(&self, other: &$rhs) -> bool {}
+            fn eq(&self, other: &$rhs) -> bool {
+}
             #[inline]
-            fn ne(&self, other: &$rhs) -> bool {}
+            fn ne(&self, other: &$rhs) -> bool {
+}
         }
 
         #[stable(feature = "rust1", since = "1.0.0")]
         #[allow(unused_lifetimes)]
         impl<'a, 'b> PartialEq<$lhs> for $rhs {
             #[inline]
-            fn eq(&self, other: &$lhs) -> bool {}
+            fn eq(&self, other: &$lhs) -> bool {
+}
             #[inline]
-            fn ne(&self, other: &$lhs) -> bool {}
+            fn ne(&self, other: &$lhs) -> bool {
+}
         }
     };
 }
@@ -18762,25 +17642,29 @@ impl_eq! { Cow<'a, str>, String }
 impl const Default for String {
     /// Creates an empty `String`.
     #[inline]
-    fn default() -> String {}
+    fn default() -> String {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for String {
     #[inline]
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Debug for String {
     #[inline]
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl hash::Hash for String {
     #[inline]
-    fn hash<H: hash::Hasher>(&self, hasher: &mut H) {}
+    fn hash<H: hash::Hasher>(&self, hasher: &mut H) {
+}
 }
 
 /// Implements the `+` operator for concatenating two strings.
@@ -18826,7 +17710,8 @@ impl Add<&str> for String {
     type Output = String;
 
     #[inline]
-    fn add(mut self, other: &str) -> String {}
+    fn add(mut self, other: &str) -> String {
+}
 }
 
 /// Implements the `+=` operator for appending to a `String`.
@@ -18836,7 +17721,8 @@ impl Add<&str> for String {
 #[stable(feature = "stringaddassign", since = "1.12.0")]
 impl AddAssign<&str> for String {
     #[inline]
-    fn add_assign(&mut self, other: &str) {}
+    fn add_assign(&mut self, other: &str) {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -18844,73 +17730,85 @@ impl ops::Index<ops::Range<usize>> for String {
     type Output = str;
 
     #[inline]
-    fn index(&self, index: ops::Range<usize>) -> &str {}
+    fn index(&self, index: ops::Range<usize>) -> &str {
+}
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl ops::Index<ops::RangeTo<usize>> for String {
     type Output = str;
 
     #[inline]
-    fn index(&self, index: ops::RangeTo<usize>) -> &str {}
+    fn index(&self, index: ops::RangeTo<usize>) -> &str {
+}
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl ops::Index<ops::RangeFrom<usize>> for String {
     type Output = str;
 
     #[inline]
-    fn index(&self, index: ops::RangeFrom<usize>) -> &str {}
+    fn index(&self, index: ops::RangeFrom<usize>) -> &str {
+}
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl ops::Index<ops::RangeFull> for String {
     type Output = str;
 
     #[inline]
-    fn index(&self, _index: ops::RangeFull) -> &str {}
+    fn index(&self, _index: ops::RangeFull) -> &str {
+}
 }
 #[stable(feature = "inclusive_range", since = "1.26.0")]
 impl ops::Index<ops::RangeInclusive<usize>> for String {
     type Output = str;
 
     #[inline]
-    fn index(&self, index: ops::RangeInclusive<usize>) -> &str {}
+    fn index(&self, index: ops::RangeInclusive<usize>) -> &str {
+}
 }
 #[stable(feature = "inclusive_range", since = "1.26.0")]
 impl ops::Index<ops::RangeToInclusive<usize>> for String {
     type Output = str;
 
     #[inline]
-    fn index(&self, index: ops::RangeToInclusive<usize>) -> &str {}
+    fn index(&self, index: ops::RangeToInclusive<usize>) -> &str {
+}
 }
 
 #[stable(feature = "derefmut_for_string", since = "1.3.0")]
 impl ops::IndexMut<ops::Range<usize>> for String {
     #[inline]
-    fn index_mut(&mut self, index: ops::Range<usize>) -> &mut str {}
+    fn index_mut(&mut self, index: ops::Range<usize>) -> &mut str {
+}
 }
 #[stable(feature = "derefmut_for_string", since = "1.3.0")]
 impl ops::IndexMut<ops::RangeTo<usize>> for String {
     #[inline]
-    fn index_mut(&mut self, index: ops::RangeTo<usize>) -> &mut str {}
+    fn index_mut(&mut self, index: ops::RangeTo<usize>) -> &mut str {
+}
 }
 #[stable(feature = "derefmut_for_string", since = "1.3.0")]
 impl ops::IndexMut<ops::RangeFrom<usize>> for String {
     #[inline]
-    fn index_mut(&mut self, index: ops::RangeFrom<usize>) -> &mut str {}
+    fn index_mut(&mut self, index: ops::RangeFrom<usize>) -> &mut str {
+}
 }
 #[stable(feature = "derefmut_for_string", since = "1.3.0")]
 impl ops::IndexMut<ops::RangeFull> for String {
     #[inline]
-    fn index_mut(&mut self, _index: ops::RangeFull) -> &mut str {}
+    fn index_mut(&mut self, _index: ops::RangeFull) -> &mut str {
+}
 }
 #[stable(feature = "inclusive_range", since = "1.26.0")]
 impl ops::IndexMut<ops::RangeInclusive<usize>> for String {
     #[inline]
-    fn index_mut(&mut self, index: ops::RangeInclusive<usize>) -> &mut str {}
+    fn index_mut(&mut self, index: ops::RangeInclusive<usize>) -> &mut str {
+}
 }
 #[stable(feature = "inclusive_range", since = "1.26.0")]
 impl ops::IndexMut<ops::RangeToInclusive<usize>> for String {
     #[inline]
-    fn index_mut(&mut self, index: ops::RangeToInclusive<usize>) -> &mut str {}
+    fn index_mut(&mut self, index: ops::RangeToInclusive<usize>) -> &mut str {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -18918,13 +17816,15 @@ impl ops::Deref for String {
     type Target = str;
 
     #[inline]
-    fn deref(&self) -> &str {}
+    fn deref(&self) -> &str {
+}
 }
 
 #[stable(feature = "derefmut_for_string", since = "1.3.0")]
 impl ops::DerefMut for String {
     #[inline]
-    fn deref_mut(&mut self) -> &mut str {}
+    fn deref_mut(&mut self) -> &mut str {
+}
 }
 
 /// A type alias for [`Infallible`].
@@ -18940,7 +17840,8 @@ pub type ParseError = core::convert::Infallible;
 impl FromStr for String {
     type Err = core::convert::Infallible;
     #[inline]
-    fn from_str(s: &str) -> Result<String, Self::Err> {}
+    fn from_str(s: &str) -> Result<String, Self::Err> {
+}
 }
 
 /// A trait for converting a value to a `String`.
@@ -18985,67 +17886,77 @@ impl<T: fmt::Display + ?Sized> ToString for T {
     // See <https://github.com/rust-lang/rust/pull/74852>, the last attempt
     // to try to remove it.
     #[inline]
-    default fn to_string(&self) -> String {}
+    default fn to_string(&self) -> String {
+}
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "char_to_string_specialization", since = "1.46.0")]
 impl ToString for char {
     #[inline]
-    fn to_string(&self) -> String {}
+    fn to_string(&self) -> String {
+}
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "u8_to_string_specialization", since = "1.54.0")]
 impl ToString for u8 {
     #[inline]
-    fn to_string(&self) -> String {}
+    fn to_string(&self) -> String {
+}
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "i8_to_string_specialization", since = "1.54.0")]
 impl ToString for i8 {
     #[inline]
-    fn to_string(&self) -> String {}
+    fn to_string(&self) -> String {
+}
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "str_to_string_specialization", since = "1.9.0")]
 impl ToString for str {
     #[inline]
-    fn to_string(&self) -> String {}
+    fn to_string(&self) -> String {
+}
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "cow_str_to_string_specialization", since = "1.17.0")]
 impl ToString for Cow<'_, str> {
     #[inline]
-    fn to_string(&self) -> String {}
+    fn to_string(&self) -> String {
+}
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "string_to_string_specialization", since = "1.17.0")]
 impl ToString for String {
     #[inline]
-    fn to_string(&self) -> String {}
+    fn to_string(&self) -> String {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl AsRef<str> for String {
     #[inline]
-    fn as_ref(&self) -> &str {}
+    fn as_ref(&self) -> &str {
+}
 }
 
 #[stable(feature = "string_as_mut", since = "1.43.0")]
 impl AsMut<str> for String {
     #[inline]
-    fn as_mut(&mut self) -> &mut str {}
+    fn as_mut(&mut self) -> &mut str {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl AsRef<[u8]> for String {
     #[inline]
-    fn as_ref(&self) -> &[u8] {}
+    fn as_ref(&self) -> &[u8] {
+}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -19055,7 +17966,8 @@ impl From<&str> for String {
     ///
     /// The result is allocated on the heap.
     #[inline]
-    fn from(s: &str) -> String {}
+    fn from(s: &str) -> String {
+}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -19065,7 +17977,8 @@ impl From<&mut str> for String {
     ///
     /// The result is allocated on the heap.
     #[inline]
-    fn from(s: &mut str) -> String {}
+    fn from(s: &mut str) -> String {
+}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -19075,7 +17988,8 @@ impl From<&String> for String {
     ///
     /// This clones `s` and returns the clone.
     #[inline]
-    fn from(s: &String) -> String {}
+    fn from(s: &String) -> String {
+}
 }
 
 // note: test pulls in libstd, which causes errors here
@@ -19096,7 +18010,8 @@ impl From<Box<str>> for String {
     ///
     /// assert_eq!("hello world", s3)
     /// ```
-    fn from(s: Box<str>) -> String {}
+    fn from(s: Box<str>) -> String {
+}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -19115,7 +18030,8 @@ impl From<String> for Box<str> {
     ///
     /// assert_eq!("hello world", s3)
     /// ```
-    fn from(s: String) -> Box<str> {}
+    fn from(s: String) -> Box<str> {
+}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -19137,7 +18053,8 @@ impl<'a> From<Cow<'a, str>> for String {
     /// let owned: String = String::from(cow);
     /// assert_eq!(&owned[..], "eggplant");
     /// ```
-    fn from(s: Cow<'a, str>) -> String {}
+    fn from(s: Cow<'a, str>) -> String {
+}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -19156,7 +18073,8 @@ impl<'a> From<&'a str> for Cow<'a, str> {
     ///
     /// [`Borrowed`]: crate::borrow::Cow::Borrowed "borrow::Cow::Borrowed"
     #[inline]
-    fn from(s: &'a str) -> Cow<'a, str> {}
+    fn from(s: &'a str) -> Cow<'a, str> {
+}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -19177,7 +18095,8 @@ impl<'a> From<String> for Cow<'a, str> {
     ///
     /// [`Owned`]: crate::borrow::Cow::Owned "borrow::Cow::Owned"
     #[inline]
-    fn from(s: String) -> Cow<'a, str> {}
+    fn from(s: String) -> Cow<'a, str> {
+}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -19197,25 +18116,29 @@ impl<'a> From<&'a String> for Cow<'a, str> {
     ///
     /// [`Borrowed`]: crate::borrow::Cow::Borrowed "borrow::Cow::Borrowed"
     #[inline]
-    fn from(s: &'a String) -> Cow<'a, str> {}
+    fn from(s: &'a String) -> Cow<'a, str> {
+}
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "cow_str_from_iter", since = "1.12.0")]
 impl<'a> FromIterator<char> for Cow<'a, str> {
-    fn from_iter<I: IntoIterator<Item = char>>(it: I) -> Cow<'a, str> {}
+    fn from_iter<I: IntoIterator<Item = char>>(it: I) -> Cow<'a, str> {
+}
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "cow_str_from_iter", since = "1.12.0")]
 impl<'a, 'b> FromIterator<&'b str> for Cow<'a, str> {
-    fn from_iter<I: IntoIterator<Item = &'b str>>(it: I) -> Cow<'a, str> {}
+    fn from_iter<I: IntoIterator<Item = &'b str>>(it: I) -> Cow<'a, str> {
+}
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "cow_str_from_iter", since = "1.12.0")]
 impl<'a> FromIterator<String> for Cow<'a, str> {
-    fn from_iter<I: IntoIterator<Item = String>>(it: I) -> Cow<'a, str> {}
+    fn from_iter<I: IntoIterator<Item = String>>(it: I) -> Cow<'a, str> {
+}
 }
 
 #[stable(feature = "from_string_for_vec_u8", since = "1.14.0")]
@@ -19234,17 +18157,20 @@ impl From<String> for Vec<u8> {
     ///     println!("{}", b);
     /// }
     /// ```
-    fn from(string: String) -> Vec<u8> {}
+    fn from(string: String) -> Vec<u8> {
+}
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Write for String {
     #[inline]
-    fn write_str(&mut self, s: &str) -> fmt::Result {}
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+}
 
     #[inline]
-    fn write_char(&mut self, c: char) -> fmt::Result {}
+    fn write_char(&mut self, c: char) -> fmt::Result {
+}
 }
 
 /// A draining iterator for `String`.
@@ -19267,7 +18193,8 @@ pub struct Drain<'a> {
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl fmt::Debug for Drain<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
@@ -19277,7 +18204,8 @@ unsafe impl Send for Drain<'_> {}
 
 #[stable(feature = "drain", since = "1.6.0")]
 impl Drop for Drain<'_> {
-    fn drop(&mut self) {}
+    fn drop(&mut self) {
+}
 }
 
 impl<'a> Drain<'a> {
@@ -19294,17 +18222,20 @@ impl<'a> Drain<'a> {
     /// ```
     #[must_use]
     #[stable(feature = "string_drain_as_str", since = "1.55.0")]
-    pub fn as_str(&self) -> &str {}
+    pub fn as_str(&self) -> &str {
+}
 }
 
 #[stable(feature = "string_drain_as_str", since = "1.55.0")]
 impl<'a> AsRef<str> for Drain<'a> {
-    fn as_ref(&self) -> &str {}
+    fn as_ref(&self) -> &str {
+}
 }
 
 #[stable(feature = "string_drain_as_str", since = "1.55.0")]
 impl<'a> AsRef<[u8]> for Drain<'a> {
-    fn as_ref(&self) -> &[u8] {}
+    fn as_ref(&self) -> &[u8] {
+}
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
@@ -19312,18 +18243,22 @@ impl Iterator for Drain<'_> {
     type Item = char;
 
     #[inline]
-    fn next(&mut self) -> Option<char> {}
+    fn next(&mut self) -> Option<char> {
+}
 
-    fn size_hint(&self) -> (usize, Option<usize>) {}
+    fn size_hint(&self) -> (usize, Option<usize>) {
+}
 
     #[inline]
-    fn last(mut self) -> Option<char> {}
+    fn last(mut self) -> Option<char> {
+}
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
 impl DoubleEndedIterator for Drain<'_> {
     #[inline]
-    fn next_back(&mut self) -> Option<char> {}
+    fn next_back(&mut self) -> Option<char> {
+}
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -19341,7 +18276,8 @@ impl From<char> for String {
     /// assert_eq!("a", &s[..]);
     /// ```
     #[inline]
-    fn from(c: char) -> Self {}
+    fn from(c: char) -> Self {
+}
 }
 }
 #[cfg(target_has_atomic = "ptr")]
@@ -19390,158 +18326,6 @@ use crate::vec::Vec;
 
 #[cfg(test)]
 mod tests {
-use super::*;
-
-use std::boxed::Box;
-use std::clone::Clone;
-use std::convert::{From, TryInto};
-use std::mem::drop;
-use std::ops::Drop;
-use std::option::Option::{self, None, Some};
-use std::sync::atomic::{
-    self,
-    Ordering::{Acquire, SeqCst},
-};
-use std::sync::mpsc::channel;
-use std::sync::Mutex;
-use std::thread;
-
-use crate::vec::Vec;
-
-struct Canary(*mut atomic::AtomicUsize);
-
-impl Drop for Canary {
-    fn drop(&mut self) {}
-}
-
-#[test]
-#[cfg_attr(target_os = "emscripten", ignore)]
-fn manually_share_arc() {}
-
-#[test]
-fn test_arc_get_mut() {}
-
-#[test]
-fn weak_counts() {}
-
-#[test]
-fn try_unwrap() {}
-
-#[test]
-fn into_from_raw() {}
-
-#[test]
-fn test_into_from_raw_unsized() {}
-
-#[test]
-fn into_from_weak_raw() {}
-
-#[test]
-fn test_into_from_weak_raw_unsized() {}
-
-#[test]
-fn test_cowarc_clone_make_mut() {}
-
-#[test]
-fn test_cowarc_clone_unique2() {}
-
-#[test]
-fn test_cowarc_clone_weak() {}
-
-#[test]
-fn test_live() {}
-
-#[test]
-fn test_dead() {}
-
-#[test]
-fn weak_self_cyclic() {}
-
-#[test]
-fn drop_arc() {}
-
-#[test]
-fn drop_arc_weak() {}
-
-#[test]
-fn test_strong_count() {}
-
-#[test]
-fn test_weak_count() {}
-
-#[test]
-fn show_arc() {}
-
-// Make sure deriving works with Arc<T>
-#[derive(Eq, Ord, PartialEq, PartialOrd, Clone, Debug, Default)]
-struct Foo {
-    inner: Arc<i32>,
-}
-
-#[test]
-fn test_unsized() {}
-
-#[test]
-fn test_maybe_thin_unsized() {}
-
-#[test]
-fn test_from_owned() {}
-
-#[test]
-fn test_new_weak() {}
-
-#[test]
-fn test_ptr_eq() {}
-
-#[test]
-#[cfg_attr(target_os = "emscripten", ignore)]
-fn test_weak_count_locked() {}
-
-#[test]
-fn test_from_str() {}
-
-#[test]
-fn test_copy_from_slice() {}
-
-#[test]
-fn test_clone_from_slice() {}
-
-#[test]
-#[should_panic]
-fn test_clone_from_slice_panic() {}
-
-#[test]
-fn test_from_box() {}
-
-#[test]
-fn test_from_box_str() {}
-
-#[test]
-fn test_from_box_slice() {}
-
-#[test]
-fn test_from_box_trait() {}
-
-#[test]
-fn test_from_box_trait_zero_sized() {}
-
-#[test]
-fn test_from_vec() {}
-
-#[test]
-fn test_downcast() {}
-
-#[test]
-fn test_array_from_slice() {}
-
-#[test]
-fn test_arc_cyclic_with_zero_refs() {}
-
-#[test]
-fn test_arc_new_cyclic_one_ref() {}
-
-#[test]
-fn test_arc_cyclic_two_refs() {}
 }
 
 /// A soft limit on the amount of references that may be made to an `Arc`.
@@ -19753,9 +18537,11 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Arc<U>> for Arc<T> {}
 impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Arc<U>> for Arc<T> {}
 
 impl<T: ?Sized> Arc<T> {
-    fn from_inner(ptr: NonNull<ArcInner<T>>) -> Self {}
+    fn from_inner(ptr: NonNull<ArcInner<T>>) -> Self {
+}
 
-    unsafe fn from_ptr(ptr: *mut ArcInner<T>) -> Self {}
+    unsafe fn from_ptr(ptr: *mut ArcInner<T>) -> Self {
+}
 }
 
 /// `Weak` is a version of [`Arc`] that holds a non-owning reference to the
@@ -19801,7 +18587,8 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Weak<U>> for Weak<T> {}
 
 #[stable(feature = "arc_weak", since = "1.4.0")]
 impl<T: ?Sized + fmt::Debug> fmt::Debug for Weak<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
 }
 
 // This is repr(C) to future-proof against possible field-reordering, which
@@ -19835,7 +18622,8 @@ impl<T> Arc<T> {
     #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn new(data: T) -> Arc<T> {}
+    pub fn new(data: T) -> Arc<T> {
+}
 
     /// Constructs a new `Arc<T>` using a weak reference to itself. Attempting
     /// to upgrade the weak reference before this function returns will result
@@ -19860,7 +18648,8 @@ impl<T> Arc<T> {
     #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[unstable(feature = "arc_new_cyclic", issue = "75861")]
-    pub fn new_cyclic(data_fn: impl FnOnce(&Weak<T>) -> T) -> Arc<T> {}
+    pub fn new_cyclic(data_fn: impl FnOnce(&Weak<T>) -> T) -> Arc<T> {
+}
 
     /// Constructs a new `Arc` with uninitialized contents.
     ///
@@ -19886,7 +18675,8 @@ impl<T> Arc<T> {
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "new_uninit", issue = "63291")]
     #[must_use]
-    pub fn new_uninit() -> Arc<mem::MaybeUninit<T>> {}
+    pub fn new_uninit() -> Arc<mem::MaybeUninit<T>> {
+}
 
     /// Constructs a new `Arc` with uninitialized contents, with the memory
     /// being filled with `0` bytes.
@@ -19911,19 +18701,22 @@ impl<T> Arc<T> {
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "new_uninit", issue = "63291")]
     #[must_use]
-    pub fn new_zeroed() -> Arc<mem::MaybeUninit<T>> {}
+    pub fn new_zeroed() -> Arc<mem::MaybeUninit<T>> {
+}
 
     /// Constructs a new `Pin<Arc<T>>`. If `T` does not implement `Unpin`, then
     /// `data` will be pinned in memory and unable to be moved.
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "pin", since = "1.33.0")]
     #[must_use]
-    pub fn pin(data: T) -> Pin<Arc<T>> {}
+    pub fn pin(data: T) -> Pin<Arc<T>> {
+}
 
     /// Constructs a new `Pin<Arc<T>>`, return an error if allocation fails.
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
-    pub fn try_pin(data: T) -> Result<Pin<Arc<T>>, AllocError> {}
+    pub fn try_pin(data: T) -> Result<Pin<Arc<T>>, AllocError> {
+}
 
     /// Constructs a new `Arc<T>`, returning an error if allocation fails.
     ///
@@ -19938,7 +18731,8 @@ impl<T> Arc<T> {
     /// ```
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
-    pub fn try_new(data: T) -> Result<Arc<T>, AllocError> {}
+    pub fn try_new(data: T) -> Result<Arc<T>, AllocError> {
+}
 
     /// Constructs a new `Arc` with uninitialized contents, returning an error
     /// if allocation fails.
@@ -19965,7 +18759,8 @@ impl<T> Arc<T> {
     /// ```
     #[unstable(feature = "allocator_api", issue = "32838")]
     // #[unstable(feature = "new_uninit", issue = "63291")]
-    pub fn try_new_uninit() -> Result<Arc<mem::MaybeUninit<T>>, AllocError> {}
+    pub fn try_new_uninit() -> Result<Arc<mem::MaybeUninit<T>>, AllocError> {
+}
 
     /// Constructs a new `Arc` with uninitialized contents, with the memory
     /// being filled with `0` bytes, returning an error if allocation fails.
@@ -19990,7 +18785,8 @@ impl<T> Arc<T> {
     /// [zeroed]: mem::MaybeUninit::zeroed
     #[unstable(feature = "allocator_api", issue = "32838")]
     // #[unstable(feature = "new_uninit", issue = "63291")]
-    pub fn try_new_zeroed() -> Result<Arc<mem::MaybeUninit<T>>, AllocError> {}
+    pub fn try_new_zeroed() -> Result<Arc<mem::MaybeUninit<T>>, AllocError> {
+}
     /// Returns the inner value, if the `Arc` has exactly one strong reference.
     ///
     /// Otherwise, an [`Err`] is returned with the same `Arc` that was
@@ -20012,7 +18808,8 @@ impl<T> Arc<T> {
     /// ```
     #[inline]
     #[stable(feature = "arc_unique", since = "1.4.0")]
-    pub fn try_unwrap(this: Self) -> Result<T, Self> {}
+    pub fn try_unwrap(this: Self) -> Result<T, Self> {
+}
 }
 
 impl<T> Arc<[T]> {
@@ -20042,7 +18839,8 @@ impl<T> Arc<[T]> {
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "new_uninit", issue = "63291")]
     #[must_use]
-    pub fn new_uninit_slice(len: usize) -> Arc<[mem::MaybeUninit<T>]> {}
+    pub fn new_uninit_slice(len: usize) -> Arc<[mem::MaybeUninit<T>]> {
+}
 
     /// Constructs a new atomically reference-counted slice with uninitialized contents, with the memory being
     /// filled with `0` bytes.
@@ -20067,7 +18865,8 @@ impl<T> Arc<[T]> {
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "new_uninit", issue = "63291")]
     #[must_use]
-    pub fn new_zeroed_slice(len: usize) -> Arc<[mem::MaybeUninit<T>]> {}
+    pub fn new_zeroed_slice(len: usize) -> Arc<[mem::MaybeUninit<T>]> {
+}
 }
 
 impl<T> Arc<mem::MaybeUninit<T>> {
@@ -20105,7 +18904,8 @@ impl<T> Arc<mem::MaybeUninit<T>> {
     #[unstable(feature = "new_uninit", issue = "63291")]
     #[must_use = "`self` will be dropped if the result is not used"]
     #[inline]
-    pub unsafe fn assume_init(self) -> Arc<T> {}
+    pub unsafe fn assume_init(self) -> Arc<T> {
+}
 }
 
 impl<T> Arc<[mem::MaybeUninit<T>]> {
@@ -20145,7 +18945,8 @@ impl<T> Arc<[mem::MaybeUninit<T>]> {
     #[unstable(feature = "new_uninit", issue = "63291")]
     #[must_use = "`self` will be dropped if the result is not used"]
     #[inline]
-    pub unsafe fn assume_init(self) -> Arc<[T]> {}
+    pub unsafe fn assume_init(self) -> Arc<[T]> {
+}
 }
 
 impl<T: ?Sized> Arc<T> {
@@ -20165,7 +18966,8 @@ impl<T: ?Sized> Arc<T> {
     /// ```
     #[must_use = "losing the pointer will leak memory"]
     #[stable(feature = "rc_raw", since = "1.17.0")]
-    pub fn into_raw(this: Self) -> *const T {}
+    pub fn into_raw(this: Self) -> *const T {
+}
 
     /// Provides a raw pointer to the data.
     ///
@@ -20185,7 +18987,8 @@ impl<T: ?Sized> Arc<T> {
     /// ```
     #[must_use]
     #[stable(feature = "rc_as_ptr", since = "1.45.0")]
-    pub fn as_ptr(this: &Self) -> *const T {}
+    pub fn as_ptr(this: &Self) -> *const T {
+}
 
     /// Constructs an `Arc<T>` from a raw pointer.
     ///
@@ -20225,7 +19028,8 @@ impl<T: ?Sized> Arc<T> {
     /// // The memory was freed when `x` went out of scope above, so `x_ptr` is now dangling!
     /// ```
     #[stable(feature = "rc_raw", since = "1.17.0")]
-    pub unsafe fn from_raw(ptr: *const T) -> Self {}
+    pub unsafe fn from_raw(ptr: *const T) -> Self {
+}
 
     /// Creates a new [`Weak`] pointer to this allocation.
     ///
@@ -20241,7 +19045,8 @@ impl<T: ?Sized> Arc<T> {
     #[must_use = "this returns a new `Weak` pointer, \
                   without modifying the original `Arc`"]
     #[stable(feature = "arc_weak", since = "1.4.0")]
-    pub fn downgrade(this: &Self) -> Weak<T> {}
+    pub fn downgrade(this: &Self) -> Weak<T> {
+}
 
     /// Gets the number of [`Weak`] pointers to this allocation.
     ///
@@ -20266,7 +19071,8 @@ impl<T: ?Sized> Arc<T> {
     #[inline]
     #[must_use]
     #[stable(feature = "arc_counts", since = "1.15.0")]
-    pub fn weak_count(this: &Self) -> usize {}
+    pub fn weak_count(this: &Self) -> usize {
+}
 
     /// Gets the number of strong (`Arc`) pointers to this allocation.
     ///
@@ -20291,7 +19097,8 @@ impl<T: ?Sized> Arc<T> {
     #[inline]
     #[must_use]
     #[stable(feature = "arc_counts", since = "1.15.0")]
-    pub fn strong_count(this: &Self) -> usize {}
+    pub fn strong_count(this: &Self) -> usize {
+}
 
     /// Increments the strong reference count on the `Arc<T>` associated with the
     /// provided pointer by one.
@@ -20321,7 +19128,8 @@ impl<T: ?Sized> Arc<T> {
     /// ```
     #[inline]
     #[stable(feature = "arc_mutate_strong_count", since = "1.51.0")]
-    pub unsafe fn increment_strong_count(ptr: *const T) {}
+    pub unsafe fn increment_strong_count(ptr: *const T) {
+}
 
     /// Decrements the strong reference count on the `Arc<T>` associated with the
     /// provided pointer by one.
@@ -20355,14 +19163,17 @@ impl<T: ?Sized> Arc<T> {
     /// ```
     #[inline]
     #[stable(feature = "arc_mutate_strong_count", since = "1.51.0")]
-    pub unsafe fn decrement_strong_count(ptr: *const T) {}
+    pub unsafe fn decrement_strong_count(ptr: *const T) {
+}
 
     #[inline]
-    fn inner(&self) -> &ArcInner<T> {}
+    fn inner(&self) -> &ArcInner<T> {
+}
 
     // Non-inlined part of `drop`.
     #[inline(never)]
-    unsafe fn drop_slow(&mut self) {}
+    unsafe fn drop_slow(&mut self) {
+}
 
     /// Returns `true` if the two `Arc`s point to the same allocation
     /// (in a vein similar to [`ptr::eq`]).
@@ -20384,7 +19195,8 @@ impl<T: ?Sized> Arc<T> {
     #[inline]
     #[must_use]
     #[stable(feature = "ptr_eq", since = "1.17.0")]
-    pub fn ptr_eq(this: &Self, other: &Self) -> bool {}
+    pub fn ptr_eq(this: &Self, other: &Self) -> bool {
+}
 }
 
 impl<T: ?Sized> Arc<T> {
@@ -20398,7 +19210,8 @@ impl<T: ?Sized> Arc<T> {
         value_layout: Layout,
         allocate: impl FnOnce(Layout) -> Result<NonNull<[u8]>, AllocError>,
         mem_to_arcinner: impl FnOnce(*mut u8) -> *mut ArcInner<T>,
-    ) -> *mut ArcInner<T> {}
+    ) -> *mut ArcInner<T> {
+}
 
     /// Allocates an `ArcInner<T>` with sufficient space for
     /// a possibly-unsized inner value where the value has the layout provided,
@@ -20410,32 +19223,38 @@ impl<T: ?Sized> Arc<T> {
         value_layout: Layout,
         allocate: impl FnOnce(Layout) -> Result<NonNull<[u8]>, AllocError>,
         mem_to_arcinner: impl FnOnce(*mut u8) -> *mut ArcInner<T>,
-    ) -> Result<*mut ArcInner<T>, AllocError> {}
+    ) -> Result<*mut ArcInner<T>, AllocError> {
+}
 
     /// Allocates an `ArcInner<T>` with sufficient space for an unsized inner value.
     #[cfg(not(no_global_oom_handling))]
-    unsafe fn allocate_for_ptr(ptr: *const T) -> *mut ArcInner<T> {}
+    unsafe fn allocate_for_ptr(ptr: *const T) -> *mut ArcInner<T> {
+}
 
     #[cfg(not(no_global_oom_handling))]
-    fn from_box(v: Box<T>) -> Arc<T> {}
+    fn from_box(v: Box<T>) -> Arc<T> {
+}
 }
 
 impl<T> Arc<[T]> {
     /// Allocates an `ArcInner<[T]>` with the given length.
     #[cfg(not(no_global_oom_handling))]
-    unsafe fn allocate_for_slice(len: usize) -> *mut ArcInner<[T]> {}
+    unsafe fn allocate_for_slice(len: usize) -> *mut ArcInner<[T]> {
+}
 
     /// Copy elements from slice into newly allocated Arc<\[T\]>
     ///
     /// Unsafe because the caller must either take ownership or bind `T: Copy`.
     #[cfg(not(no_global_oom_handling))]
-    unsafe fn copy_from_slice(v: &[T]) -> Arc<[T]> {}
+    unsafe fn copy_from_slice(v: &[T]) -> Arc<[T]> {
+}
 
     /// Constructs an `Arc<[T]>` from an iterator known to be of a certain size.
     ///
     /// Behavior is undefined should the size be wrong.
     #[cfg(not(no_global_oom_handling))]
-    unsafe fn from_iter_exact(iter: impl iter::Iterator<Item = T>, len: usize) -> Arc<[T]> {}
+    unsafe fn from_iter_exact(iter: impl iter::Iterator<Item = T>, len: usize) -> Arc<[T]> {
+}
 }
 
 /// Specialization trait used for `From<&[T]>`.
@@ -20447,13 +19266,15 @@ trait ArcFromSlice<T> {
 #[cfg(not(no_global_oom_handling))]
 impl<T: Clone> ArcFromSlice<T> for Arc<[T]> {
     #[inline]
-    default fn from_slice(v: &[T]) -> Self {}
+    default fn from_slice(v: &[T]) -> Self {
+}
 }
 
 #[cfg(not(no_global_oom_handling))]
 impl<T: Copy> ArcFromSlice<T> for Arc<[T]> {
     #[inline]
-    fn from_slice(v: &[T]) -> Self {}
+    fn from_slice(v: &[T]) -> Self {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -20473,7 +19294,8 @@ impl<T: ?Sized> Clone for Arc<T> {
     /// let _ = Arc::clone(&five);
     /// ```
     #[inline]
-    fn clone(&self) -> Arc<T> {}
+    fn clone(&self) -> Arc<T> {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -20481,7 +19303,8 @@ impl<T: ?Sized> Deref for Arc<T> {
     type Target = T;
 
     #[inline]
-    fn deref(&self) -> &T {}
+    fn deref(&self) -> &T {
+}
 }
 
 #[unstable(feature = "receiver_trait", issue = "none")]
@@ -20541,7 +19364,8 @@ impl<T: Clone> Arc<T> {
     #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[stable(feature = "arc_unique", since = "1.4.0")]
-    pub fn make_mut(this: &mut Self) -> &mut T {}
+    pub fn make_mut(this: &mut Self) -> &mut T {
+}
 }
 
 impl<T: ?Sized> Arc<T> {
@@ -20571,7 +19395,8 @@ impl<T: ?Sized> Arc<T> {
     /// ```
     #[inline]
     #[stable(feature = "arc_unique", since = "1.4.0")]
-    pub fn get_mut(this: &mut Self) -> Option<&mut T> {}
+    pub fn get_mut(this: &mut Self) -> Option<&mut T> {
+}
 
     /// Returns a mutable reference into the given `Arc`,
     /// without any check.
@@ -20602,13 +19427,15 @@ impl<T: ?Sized> Arc<T> {
     /// ```
     #[inline]
     #[unstable(feature = "get_mut_unchecked", issue = "63292")]
-    pub unsafe fn get_mut_unchecked(this: &mut Self) -> &mut T {}
+    pub unsafe fn get_mut_unchecked(this: &mut Self) -> &mut T {
+}
 
     /// Determine whether this is the unique reference (including weak refs) to
     /// the underlying data.
     ///
     /// Note that this requires locking the weak ref count.
-    fn is_unique(&mut self) -> bool {}
+    fn is_unique(&mut self) -> bool {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -20627,7 +19454,9 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for Arc<T> {
     /// struct Foo;
     ///
     /// impl Drop for Foo {
-    ///     fn drop(&mut self) {}
+    ///     fn drop(&mut self) {
+    ///         println!("dropped!");
+    ///     }
     /// }
     ///
     /// let foo  = Arc::new(Foo);
@@ -20637,7 +19466,8 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for Arc<T> {
     /// drop(foo2);   // Prints "dropped!"
     /// ```
     #[inline]
-    fn drop(&mut self) {}
+    fn drop(&mut self) {
+}
 }
 
 impl Arc<dyn Any + Send + Sync> {
@@ -20651,7 +19481,11 @@ impl Arc<dyn Any + Send + Sync> {
     /// use std::any::Any;
     /// use std::sync::Arc;
     ///
-    /// fn print_if_string(value: Arc<dyn Any + Send + Sync>) {}
+    /// fn print_if_string(value: Arc<dyn Any + Send + Sync>) {
+    ///     if let Ok(string) = value.downcast::<String>() {
+    ///         println!("String ({}): {}", string.len(), string);
+    ///     }
+    /// }
     ///
     /// let my_string = "Hello World".to_string();
     /// print_if_string(Arc::new(my_string));
@@ -20660,7 +19494,8 @@ impl Arc<dyn Any + Send + Sync> {
     pub fn downcast<T>(self) -> Result<Arc<T>, Self>
     where
         T: Any + Send + Sync + 'static,
-    {}
+    {
+}
 }
 
 impl<T> Weak<T> {
@@ -20679,7 +19514,8 @@ impl<T> Weak<T> {
     /// ```
     #[stable(feature = "downgraded_weak", since = "1.10.0")]
     #[must_use]
-    pub fn new() -> Weak<T> {}
+    pub fn new() -> Weak<T> {
+}
 }
 
 /// Helper type to allow accessing the reference counts without
@@ -20717,7 +19553,8 @@ impl<T: ?Sized> Weak<T> {
     /// [`null`]: core::ptr::null "ptr::null"
     #[must_use]
     #[stable(feature = "weak_into_raw", since = "1.45.0")]
-    pub fn as_ptr(&self) -> *const T {}
+    pub fn as_ptr(&self) -> *const T {
+}
 
     /// Consumes the `Weak<T>` and turns it into a raw pointer.
     ///
@@ -20748,7 +19585,8 @@ impl<T: ?Sized> Weak<T> {
     /// [`as_ptr`]: Weak::as_ptr
     #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "weak_into_raw", since = "1.45.0")]
-    pub fn into_raw(self) -> *const T {}
+    pub fn into_raw(self) -> *const T {
+}
 
     /// Converts a raw pointer previously created by [`into_raw`] back into `Weak<T>`.
     ///
@@ -20792,7 +19630,8 @@ impl<T: ?Sized> Weak<T> {
     /// [`into_raw`]: Weak::into_raw
     /// [`upgrade`]: Weak::upgrade
     #[stable(feature = "weak_into_raw", since = "1.45.0")]
-    pub unsafe fn from_raw(ptr: *const T) -> Self {}
+    pub unsafe fn from_raw(ptr: *const T) -> Self {
+}
 }
 
 impl<T: ?Sized> Weak<T> {
@@ -20822,14 +19661,16 @@ impl<T: ?Sized> Weak<T> {
     #[must_use = "this returns a new `Arc`, \
                   without modifying the original weak pointer"]
     #[stable(feature = "arc_weak", since = "1.4.0")]
-    pub fn upgrade(&self) -> Option<Arc<T>> {}
+    pub fn upgrade(&self) -> Option<Arc<T>> {
+}
 
     /// Gets the number of strong (`Arc`) pointers pointing to this allocation.
     ///
     /// If `self` was created using [`Weak::new`], this will return 0.
     #[must_use]
     #[stable(feature = "weak_counts", since = "1.41.0")]
-    pub fn strong_count(&self) -> usize {}
+    pub fn strong_count(&self) -> usize {
+}
 
     /// Gets an approximation of the number of `Weak` pointers pointing to this
     /// allocation.
@@ -20844,12 +19685,14 @@ impl<T: ?Sized> Weak<T> {
     /// `Weak`s pointing to the same allocation.
     #[must_use]
     #[stable(feature = "weak_counts", since = "1.41.0")]
-    pub fn weak_count(&self) -> usize {}
+    pub fn weak_count(&self) -> usize {
+}
 
     /// Returns `None` when the pointer is dangling and there is no allocated `ArcInner`,
     /// (i.e., when this `Weak` was created by `Weak::new`).
     #[inline]
-    fn inner(&self) -> Option<WeakInner<'_>> {}
+    fn inner(&self) -> Option<WeakInner<'_>> {
+}
 
     /// Returns `true` if the two `Weak`s point to the same allocation (similar to
     /// [`ptr::eq`]), or if both don't point to any allocation
@@ -20895,7 +19738,8 @@ impl<T: ?Sized> Weak<T> {
     #[inline]
     #[must_use]
     #[stable(feature = "weak_ptr_eq", since = "1.39.0")]
-    pub fn ptr_eq(&self, other: &Self) -> bool {}
+    pub fn ptr_eq(&self, other: &Self) -> bool {
+}
 }
 
 #[stable(feature = "arc_weak", since = "1.4.0")]
@@ -20912,7 +19756,8 @@ impl<T: ?Sized> Clone for Weak<T> {
     /// let _ = Weak::clone(&weak_five);
     /// ```
     #[inline]
-    fn clone(&self) -> Weak<T> {}
+    fn clone(&self) -> Weak<T> {
+}
 }
 
 #[stable(feature = "downgraded_weak", since = "1.10.0")]
@@ -20931,7 +19776,8 @@ impl<T> Default for Weak<T> {
     /// let empty: Weak<i64> = Default::default();
     /// assert!(empty.upgrade().is_none());
     /// ```
-    fn default() -> Weak<T> {}
+    fn default() -> Weak<T> {
+}
 }
 
 #[stable(feature = "arc_weak", since = "1.4.0")]
@@ -20946,7 +19792,9 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for Weak<T> {
     /// struct Foo;
     ///
     /// impl Drop for Foo {
-    ///     fn drop(&mut self) {}
+    ///     fn drop(&mut self) {
+    ///         println!("dropped!");
+    ///     }
     /// }
     ///
     /// let foo = Arc::new(Foo);
@@ -20958,7 +19806,8 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for Weak<T> {
     ///
     /// assert!(other_weak_foo.upgrade().is_none());
     /// ```
-    fn drop(&mut self) {}
+    fn drop(&mut self) {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -20970,9 +19819,11 @@ trait ArcEqIdent<T: ?Sized + PartialEq> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + PartialEq> ArcEqIdent<T> for Arc<T> {
     #[inline]
-    default fn eq(&self, other: &Arc<T>) -> bool {}
+    default fn eq(&self, other: &Arc<T>) -> bool {
+}
     #[inline]
-    default fn ne(&self, other: &Arc<T>) -> bool {}
+    default fn ne(&self, other: &Arc<T>) -> bool {
+}
 }
 
 /// We're doing this specialization here, and not as a more general optimization on `&T`, because it
@@ -20985,10 +19836,12 @@ impl<T: ?Sized + PartialEq> ArcEqIdent<T> for Arc<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + crate::rc::MarkerEq> ArcEqIdent<T> for Arc<T> {
     #[inline]
-    fn eq(&self, other: &Arc<T>) -> bool {}
+    fn eq(&self, other: &Arc<T>) -> bool {
+}
 
     #[inline]
-    fn ne(&self, other: &Arc<T>) -> bool {}
+    fn ne(&self, other: &Arc<T>) -> bool {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -21011,7 +19864,8 @@ impl<T: ?Sized + PartialEq> PartialEq for Arc<T> {
     /// assert!(five == Arc::new(5));
     /// ```
     #[inline]
-    fn eq(&self, other: &Arc<T>) -> bool {}
+    fn eq(&self, other: &Arc<T>) -> bool {
+}
 
     /// Inequality for two `Arc`s.
     ///
@@ -21030,7 +19884,8 @@ impl<T: ?Sized + PartialEq> PartialEq for Arc<T> {
     /// assert!(five != Arc::new(6));
     /// ```
     #[inline]
-    fn ne(&self, other: &Arc<T>) -> bool {}
+    fn ne(&self, other: &Arc<T>) -> bool {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -21049,7 +19904,8 @@ impl<T: ?Sized + PartialOrd> PartialOrd for Arc<T> {
     ///
     /// assert_eq!(Some(Ordering::Less), five.partial_cmp(&Arc::new(6)));
     /// ```
-    fn partial_cmp(&self, other: &Arc<T>) -> Option<Ordering> {}
+    fn partial_cmp(&self, other: &Arc<T>) -> Option<Ordering> {
+}
 
     /// Less-than comparison for two `Arc`s.
     ///
@@ -21064,7 +19920,8 @@ impl<T: ?Sized + PartialOrd> PartialOrd for Arc<T> {
     ///
     /// assert!(five < Arc::new(6));
     /// ```
-    fn lt(&self, other: &Arc<T>) -> bool {}
+    fn lt(&self, other: &Arc<T>) -> bool {
+}
 
     /// 'Less than or equal to' comparison for two `Arc`s.
     ///
@@ -21079,7 +19936,8 @@ impl<T: ?Sized + PartialOrd> PartialOrd for Arc<T> {
     ///
     /// assert!(five <= Arc::new(5));
     /// ```
-    fn le(&self, other: &Arc<T>) -> bool {}
+    fn le(&self, other: &Arc<T>) -> bool {
+}
 
     /// Greater-than comparison for two `Arc`s.
     ///
@@ -21094,7 +19952,8 @@ impl<T: ?Sized + PartialOrd> PartialOrd for Arc<T> {
     ///
     /// assert!(five > Arc::new(4));
     /// ```
-    fn gt(&self, other: &Arc<T>) -> bool {}
+    fn gt(&self, other: &Arc<T>) -> bool {
+}
 
     /// 'Greater than or equal to' comparison for two `Arc`s.
     ///
@@ -21109,7 +19968,8 @@ impl<T: ?Sized + PartialOrd> PartialOrd for Arc<T> {
     ///
     /// assert!(five >= Arc::new(5));
     /// ```
-    fn ge(&self, other: &Arc<T>) -> bool {}
+    fn ge(&self, other: &Arc<T>) -> bool {
+}
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + Ord> Ord for Arc<T> {
@@ -21127,24 +19987,28 @@ impl<T: ?Sized + Ord> Ord for Arc<T> {
     ///
     /// assert_eq!(Ordering::Less, five.cmp(&Arc::new(6)));
     /// ```
-    fn cmp(&self, other: &Arc<T>) -> Ordering {}
+    fn cmp(&self, other: &Arc<T>) -> Ordering {
+}
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + Eq> Eq for Arc<T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + fmt::Display> fmt::Display for Arc<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + fmt::Debug> fmt::Debug for Arc<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> fmt::Pointer for Arc<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -21160,12 +20024,14 @@ impl<T: Default> Default for Arc<T> {
     /// let x: Arc<i32> = Default::default();
     /// assert_eq!(*x, 0);
     /// ```
-    fn default() -> Arc<T> {}
+    fn default() -> Arc<T> {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + Hash> Hash for Arc<T> {
-    fn hash<H: Hasher>(&self, state: &mut H) {}
+    fn hash<H: Hasher>(&self, state: &mut H) {
+}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -21185,7 +20051,8 @@ impl<T> From<T> for Arc<T> {
     ///
     /// assert_eq!(Arc::from(x), arc);
     /// ```
-    fn from(t: T) -> Self {}
+    fn from(t: T) -> Self {
+}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -21202,7 +20069,8 @@ impl<T: Clone> From<&[T]> for Arc<[T]> {
     /// assert_eq!(&[1, 2, 3], &shared[..]);
     /// ```
     #[inline]
-    fn from(v: &[T]) -> Arc<[T]> {}
+    fn from(v: &[T]) -> Arc<[T]> {
+}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -21218,7 +20086,8 @@ impl From<&str> for Arc<str> {
     /// assert_eq!("eggplant", &shared[..]);
     /// ```
     #[inline]
-    fn from(v: &str) -> Arc<str> {}
+    fn from(v: &str) -> Arc<str> {
+}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -21235,7 +20104,8 @@ impl From<String> for Arc<str> {
     /// assert_eq!("eggplant", &shared[..]);
     /// ```
     #[inline]
-    fn from(v: String) -> Arc<str> {}
+    fn from(v: String) -> Arc<str> {
+}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -21252,7 +20122,8 @@ impl<T: ?Sized> From<Box<T>> for Arc<T> {
     /// assert_eq!("eggplant", &shared[..]);
     /// ```
     #[inline]
-    fn from(v: Box<T>) -> Arc<T> {}
+    fn from(v: Box<T>) -> Arc<T> {
+}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -21269,7 +20140,8 @@ impl<T> From<Vec<T>> for Arc<[T]> {
     /// assert_eq!(&[1, 2, 3], &shared[..]);
     /// ```
     #[inline]
-    fn from(mut v: Vec<T>) -> Arc<[T]> {}
+    fn from(mut v: Vec<T>) -> Arc<[T]> {
+}
 }
 
 #[stable(feature = "shared_from_cow", since = "1.45.0")]
@@ -21291,14 +20163,16 @@ where
     /// assert_eq!("eggplant", &shared[..]);
     /// ```
     #[inline]
-    fn from(cow: Cow<'a, B>) -> Arc<B> {}
+    fn from(cow: Cow<'a, B>) -> Arc<B> {
+}
 }
 
 #[stable(feature = "boxed_slice_try_from", since = "1.43.0")]
 impl<T, const N: usize> TryFrom<Arc<[T]>> for Arc<[T; N]> {
     type Error = Arc<[T]>;
 
-    fn try_from(boxed_slice: Arc<[T]>) -> Result<Self, Self::Error> {}
+    fn try_from(boxed_slice: Arc<[T]>) -> Result<Self, Self::Error> {
+}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -21342,7 +20216,8 @@ impl<T> iter::FromIterator<T> for Arc<[T]> {
     /// let evens: Arc<[u8]> = (0..10).collect(); // Just a single allocation happens here.
     /// # assert_eq!(&*evens, &*(0..10).collect::<Vec<_>>());
     /// ```
-    fn from_iter<I: iter::IntoIterator<Item = T>>(iter: I) -> Self {}
+    fn from_iter<I: iter::IntoIterator<Item = T>>(iter: I) -> Self {
+}
 }
 
 /// Specialization trait used for collecting into `Arc<[T]>`.
@@ -21352,22 +20227,26 @@ trait ToArcSlice<T>: Iterator<Item = T> + Sized {
 
 #[cfg(not(no_global_oom_handling))]
 impl<T, I: Iterator<Item = T>> ToArcSlice<T> for I {
-    default fn to_arc_slice(self) -> Arc<[T]> {}
+    default fn to_arc_slice(self) -> Arc<[T]> {
+}
 }
 
 #[cfg(not(no_global_oom_handling))]
 impl<T, I: iter::TrustedLen<Item = T>> ToArcSlice<T> for I {
-    fn to_arc_slice(self) -> Arc<[T]> {}
+    fn to_arc_slice(self) -> Arc<[T]> {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> borrow::Borrow<T> for Arc<T> {
-    fn borrow(&self) -> &T {}
+    fn borrow(&self) -> &T {
+}
 }
 
 #[stable(since = "1.5.0", feature = "smart_ptr_as_ref")]
 impl<T: ?Sized> AsRef<T> for Arc<T> {
-    fn as_ref(&self) -> &T {}
+    fn as_ref(&self) -> &T {
+}
 }
 
 #[stable(feature = "pin", since = "1.33.0")]
@@ -21379,10 +20258,12 @@ impl<T: ?Sized> Unpin for Arc<T> {}
 ///
 /// The pointer must point to (and have valid metadata for) a previously
 /// valid instance of T, but the T is allowed to be dropped.
-unsafe fn data_offset<T: ?Sized>(ptr: *const T) -> isize {}
+unsafe fn data_offset<T: ?Sized>(ptr: *const T) -> isize {
+}
 
 #[inline]
-fn data_offset_align(align: usize) -> isize {}
+fn data_offset_align(align: usize) -> isize {
+}
 }
 #[cfg(all(not(no_global_oom_handling), target_has_atomic = "ptr"))]
 pub mod task {
@@ -21426,11 +20307,29 @@ use crate::sync::Arc;
 /// struct ThreadWaker(Thread);
 ///
 /// impl Wake for ThreadWaker {
-///     fn wake(self: Arc<Self>) {}
+///     fn wake(self: Arc<Self>) {
+///         self.0.unpark();
+///     }
 /// }
 ///
 /// /// Run a future to completion on the current thread.
-/// fn block_on<T>(fut: impl Future<Output = T>) -> T {}
+/// fn block_on<T>(fut: impl Future<Output = T>) -> T {
+///     // Pin the future so it can be polled.
+///     let mut fut = Box::pin(fut);
+///
+///     // Create a new context to be passed to the future.
+///     let t = thread::current();
+///     let waker = Arc::new(ThreadWaker(t)).into();
+///     let mut cx = Context::from_waker(&waker);
+///
+///     // Run the future to completion.
+///     loop {
+///         match fut.as_mut().poll(&mut cx) {
+///             Poll::Ready(res) => return res,
+///             Poll::Pending => thread::park(),
+///         }
+///     }
+/// }
 ///
 /// block_on(async {
 ///     println!("Hi from inside a future!");
@@ -21450,7 +20349,8 @@ pub trait Wake {
     ///
     /// [`wake`]: Wake::wake
     #[stable(feature = "wake_trait", since = "1.51.0")]
-    fn wake_by_ref(self: &Arc<Self>) {}
+    fn wake_by_ref(self: &Arc<Self>) {
+}
 }
 
 #[stable(feature = "wake_trait", since = "1.51.0")]
@@ -21458,7 +20358,8 @@ impl<W: Wake + Send + Sync + 'static> From<Arc<W>> for Waker {
     /// Use a `Wake`-able type as a `Waker`.
     ///
     /// No heap allocations or atomic operations are used for this conversion.
-    fn from(waker: Arc<W>) -> Waker {}
+    fn from(waker: Arc<W>) -> Waker {
+}
 }
 
 #[stable(feature = "wake_trait", since = "1.51.0")]
@@ -21466,7 +20367,8 @@ impl<W: Wake + Send + Sync + 'static> From<Arc<W>> for RawWaker {
     /// Use a `Wake`-able type as a `RawWaker`.
     ///
     /// No heap allocations or atomic operations are used for this conversion.
-    fn from(waker: Arc<W>) -> RawWaker {}
+    fn from(waker: Arc<W>) -> RawWaker {
+}
 }
 
 // NB: This private function for constructing a RawWaker is used, rather than
@@ -21475,55 +20377,11 @@ impl<W: Wake + Send + Sync + 'static> From<Arc<W>> for RawWaker {
 // trait dispatch - instead both impls call this function directly and
 // explicitly.
 #[inline(always)]
-fn raw_waker<W: Wake + Send + Sync + 'static>(waker: Arc<W>) -> RawWaker {}
+fn raw_waker<W: Wake + Send + Sync + 'static>(waker: Arc<W>) -> RawWaker {
+}
 }
 #[cfg(test)]
 mod tests {
-//! Test for `boxed` mod.
-
-use core::any::Any;
-use core::clone::Clone;
-use core::convert::TryInto;
-use core::ops::Deref;
-use core::result::Result::{Err, Ok};
-
-use std::boxed::Box;
-
-#[test]
-fn test_owned_clone() {}
-
-#[derive(PartialEq, Eq)]
-struct Test;
-
-#[test]
-fn any_move() {}
-
-#[test]
-fn test_show() {}
-
-#[test]
-fn deref() {}
-
-#[test]
-fn raw_sized() {}
-
-#[test]
-fn raw_trait() {}
-
-#[test]
-fn f64_slice() {}
-
-#[test]
-fn i64_slice() {}
-
-#[test]
-fn str_slice() {}
-
-#[test]
-fn boxed_slice_from_iter() {}
-
-#[test]
-fn test_array_from_slice() {}
 }
 pub mod vec {
 //! A contiguous growable array type with heap-allocated contents, written
@@ -21660,7 +20518,8 @@ where
     /// Returns a reference to the underlying allocator.
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
-    pub fn allocator(&self) -> &A {}
+    pub fn allocator(&self) -> &A {
+}
 }
 
 #[unstable(feature = "drain_filter", reason = "recently added", issue = "43244")]
@@ -21670,9 +20529,11 @@ where
 {
     type Item = T;
 
-    fn next(&mut self) -> Option<T> {}
+    fn next(&mut self) -> Option<T> {
+}
 
-    fn size_hint(&self) -> (usize, Option<usize>) {}
+    fn size_hint(&self) -> (usize, Option<usize>) {
+}
 }
 
 #[unstable(feature = "drain_filter", reason = "recently added", issue = "43244")]
@@ -21680,7 +20541,8 @@ impl<T, F, A: Allocator> Drop for DrainFilter<'_, T, F, A>
 where
     F: FnMut(&mut T) -> bool,
 {
-    fn drop(&mut self) {}
+    fn drop(&mut self) {
+}
 }
 }
 
@@ -21723,14 +20585,17 @@ pub struct Splice<
 impl<I: Iterator, A: Allocator> Iterator for Splice<'_, I, A> {
     type Item = I::Item;
 
-    fn next(&mut self) -> Option<Self::Item> {}
+    fn next(&mut self) -> Option<Self::Item> {
+}
 
-    fn size_hint(&self) -> (usize, Option<usize>) {}
+    fn size_hint(&self) -> (usize, Option<usize>) {
+}
 }
 
 #[stable(feature = "vec_splice", since = "1.21.0")]
 impl<I: Iterator, A: Allocator> DoubleEndedIterator for Splice<'_, I, A> {
-    fn next_back(&mut self) -> Option<Self::Item> {}
+    fn next_back(&mut self) -> Option<Self::Item> {
+}
 }
 
 #[stable(feature = "vec_splice", since = "1.21.0")]
@@ -21738,7 +20603,8 @@ impl<I: Iterator, A: Allocator> ExactSizeIterator for Splice<'_, I, A> {}
 
 #[stable(feature = "vec_splice", since = "1.21.0")]
 impl<I: Iterator, A: Allocator> Drop for Splice<'_, I, A> {
-    fn drop(&mut self) {}
+    fn drop(&mut self) {
+}
 }
 
 /// Private helper methods for `Splice::drop`
@@ -21747,10 +20613,12 @@ impl<T, A: Allocator> Drain<'_, T, A> {
     /// that have been moved out.
     /// Fill that range as much as possible with new elements from the `replace_with` iterator.
     /// Returns `true` if we filled the entire range. (`replace_with.next()` didn’t return `None`.)
-    unsafe fn fill<I: Iterator<Item = T>>(&mut self, replace_with: &mut I) -> bool {}
+    unsafe fn fill<I: Iterator<Item = T>>(&mut self, replace_with: &mut I) -> bool {
+}
 
     /// Makes room for inserting more elements before the tail.
-    unsafe fn move_tail(&mut self, additional: usize) {}
+    unsafe fn move_tail(&mut self, additional: usize) {
+}
 }
 }
 
@@ -21795,7 +20663,8 @@ pub struct Drain<
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<T: fmt::Debug, A: Allocator> fmt::Debug for Drain<'_, T, A> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
 }
 
 impl<'a, T, A: Allocator> Drain<'a, T, A> {
@@ -21812,18 +20681,21 @@ impl<'a, T, A: Allocator> Drain<'a, T, A> {
     /// ```
     #[must_use]
     #[stable(feature = "vec_drain_as_slice", since = "1.46.0")]
-    pub fn as_slice(&self) -> &[T] {}
+    pub fn as_slice(&self) -> &[T] {
+}
 
     /// Returns a reference to the underlying allocator.
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[must_use]
     #[inline]
-    pub fn allocator(&self) -> &A {}
+    pub fn allocator(&self) -> &A {
+}
 }
 
 #[stable(feature = "vec_drain_as_slice", since = "1.46.0")]
 impl<'a, T, A: Allocator> AsRef<[T]> for Drain<'a, T, A> {
-    fn as_ref(&self) -> &[T] {}
+    fn as_ref(&self) -> &[T] {
+}
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
@@ -21836,25 +20708,30 @@ impl<T, A: Allocator> Iterator for Drain<'_, T, A> {
     type Item = T;
 
     #[inline]
-    fn next(&mut self) -> Option<T> {}
+    fn next(&mut self) -> Option<T> {
+}
 
-    fn size_hint(&self) -> (usize, Option<usize>) {}
+    fn size_hint(&self) -> (usize, Option<usize>) {
+}
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
 impl<T, A: Allocator> DoubleEndedIterator for Drain<'_, T, A> {
     #[inline]
-    fn next_back(&mut self) -> Option<T> {}
+    fn next_back(&mut self) -> Option<T> {
+}
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
 impl<T, A: Allocator> Drop for Drain<'_, T, A> {
-    fn drop(&mut self) {}
+    fn drop(&mut self) {
+}
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
 impl<T, A: Allocator> ExactSizeIterator for Drain<'_, T, A> {
-    fn is_empty(&self) -> bool {}
+    fn is_empty(&self) -> bool {
+}
 }
 
 #[unstable(feature = "trusted_len", issue = "37572")]
@@ -21879,7 +20756,8 @@ impl<'a, T: Clone> From<&'a [T]> for Cow<'a, [T]> {
     /// This conversion does not allocate or clone the data.
     ///
     /// [`Borrowed`]: crate::borrow::Cow::Borrowed
-    fn from(s: &'a [T]) -> Cow<'a, [T]> {}
+    fn from(s: &'a [T]) -> Cow<'a, [T]> {
+}
 }
 
 #[stable(feature = "cow_from_vec", since = "1.8.0")]
@@ -21890,7 +20768,8 @@ impl<'a, T: Clone> From<Vec<T>> for Cow<'a, [T]> {
     /// This conversion does not allocate or clone the data.
     ///
     /// [`Owned`]: crate::borrow::Cow::Owned
-    fn from(v: Vec<T>) -> Cow<'a, [T]> {}
+    fn from(v: Vec<T>) -> Cow<'a, [T]> {
+}
 }
 
 #[stable(feature = "cow_from_vec_ref", since = "1.28.0")]
@@ -21901,7 +20780,8 @@ impl<'a, T: Clone> From<&'a Vec<T>> for Cow<'a, [T]> {
     /// This conversion does not allocate or clone the data.
     ///
     /// [`Borrowed`]: crate::borrow::Cow::Borrowed
-    fn from(v: &'a Vec<T>) -> Cow<'a, [T]> {}
+    fn from(v: &'a Vec<T>) -> Cow<'a, [T]> {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -21909,7 +20789,8 @@ impl<'a, T> FromIterator<T> for Cow<'a, [T]>
 where
     T: Clone,
 {
-    fn from_iter<I: IntoIterator<Item = T>>(it: I) -> Cow<'a, [T]> {}
+    fn from_iter<I: IntoIterator<Item = T>>(it: I) -> Cow<'a, [T]> {
+}
 }
 }
 
@@ -21958,7 +20839,8 @@ pub struct IntoIter<
 
 #[stable(feature = "vec_intoiter_debug", since = "1.13.0")]
 impl<T: fmt::Debug, A: Allocator> fmt::Debug for IntoIter<T, A> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
 }
 
 impl<T, A: Allocator> IntoIter<T, A> {
@@ -21974,7 +20856,8 @@ impl<T, A: Allocator> IntoIter<T, A> {
     /// assert_eq!(into_iter.as_slice(), &['b', 'c']);
     /// ```
     #[stable(feature = "vec_into_iter_as_slice", since = "1.15.0")]
-    pub fn as_slice(&self) -> &[T] {}
+    pub fn as_slice(&self) -> &[T] {
+}
 
     /// Returns the remaining items of this iterator as a mutable slice.
     ///
@@ -21990,14 +20873,17 @@ impl<T, A: Allocator> IntoIter<T, A> {
     /// assert_eq!(into_iter.next().unwrap(), 'z');
     /// ```
     #[stable(feature = "vec_into_iter_as_slice", since = "1.15.0")]
-    pub fn as_mut_slice(&mut self) -> &mut [T] {}
+    pub fn as_mut_slice(&mut self) -> &mut [T] {
+}
 
     /// Returns a reference to the underlying allocator.
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
-    pub fn allocator(&self) -> &A {}
+    pub fn allocator(&self) -> &A {
+}
 
-    fn as_raw_mut_slice(&mut self) -> *mut [T] {}
+    fn as_raw_mut_slice(&mut self) -> *mut [T] {
+}
 
     /// Drops remaining elements and relinquishes the backing allocation.
     ///
@@ -22009,12 +20895,14 @@ impl<T, A: Allocator> IntoIter<T, A> {
     /// unsafe { core::ptr::write(&mut into_iter, Vec::new().into_iter()); }
     /// ```
     #[cfg(not(no_global_oom_handling))]
-    pub(super) fn forget_allocation_drop_remaining(&mut self) {}
+    pub(super) fn forget_allocation_drop_remaining(&mut self) {
+}
 }
 
 #[stable(feature = "vec_intoiter_as_ref", since = "1.46.0")]
 impl<T, A: Allocator> AsRef<[T]> for IntoIter<T, A> {
-    fn as_ref(&self) -> &[T] {}
+    fn as_ref(&self) -> &[T] {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -22027,36 +20915,44 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
     type Item = T;
 
     #[inline]
-    fn next(&mut self) -> Option<T> {}
+    fn next(&mut self) -> Option<T> {
+}
 
     #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {}
+    fn size_hint(&self) -> (usize, Option<usize>) {
+}
 
     #[inline]
-    fn advance_by(&mut self, n: usize) -> Result<(), usize> {}
+    fn advance_by(&mut self, n: usize) -> Result<(), usize> {
+}
 
     #[inline]
-    fn count(self) -> usize {}
+    fn count(self) -> usize {
+}
 
     #[doc(hidden)]
     unsafe fn __iterator_get_unchecked(&mut self, i: usize) -> Self::Item
     where
         Self: TrustedRandomAccessNoCoerce,
-    {}
+    {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, A: Allocator> DoubleEndedIterator for IntoIter<T, A> {
     #[inline]
-    fn next_back(&mut self) -> Option<T> {}
+    fn next_back(&mut self) -> Option<T> {
+}
 
     #[inline]
-    fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {}
+    fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, A: Allocator> ExactSizeIterator for IntoIter<T, A> {
-    fn is_empty(&self) -> bool {}
+    fn is_empty(&self) -> bool {
+}
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -22090,14 +20986,17 @@ where
 #[stable(feature = "vec_into_iter_clone", since = "1.8.0")]
 impl<T: Clone, A: Allocator + Clone> Clone for IntoIter<T, A> {
     #[cfg(not(test))]
-    fn clone(&self) -> Self {}
+    fn clone(&self) -> Self {
+}
     #[cfg(test)]
-    fn clone(&self) -> Self {}
+    fn clone(&self) -> Self {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<#[may_dangle] T, A: Allocator> Drop for IntoIter<T, A> {
-    fn drop(&mut self) {}
+    fn drop(&mut self) {
+}
 }
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
@@ -22110,7 +21009,8 @@ unsafe impl<T, A: Allocator> SourceIter for IntoIter<T, A> {
     type Source = Self;
 
     #[inline]
-    unsafe fn as_inner(&mut self) -> &mut Self::Source {}
+    unsafe fn as_inner(&mut self) -> &mut Self::Source {
+}
 }
 
 // internal helper trait for in-place iteration specialization.
@@ -22123,7 +21023,8 @@ pub(crate) trait AsIntoIter {
 impl<T> AsIntoIter for IntoIter<T> {
     type Item = T;
 
-    fn as_into_iter(&mut self) -> &mut IntoIter<Self::Item> {}
+    fn as_into_iter(&mut self) -> &mut IntoIter<Self::Item> {
+}
 }
 }
 
@@ -22143,7 +21044,8 @@ macro_rules! impl_is_zero {
     ($t:ty, $is_zero:expr) => {
         unsafe impl IsZero for $t {
             #[inline]
-            fn is_zero(&self) -> bool {}
+            fn is_zero(&self) -> bool {
+}
         }
     };
 }
@@ -22168,12 +21070,14 @@ impl_is_zero!(f64, |x: f64| x.to_bits() == 0);
 
 unsafe impl<T> IsZero for *const T {
     #[inline]
-    fn is_zero(&self) -> bool {}
+    fn is_zero(&self) -> bool {
+}
 }
 
 unsafe impl<T> IsZero for *mut T {
     #[inline]
-    fn is_zero(&self) -> bool {}
+    fn is_zero(&self) -> bool {
+}
 }
 
 // `Option<&T>` and `Option<Box<T>>` are guaranteed to represent `None` as null.
@@ -22185,12 +21089,14 @@ unsafe impl<T> IsZero for *mut T {
 
 unsafe impl<T: ?Sized> IsZero for Option<&T> {
     #[inline]
-    fn is_zero(&self) -> bool {}
+    fn is_zero(&self) -> bool {
+}
 }
 
 unsafe impl<T: ?Sized> IsZero for Option<Box<T>> {
     #[inline]
-    fn is_zero(&self) -> bool {}
+    fn is_zero(&self) -> bool {
+}
 }
 
 // `Option<num::NonZeroU32>` and similar have a representation guarantee that
@@ -22204,7 +21110,8 @@ macro_rules! impl_is_zero_option_of_nonzero {
     ($($t:ident,)+) => {$(
         unsafe impl IsZero for Option<core::num::$t> {
             #[inline]
-            fn is_zero(&self) -> bool {}
+            fn is_zero(&self) -> bool {
+}
         }
     )+};
 }
@@ -22244,12 +21151,14 @@ impl<T, I> SpecFromIter<T, I> for Vec<T>
 where
     I: Iterator<Item = T> + SourceIter<Source: AsIntoIter> + InPlaceIterableMarker,
 {
-    default fn from_iter(mut iterator: I) -> Self {}
+    default fn from_iter(mut iterator: I) -> Self {
+}
 }
 
 fn write_in_place_with_drop<T>(
     src_end: *const T,
-) -> impl FnMut(InPlaceDrop<T>, T) -> Result<InPlaceDrop<T>, !> {}
+) -> impl FnMut(InPlaceDrop<T>, T) -> Result<InPlaceDrop<T>, !> {
+}
 
 /// Helper trait to hold specialized implementations of the in-place iterate-collect loop
 trait SpecInPlaceCollect<T, I>: Iterator<Item = T> {
@@ -22268,7 +21177,8 @@ where
     I: Iterator<Item = T>,
 {
     #[inline]
-    default fn collect_in_place(&mut self, dst_buf: *mut T, end: *const T) -> usize {}
+    default fn collect_in_place(&mut self, dst_buf: *mut T, end: *const T) -> usize {
+}
 }
 
 impl<T, I> SpecInPlaceCollect<T, I> for I
@@ -22276,7 +21186,8 @@ where
     I: Iterator<Item = T> + TrustedRandomAccessNoCoerce,
 {
     #[inline]
-    fn collect_in_place(&mut self, dst_buf: *mut T, end: *const T) -> usize {}
+    fn collect_in_place(&mut self, dst_buf: *mut T, end: *const T) -> usize {
+}
 }
 }
 
@@ -22296,9 +21207,9 @@ macro_rules! __impl_slice_eq1 {
             $($ty: $bound)?
         {
             #[inline]
-            fn eq(&self, other: &$rhs) -> bool {}
+            fn eq(&self, other: &$rhs) -> bool { }
             #[inline]
-            fn ne(&self, other: &$rhs) -> bool {}
+            fn ne(&self, other: &$rhs) -> bool { }
         }
     }
 }
@@ -22347,22 +21258,26 @@ pub(super) trait SpecFromElem: Sized {
 }
 
 impl<T: Clone> SpecFromElem for T {
-    default fn from_elem<A: Allocator>(elem: Self, n: usize, alloc: A) -> Vec<Self, A> {}
+    default fn from_elem<A: Allocator>(elem: Self, n: usize, alloc: A) -> Vec<Self, A> {
+}
 }
 
 impl SpecFromElem for i8 {
     #[inline]
-    fn from_elem<A: Allocator>(elem: i8, n: usize, alloc: A) -> Vec<i8, A> {}
+    fn from_elem<A: Allocator>(elem: i8, n: usize, alloc: A) -> Vec<i8, A> {
+}
 }
 
 impl SpecFromElem for u8 {
     #[inline]
-    fn from_elem<A: Allocator>(elem: u8, n: usize, alloc: A) -> Vec<u8, A> {}
+    fn from_elem<A: Allocator>(elem: u8, n: usize, alloc: A) -> Vec<u8, A> {
+}
 }
 
 impl<T: Clone + IsZero> SpecFromElem for T {
     #[inline]
-    fn from_elem<A: Allocator>(elem: T, n: usize, alloc: A) -> Vec<T, A> {}
+    fn from_elem<A: Allocator>(elem: T, n: usize, alloc: A) -> Vec<T, A> {
+}
 }
 }
 
@@ -22383,15 +21298,18 @@ pub(super) struct SetLenOnDrop<'a> {
 
 impl<'a> SetLenOnDrop<'a> {
     #[inline]
-    pub(super) fn new(len: &'a mut usize) -> Self {}
+    pub(super) fn new(len: &'a mut usize) -> Self {
+}
 
     #[inline]
-    pub(super) fn increment_len(&mut self, increment: usize) {}
+    pub(super) fn increment_len(&mut self, increment: usize) {
+}
 }
 
 impl Drop for SetLenOnDrop<'_> {
     #[inline]
-    fn drop(&mut self) {}
+    fn drop(&mut self) {
+}
 }
 }
 
@@ -22411,12 +21329,14 @@ pub(super) struct InPlaceDrop<T> {
 }
 
 impl<T> InPlaceDrop<T> {
-    fn len(&self) -> usize {}
+    fn len(&self) -> usize {
+}
 }
 
 impl<T> Drop for InPlaceDrop<T> {
     #[inline]
-    fn drop(&mut self) {}
+    fn drop(&mut self) {
+}
 }
 }
 
@@ -22441,14 +21361,16 @@ impl<T, I> SpecFromIterNested<T, I> for Vec<T>
 where
     I: Iterator<Item = T>,
 {
-    default fn from_iter(mut iterator: I) -> Self {}
+    default fn from_iter(mut iterator: I) -> Self {
+}
 }
 
 impl<T, I> SpecFromIterNested<T, I> for Vec<T>
 where
     I: TrustedLen<Item = T>,
 {
-    fn from_iter(iterator: I) -> Self {}
+    fn from_iter(iterator: I) -> Self {
+}
 }
 }
 
@@ -22488,11 +21410,13 @@ impl<T, I> SpecFromIter<T, I> for Vec<T>
 where
     I: Iterator<Item = T>,
 {
-    default fn from_iter(iterator: I) -> Self {}
+    default fn from_iter(iterator: I) -> Self {
+}
 }
 
 impl<T> SpecFromIter<T, IntoIter<T>> for Vec<T> {
-    fn from_iter(iterator: IntoIter<T>) -> Self {}
+    fn from_iter(iterator: IntoIter<T>) -> Self {
+}
 }
 }
 
@@ -22517,18 +21441,21 @@ impl<T, I, A: Allocator> SpecExtend<T, I> for Vec<T, A>
 where
     I: Iterator<Item = T>,
 {
-    default fn spec_extend(&mut self, iter: I) {}
+    default fn spec_extend(&mut self, iter: I) {
+}
 }
 
 impl<T, I, A: Allocator> SpecExtend<T, I> for Vec<T, A>
 where
     I: TrustedLen<Item = T>,
 {
-    default fn spec_extend(&mut self, iterator: I) {}
+    default fn spec_extend(&mut self, iterator: I) {
+}
 }
 
 impl<T, A: Allocator> SpecExtend<T, IntoIter<T>> for Vec<T, A> {
-    fn spec_extend(&mut self, mut iterator: IntoIter<T>) {}
+    fn spec_extend(&mut self, mut iterator: IntoIter<T>) {
+}
 }
 
 impl<'a, T: 'a, I, A: Allocator + 'a> SpecExtend<&'a T, I> for Vec<T, A>
@@ -22536,14 +21463,16 @@ where
     I: Iterator<Item = &'a T>,
     T: Clone,
 {
-    default fn spec_extend(&mut self, iterator: I) {}
+    default fn spec_extend(&mut self, iterator: I) {
+}
 }
 
 impl<'a, T: 'a, A: Allocator + 'a> SpecExtend<&'a T, slice::Iter<'a, T>> for Vec<T, A>
 where
     T: Copy,
 {
-    fn spec_extend(&mut self, iterator: slice::Iter<'a, T>) {}
+    fn spec_extend(&mut self, iterator: slice::Iter<'a, T>) {
+}
 }
 }
 
@@ -22641,7 +21570,9 @@ where
 /// To get a [slice][prim@slice], use [`&`]. Example:
 ///
 /// ```
-/// fn read_slice(slice: &[usize]) {}
+/// fn read_slice(slice: &[usize]) {
+///     // ...
+/// }
 ///
 /// let v = vec![0, 1];
 /// read_slice(&v);
@@ -22818,7 +21749,8 @@ impl<T> Vec<T> {
     #[rustc_const_stable(feature = "const_vec_new", since = "1.39.0")]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
-    pub const fn new() -> Self {}
+    pub const fn new() -> Self {
+}
 
     /// Constructs a new, empty `Vec<T>` with the specified capacity.
     ///
@@ -22861,7 +21793,8 @@ impl<T> Vec<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
-    pub fn with_capacity(capacity: usize) -> Self {}
+    pub fn with_capacity(capacity: usize) -> Self {
+}
 
     /// Creates a `Vec<T>` directly from the raw components of another vector.
     ///
@@ -22927,7 +21860,8 @@ impl<T> Vec<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub unsafe fn from_raw_parts(ptr: *mut T, length: usize, capacity: usize) -> Self {}
+    pub unsafe fn from_raw_parts(ptr: *mut T, length: usize, capacity: usize) -> Self {
+}
 }
 
 impl<T, A: Allocator> Vec<T, A> {
@@ -22947,7 +21881,8 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
-    pub const fn new_in(alloc: A) -> Self {}
+    pub const fn new_in(alloc: A) -> Self {
+}
 
     /// Constructs a new, empty `Vec<T, A>` with the specified capacity with the provided
     /// allocator.
@@ -22994,7 +21929,8 @@ impl<T, A: Allocator> Vec<T, A> {
     #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
-    pub fn with_capacity_in(capacity: usize, alloc: A) -> Self {}
+    pub fn with_capacity_in(capacity: usize, alloc: A) -> Self {
+}
 
     /// Creates a `Vec<T, A>` directly from the raw components of another vector.
     ///
@@ -23068,7 +22004,8 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
-    pub unsafe fn from_raw_parts_in(ptr: *mut T, length: usize, capacity: usize, alloc: A) -> Self {}
+    pub unsafe fn from_raw_parts_in(ptr: *mut T, length: usize, capacity: usize, alloc: A) -> Self {
+}
 
     /// Decomposes a `Vec<T>` into its raw components.
     ///
@@ -23103,7 +22040,8 @@ impl<T, A: Allocator> Vec<T, A> {
     /// assert_eq!(rebuilt, [4294967295, 0, 1]);
     /// ```
     #[unstable(feature = "vec_into_raw_parts", reason = "new API", issue = "65816")]
-    pub fn into_raw_parts(self) -> (*mut T, usize, usize) {}
+    pub fn into_raw_parts(self) -> (*mut T, usize, usize) {
+}
 
     /// Decomposes a `Vec<T>` into its raw components.
     ///
@@ -23144,7 +22082,8 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[unstable(feature = "allocator_api", issue = "32838")]
     // #[unstable(feature = "vec_into_raw_parts", reason = "new API", issue = "65816")]
-    pub fn into_raw_parts_with_alloc(self) -> (*mut T, usize, usize, A) {}
+    pub fn into_raw_parts_with_alloc(self) -> (*mut T, usize, usize, A) {
+}
 
     /// Returns the number of elements the vector can hold without
     /// reallocating.
@@ -23157,7 +22096,8 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn capacity(&self) -> usize {}
+    pub fn capacity(&self) -> usize {
+}
 
     /// Reserves capacity for at least `additional` more elements to be inserted
     /// in the given `Vec<T>`. The collection may reserve more space to avoid
@@ -23178,7 +22118,8 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn reserve(&mut self, additional: usize) {}
+    pub fn reserve(&mut self, additional: usize) {
+}
 
     /// Reserves the minimum capacity for exactly `additional` more elements to
     /// be inserted in the given `Vec<T>`. After calling `reserve_exact`,
@@ -23204,7 +22145,8 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn reserve_exact(&mut self, additional: usize) {}
+    pub fn reserve_exact(&mut self, additional: usize) {
+}
 
     /// Tries to reserve capacity for at least `additional` more elements to be inserted
     /// in the given `Vec<T>`. The collection may reserve more space to avoid
@@ -23222,11 +22164,24 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     /// use std::collections::TryReserveError;
     ///
-    /// fn process_data(data: &[u32]) -> Result<Vec<u32>, TryReserveError> {}
+    /// fn process_data(data: &[u32]) -> Result<Vec<u32>, TryReserveError> {
+    ///     let mut output = Vec::new();
+    ///
+    ///     // Pre-reserve the memory, exiting if we can't
+    ///     output.try_reserve(data.len())?;
+    ///
+    ///     // Now we know this can't OOM in the middle of our complex work
+    ///     output.extend(data.iter().map(|&val| {
+    ///         val * 2 + 5 // very complicated
+    ///     }));
+    ///
+    ///     Ok(output)
+    /// }
     /// # process_data(&[1, 2, 3]).expect("why is the test harness OOMing on 12 bytes?");
     /// ```
     #[stable(feature = "try_reserve", since = "1.57.0")]
-    pub fn try_reserve(&mut self, additional: usize) -> Result<(), TryReserveError> {}
+    pub fn try_reserve(&mut self, additional: usize) -> Result<(), TryReserveError> {
+}
 
     /// Tries to reserve the minimum capacity for exactly `additional`
     /// elements to be inserted in the given `Vec<T>`. After calling
@@ -23250,11 +22205,24 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     /// use std::collections::TryReserveError;
     ///
-    /// fn process_data(data: &[u32]) -> Result<Vec<u32>, TryReserveError> {}
+    /// fn process_data(data: &[u32]) -> Result<Vec<u32>, TryReserveError> {
+    ///     let mut output = Vec::new();
+    ///
+    ///     // Pre-reserve the memory, exiting if we can't
+    ///     output.try_reserve_exact(data.len())?;
+    ///
+    ///     // Now we know this can't OOM in the middle of our complex work
+    ///     output.extend(data.iter().map(|&val| {
+    ///         val * 2 + 5 // very complicated
+    ///     }));
+    ///
+    ///     Ok(output)
+    /// }
     /// # process_data(&[1, 2, 3]).expect("why is the test harness OOMing on 12 bytes?");
     /// ```
     #[stable(feature = "try_reserve", since = "1.57.0")]
-    pub fn try_reserve_exact(&mut self, additional: usize) -> Result<(), TryReserveError> {}
+    pub fn try_reserve_exact(&mut self, additional: usize) -> Result<(), TryReserveError> {
+}
 
     /// Shrinks the capacity of the vector as much as possible.
     ///
@@ -23272,7 +22240,8 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn shrink_to_fit(&mut self) {}
+    pub fn shrink_to_fit(&mut self) {
+}
 
     /// Shrinks the capacity of the vector with a lower bound.
     ///
@@ -23294,7 +22263,8 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "shrink_to", since = "1.56.0")]
-    pub fn shrink_to(&mut self, min_capacity: usize) {}
+    pub fn shrink_to(&mut self, min_capacity: usize) {
+}
 
     /// Converts the vector into [`Box<[T]>`][owned slice].
     ///
@@ -23322,7 +22292,8 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn into_boxed_slice(mut self) -> Box<[T], A> {}
+    pub fn into_boxed_slice(mut self) -> Box<[T], A> {
+}
 
     /// Shortens the vector, keeping the first `len` elements and dropping
     /// the rest.
@@ -23367,7 +22338,8 @@ impl<T, A: Allocator> Vec<T, A> {
     /// [`clear`]: Vec::clear
     /// [`drain`]: Vec::drain
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn truncate(&mut self, len: usize) {}
+    pub fn truncate(&mut self, len: usize) {
+}
 
     /// Extracts a slice containing the entire vector.
     ///
@@ -23382,7 +22354,8 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[inline]
     #[stable(feature = "vec_as_slice", since = "1.7.0")]
-    pub fn as_slice(&self) -> &[T] {}
+    pub fn as_slice(&self) -> &[T] {
+}
 
     /// Extracts a mutable slice of the entire vector.
     ///
@@ -23397,7 +22370,8 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[inline]
     #[stable(feature = "vec_as_slice", since = "1.7.0")]
-    pub fn as_mut_slice(&mut self) -> &mut [T] {}
+    pub fn as_mut_slice(&mut self) -> &mut [T] {
+}
 
     /// Returns a raw pointer to the vector's buffer.
     ///
@@ -23426,7 +22400,8 @@ impl<T, A: Allocator> Vec<T, A> {
     /// [`as_mut_ptr`]: Vec::as_mut_ptr
     #[stable(feature = "vec_as_ptr", since = "1.37.0")]
     #[inline]
-    pub fn as_ptr(&self) -> *const T {}
+    pub fn as_ptr(&self) -> *const T {
+}
 
     /// Returns an unsafe mutable pointer to the vector's buffer.
     ///
@@ -23454,12 +22429,14 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[stable(feature = "vec_as_ptr", since = "1.37.0")]
     #[inline]
-    pub fn as_mut_ptr(&mut self) -> *mut T {}
+    pub fn as_mut_ptr(&mut self) -> *mut T {
+}
 
     /// Returns a reference to the underlying allocator.
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
-    pub fn allocator(&self) -> &A {}
+    pub fn allocator(&self) -> &A {
+}
 
     /// Forces the length of the vector to `new_len`.
     ///
@@ -23499,7 +22476,26 @@ impl<T, A: Allocator> Vec<T, A> {
     /// #     ) -> i32;
     /// # }
     /// # impl StreamWrapper {
-    /// pub fn get_dictionary(&self) -> Option<Vec<u8>> {}
+    /// pub fn get_dictionary(&self) -> Option<Vec<u8>> {
+    ///     // Per the FFI method's docs, "32768 bytes is always enough".
+    ///     let mut dict = Vec::with_capacity(32_768);
+    ///     let mut dict_length = 0;
+    ///     // SAFETY: When `deflateGetDictionary` returns `Z_OK`, it holds that:
+    ///     // 1. `dict_length` elements were initialized.
+    ///     // 2. `dict_length` <= the capacity (32_768)
+    ///     // which makes `set_len` safe to call.
+    ///     unsafe {
+    ///         // Make the FFI call...
+    ///         let r = deflateGetDictionary(self.strm, dict.as_mut_ptr(), &mut dict_length);
+    ///         if r == Z_OK {
+    ///             // ...and update the length to what was initialized.
+    ///             dict.set_len(dict_length);
+    ///             Some(dict)
+    ///         } else {
+    ///             None
+    ///         }
+    ///     }
+    /// }
     /// # }
     /// ```
     ///
@@ -23522,7 +22518,8 @@ impl<T, A: Allocator> Vec<T, A> {
     /// the contents and thus not leak memory.
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub unsafe fn set_len(&mut self, new_len: usize) {}
+    pub unsafe fn set_len(&mut self, new_len: usize) {
+}
 
     /// Removes an element from the vector and returns it.
     ///
@@ -23547,7 +22544,8 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn swap_remove(&mut self, index: usize) -> T {}
+    pub fn swap_remove(&mut self, index: usize) -> T {
+}
 
     /// Inserts an element at position `index` within the vector, shifting all
     /// elements after it to the right.
@@ -23567,7 +22565,8 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn insert(&mut self, index: usize, element: T) {}
+    pub fn insert(&mut self, index: usize, element: T) {
+}
 
     /// Removes and returns the element at position `index` within the vector,
     /// shifting all elements after it to the left.
@@ -23591,7 +22590,8 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[track_caller]
-    pub fn remove(&mut self, index: usize) -> T {}
+    pub fn remove(&mut self, index: usize) -> T {
+}
 
     /// Retains only the elements specified by the predicate.
     ///
@@ -23621,7 +22621,8 @@ impl<T, A: Allocator> Vec<T, A> {
     pub fn retain<F>(&mut self, mut f: F)
     where
         F: FnMut(&T) -> bool,
-    {}
+    {
+}
 
     /// Removes all but the first of consecutive elements in the vector that resolve to the same
     /// key.
@@ -23643,7 +22644,8 @@ impl<T, A: Allocator> Vec<T, A> {
     where
         F: FnMut(&mut T) -> K,
         K: PartialEq,
-    {}
+    {
+}
 
     /// Removes all but the first of consecutive elements in the vector satisfying a given equality
     /// relation.
@@ -23667,7 +22669,8 @@ impl<T, A: Allocator> Vec<T, A> {
     pub fn dedup_by<F>(&mut self, mut same_bucket: F)
     where
         F: FnMut(&mut T, &mut T) -> bool,
-    {}
+    {
+}
 
     /// Appends an element to the back of a collection.
     ///
@@ -23685,7 +22688,8 @@ impl<T, A: Allocator> Vec<T, A> {
     #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn push(&mut self, value: T) {}
+    pub fn push(&mut self, value: T) {
+}
 
     /// Removes the last element from a vector and returns it, or [`None`] if it
     /// is empty.
@@ -23699,7 +22703,8 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn pop(&mut self) -> Option<T> {}
+    pub fn pop(&mut self) -> Option<T> {
+}
 
     /// Moves all the elements of `other` into `Self`, leaving `other` empty.
     ///
@@ -23719,12 +22724,14 @@ impl<T, A: Allocator> Vec<T, A> {
     #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[stable(feature = "append", since = "1.4.0")]
-    pub fn append(&mut self, other: &mut Self) {}
+    pub fn append(&mut self, other: &mut Self) {
+}
 
     /// Appends elements to `Self` from other buffer.
     #[cfg(not(no_global_oom_handling))]
     #[inline]
-    unsafe fn append_elements(&mut self, other: *const [T]) {}
+    unsafe fn append_elements(&mut self, other: *const [T]) {
+}
 
     /// Creates a draining iterator that removes the specified range in the vector
     /// and yields the removed items.
@@ -23755,7 +22762,8 @@ impl<T, A: Allocator> Vec<T, A> {
     pub fn drain<R>(&mut self, range: R) -> Drain<'_, T, A>
     where
         R: RangeBounds<usize>,
-    {}
+    {
+}
 
     /// Clears the vector, removing all values.
     ///
@@ -23773,7 +22781,8 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn clear(&mut self) {}
+    pub fn clear(&mut self) {
+}
 
     /// Returns the number of elements in the vector, also referred to
     /// as its 'length'.
@@ -23786,7 +22795,8 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn len(&self) -> usize {}
+    pub fn len(&self) -> usize {
+}
 
     /// Returns `true` if the vector contains no elements.
     ///
@@ -23800,7 +22810,8 @@ impl<T, A: Allocator> Vec<T, A> {
     /// assert!(!v.is_empty());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn is_empty(&self) -> bool {}
+    pub fn is_empty(&self) -> bool {
+}
 
     /// Splits the collection into two at the given index.
     ///
@@ -23827,7 +22838,8 @@ impl<T, A: Allocator> Vec<T, A> {
     pub fn split_off(&mut self, at: usize) -> Self
     where
         A: Clone,
-    {}
+    {
+}
 
     /// Resizes the `Vec` in-place so that `len` is equal to `new_len`.
     ///
@@ -23860,7 +22872,8 @@ impl<T, A: Allocator> Vec<T, A> {
     pub fn resize_with<F>(&mut self, new_len: usize, f: F)
     where
         F: FnMut() -> T,
-    {}
+    {
+}
 
     /// Consumes and leaks the `Vec`, returning a mutable reference to the contents,
     /// `&'a mut [T]`. Note that the type `T` must outlive the chosen lifetime
@@ -23891,7 +22904,8 @@ impl<T, A: Allocator> Vec<T, A> {
     pub fn leak<'a>(self) -> &'a mut [T]
     where
         A: 'a,
-    {}
+    {
+}
 
     /// Returns the remaining spare capacity of the vector as a slice of
     /// `MaybeUninit<T>`.
@@ -23925,7 +22939,8 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[unstable(feature = "vec_spare_capacity", issue = "75017")]
     #[inline]
-    pub fn spare_capacity_mut(&mut self) -> &mut [MaybeUninit<T>] {}
+    pub fn spare_capacity_mut(&mut self) -> &mut [MaybeUninit<T>] {
+}
 
     /// Returns vector content as a slice of `T`, along with the remaining spare
     /// capacity of the vector as a slice of `MaybeUninit<T>`.
@@ -23980,14 +22995,16 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[unstable(feature = "vec_split_at_spare", issue = "81944")]
     #[inline]
-    pub fn split_at_spare_mut(&mut self) -> (&mut [T], &mut [MaybeUninit<T>]) {}
+    pub fn split_at_spare_mut(&mut self) -> (&mut [T], &mut [MaybeUninit<T>]) {
+}
 
     /// Safety: changing returned .2 (&mut usize) is considered the same as calling `.set_len(_)`.
     ///
     /// This method provides unique access to all vec parts at once in `extend_from_within`.
     unsafe fn split_at_spare_mut_with_len(
         &mut self,
-    ) -> (&mut [T], &mut [MaybeUninit<T>], &mut usize) {}
+    ) -> (&mut [T], &mut [MaybeUninit<T>], &mut usize) {
+}
 }
 
 impl<T: Clone, A: Allocator> Vec<T, A> {
@@ -24016,7 +23033,8 @@ impl<T: Clone, A: Allocator> Vec<T, A> {
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "vec_resize", since = "1.5.0")]
-    pub fn resize(&mut self, new_len: usize, value: T) {}
+    pub fn resize(&mut self, new_len: usize, value: T) {
+}
 
     /// Clones and appends all elements in a slice to the `Vec`.
     ///
@@ -24039,7 +23057,8 @@ impl<T: Clone, A: Allocator> Vec<T, A> {
     /// [`extend`]: Vec::extend
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "vec_extend_from_slice", since = "1.6.0")]
-    pub fn extend_from_slice(&mut self, other: &[T]) {}
+    pub fn extend_from_slice(&mut self, other: &[T]) {
+}
 
     /// Copies elements from `src` range to the end of the vector.
     ///
@@ -24067,7 +23086,8 @@ impl<T: Clone, A: Allocator> Vec<T, A> {
     pub fn extend_from_within<R>(&mut self, src: R)
     where
         R: RangeBounds<usize>,
-    {}
+    {
+}
 }
 
 // This code generalizes `extend_with_{element,default}`.
@@ -24078,26 +23098,33 @@ trait ExtendWith<T> {
 
 struct ExtendElement<T>(T);
 impl<T: Clone> ExtendWith<T> for ExtendElement<T> {
-    fn next(&mut self) -> T {}
-    fn last(self) -> T {}
+    fn next(&mut self) -> T {
+}
+    fn last(self) -> T {
+}
 }
 
 struct ExtendDefault;
 impl<T: Default> ExtendWith<T> for ExtendDefault {
-    fn next(&mut self) -> T {}
-    fn last(self) -> T {}
+    fn next(&mut self) -> T {
+}
+    fn last(self) -> T {
+}
 }
 
 struct ExtendFunc<F>(F);
 impl<T, F: FnMut() -> T> ExtendWith<T> for ExtendFunc<F> {
-    fn next(&mut self) -> T {}
-    fn last(mut self) -> T {}
+    fn next(&mut self) -> T {
+}
+    fn last(mut self) -> T {
+}
 }
 
 impl<T, A: Allocator> Vec<T, A> {
     #[cfg(not(no_global_oom_handling))]
     /// Extend the vector by `n` values, using the given generator.
-    fn extend_with<E: ExtendWith<T>>(&mut self, n: usize, mut value: E) {}
+    fn extend_with<E: ExtendWith<T>>(&mut self, n: usize, mut value: E) {
+}
 }
 
 impl<T: PartialEq, A: Allocator> Vec<T, A> {
@@ -24117,7 +23144,8 @@ impl<T: PartialEq, A: Allocator> Vec<T, A> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn dedup(&mut self) {}
+    pub fn dedup(&mut self) {
+}
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -24127,12 +23155,14 @@ impl<T: PartialEq, A: Allocator> Vec<T, A> {
 #[doc(hidden)]
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn from_elem<T: Clone>(elem: T, n: usize) -> Vec<T> {}
+pub fn from_elem<T: Clone>(elem: T, n: usize) -> Vec<T> {
+}
 
 #[doc(hidden)]
 #[cfg(not(no_global_oom_handling))]
 #[unstable(feature = "allocator_api", issue = "32838")]
-pub fn from_elem_in<T: Clone, A: Allocator>(elem: T, n: usize, alloc: A) -> Vec<T, A> {}
+pub fn from_elem_in<T: Clone, A: Allocator>(elem: T, n: usize, alloc: A) -> Vec<T, A> {
+}
 
 trait ExtendFromWithinSpec {
     /// # Safety
@@ -24143,11 +23173,13 @@ trait ExtendFromWithinSpec {
 }
 
 impl<T: Clone, A: Allocator> ExtendFromWithinSpec for Vec<T, A> {
-    default unsafe fn spec_extend_from_within(&mut self, src: Range<usize>) {}
+    default unsafe fn spec_extend_from_within(&mut self, src: Range<usize>) {
+}
 }
 
 impl<T: Copy, A: Allocator> ExtendFromWithinSpec for Vec<T, A> {
-    unsafe fn spec_extend_from_within(&mut self, src: Range<usize>) {}
+    unsafe fn spec_extend_from_within(&mut self, src: Range<usize>) {
+}
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -24158,12 +23190,14 @@ impl<T: Copy, A: Allocator> ExtendFromWithinSpec for Vec<T, A> {
 impl<T, A: Allocator> ops::Deref for Vec<T, A> {
     type Target = [T];
 
-    fn deref(&self) -> &[T] {}
+    fn deref(&self) -> &[T] {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, A: Allocator> ops::DerefMut for Vec<T, A> {
-    fn deref_mut(&mut self) -> &mut [T] {}
+    fn deref_mut(&mut self) -> &mut [T] {
+}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -24173,28 +23207,33 @@ trait SpecCloneFrom {
 
 #[cfg(not(no_global_oom_handling))]
 impl<T: Clone, A: Allocator> SpecCloneFrom for Vec<T, A> {
-    default fn clone_from(this: &mut Self, other: &Self) {}
+    default fn clone_from(this: &mut Self, other: &Self) {
+}
 }
 
 #[cfg(not(no_global_oom_handling))]
 impl<T: Copy, A: Allocator> SpecCloneFrom for Vec<T, A> {
-    fn clone_from(this: &mut Self, other: &Self) {}
+    fn clone_from(this: &mut Self, other: &Self) {
+}
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Clone, A: Allocator + Clone> Clone for Vec<T, A> {
     #[cfg(not(test))]
-    fn clone(&self) -> Self {}
+    fn clone(&self) -> Self {
+}
 
     // HACK(japaric): with cfg(test) the inherent `[T]::to_vec` method, which is
     // required for this method definition, is not available. Instead use the
     // `slice::to_vec`  function which is only available with cfg(test)
     // NB see the slice::hack module in slice.rs for more information
     #[cfg(test)]
-    fn clone(&self) -> Self {}
+    fn clone(&self) -> Self {
+}
 
-    fn clone_from(&mut self, other: &Self) {}
+    fn clone_from(&mut self, other: &Self) {
+}
 }
 
 /// The hash of a vector is the same as that of the corresponding slice,
@@ -24212,7 +23251,8 @@ impl<T: Clone, A: Allocator + Clone> Clone for Vec<T, A> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Hash, A: Allocator> Hash for Vec<T, A> {
     #[inline]
-    fn hash<H: Hasher>(&self, state: &mut H) {}
+    fn hash<H: Hasher>(&self, state: &mut H) {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -24224,7 +23264,8 @@ impl<T, I: SliceIndex<[T]>, A: Allocator> Index<I> for Vec<T, A> {
     type Output = I::Output;
 
     #[inline]
-    fn index(&self, index: I) -> &Self::Output {}
+    fn index(&self, index: I) -> &Self::Output {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -24234,14 +23275,16 @@ impl<T, I: SliceIndex<[T]>, A: Allocator> Index<I> for Vec<T, A> {
 )]
 impl<T, I: SliceIndex<[T]>, A: Allocator> IndexMut<I> for Vec<T, A> {
     #[inline]
-    fn index_mut(&mut self, index: I) -> &mut Self::Output {}
+    fn index_mut(&mut self, index: I) -> &mut Self::Output {
+}
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> FromIterator<T> for Vec<T> {
     #[inline]
-    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Vec<T> {}
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Vec<T> {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -24263,7 +23306,8 @@ impl<T, A: Allocator> IntoIterator for Vec<T, A> {
     /// }
     /// ```
     #[inline]
-    fn into_iter(self) -> IntoIter<T, A> {}
+    fn into_iter(self) -> IntoIter<T, A> {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -24271,7 +23315,8 @@ impl<'a, T, A: Allocator> IntoIterator for &'a Vec<T, A> {
     type Item = &'a T;
     type IntoIter = slice::Iter<'a, T>;
 
-    fn into_iter(self) -> slice::Iter<'a, T> {}
+    fn into_iter(self) -> slice::Iter<'a, T> {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -24279,27 +23324,32 @@ impl<'a, T, A: Allocator> IntoIterator for &'a mut Vec<T, A> {
     type Item = &'a mut T;
     type IntoIter = slice::IterMut<'a, T>;
 
-    fn into_iter(self) -> slice::IterMut<'a, T> {}
+    fn into_iter(self) -> slice::IterMut<'a, T> {
+}
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, A: Allocator> Extend<T> for Vec<T, A> {
     #[inline]
-    fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {}
+    fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
+}
 
     #[inline]
-    fn extend_one(&mut self, item: T) {}
+    fn extend_one(&mut self, item: T) {
+}
 
     #[inline]
-    fn extend_reserve(&mut self, additional: usize) {}
+    fn extend_reserve(&mut self, additional: usize) {
+}
 }
 
 impl<T, A: Allocator> Vec<T, A> {
     // leaf method to which various SpecFrom/SpecExtend implementations delegate when
     // they have no further optimizations to apply
     #[cfg(not(no_global_oom_handling))]
-    fn extend_desugared<I: Iterator<Item = T>>(&mut self, mut iterator: I) {}
+    fn extend_desugared<I: Iterator<Item = T>>(&mut self, mut iterator: I) {
+}
 
     /// Creates a splicing iterator that replaces the specified range in the vector
     /// with the given `replace_with` iterator and yields the removed items.
@@ -24341,7 +23391,8 @@ impl<T, A: Allocator> Vec<T, A> {
     where
         R: RangeBounds<usize>,
         I: IntoIterator<Item = T>,
-    {}
+    {
+}
 
     /// Creates an iterator which uses a closure to determine if an element should be removed.
     ///
@@ -24391,7 +23442,8 @@ impl<T, A: Allocator> Vec<T, A> {
     pub fn drain_filter<F>(&mut self, filter: F) -> DrainFilter<'_, T, F, A>
     where
         F: FnMut(&mut T) -> bool,
-    {}
+    {
+}
 }
 
 /// Extend implementation that copies elements out of references before pushing them onto the Vec.
@@ -24403,20 +23455,24 @@ impl<T, A: Allocator> Vec<T, A> {
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "extend_ref", since = "1.2.0")]
 impl<'a, T: Copy + 'a, A: Allocator + 'a> Extend<&'a T> for Vec<T, A> {
-    fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {}
+    fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
+}
 
     #[inline]
-    fn extend_one(&mut self, &item: &'a T) {}
+    fn extend_one(&mut self, &item: &'a T) {
+}
 
     #[inline]
-    fn extend_reserve(&mut self, additional: usize) {}
+    fn extend_reserve(&mut self, additional: usize) {
+}
 }
 
 /// Implements comparison of vectors, [lexicographically](core::cmp::Ord#lexicographical-comparison).
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: PartialOrd, A: Allocator> PartialOrd for Vec<T, A> {
     #[inline]
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {}
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -24426,44 +23482,52 @@ impl<T: Eq, A: Allocator> Eq for Vec<T, A> {}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Ord, A: Allocator> Ord for Vec<T, A> {
     #[inline]
-    fn cmp(&self, other: &Self) -> Ordering {}
+    fn cmp(&self, other: &Self) -> Ordering {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<#[may_dangle] T, A: Allocator> Drop for Vec<T, A> {
-    fn drop(&mut self) {}
+    fn drop(&mut self) {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_default_impls", issue = "87864")]
 impl<T> const Default for Vec<T> {
     /// Creates an empty `Vec<T>`.
-    fn default() -> Vec<T> {}
+    fn default() -> Vec<T> {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: fmt::Debug, A: Allocator> fmt::Debug for Vec<T, A> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, A: Allocator> AsRef<Vec<T, A>> for Vec<T, A> {
-    fn as_ref(&self) -> &Vec<T, A> {}
+    fn as_ref(&self) -> &Vec<T, A> {
+}
 }
 
 #[stable(feature = "vec_as_mut", since = "1.5.0")]
 impl<T, A: Allocator> AsMut<Vec<T, A>> for Vec<T, A> {
-    fn as_mut(&mut self) -> &mut Vec<T, A> {}
+    fn as_mut(&mut self) -> &mut Vec<T, A> {
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, A: Allocator> AsRef<[T]> for Vec<T, A> {
-    fn as_ref(&self) -> &[T] {}
+    fn as_ref(&self) -> &[T] {
+}
 }
 
 #[stable(feature = "vec_as_mut", since = "1.5.0")]
 impl<T, A: Allocator> AsMut<[T]> for Vec<T, A> {
-    fn as_mut(&mut self) -> &mut [T] {}
+    fn as_mut(&mut self) -> &mut [T] {
+}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -24477,9 +23541,11 @@ impl<T: Clone> From<&[T]> for Vec<T> {
     /// assert_eq!(Vec::from(&[1, 2, 3][..]), vec![1, 2, 3]);
     /// ```
     #[cfg(not(test))]
-    fn from(s: &[T]) -> Vec<T> {}
+    fn from(s: &[T]) -> Vec<T> {
+}
     #[cfg(test)]
-    fn from(s: &[T]) -> Vec<T> {}
+    fn from(s: &[T]) -> Vec<T> {
+}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -24493,16 +23559,19 @@ impl<T: Clone> From<&mut [T]> for Vec<T> {
     /// assert_eq!(Vec::from(&mut [1, 2, 3][..]), vec![1, 2, 3]);
     /// ```
     #[cfg(not(test))]
-    fn from(s: &mut [T]) -> Vec<T> {}
+    fn from(s: &mut [T]) -> Vec<T> {
+}
     #[cfg(test)]
-    fn from(s: &mut [T]) -> Vec<T> {}
+    fn from(s: &mut [T]) -> Vec<T> {
+}
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "vec_from_array", since = "1.44.0")]
 impl<T, const N: usize> From<[T; N]> for Vec<T> {
     #[cfg(not(test))]
-    fn from(s: [T; N]) -> Vec<T> {}
+    fn from(s: [T; N]) -> Vec<T> {
+}
     /// Allocate a `Vec<T>` and move `s`'s items into it.
     ///
     /// # Examples
@@ -24511,7 +23580,8 @@ impl<T, const N: usize> From<[T; N]> for Vec<T> {
     /// assert_eq!(Vec::from([1, 2, 3]), vec![1, 2, 3]);
     /// ```
     #[cfg(test)]
-    fn from(s: [T; N]) -> Vec<T> {}
+    fn from(s: [T; N]) -> Vec<T> {
+}
 }
 
 #[stable(feature = "vec_from_cow_slice", since = "1.14.0")]
@@ -24533,7 +23603,8 @@ where
     /// let b: Cow<[i32]> = Cow::Borrowed(&[1, 2, 3]);
     /// assert_eq!(Vec::from(o), Vec::from(b));
     /// ```
-    fn from(s: Cow<'a, [T]>) -> Vec<T> {}
+    fn from(s: Cow<'a, [T]>) -> Vec<T> {
+}
 }
 
 // note: test pulls in libstd, which causes errors here
@@ -24549,7 +23620,8 @@ impl<T, A: Allocator> From<Box<[T], A>> for Vec<T, A> {
     /// let b: Box<[i32]> = vec![1, 2, 3].into_boxed_slice();
     /// assert_eq!(Vec::from(b), vec![1, 2, 3]);
     /// ```
-    fn from(s: Box<[T], A>) -> Self {}
+    fn from(s: Box<[T], A>) -> Self {
+}
 }
 
 // note: test pulls in libstd, which causes errors here
@@ -24567,7 +23639,8 @@ impl<T, A: Allocator> From<Vec<T, A>> for Box<[T], A> {
     /// ```
     /// assert_eq!(Box::from(vec![1, 2, 3]), vec![1, 2, 3].into_boxed_slice());
     /// ```
-    fn from(v: Vec<T, A>) -> Self {}
+    fn from(v: Vec<T, A>) -> Self {
+}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -24580,7 +23653,8 @@ impl From<&str> for Vec<u8> {
     /// ```
     /// assert_eq!(Vec::from("123"), vec![b'1', b'2', b'3']);
     /// ```
-    fn from(s: &str) -> Vec<u8> {}
+    fn from(s: &str) -> Vec<u8> {
+}
 }
 
 #[stable(feature = "array_try_from_vec", since = "1.48.0")]
@@ -24616,7 +23690,8 @@ impl<T, A: Allocator, const N: usize> TryFrom<Vec<T, A>> for [T; N] {
     /// assert_eq!(a, b' ');
     /// assert_eq!(b, b'd');
     /// ```
-    fn try_from(mut vec: Vec<T, A>) -> Result<[T; N], Vec<T, A>> {}
+    fn try_from(mut vec: Vec<T, A>) -> Result<[T; N], Vec<T, A>> {
+}
 }
 }
 

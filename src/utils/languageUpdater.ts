@@ -155,7 +155,7 @@ export class LanguageUpdater {
         return {
           label,
           kind: hint_type,
-          paddingRight: 10,
+          paddingRight: true,
           position: {
             column: range.startColumn,
             lineNumber: range.startLineNumber

@@ -25,7 +25,9 @@ use std::str::FromStr;
 ///     env: Env,
 ///     info: MessageInfo,
 ///     msg: InstantiateMsg,
-/// ) -> Result<Response, StdError> {}
+/// ) -> Result<Response, StdError> {
+/// #   Ok(Default::default())
+/// }
 ///
 /// #[entry_point]
 /// pub fn execute(
@@ -33,17 +35,22 @@ use std::str::FromStr;
 ///     env: Env,
 ///     info: MessageInfo,
 ///     msg: ExecuteMsg,
-/// ) -> Result<Response, StdError> {}
+/// ) -> Result<Response, StdError> {
+/// #   Ok(Default::default())
+/// }
 ///
 /// #[entry_point]
 /// pub fn query(
 ///     deps: Deps,
 ///     env: Env,
 ///     msg: QueryMsg,
-/// ) -> Result<QueryResponse, StdError> {}
+/// ) -> Result<QueryResponse, StdError> {
+/// #   Ok(Default::default())
+/// }
 /// ```
 ///
 /// where `InstantiateMsg`, `ExecuteMsg`, and `QueryMsg` are contract defined
 /// types that implement `DeserializeOwned + JsonSchema`.
 #[proc_macro_attribute]
-pub fn entry_point(_attr: TokenStream, mut item: TokenStream) -> TokenStream {}
+pub fn entry_point(_attr: TokenStream, mut item: TokenStream) -> TokenStream {
+}

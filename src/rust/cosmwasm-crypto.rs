@@ -23,7 +23,8 @@ pub const EDDSA_PUBKEY_LEN: usize = 32;
 /// format:
 /// - signature: raw ED25519 signature (64 bytes).
 /// - public key: raw ED25519 public key (32 bytes).
-pub fn ed25519_verify(message: &[u8], signature: &[u8], public_key: &[u8]) -> CryptoResult<bool> {}
+pub fn ed25519_verify(message: &[u8], signature: &[u8], public_key: &[u8]) -> CryptoResult<bool> {
+}
 
 /// Performs batch Ed25519 signature verification.
 ///
@@ -59,90 +60,33 @@ pub fn ed25519_batch_verify(
     messages: &[&[u8]],
     signatures: &[&[u8]],
     public_keys: &[&[u8]],
-) -> CryptoResult<bool> {}
+) -> CryptoResult<bool> {
+}
 
 /// Error raised when signature is not 64 bytes long
 struct InvalidEd25519SignatureFormat;
 
 impl From<InvalidEd25519SignatureFormat> for CryptoError {
-    fn from(_original: InvalidEd25519SignatureFormat) -> Self {}
+    fn from(_original: InvalidEd25519SignatureFormat) -> Self {
+}
 }
 
-fn read_signature(data: &[u8]) -> Result<[u8; 64], InvalidEd25519SignatureFormat> {}
+fn read_signature(data: &[u8]) -> Result<[u8; 64], InvalidEd25519SignatureFormat> {
+}
 
 /// Error raised when pubkey is not 32 bytes long
 struct InvalidEd25519PubkeyFormat;
 
 impl From<InvalidEd25519PubkeyFormat> for CryptoError {
-    fn from(_original: InvalidEd25519PubkeyFormat) -> Self {}
+    fn from(_original: InvalidEd25519PubkeyFormat) -> Self {
+}
 }
 
-fn read_pubkey(data: &[u8]) -> Result<[u8; 32], InvalidEd25519PubkeyFormat> {}
+fn read_pubkey(data: &[u8]) -> Result<[u8; 32], InvalidEd25519PubkeyFormat> {
+}
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use ed25519_zebra::SigningKey;
-    use serde::Deserialize;
-
-    // For generic signature verification
-    const MSG: &str = "Hello World!";
-
-    // Cosmos ed25519 signature verification
-    // TEST 1 from https://tools.ietf.org/html/rfc8032#section-7.1
-    const COSMOS_ED25519_MSG: &str = "";
-    const COSMOS_ED25519_PRIVATE_KEY_HEX: &str =
-        "9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60";
-    const COSMOS_ED25519_PUBLIC_KEY_HEX: &str =
-        "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a";
-    const COSMOS_ED25519_SIGNATURE_HEX: &str = "e5564300c360ac729086e2cc806e828a84877f1eb8e5d974d873e065224901555fb8821590a33bacc61e39701cf9b46bd25bf5f0595bbe24655141438e7a100b";
-
-    // Test data from https://tools.ietf.org/html/rfc8032#section-7.1
-    const COSMOS_ED25519_TESTS_JSON: &str = "./testdata/ed25519_tests.json";
-
-    #[derive(Deserialize, Debug)]
-    struct Encoded {
-        #[serde(rename = "privkey")]
-        #[allow(dead_code)]
-        private_key: String,
-        #[serde(rename = "pubkey")]
-        public_key: String,
-        message: String,
-        signature: String,
-    }
-
-    fn read_cosmos_sigs() -> Vec<Encoded> {}
-
-    #[test]
-    fn test_ed25519_verify() {}
-
-    #[test]
-    fn test_cosmos_ed25519_verify() {}
-
-    #[test]
-    fn test_cosmos_extra_ed25519_verify() {}
-
-    #[test]
-    fn test_cosmos_ed25519_batch_verify() {}
-
-    // structural tests
-    #[test]
-    fn test_cosmos_ed25519_batch_verify_empty_works() {}
-
-    #[test]
-    fn test_cosmos_ed25519_batch_verify_wrong_number_of_items_errors() {}
-
-    #[test]
-    fn test_cosmos_ed25519_batch_verify_one_msg_different_number_of_sigs_pubkeys_errors() {}
-
-    #[test]
-    fn test_cosmos_ed25519_batch_verify_one_pubkey_different_number_of_msgs_sigs_errors() {}
-
-    #[test]
-    fn test_cosmos_ed25519_batch_verify_one_msg_zero_sigs_pubkeys_works() {}
-
-    #[test]
-    fn test_cosmos_ed25519_batch_verify_one_pubkey_zero_msgs_sigs_works() {}
 }
 }
 mod errors {
@@ -190,42 +134,32 @@ pub enum CryptoError {
 }
 
 impl CryptoError {
-    pub fn batch_err(msg: impl Into<String>) -> Self {}
+    pub fn batch_err(msg: impl Into<String>) -> Self {
+}
 
-    pub fn generic_err(msg: impl Into<String>) -> Self {}
+    pub fn generic_err(msg: impl Into<String>) -> Self {
+}
 
-    pub fn invalid_hash_format() -> Self {}
+    pub fn invalid_hash_format() -> Self {
+}
 
-    pub fn invalid_pubkey_format() -> Self {}
+    pub fn invalid_pubkey_format() -> Self {
+}
 
-    pub fn invalid_signature_format() -> Self {}
+    pub fn invalid_signature_format() -> Self {
+}
 
-    pub fn invalid_recovery_param() -> Self {}
+    pub fn invalid_recovery_param() -> Self {
+}
 
     /// Numeric error code that can easily be passed over the
     /// contract VM boundary.
-    pub fn code(&self) -> u32 {}
+    pub fn code(&self) -> u32 {
+}
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
-    // constructors
-    #[test]
-    fn batch_err_works() {}
-
-    #[test]
-    fn generic_err_works() {}
-
-    #[test]
-    fn invalid_hash_format_works() {}
-
-    #[test]
-    fn invalid_signature_format_works() {}
-
-    #[test]
-    fn invalid_pubkey_format_works() {}
 }
 }
 mod identity_digest {
@@ -245,7 +179,8 @@ pub struct Identity256 {
 }
 
 impl Update for Identity256 {
-    fn update(&mut self, hash: &[u8]) {}
+    fn update(&mut self, hash: &[u8]) {
+}
 }
 
 impl OutputSizeUser for Identity256 {
@@ -253,13 +188,15 @@ impl OutputSizeUser for Identity256 {
 }
 
 impl FixedOutput for Identity256 {
-    fn finalize_into(self, out: &mut Output<Self>) {}
+    fn finalize_into(self, out: &mut Output<Self>) {
+}
 }
 
 impl HashMarker for Identity256 {}
 
 impl Reset for Identity256 {
-    fn reset(&mut self) {}
+    fn reset(&mut self) {
+}
 }
 }
 mod secp256k1 {
@@ -304,7 +241,8 @@ pub fn secp256k1_verify(
     message_hash: &[u8],
     signature: &[u8],
     public_key: &[u8],
-) -> CryptoResult<bool> {}
+) -> CryptoResult<bool> {
+}
 
 /// Recovers a public key from a message hash and a signature.
 ///
@@ -321,25 +259,30 @@ pub fn secp256k1_recover_pubkey(
     message_hash: &[u8],
     signature: &[u8],
     recovery_param: u8,
-) -> Result<Vec<u8>, CryptoError> {}
+) -> Result<Vec<u8>, CryptoError> {
+}
 
 /// Error raised when hash is not 32 bytes long
 struct InvalidSecp256k1HashFormat;
 
 impl From<InvalidSecp256k1HashFormat> for CryptoError {
-    fn from(_original: InvalidSecp256k1HashFormat) -> Self {}
+    fn from(_original: InvalidSecp256k1HashFormat) -> Self {
+}
 }
 
-fn read_hash(data: &[u8]) -> Result<[u8; 32], InvalidSecp256k1HashFormat> {}
+fn read_hash(data: &[u8]) -> Result<[u8; 32], InvalidSecp256k1HashFormat> {
+}
 
 /// Error raised when signature is not 64 bytes long (32 bytes r, 32 bytes s)
 struct InvalidSecp256k1SignatureFormat;
 
 impl From<InvalidSecp256k1SignatureFormat> for CryptoError {
-    fn from(_original: InvalidSecp256k1SignatureFormat) -> Self {}
+    fn from(_original: InvalidSecp256k1SignatureFormat) -> Self {
+}
 }
 
-fn read_signature(data: &[u8]) -> Result<[u8; 64], InvalidSecp256k1SignatureFormat> {}
+fn read_signature(data: &[u8]) -> Result<[u8; 64], InvalidSecp256k1SignatureFormat> {
+}
 
 /// Error raised when public key is not in one of the two supported formats:
 /// 1. Uncompressed: 65 bytes starting with 0x04
@@ -347,56 +290,15 @@ fn read_signature(data: &[u8]) -> Result<[u8; 64], InvalidSecp256k1SignatureForm
 struct InvalidSecp256k1PubkeyFormat;
 
 impl From<InvalidSecp256k1PubkeyFormat> for CryptoError {
-    fn from(_original: InvalidSecp256k1PubkeyFormat) -> Self {}
+    fn from(_original: InvalidSecp256k1PubkeyFormat) -> Self {
+}
 }
 
-fn check_pubkey(data: &[u8]) -> Result<(), InvalidSecp256k1PubkeyFormat> {}
+fn check_pubkey(data: &[u8]) -> Result<(), InvalidSecp256k1PubkeyFormat> {
+}
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
-    use hex_literal::hex;
-    use k256::{
-        ecdsa::signature::DigestSigner, // trait
-        ecdsa::SigningKey,              // type alias
-        elliptic_curve::rand_core::OsRng,
-        elliptic_curve::sec1::ToEncodedPoint,
-    };
-    use sha2::Sha256;
-
-    // For generic signature verification
-    const MSG: &str = "Hello World!";
-
-    // Cosmos secp256k1 signature verification
-    // tendermint/PubKeySecp256k1 pubkey
-    const COSMOS_SECP256K1_PUBKEY_BASE64: &str = "A08EGB7ro1ORuFhjOnZcSgwYlpe0DSFjVNUIkNNQxwKQ";
-
-    const COSMOS_SECP256K1_MSG_HEX1: &str = "0a93010a90010a1c2f636f736d6f732e62616e6b2e763162657461312e4d736753656e6412700a2d636f736d6f7331706b707472653766646b6c366766727a6c65736a6a766878686c63337234676d6d6b38727336122d636f736d6f7331717970717870713971637273737a673270767871367273307a716733797963356c7a763778751a100a0575636f736d12073132333435363712650a4e0a460a1f2f636f736d6f732e63727970746f2e736563703235366b312e5075624b657912230a21034f04181eeba35391b858633a765c4a0c189697b40d216354d50890d350c7029012040a02080112130a0d0a0575636f736d12043230303010c09a0c1a0c73696d642d74657374696e672001";
-    const COSMOS_SECP256K1_MSG_HEX2: &str = "0a93010a90010a1c2f636f736d6f732e62616e6b2e763162657461312e4d736753656e6412700a2d636f736d6f7331706b707472653766646b6c366766727a6c65736a6a766878686c63337234676d6d6b38727336122d636f736d6f7331717970717870713971637273737a673270767871367273307a716733797963356c7a763778751a100a0575636f736d12073132333435363712670a500a460a1f2f636f736d6f732e63727970746f2e736563703235366b312e5075624b657912230a21034f04181eeba35391b858633a765c4a0c189697b40d216354d50890d350c7029012040a020801180112130a0d0a0575636f736d12043230303010c09a0c1a0c73696d642d74657374696e672001";
-    const COSMOS_SECP256K1_MSG_HEX3: &str = "0a93010a90010a1c2f636f736d6f732e62616e6b2e763162657461312e4d736753656e6412700a2d636f736d6f7331706b707472653766646b6c366766727a6c65736a6a766878686c63337234676d6d6b38727336122d636f736d6f7331717970717870713971637273737a673270767871367273307a716733797963356c7a763778751a100a0575636f736d12073132333435363712670a500a460a1f2f636f736d6f732e63727970746f2e736563703235366b312e5075624b657912230a21034f04181eeba35391b858633a765c4a0c189697b40d216354d50890d350c7029012040a020801180212130a0d0a0575636f736d12043230303010c09a0c1a0c73696d642d74657374696e672001";
-
-    const COSMOS_SECP256K1_SIGNATURE_HEX1: &str = "c9dd20e07464d3a688ff4b710b1fbc027e495e797cfa0b4804da2ed117959227772de059808f765aa29b8f92edf30f4c2c5a438e30d3fe6897daa7141e3ce6f9";
-    const COSMOS_SECP256K1_SIGNATURE_HEX2: &str = "525adc7e61565a509c60497b798c549fbf217bb5cd31b24cc9b419d098cc95330c99ecc4bc72448f85c365a4e3f91299a3d40412fb3751bab82f1940a83a0a4c";
-    const COSMOS_SECP256K1_SIGNATURE_HEX3: &str = "f3f2ca73806f2abbf6e0fe85f9b8af66f0e9f7f79051fdb8abe5bb8633b17da132e82d577b9d5f7a6dae57a144efc9ccc6eef15167b44b3b22a57240109762af";
-
-    // Test data originally from https://github.com/cosmos/cosmjs/blob/v0.24.0-alpha.22/packages/crypto/src/secp256k1.spec.ts#L195-L394
-    const COSMOS_SECP256K1_TESTS_JSON: &str = "./testdata/secp256k1_tests.json";
-
-    #[test]
-    fn test_secp256k1_verify() {}
-
-    #[test]
-    fn test_cosmos_secp256k1_verify() {}
-
-    #[test]
-    fn test_cosmos_extra_secp256k1_verify() {}
-
-    #[test]
-    fn secp256k1_recover_pubkey_works() {}
-
-    #[test]
-    fn secp256k1_recover_pubkey_fails_for_invalid_recovery_param() {}
 }
 }
 mod zk {
@@ -428,11 +330,13 @@ pub enum ZKError {
 }
 
 impl ZKError {
-    pub fn generic_err(msg: impl Into<String>) -> Self {}
+    pub fn generic_err(msg: impl Into<String>) -> Self {
+}
 
     /// Numeric error code that can easily be passed over the
     /// contract VM boundary.
-    pub fn code(&self) -> u32 {}
+    pub fn code(&self) -> u32 {
+}
 }
 }
 
@@ -458,17 +362,21 @@ pub struct Poseidon {
 }
 
 impl Poseidon {
-    pub fn new() -> Self {}
+    pub fn new() -> Self {
+}
 
-    pub fn hash(&self, inputs: &[&[u8]]) -> Result<Vec<u8>, ZKError> {}
+    pub fn hash(&self, inputs: &[&[u8]]) -> Result<Vec<u8>, ZKError> {
+}
 }
 
 impl Default for Poseidon {
-    fn default() -> Self {}
+    fn default() -> Self {
+}
 }
 
 #[test]
-fn test_hash() {}
+fn test_hash() {
+}
 }
 
 #[allow(clippy::all)]
@@ -494,7 +402,8 @@ impl<E: PairingEngine> ArkworksVerifierGroth16<E> {
         public_inp_bytes: &[u8],
         proof_bytes: &[u8],
         vk_bytes: &[u8],
-    ) -> Result<bool, Error> {}
+    ) -> Result<bool, Error> {
+}
 }
 
 pub type ArkworksVerifierBn254 = ArkworksVerifierGroth16<Bn254>;
@@ -503,7 +412,8 @@ pub fn groth16_verify(
     public_inp_bytes: &[u8],
     proof_bytes: &[u8],
     vk_bytes: &[u8],
-) -> ZKResult<bool> {}
+) -> ZKResult<bool> {
+}
 }
 
 #[allow(clippy::all)]
@@ -513,7 +423,8 @@ use ark_ff::{BigInteger, PrimeField};
 use ark_std::vec::Vec;
 use arkworks_setups::common::keccak_256;
 
-pub fn curve_hash(input: &[u8]) -> Vec<u8> {}
+pub fn curve_hash(input: &[u8]) -> Vec<u8> {
+}
 }
 
 pub use errors::{ZKError, ZKResult};
