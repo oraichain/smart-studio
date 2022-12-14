@@ -68,7 +68,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 }
 
 pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
-    let state = read_config(deps.storage)?;
+    let state: Config = read_config(deps.storage)?;
     let resp = ConfigResponse { owner: deps.api.addr_humanize(&state.owner)? };
 
     Ok(resp)

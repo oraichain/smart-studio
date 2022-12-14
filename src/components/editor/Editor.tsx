@@ -149,7 +149,6 @@ export class Monaco extends React.Component<MonacoProps, {}> {
         minimap: {
           enabled: false
         },
-        fontWeight: 'bold',
         renderLineHighlight: 'none'
       },
       this.props.options

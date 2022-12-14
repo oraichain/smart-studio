@@ -3137,23 +3137,6 @@ macro_rules! thread_local {
 #[allow_internal_unstable(thread_local_internals, cfg_target_thread_local, thread_local)]
 #[allow_internal_unsafe]
 macro_rules! __thread_local_inner {
-    (@key $t:ty, $init:expr) => {
-        {
-            #[inline]
-            fn __init() -> $t { }
-
-            unsafe fn __getit() -> $crate::option::Option<&'static $t> {
-}
-
-            unsafe {
-                $crate::thread::LocalKey::new(__getit)
-            }
-        }
-    };
-    ($(#[$attr:meta])* $vis:vis $name:ident, $t:ty, $init:expr) => {
-        $(#[$attr])* $vis const $name: $crate::thread::LocalKey<$t> =
-            $crate::__thread_local_inner!(@key $t, $init);
-    }
 }
 
 /// An error returned by [`LocalKey::try_with`](struct.LocalKey.html#method.try_with).
@@ -6709,7 +6692,6 @@ pub struct ValuesMut<'a, K: 'a, V: 'a> {
 
 #[unstable(feature = "hash_raw_entry", issue = "56167")]
 pub struct RawEntryBuilderMut<'a, K: 'a, V: 'a, S: 'a> {
-    map: &'a mut HashMap<K, V, S>,
 }
 
 /// A view into a single entry in a map, which may either be vacant or occupied.
@@ -6725,10 +6707,6 @@ pub struct RawEntryBuilderMut<'a, K: 'a, V: 'a, S: 'a> {
 /// [`RawEntryBuilderMut`]: struct.RawEntryBuilderMut.html
 #[unstable(feature = "hash_raw_entry", issue = "56167")]
 pub enum RawEntryMut<'a, K: 'a, V: 'a, S: 'a> {
-    /// An occupied entry.
-    Occupied(RawOccupiedEntryMut<'a, K, V>),
-    /// A vacant entry.
-    Vacant(RawVacantEntryMut<'a, K, V, S>),
 }
 
 /// A view into an occupied entry in a `HashMap`.
@@ -6737,7 +6715,6 @@ pub enum RawEntryMut<'a, K: 'a, V: 'a, S: 'a> {
 /// [`RawEntryMut`]: enum.RawEntryMut.html
 #[unstable(feature = "hash_raw_entry", issue = "56167")]
 pub struct RawOccupiedEntryMut<'a, K: 'a, V: 'a> {
-    base: base::RawOccupiedEntryMut<'a, K, V>,
 }
 
 /// A view into a vacant entry in a `HashMap`.
@@ -6746,7 +6723,6 @@ pub struct RawOccupiedEntryMut<'a, K: 'a, V: 'a> {
 /// [`RawEntryMut`]: enum.RawEntryMut.html
 #[unstable(feature = "hash_raw_entry", issue = "56167")]
 pub struct RawVacantEntryMut<'a, K: 'a, V: 'a, S: 'a> {
-    base: base::RawVacantEntryMut<'a, K, V, S>,
 }
 
 /// A builder for computing where in a HashMap a key-value pair would be stored.
@@ -6756,7 +6732,6 @@ pub struct RawVacantEntryMut<'a, K: 'a, V: 'a, S: 'a> {
 /// [`HashMap::raw_entry`]: struct.HashMap.html#method.raw_entry
 #[unstable(feature = "hash_raw_entry", issue = "56167")]
 pub struct RawEntryBuilder<'a, K: 'a, V: 'a, S: 'a> {
-    map: &'a HashMap<K, V, S>,
 }
 
 impl<'a, K, V, S> RawEntryBuilderMut<'a, K, V, S>
@@ -7022,32 +6997,22 @@ impl<'a, K, V, S> RawVacantEntryMut<'a, K, V, S> {
 
 #[unstable(feature = "hash_raw_entry", issue = "56167")]
 impl<K, V, S> Debug for RawEntryBuilderMut<'_, K, V, S> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-}
 }
 
 #[unstable(feature = "hash_raw_entry", issue = "56167")]
 impl<K: Debug, V: Debug, S> Debug for RawEntryMut<'_, K, V, S> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-}
 }
 
 #[unstable(feature = "hash_raw_entry", issue = "56167")]
 impl<K: Debug, V: Debug> Debug for RawOccupiedEntryMut<'_, K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-}
 }
 
 #[unstable(feature = "hash_raw_entry", issue = "56167")]
 impl<K, V, S> Debug for RawVacantEntryMut<'_, K, V, S> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-}
 }
 
 #[unstable(feature = "hash_raw_entry", issue = "56167")]
 impl<K, V, S> Debug for RawEntryBuilder<'_, K, V, S> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-}
 }
 
 /// A view into a single entry in a map, which may either be vacant or occupied.
@@ -10724,316 +10689,7 @@ impl<'a> From<Cow<'a, str>> for Box<dyn Error> {
 }
 
 #[unstable(feature = "never_type", issue = "35121")]
-impl Error for ! {}
-
-#[unstable(
-    feature = "allocator_api",
-    reason = "the precise API and guarantees it provides may be tweaked.",
-    issue = "32838"
-)]
-impl Error for AllocErr {}
-
-#[unstable(
-    feature = "allocator_api",
-    reason = "the precise API and guarantees it provides may be tweaked.",
-    issue = "32838"
-)]
-impl Error for LayoutErr {}
-
-#[unstable(
-    feature = "allocator_api",
-    reason = "the precise API and guarantees it provides may be tweaked.",
-    issue = "32838"
-)]
-impl Error for CannotReallocInPlace {}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl Error for str::ParseBoolError {
-    #[allow(deprecated)]
-    fn description(&self) -> &str {
-}
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl Error for str::Utf8Error {
-    #[allow(deprecated)]
-    fn description(&self) -> &str {
-}
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl Error for num::ParseIntError {
-    #[allow(deprecated)]
-    fn description(&self) -> &str {
-}
-}
-
-#[stable(feature = "try_from", since = "1.34.0")]
-impl Error for num::TryFromIntError {
-    #[allow(deprecated)]
-    fn description(&self) -> &str {
-}
-}
-
-#[stable(feature = "try_from", since = "1.34.0")]
-impl Error for array::TryFromSliceError {
-    #[allow(deprecated)]
-    fn description(&self) -> &str {
-}
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl Error for num::ParseFloatError {
-    #[allow(deprecated)]
-    fn description(&self) -> &str {
-}
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl Error for string::FromUtf8Error {
-    #[allow(deprecated)]
-    fn description(&self) -> &str {
-}
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl Error for string::FromUtf16Error {
-    #[allow(deprecated)]
-    fn description(&self) -> &str {
-}
-}
-
-#[stable(feature = "str_parse_error2", since = "1.8.0")]
-impl Error for string::ParseError {
-    fn description(&self) -> &str {
-}
-}
-
-#[stable(feature = "decode_utf16", since = "1.9.0")]
-impl Error for char::DecodeUtf16Error {
-    #[allow(deprecated)]
-    fn description(&self) -> &str {
-}
-}
-
-#[stable(feature = "box_error", since = "1.8.0")]
-impl<T: Error> Error for Box<T> {
-    #[allow(deprecated, deprecated_in_future)]
-    fn description(&self) -> &str {
-}
-
-    #[allow(deprecated)]
-    fn cause(&self) -> Option<&dyn Error> {
-}
-
-    fn source(&self) -> Option<&(dyn Error + 'static)> {
-}
-}
-
-#[stable(feature = "fmt_error", since = "1.11.0")]
-impl Error for fmt::Error {
-    #[allow(deprecated)]
-    fn description(&self) -> &str {
-}
-}
-
-#[stable(feature = "try_borrow", since = "1.13.0")]
-impl Error for cell::BorrowError {
-    #[allow(deprecated)]
-    fn description(&self) -> &str {
-}
-}
-
-#[stable(feature = "try_borrow", since = "1.13.0")]
-impl Error for cell::BorrowMutError {
-    #[allow(deprecated)]
-    fn description(&self) -> &str {
-}
-}
-
-#[stable(feature = "try_from", since = "1.34.0")]
-impl Error for char::CharTryFromError {
-    #[allow(deprecated)]
-    fn description(&self) -> &str {
-}
-}
-
-#[stable(feature = "char_from_str", since = "1.20.0")]
-impl Error for char::ParseCharError {
-    #[allow(deprecated)]
-    fn description(&self) -> &str {
-}
-}
-
-// Copied from `any.rs`.
-impl dyn Error + 'static {
-    /// Returns `true` if the boxed type is the same as `T`
-    #[stable(feature = "error_downcast", since = "1.3.0")]
-    #[inline]
-    pub fn is<T: Error + 'static>(&self) -> bool {
-}
-
-    /// Returns some reference to the boxed value if it is of type `T`, or
-    /// `None` if it isn't.
-    #[stable(feature = "error_downcast", since = "1.3.0")]
-    #[inline]
-    pub fn downcast_ref<T: Error + 'static>(&self) -> Option<&T> {
-}
-
-    /// Returns some mutable reference to the boxed value if it is of type `T`, or
-    /// `None` if it isn't.
-    #[stable(feature = "error_downcast", since = "1.3.0")]
-    #[inline]
-    pub fn downcast_mut<T: Error + 'static>(&mut self) -> Option<&mut T> {
-}
-}
-
-impl dyn Error + 'static + Send {
-    /// Forwards to the method defined on the type `dyn Error`.
-    #[stable(feature = "error_downcast", since = "1.3.0")]
-    #[inline]
-    pub fn is<T: Error + 'static>(&self) -> bool {
-}
-
-    /// Forwards to the method defined on the type `dyn Error`.
-    #[stable(feature = "error_downcast", since = "1.3.0")]
-    #[inline]
-    pub fn downcast_ref<T: Error + 'static>(&self) -> Option<&T> {
-}
-
-    /// Forwards to the method defined on the type `dyn Error`.
-    #[stable(feature = "error_downcast", since = "1.3.0")]
-    #[inline]
-    pub fn downcast_mut<T: Error + 'static>(&mut self) -> Option<&mut T> {
-}
-}
-
-impl dyn Error + 'static + Send + Sync {
-    /// Forwards to the method defined on the type `dyn Error`.
-    #[stable(feature = "error_downcast", since = "1.3.0")]
-    #[inline]
-    pub fn is<T: Error + 'static>(&self) -> bool {
-}
-
-    /// Forwards to the method defined on the type `dyn Error`.
-    #[stable(feature = "error_downcast", since = "1.3.0")]
-    #[inline]
-    pub fn downcast_ref<T: Error + 'static>(&self) -> Option<&T> {
-}
-
-    /// Forwards to the method defined on the type `dyn Error`.
-    #[stable(feature = "error_downcast", since = "1.3.0")]
-    #[inline]
-    pub fn downcast_mut<T: Error + 'static>(&mut self) -> Option<&mut T> {
-}
-}
-
-impl dyn Error {
-    #[inline]
-    #[stable(feature = "error_downcast", since = "1.3.0")]
-    /// Attempts to downcast the box to a concrete type.
-    pub fn downcast<T: Error + 'static>(self: Box<Self>) -> Result<Box<T>, Box<dyn Error>> {
-}
-
-    /// Returns an iterator starting with the current error and continuing with
-    /// recursively calling [`source`].
-    ///
-    /// If you want to omit the current error and only use its sources,
-    /// use `skip(1)`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(error_iter)]
-    /// use std::error::Error;
-    /// use std::fmt;
-    ///
-    /// #[derive(Debug)]
-    /// struct A;
-    ///
-    /// #[derive(Debug)]
-    /// struct B(Option<Box<dyn Error + 'static>>);
-    ///
-    /// impl fmt::Display for A {
-    ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    ///         write!(f, "A")
-    ///     }
-    /// }
-    ///
-    /// impl fmt::Display for B {
-    ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    ///         write!(f, "B")
-    ///     }
-    /// }
-    ///
-    /// impl Error for A {}
-    ///
-    /// impl Error for B {
-    ///     fn source(&self) -> Option<&(dyn Error + 'static)> {
-    ///         self.0.as_ref().map(|e| e.as_ref())
-    ///     }
-    /// }
-    ///
-    /// let b = B(Some(Box::new(A)));
-    ///
-    /// // let err : Box<Error> = b.into(); // or
-    /// let err = &b as &(dyn Error);
-    ///
-    /// let mut iter = err.chain();
-    ///
-    /// assert_eq!("B".to_string(), iter.next().unwrap().to_string());
-    /// assert_eq!("A".to_string(), iter.next().unwrap().to_string());
-    /// assert!(iter.next().is_none());
-    /// assert!(iter.next().is_none());
-    /// ```
-    ///
-    /// [`source`]: trait.Error.html#method.source
-    #[unstable(feature = "error_iter", issue = "58520")]
-    #[inline]
-    pub fn chain(&self) -> Chain<'_> {
-}
-}
-
-/// An iterator over an [`Error`] and its sources.
-///
-/// If you want to omit the initial error and only process
-/// its sources, use `skip(1)`.
-///
-/// [`Error`]: trait.Error.html
-#[unstable(feature = "error_iter", issue = "58520")]
-#[derive(Clone, Debug)]
-pub struct Chain<'a> {
-    current: Option<&'a (dyn Error + 'static)>,
-}
-
-#[unstable(feature = "error_iter", issue = "58520")]
-impl<'a> Iterator for Chain<'a> {
-    type Item = &'a (dyn Error + 'static);
-
-    fn next(&mut self) -> Option<Self::Item> {
-}
-}
-
-impl dyn Error + Send {
-    #[inline]
-    #[stable(feature = "error_downcast", since = "1.3.0")]
-    /// Attempts to downcast the box to a concrete type.
-    pub fn downcast<T: Error + 'static>(self: Box<Self>) -> Result<Box<T>, Box<dyn Error + Send>> {
-}
-}
-
-impl dyn Error + Send + Sync {
-    #[inline]
-    #[stable(feature = "error_downcast", since = "1.3.0")]
-    /// Attempts to downcast the box to a concrete type.
-    pub fn downcast<T: Error + 'static>(self: Box<Self>) -> Result<Box<T>, Box<Self>> {
-}
-}
-
-#[cfg(test)]
-mod tests {
-}
-}
+impl Error for ! {}}
 pub mod ffi {
 //! Utilities related to FFI bindings.
 //!
@@ -16044,10 +15700,10 @@ pub use self::stdio::{stderr, stdin, stdout, Stderr, Stdin, Stdout};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::stdio::{StderrLock, StdinLock, StdoutLock};
 #[unstable(feature = "print_internals", issue = "none")]
-pub use self::stdio::{_eprint, _print};
+pub use self::stdio::{_};
 #[unstable(feature = "libstd_io_internals", issue = "42788")]
 #[doc(no_inline, hidden)]
-pub use self::stdio::{set_panic, set_print};
+pub use self::stdio::{s};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::util::{copy, empty, repeat, sink, Empty, Repeat, Sink};
 
@@ -29015,218 +28671,7 @@ impl<T: RefUnwindSafe + ?Sized> UnwindSafe for *const T {}
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 impl<T: RefUnwindSafe + ?Sized> UnwindSafe for *mut T {}
 #[unstable(feature = "ptr_internals", issue = "none")]
-impl<T: UnwindSafe + ?Sized> UnwindSafe for Unique<T> {}
-#[stable(feature = "nonnull", since = "1.25.0")]
-impl<T: RefUnwindSafe + ?Sized> UnwindSafe for NonNull<T> {}
-#[stable(feature = "catch_unwind", since = "1.9.0")]
-impl<T: ?Sized> UnwindSafe for Mutex<T> {}
-#[stable(feature = "catch_unwind", since = "1.9.0")]
-impl<T: ?Sized> UnwindSafe for RwLock<T> {}
-#[stable(feature = "catch_unwind", since = "1.9.0")]
-impl<T> UnwindSafe for AssertUnwindSafe<T> {}
-
-// not covered via the Shared impl above b/c the inner contents use
-// Cell/AtomicUsize, but the usage here is unwind safe so we can lift the
-// impl up one level to Arc/Rc itself
-#[stable(feature = "catch_unwind", since = "1.9.0")]
-impl<T: RefUnwindSafe + ?Sized> UnwindSafe for Rc<T> {}
-#[stable(feature = "catch_unwind", since = "1.9.0")]
-impl<T: RefUnwindSafe + ?Sized> UnwindSafe for Arc<T> {}
-
-// Pretty simple implementations for the `RefUnwindSafe` marker trait,
-// basically just saying that `UnsafeCell` is the
-// only thing which doesn't implement it (which then transitively applies to
-// everything else).
-#[stable(feature = "catch_unwind", since = "1.9.0")]
-impl<T: ?Sized> !RefUnwindSafe for UnsafeCell<T> {}
-#[stable(feature = "catch_unwind", since = "1.9.0")]
-impl<T> RefUnwindSafe for AssertUnwindSafe<T> {}
-
-#[stable(feature = "unwind_safe_lock_refs", since = "1.12.0")]
-impl<T: ?Sized> RefUnwindSafe for Mutex<T> {}
-#[stable(feature = "unwind_safe_lock_refs", since = "1.12.0")]
-impl<T: ?Sized> RefUnwindSafe for RwLock<T> {}
-
-#[cfg(target_has_atomic_load_store = "ptr")]
-#[stable(feature = "unwind_safe_atomic_refs", since = "1.14.0")]
-impl RefUnwindSafe for atomic::AtomicIsize {}
-#[cfg(target_has_atomic_load_store = "8")]
-#[unstable(feature = "integer_atomics", issue = "32976")]
-impl RefUnwindSafe for atomic::AtomicI8 {}
-#[cfg(target_has_atomic_load_store = "16")]
-#[unstable(feature = "integer_atomics", issue = "32976")]
-impl RefUnwindSafe for atomic::AtomicI16 {}
-#[cfg(target_has_atomic_load_store = "32")]
-#[unstable(feature = "integer_atomics", issue = "32976")]
-impl RefUnwindSafe for atomic::AtomicI32 {}
-#[cfg(target_has_atomic_load_store = "64")]
-#[unstable(feature = "integer_atomics", issue = "32976")]
-impl RefUnwindSafe for atomic::AtomicI64 {}
-#[cfg(target_has_atomic_load_store = "128")]
-#[unstable(feature = "integer_atomics", issue = "32976")]
-impl RefUnwindSafe for atomic::AtomicI128 {}
-
-#[cfg(target_has_atomic_load_store = "ptr")]
-#[stable(feature = "unwind_safe_atomic_refs", since = "1.14.0")]
-impl RefUnwindSafe for atomic::AtomicUsize {}
-#[cfg(target_has_atomic_load_store = "8")]
-#[unstable(feature = "integer_atomics", issue = "32976")]
-impl RefUnwindSafe for atomic::AtomicU8 {}
-#[cfg(target_has_atomic_load_store = "16")]
-#[unstable(feature = "integer_atomics", issue = "32976")]
-impl RefUnwindSafe for atomic::AtomicU16 {}
-#[cfg(target_has_atomic_load_store = "32")]
-#[unstable(feature = "integer_atomics", issue = "32976")]
-impl RefUnwindSafe for atomic::AtomicU32 {}
-#[cfg(target_has_atomic_load_store = "64")]
-#[unstable(feature = "integer_atomics", issue = "32976")]
-impl RefUnwindSafe for atomic::AtomicU64 {}
-#[cfg(target_has_atomic_load_store = "128")]
-#[unstable(feature = "integer_atomics", issue = "32976")]
-impl RefUnwindSafe for atomic::AtomicU128 {}
-
-#[cfg(target_has_atomic_load_store = "8")]
-#[stable(feature = "unwind_safe_atomic_refs", since = "1.14.0")]
-impl RefUnwindSafe for atomic::AtomicBool {}
-
-#[cfg(target_has_atomic_load_store = "ptr")]
-#[stable(feature = "unwind_safe_atomic_refs", since = "1.14.0")]
-impl<T> RefUnwindSafe for atomic::AtomicPtr<T> {}
-
-// https://github.com/rust-lang/rust/issues/62301
-#[stable(feature = "hashbrown", since = "1.36.0")]
-impl<K, V, S> UnwindSafe for collections::HashMap<K, V, S>
-where
-    K: UnwindSafe,
-    V: UnwindSafe,
-    S: UnwindSafe,
-{
-}
-
-#[stable(feature = "catch_unwind", since = "1.9.0")]
-impl<T> Deref for AssertUnwindSafe<T> {
-    type Target = T;
-
-    fn deref(&self) -> &T {
-}
-}
-
-#[stable(feature = "catch_unwind", since = "1.9.0")]
-impl<T> DerefMut for AssertUnwindSafe<T> {
-    fn deref_mut(&mut self) -> &mut T {
-}
-}
-
-#[stable(feature = "catch_unwind", since = "1.9.0")]
-impl<R, F: FnOnce() -> R> FnOnce<()> for AssertUnwindSafe<F> {
-    type Output = R;
-
-    extern "rust-call" fn call_once(self, _args: ()) -> R {
-}
-}
-
-#[stable(feature = "std_debug", since = "1.16.0")]
-impl<T: fmt::Debug> fmt::Debug for AssertUnwindSafe<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-}
-}
-
-#[stable(feature = "futures_api", since = "1.36.0")]
-impl<F: Future> Future for AssertUnwindSafe<F> {
-    type Output = F::Output;
-
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-}
-}
-
-/// Invokes a closure, capturing the cause of an unwinding panic if one occurs.
-///
-/// This function will return `Ok` with the closure's result if the closure
-/// does not panic, and will return `Err(cause)` if the closure panics. The
-/// `cause` returned is the object with which panic was originally invoked.
-///
-/// It is currently undefined behavior to unwind from Rust code into foreign
-/// code, so this function is particularly useful when Rust is called from
-/// another language (normally C). This can run arbitrary Rust code, capturing a
-/// panic and allowing a graceful handling of the error.
-///
-/// It is **not** recommended to use this function for a general try/catch
-/// mechanism. The [`Result`] type is more appropriate to use for functions that
-/// can fail on a regular basis. Additionally, this function is not guaranteed
-/// to catch all panics, see the "Notes" section below.
-///
-/// [`Result`]: ../result/enum.Result.html
-///
-/// The closure provided is required to adhere to the [`UnwindSafe`] trait to ensure
-/// that all captured variables are safe to cross this boundary. The purpose of
-/// this bound is to encode the concept of [exception safety][rfc] in the type
-/// system. Most usage of this function should not need to worry about this
-/// bound as programs are naturally unwind safe without `unsafe` code. If it
-/// becomes a problem the [`AssertUnwindSafe`] wrapper struct can be used to quickly
-/// assert that the usage here is indeed unwind safe.
-///
-/// [`AssertUnwindSafe`]: ./struct.AssertUnwindSafe.html
-/// [`UnwindSafe`]: ./trait.UnwindSafe.html
-///
-/// [rfc]: https://github.com/rust-lang/rfcs/blob/master/text/1236-stabilize-catch-panic.md
-///
-/// # Notes
-///
-/// Note that this function **may not catch all panics** in Rust. A panic in
-/// Rust is not always implemented via unwinding, but can be implemented by
-/// aborting the process as well. This function *only* catches unwinding panics,
-/// not those that abort the process.
-///
-/// # Examples
-///
-/// ```
-/// use std::panic;
-///
-/// let result = panic::catch_unwind(|| {
-///     println!("hello!");
-/// });
-/// assert!(result.is_ok());
-///
-/// let result = panic::catch_unwind(|| {
-///     panic!("oh no!");
-/// });
-/// assert!(result.is_err());
-/// ```
-#[stable(feature = "catch_unwind", since = "1.9.0")]
-pub fn catch_unwind<F: FnOnce() -> R + UnwindSafe, R>(f: F) -> Result<R> {
-}
-
-/// Triggers a panic without invoking the panic hook.
-///
-/// This is designed to be used in conjunction with [`catch_unwind`] to, for
-/// example, carry a panic across a layer of C code.
-///
-/// [`catch_unwind`]: ./fn.catch_unwind.html
-///
-/// # Notes
-///
-/// Note that panics in Rust are not always implemented via unwinding, but they
-/// may be implemented by aborting the process. If this function is called when
-/// panics are implemented this way then this function will abort the process,
-/// not trigger an unwind.
-///
-/// # Examples
-///
-/// ```should_panic
-/// use std::panic;
-///
-/// let result = panic::catch_unwind(|| {
-///     panic!("oh no!");
-/// });
-///
-/// if let Err(err) = result {
-///     panic::resume_unwind(err);
-/// }
-/// ```
-#[stable(feature = "resume_unwind", since = "1.9.0")]
-pub fn resume_unwind(payload: Box<dyn Any + Send>) -> ! {
-}
-}
+impl<T: UnwindSafe + ?Sized> UnwindSafe for Unique<T> {}}
 pub mod path {
 // ignore-tidy-filelength
 
@@ -33072,7 +32517,7 @@ pub fn id() -> u32 {
 #[cfg_attr(not(test), lang = "termination")]
 #[unstable(feature = "termination_trait_lib", issue = "43301")]
 #[rustc_on_unimplemented(
-    message = "`main` has invalid return type `{Self}`",
+    message = "`main` has invalid return type `{S}`",
     label = "`main` can only return types that implement `{Termination}`"
 )]
 pub trait Termination {
@@ -33083,34 +32528,22 @@ pub trait Termination {
 
 #[unstable(feature = "termination_trait_lib", issue = "43301")]
 impl Termination for () {
-    #[inline]
-    fn report(self) -> i32 {
-}
 }
 
 #[unstable(feature = "termination_trait_lib", issue = "43301")]
 impl<E: fmt::Debug> Termination for Result<(), E> {
-    fn report(self) -> i32 {
-}
 }
 
 #[unstable(feature = "termination_trait_lib", issue = "43301")]
 impl Termination for ! {
-    fn report(self) -> i32 {
-}
 }
 
 #[unstable(feature = "termination_trait_lib", issue = "43301")]
 impl<E: fmt::Debug> Termination for Result<!, E> {
-    fn report(self) -> i32 {
-}
 }
 
 #[unstable(feature = "termination_trait_lib", issue = "43301")]
 impl Termination for ExitCode {
-    #[inline]
-    fn report(self) -> i32 {
-}
 }
 
 #[cfg(all(test, not(any(target_os = "cloudabi", target_os = "emscripten", target_env = "sgx"))))]
@@ -37538,7 +36971,6 @@ unsafe impl Send for Once {}
 #[unstable(feature = "once_poison", issue = "33577")]
 #[derive(Debug)]
 pub struct OnceState {
-    poisoned: bool,
 }
 
 /// Initialization value for static [`Once`] values.
@@ -39029,9 +38461,6 @@ impl<T: Generator<Yield = ()>> !Unpin for GenFuture<T> {}
 #[doc(hidden)]
 #[unstable(feature = "gen_future", issue = "50547")]
 impl<T: Generator<Yield = ()>> Future for GenFuture<T> {
-    type Output = T::Return;
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-}
 }
 
 thread_local! {
@@ -41316,26 +40745,6 @@ pub struct System;
 // The Alloc impl just forwards to the GlobalAlloc impl, which is in `std::sys::*::alloc`.
 #[unstable(feature = "allocator_api", issue = "32838")]
 unsafe impl Alloc for System {
-    #[inline]
-    unsafe fn alloc(&mut self, layout: Layout) -> Result<NonNull<u8>, AllocErr> {
-}
-
-    #[inline]
-    unsafe fn alloc_zeroed(&mut self, layout: Layout) -> Result<NonNull<u8>, AllocErr> {
-}
-
-    #[inline]
-    unsafe fn dealloc(&mut self, ptr: NonNull<u8>, layout: Layout) {
-}
-
-    #[inline]
-    unsafe fn realloc(
-        &mut self,
-        ptr: NonNull<u8>,
-        layout: Layout,
-        new_size: usize,
-    ) -> Result<NonNull<u8>, AllocErr> {
-}
 }
 
 static HOOK: AtomicPtr<()> = AtomicPtr::new(ptr::null_mut());
@@ -41384,37 +40793,6 @@ pub fn rust_oom(layout: Layout) -> ! {
 #[allow(unused_attributes)]
 #[unstable(feature = "alloc_internals", issue = "none")]
 pub mod __default_lib_allocator {
-    use super::{GlobalAlloc, Layout, System};
-    // These magic symbol names are used as a fallback for implementing the
-    // `__rust_alloc` etc symbols (see `src/liballoc/alloc.rs) when there is
-    // no `#[global_allocator]` attribute.
-
-    // for symbol names src/librustc/middle/allocator.rs
-    // for signatures src/librustc_allocator/lib.rs
-
-    // linkage directives are provided as part of the current compiler allocator
-    // ABI
-
-    #[rustc_std_internal_symbol]
-    pub unsafe extern "C" fn __rdl_alloc(size: usize, align: usize) -> *mut u8 {
-}
-
-    #[rustc_std_internal_symbol]
-    pub unsafe extern "C" fn __rdl_dealloc(ptr: *mut u8, size: usize, align: usize) {
-}
-
-    #[rustc_std_internal_symbol]
-    pub unsafe extern "C" fn __rdl_realloc(
-        ptr: *mut u8,
-        old_size: usize,
-        align: usize,
-        new_size: usize,
-    ) -> *mut u8 {
-}
-
-    #[rustc_std_internal_symbol]
-    pub unsafe extern "C" fn __rdl_alloc_zeroed(size: usize, align: usize) -> *mut u8 {
-}
 }
 }
 
@@ -41513,18 +40891,6 @@ use realstd::io::set_panic;
 // hook up these functions, but it is not this day!
 #[allow(improper_ctypes)]
 extern "C" {
-    fn __rust_maybe_catch_panic(
-        f: fn(*mut u8),
-        data: *mut u8,
-        data_ptr: *mut usize,
-        vtable_ptr: *mut usize,
-    ) -> u32;
-
-    /// `payload` is actually a `*mut &mut dyn BoxMeUp` but that would cause FFI warnings.
-    /// It cannot be `Box<dyn BoxMeUp>` because the other end of this call does not depend
-    /// on liballoc, and thus cannot use `Box`.
-    #[unwind(allowed)]
-    fn __rust_start_panic(payload: usize) -> u32;
 }
 
 /// This function is called by the panic runtime if FFI code catches a Rust
@@ -41533,7 +40899,6 @@ extern "C" {
 #[cfg(not(test))]
 #[rustc_std_internal_symbol]
 extern "C" fn __rust_drop_panic() -> ! {
-    rtabort!("Rust panics must be rethrown");
 }
 
 #[derive(Copy, Clone)]
@@ -41774,526 +41139,6 @@ fn lang_start<T: crate::process::Termination + 'static>(
 #[unstable(feature = "stdsimd", issue = "48556")]
 #[cfg(not(test))]
 mod std_detect {
-//! `std_detect`
-
-#[doc(hidden)] // unstable implementation detail
-#[unstable(feature = "stdsimd", issue = "27731")]
-pub mod detect {
-//! This module implements run-time feature detection.
-//!
-//! The `is_{arch}_feature_detected!("feature-name")` macros take the name of a
-//! feature as a string-literal, and return a boolean indicating whether the
-//! feature is enabled at run-time or not.
-//!
-//! These macros do two things:
-//! * map the string-literal into an integer stored as a `Feature` enum,
-//! * call a `os::check_for(x: Feature)` function that returns `true` if the
-//! feature is enabled.
-//!
-//! The `Feature` enums are also implemented in the `arch/{target_arch}.rs`
-//! modules.
-//!
-//! The `check_for` functions are, in general, Operating System dependent. Most
-//! architectures do not allow user-space programs to query the feature bits
-//! due to security concerns (x86 is the big exception). These functions are
-//! implemented in the `os/{target_os}.rs` modules.
-
-use cfg_if::cfg_if;
-
-#[macro_use]
-mod error_macros {
-//! The `is_{target_arch}_feature_detected!` macro are only available on their
-//! architecture. These macros provide a better error messages when the user
-//! attempts to call them in a different architecture.
-
-/// Prevents compilation if `is_x86_feature_detected` is used somewhere
-/// else than `x86` and `x86_64` targets.
-#[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
-#[macro_export]
-#[unstable(feature = "stdsimd", issue = "27731")]
-macro_rules! is_x86_feature_detected {
-    ($t: tt) => {
-        compile_error!(
-            r#"
-        is_x86_feature_detected can only be used on x86 and x86_64 targets.
-        You can prevent it from being used in other architectures by
-        guarding it behind a cfg(target_arch) as follows:
-
-            #[cfg(any(target_arch = "x86", target_arch = "x86_64"))] {
-                if is_x86_feature_detected(...) { ... }
-            }
-        "#
-        )
-    };
-}
-
-/// Prevents compilation if `is_arm_feature_detected` is used somewhere else
-/// than `ARM` targets.
-#[cfg(not(target_arch = "arm"))]
-#[macro_export]
-#[unstable(feature = "stdsimd", issue = "27731")]
-macro_rules! is_arm_feature_detected {
-    ($t:tt) => {
-        compile_error!(
-            r#"
-        is_arm_feature_detected can only be used on ARM targets.
-        You can prevent it from being used in other architectures by
-        guarding it behind a cfg(target_arch) as follows:
-
-            #[cfg(target_arch = "arm")] {
-                if is_arm_feature_detected(...) { ... }
-            }
-        "#
-        )
-    };
-}
-
-/// Prevents compilation if `is_aarch64_feature_detected` is used somewhere else
-/// than `aarch64` targets.
-#[cfg(not(target_arch = "aarch64"))]
-#[macro_export]
-#[unstable(feature = "stdsimd", issue = "27731")]
-macro_rules! is_aarch64_feature_detected {
-    ($t: tt) => {
-        compile_error!(
-            r#"
-        is_aarch64_feature_detected can only be used on AArch64 targets.
-        You can prevent it from being used in other architectures by
-        guarding it behind a cfg(target_arch) as follows:
-
-            #[cfg(target_arch = "aarch64")] {
-                if is_aarch64_feature_detected(...) { ... }
-            }
-        "#
-        )
-    };
-}
-
-/// Prevents compilation if `is_powerpc_feature_detected` is used somewhere else
-/// than `PowerPC` targets.
-#[cfg(not(target_arch = "powerpc"))]
-#[macro_export]
-#[unstable(feature = "stdsimd", issue = "27731")]
-macro_rules! is_powerpc_feature_detected {
-    ($t:tt) => {
-        compile_error!(
-            r#"
-is_powerpc_feature_detected can only be used on PowerPC targets.
-You can prevent it from being used in other architectures by
-guarding it behind a cfg(target_arch) as follows:
-
-    #[cfg(target_arch = "powerpc")] {
-        if is_powerpc_feature_detected(...) { ... }
-    }
-"#
-        )
-    };
-}
-
-/// Prevents compilation if `is_powerpc64_feature_detected` is used somewhere
-/// else than `PowerPC64` targets.
-#[cfg(not(target_arch = "powerpc64"))]
-#[macro_export]
-#[unstable(feature = "stdsimd", issue = "27731")]
-macro_rules! is_powerpc64_feature_detected {
-    ($t:tt) => {
-        compile_error!(
-            r#"
-is_powerpc64_feature_detected can only be used on PowerPC64 targets.
-You can prevent it from being used in other architectures by
-guarding it behind a cfg(target_arch) as follows:
-
-    #[cfg(target_arch = "powerpc64")] {
-        if is_powerpc64_feature_detected(...) { ... }
-    }
-"#
-        )
-    };
-}
-
-/// Prevents compilation if `is_mips_feature_detected` is used somewhere else
-/// than `MIPS` targets.
-#[cfg(not(target_arch = "mips"))]
-#[macro_export]
-#[unstable(feature = "stdsimd", issue = "27731")]
-macro_rules! is_mips_feature_detected {
-    ($t:tt) => {
-        compile_error!(
-            r#"
-        is_mips_feature_detected can only be used on MIPS targets.
-        You can prevent it from being used in other architectures by
-        guarding it behind a cfg(target_arch) as follows:
-
-            #[cfg(target_arch = "mips")] {
-                if is_mips_feature_detected(...) { ... }
-            }
-        "#
-        )
-    };
-}
-
-/// Prevents compilation if `is_mips64_feature_detected` is used somewhere else
-/// than `MIPS64` targets.
-#[cfg(not(target_arch = "mips64"))]
-#[macro_export]
-#[unstable(feature = "stdsimd", issue = "27731")]
-macro_rules! is_mips64_feature_detected {
-    ($t:tt) => {
-        compile_error!(
-            r#"
-        is_mips64_feature_detected can only be used on MIPS64 targets.
-        You can prevent it from being used in other architectures by
-        guarding it behind a cfg(target_arch) as follows:
-
-            #[cfg(target_arch = "mips64")] {
-                if is_mips64_feature_detected(...) { ... }
-            }
-        "#
-        )
-    };
-}
-}
-
-#[macro_use]
-mod macros {
-#[allow(unused)]
-macro_rules! features {
-    (
-      @TARGET: $target:ident;
-      @MACRO_NAME: $macro_name:ident;
-      @MACRO_ATTRS: $(#[$macro_attrs:meta])*
-      $(@BIND_FEATURE_NAME: $bind_feature:tt; $feature_impl:tt; )*
-      $(@NO_RUNTIME_DETECTION: $nort_feature:tt; )*
-      $(@FEATURE: #[$stability_attr:meta] $feature:ident: $feature_lit:tt; $(#[$feature_comment:meta])*)*
-    ) => {
-        #[macro_export]
-        $(#[$macro_attrs])*
-        #[allow_internal_unstable(stdsimd_internal)]
-        macro_rules! $macro_name {
-            $(
-                ($feature_lit) => {
-                    $crate::detect::__is_feature_detected::$feature()
-                };
-            )*
-            $(
-                ($bind_feature) => { $macro_name!($feature_impl); };
-            )*
-            $(
-                ($nort_feature) => {
-                    compile_error!(
-                        concat!(
-                            stringify!(nort_feature),
-                            " feature cannot be detected at run-time"
-                        )
-                    )
-                };
-            )*
-            ($t:tt,) => {
-                    $macro_name!($t);
-            };
-            ($t:tt) => {
-                compile_error!(
-                    concat!(
-                        concat!("unknown ", stringify!($target)),
-                        concat!(" target feature: ", $t)
-                    )
-                )
-            };
-        }
-
-        /// Each variant denotes a position in a bitset for a particular feature.
-        ///
-        /// PLEASE: do not use this, it is an implementation detail subject
-        /// to change.
-        #[doc(hidden)]
-        #[allow(non_camel_case_types)]
-        #[derive(Copy, Clone)]
-        #[repr(u8)]
-        #[unstable(feature = "stdsimd_internal", issue = "none")]
-        pub(crate) enum Feature {
-            $(
-                $(#[$feature_comment])*
-                $feature,
-            )*
-
-            // Do not add variants after last:
-            _last
-        }
-
-        impl Feature {
-            pub(crate) fn to_str(self) -> &'static str {
-}
-            #[cfg(feature = "std_detect_env_override")]
-            pub(crate) fn from_str(s: &str) -> Result<Feature, ()> {
-}
-        }
-
-        /// Each function performs run-time feature detection for a single
-        /// feature. This allow us to use stability attributes on a per feature
-        /// basis.
-        ///
-        /// PLEASE: do not use this, it is an implementation detail subject
-        /// to change.
-        #[doc(hidden)]
-        pub mod __is_feature_detected {
-            $(
-
-                /// PLEASE: do not use this, it is an implementation detail
-                /// subject to change.
-                #[inline]
-                #[doc(hidden)]
-                #[$stability_attr]
-                pub fn $feature() -> bool {
-}
-            )*
-        }
-    };
-}
-}
-
-cfg_if! {
-    if #[cfg(any(target_arch = "x86", target_arch = "x86_64"))] {
-        #[path = "arch/x86.rs"]
-        #[macro_use]
-        mod arch;
-    } else if #[cfg(target_arch = "arm")] {
-        #[path = "arch/arm.rs"]
-        #[macro_use]
-        mod arch;
-    } else if #[cfg(target_arch = "aarch64")] {
-        #[path = "arch/aarch64.rs"]
-        #[macro_use]
-        mod arch;
-    } else if #[cfg(target_arch = "powerpc")] {
-        #[path = "arch/powerpc.rs"]
-        #[macro_use]
-        mod arch;
-    } else if #[cfg(target_arch = "powerpc64")] {
-        #[path = "arch/powerpc64.rs"]
-        #[macro_use]
-        mod arch;
-    } else if #[cfg(target_arch = "mips")] {
-        #[path = "arch/mips.rs"]
-        #[macro_use]
-        mod arch;
-    } else if #[cfg(target_arch = "mips64")] {
-        #[path = "arch/mips64.rs"]
-        #[macro_use]
-        mod arch;
-    } else {
-        // Unimplemented architecture:
-        #[allow(dead_code)]
-        mod arch {
-            #[doc(hidden)]
-            pub(crate) enum Feature {
-                Null
-            }
-            #[doc(hidden)]
-            pub mod __is_feature_detected {}
-
-            impl Feature {
-                #[doc(hidden)]
-                pub(crate) fn from_str(_s: &str) -> Result<Feature, ()> { }
-                #[doc(hidden)]
-                pub(crate) fn to_str(self) -> &'static str { }
-            }
-        }
-    }
-}
-
-// This module needs to be public because the `is_{arch}_feature_detected!`
-// macros expand calls to items within it in user crates.
-#[doc(hidden)]
-pub use self::arch::__is_feature_detected;
-
-pub(crate) use self::arch::Feature;
-
-mod bit {
-//! Bit manipulation utilities.
-
-/// Tests the `bit` of `x`.
-#[allow(dead_code)]
-#[inline]
-pub(crate) fn test(x: usize, bit: u32) -> bool {
-}
-}
-mod cache {
-//! Caches run-time feature detection so that it only needs to be computed
-//! once.
-
-#![allow(dead_code)] // not used on all platforms
-
-use crate::sync::atomic::Ordering;
-
-use crate::sync::atomic::AtomicUsize;
-
-/// Sets the `bit` of `x`.
-#[inline]
-const fn set_bit(x: u64, bit: u32) -> u64 {
-}
-
-/// Tests the `bit` of `x`.
-#[inline]
-const fn test_bit(x: u64, bit: u32) -> bool {
-}
-
-/// Unset the `bit of `x`.
-#[inline]
-const fn unset_bit(x: u64, bit: u32) -> u64 {
-}
-
-/// Maximum number of features that can be cached.
-const CACHE_CAPACITY: u32 = 62;
-
-/// This type is used to initialize the cache
-#[derive(Copy, Clone)]
-pub(crate) struct Initializer(u64);
-
-#[allow(clippy::use_self)]
-impl Default for Initializer {
-    fn default() -> Self {
-}
-}
-
-// NOTE: the `debug_assert!` would catch that we do not add more Features than
-// the one fitting our cache.
-impl Initializer {
-    /// Tests the `bit` of the cache.
-    #[allow(dead_code)]
-    #[inline]
-    pub(crate) fn test(self, bit: u32) -> bool {
-}
-
-    /// Sets the `bit` of the cache.
-    #[inline]
-    pub(crate) fn set(&mut self, bit: u32) {
-}
-
-    /// Unsets the `bit` of the cache.
-    #[inline]
-    pub(crate) fn unset(&mut self, bit: u32) {
-}
-}
-
-/// This global variable is a cache of the features supported by the CPU.
-// Note: on x64, we only use the first slot
-static CACHE: [Cache; 2] = [Cache::uninitialized(), Cache::uninitialized()];
-
-/// Feature cache with capacity for `usize::MAX - 1` features.
-///
-/// Note: the last feature bit is used to represent an
-/// uninitialized cache.
-///
-/// Note: we can use `Relaxed` atomic operations, because we are only interested
-/// in the effects of operations on a single memory location. That is, we only
-/// need "modification order", and not the full-blown "happens before". However,
-/// we use `SeqCst` just to be on the safe side.
-struct Cache(AtomicUsize);
-
-impl Cache {
-    const CAPACITY: u32 = (core::mem::size_of::<usize>() * 8 - 1) as u32;
-    const MASK: usize = (1 << Cache::CAPACITY) - 1;
-
-    /// Creates an uninitialized cache.
-    #[allow(clippy::declare_interior_mutable_const)]
-    const fn uninitialized() -> Self {
-}
-    /// Is the cache uninitialized?
-    #[inline]
-    pub(crate) fn is_uninitialized(&self) -> bool {
-}
-
-    /// Is the `bit` in the cache set?
-    #[inline]
-    pub(crate) fn test(&self, bit: u32) -> bool {
-}
-
-    /// Initializes the cache.
-    #[inline]
-    fn initialize(&self, value: usize) {
-}
-}
-
-cfg_if::cfg_if! {
-    if #[cfg(feature = "std_detect_env_override")] {
-        #[inline(never)]
-        fn initialize(mut value: Initializer) {
-}
-    } else {
-        #[inline]
-        fn initialize(value: Initializer) {
-}
-    }
-}
-
-#[inline]
-fn do_initialize(value: Initializer) {
-}
-
-/// Tests the `bit` of the storage. If the storage has not been initialized,
-/// initializes it with the result of `f()`.
-///
-/// On its first invocation, it detects the CPU features and caches them in the
-/// `CACHE` global variable as an `AtomicU64`.
-///
-/// It uses the `Feature` variant to index into this variable as a bitset. If
-/// the bit is set, the feature is enabled, and otherwise it is disabled.
-///
-/// If the feature `std_detect_env_override` is enabled looks for the env
-/// variable `RUST_STD_DETECT_UNSTABLE` and uses its its content to disable
-/// Features that would had been otherwise detected.
-#[inline]
-pub(crate) fn test<F>(bit: u32, f: F) -> bool
-where
-    F: FnOnce() -> Initializer,
-{
-}
-}
-
-cfg_if! {
-    if #[cfg(miri)] {
-        // When running under miri all target-features that are not enabled at
-        // compile-time are reported as disabled at run-time.
-        //
-        // For features for which `cfg(target_feature)` returns true,
-        // this run-time detection logic is never called.
-        #[path = "os/other.rs"]
-        mod os;
-    } else if #[cfg(any(target_arch = "x86", target_arch = "x86_64"))] {
-        // On x86/x86_64 no OS specific functionality is required.
-        #[path = "os/x86.rs"]
-        mod os;
-    } else if #[cfg(all(target_os = "linux", feature = "use_std"))] {
-        #[path = "os/linux/mod.rs"]
-        mod os;
-    } else if #[cfg(all(target_os = "freebsd", feature = "use_std"))] {
-        #[cfg(target_arch = "aarch64")]
-        #[path = "os/aarch64.rs"]
-        mod aarch64;
-        #[path = "os/freebsd/mod.rs"]
-        mod os;
-    } else if #[cfg(all(target_os = "windows", target_arch = "aarch64"))] {
-        #[path = "os/windows/aarch64.rs"]
-        mod os;
-    } else {
-        #[path = "os/other.rs"]
-        mod os;
-    }
-}
-
-/// Performs run-time feature detection.
-#[inline]
-#[allow(dead_code)]
-fn check_for(x: Feature) -> bool {
-}
-
-/// Returns an `Iterator<Item=(&'static str, bool)>` where
-/// `Item.0` is the feature name, and `Item.1` is a `bool` which
-/// is `true` if the feature is supported by the host and `false` otherwise.
-#[unstable(feature = "stdsimd", issue = "27731")]
-pub fn features() -> impl Iterator<Item = (&'static str, bool)> {
-}
-}
 }
 
 #[doc(hidden)]

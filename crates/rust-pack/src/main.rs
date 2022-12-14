@@ -117,18 +117,37 @@ fn remove_from_indices(input: &str, indices: Vec<(usize, usize)>) -> String {
 
 fn remove_function_body(input: &str) -> String {
     lazy_static::lazy_static! {
-        static ref FN_REGEX: Regex = RegexBuilder::new(r"[\r\t\n\s]+fn\s+[^{]+\{").case_insensitive(true).build().unwrap();
+        static ref FN_REGEX: Regex = RegexBuilder::new(r#"[\r\t\n\s]+fn\s+[^{]+\{"#).case_insensitive(true).build().unwrap();
     }
-
     remove_from_reg(input, &FN_REGEX)
 }
 
 fn remove_test_mod(input: &str) -> String {
     lazy_static::lazy_static! {
-        static ref TEST_MOD_REGEX: Regex = RegexBuilder::new(r"[\r\t\n\s]+#\[cfg\(test\)\][^{]+\{").case_insensitive(true).build().unwrap();
+        static ref TEST_MOD_REGEX: Regex = RegexBuilder::new(r#"[\r\t\n\s]+#\[cfg\(test\)\][^{]+\{"#).case_insensitive(true).build().unwrap();
     }
-
     remove_from_reg(input, &TEST_MOD_REGEX)
+}
+
+fn remove_extern_c(input: &str) -> String {
+    lazy_static::lazy_static! {
+        static ref EXTERN_C_REGEX: Regex = RegexBuilder::new(r#"[\r\t\n\s]+extern\s+"C"[^{]+\{"#).case_insensitive(true).build().unwrap();
+    }
+    remove_from_reg(input, &EXTERN_C_REGEX)
+}
+
+fn remove_unstable_feature(input: &str) -> String {
+    lazy_static::lazy_static! {
+        static ref UNSTABLE_FEATURE_REGEX: Regex = RegexBuilder::new(r#"[\r\t\n\s]+#\[unstable\(feature\s+=[^{]+\{"#).case_insensitive(true).build().unwrap();
+    }
+    remove_from_reg(input, &UNSTABLE_FEATURE_REGEX)
+}
+
+fn remove_skip_format(input: &str) -> String {
+    lazy_static::lazy_static! {
+        static ref SKIP_FORMAT_REGEX: Regex = RegexBuilder::new(r#"[\r\t\n\s]+#\[rustfmt::skip\][^{]+\{"#).case_insensitive(true).build().unwrap();
+    }
+    remove_from_reg(input, &SKIP_FORMAT_REGEX)
 }
 
 fn extract_path_seen(path_seen: Option<&str>) -> Option<&str> {
@@ -319,9 +338,10 @@ fn main() {
             put_module_in_string(&mut output, path, 0, 4000).unwrap();
 
             let name = format!("{}{}", out_prefix, package);
-            // remove test mod
+            output = remove_skip_format(&output);
+            output = remove_extern_c(&output);
+            output = remove_unstable_feature(&output);
             output = remove_test_mod(&output);
-            // remove function body
             output = remove_function_body(&output);
 
             if output_type.eq("json") {
