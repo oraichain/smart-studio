@@ -6,7 +6,7 @@ use rust_pack::extractor;
 use std::collections::HashMap;
 use std::fs;
 use std::fs::read_to_string;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 struct Mod<'a> {
@@ -241,24 +241,20 @@ fn put_module_in_string(
             let folder_path = parent_path.join(format!("{}/mod.rs", m.name));
             let child_path = if let Some(ep) = m.explicit_path {
                 // println!("explicit path found: {:?}", ep);
-                path.parent().unwrap().join(ep)
+                path.parent().map(|p| p.join(ep))
             } else if same_level_path.exists() {
-                same_level_path
+                Some(same_level_path)
             } else if folder_path.exists() {
-                folder_path
+                Some(folder_path)
             } else {
-                println!(
-                    "same_level_path: {:?}\nfolder_path: {:?}\n",
-                    same_level_path, folder_path
-                );
-                return Err(MyError {
-                    libstack: vec![path.to_string_lossy().to_string()],
-                    cause_module: folder_path.to_string_lossy().to_string(),
-                });
+                // ignore to continue
+                None
             };
-            if let Err(mut e) = put_module_in_string(output, &child_path, depth + 1, rr) {
-                e.libstack.push(path.to_string_lossy().to_string());
-                return Err(e);
+            if let Some(child_path) = child_path {
+                if let Err(mut e) = put_module_in_string(output, &child_path, depth + 1, rr) {
+                    e.libstack.push(path.to_string_lossy().to_string());
+                    return Err(e);
+                }
             }
             output.push_line("}");
         } else {
@@ -269,8 +265,9 @@ fn put_module_in_string(
 }
 
 fn main() {
+    let toolchain = std::env::var("TOOLCHAIN").unwrap_or("+nightly-2021-11-02".to_string());
     let rustc_result = Command::new("rustc")
-        .args(&["+nightly-2021-11-02", "--print", "sysroot"])
+        .args(&[&toolchain, "--print", "sysroot"])
         .output()
         .expect("Failed to execute rustc")
         .stdout;
