@@ -33,9 +33,9 @@ export class LanguageUpdater {
     } else {
       // fallback loading from source code
       const rustFiles = await Promise.all([
-        import('../rust/std.rs'),
-        import('../rust/core.rs'),
-        import('../rust/alloc.rs'),
+        import('../rust/libstd.rs'),
+        import('../rust/libcore.rs'),
+        import('../rust/liballoc.rs'),
         import('../rust/cosmwasm-derive.rs'),
         import('../rust/cosmwasm-schema-derive.rs'),
         import('../rust/cosmwasm-schema.rs'),

@@ -131,6 +131,15 @@ fn remove_test_mod(input: &str) -> String {
     remove_from_reg(input, &TEST_MOD_REGEX)
 }
 
+fn extract_path_seen(path_seen: Option<&str>) -> Option<&str> {
+    path_seen.map(|seen| {
+        if let Some(ind) = seen.find("\"") {
+            return seen.get(..ind).unwrap_or_default();
+        }
+        seen
+    })
+}
+
 fn is_external_mod<'a>(mod_state: &mut ModState<'a>, line: &'a str) -> Option<Mod<'a>> {
     let line = remove_comment(line);
     if line.is_empty() {
@@ -153,37 +162,39 @@ fn is_external_mod<'a>(mod_state: &mut ModState<'a>, line: &'a str) -> Option<Mo
         return None;
     }
     let current_mod_state = std::mem::take(mod_state);
+
     if !line.ends_with(';') {
         return None;
     }
+
     let line = &line[..line.len() - 1];
     if let Some(line) = line.strip_prefix("mod ") {
         Some(Mod {
-            explicit_path: current_mod_state.path_seen,
+            explicit_path: extract_path_seen(current_mod_state.path_seen),
             pub_prefix: "",
             name: clean_token(line),
         })
     } else if let Some(line) = line.strip_prefix("pub mod ") {
         Some(Mod {
-            explicit_path: current_mod_state.path_seen,
+            explicit_path: extract_path_seen(current_mod_state.path_seen),
             pub_prefix: "pub ",
             name: clean_token(line),
         })
     } else if let Some(line) = line.strip_prefix("pub(crate) mod ") {
         Some(Mod {
-            explicit_path: current_mod_state.path_seen,
+            explicit_path: extract_path_seen(current_mod_state.path_seen),
             pub_prefix: "pub(crate) ",
             name: clean_token(line),
         })
     } else if let Some(line) = line.strip_prefix("pub(self) mod ") {
         Some(Mod {
-            explicit_path: current_mod_state.path_seen,
+            explicit_path: extract_path_seen(current_mod_state.path_seen),
             pub_prefix: "pub(self) ",
             name: clean_token(line),
         })
     } else if let Some(line) = line.strip_prefix("pub(super) mod ") {
         Some(Mod {
-            explicit_path: current_mod_state.path_seen,
+            explicit_path: extract_path_seen(current_mod_state.path_seen),
             pub_prefix: "pub(super) ",
             name: clean_token(line),
         })
@@ -240,7 +251,6 @@ fn put_module_in_string(
             let same_level_path = parent_path.join(format!("{}.rs", m.name));
             let folder_path = parent_path.join(format!("{}/mod.rs", m.name));
             let child_path = if let Some(ep) = m.explicit_path {
-                // println!("explicit path found: {:?}", ep);
                 path.parent().map(|p| p.join(ep))
             } else if same_level_path.exists() {
                 Some(same_level_path)
@@ -285,19 +295,24 @@ fn main() {
 
     // rust library
     let lib_rust_paths = [
-        (sysroot_path, vec!["std", "alloc", "core"], ""),
+        if Path::new(&format!("{}/std", sysroot_path)).exists() {
+            (sysroot_path, vec!["std", "alloc", "core"], "lib", "src/lib.rs")
+        } else {
+            (sysroot_path, vec!["libstd", "liballoc", "libcore"], "", "lib.rs")
+        },
         (
             cosmwasm_path,
             vec!["std", "derive", "schema", "schema-derive", "crypto", "storage"],
             "cosmwasm-",
+            "src/lib.rs",
         ),
     ];
 
     let mut crate_map = HashMap::new();
 
-    for (rust_path, packages, out_prefix) in lib_rust_paths {
+    for (rust_path, packages, out_prefix, entry_src) in lib_rust_paths {
         for package in packages {
-            let path_string = &format!("{}/{}/src/lib.rs", rust_path, package);
+            let path_string = &format!("{}/{}/{}", rust_path, package, entry_src);
             let path = Path::new(path_string);
 
             let mut output = String::default();
@@ -320,9 +335,9 @@ fn main() {
 
     if output_type.eq("json") {
         let change = extractor::load_change_from_files(
-            crate_map.get("std").unwrap().clone(),
-            crate_map.get("core").unwrap().clone(),
-            crate_map.get("alloc").unwrap().clone(),
+            crate_map.get("libstd").unwrap().clone(),
+            crate_map.get("libcore").unwrap().clone(),
+            crate_map.get("liballoc").unwrap().clone(),
             crate_map.get("cosmwasm-derive").unwrap().clone(),
             crate_map.get("cosmwasm-schema-derive").unwrap().clone(),
             crate_map.get("cosmwasm-schema").unwrap().clone(),

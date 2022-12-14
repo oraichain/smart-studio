@@ -22,7 +22,7 @@
 //! * [`std::*` modules](#modules)
 //! * [Primitive types](#primitives)
 //! * [Standard macros](#macros)
-//! * [The Rust Prelude]
+//! * [The Rust Prelude](prelude/index.html)
 //!
 //! If this is your first time, the documentation for the standard library is
 //! written to be casually perused. Clicking on interesting things should
@@ -63,8 +63,8 @@
 //! So for example there is a [page for the primitive type
 //! `i32`](primitive.i32.html) that lists all the methods that can be called on
 //! 32-bit integers (very useful), and there is a [page for the module
-//! `std::i32`] that documents the constant values [`MIN`] and [`MAX`] (rarely
-//! useful).
+//! `std::i32`](i32/index.html) that documents the constant values [`MIN`] and
+//! [`MAX`](i32/constant.MAX.html) (rarely useful).
 //!
 //! Note the documentation for the primitives [`str`] and [`[T]`][slice] (also
 //! called 'slice'). Many method calls on [`String`] and [`Vec<T>`] are actually
@@ -85,15 +85,13 @@
 //! # Contributing changes to the documentation
 //!
 //! Check out the rust contribution guidelines [here](
-//! https://rustc-dev-guide.rust-lang.org/getting-started.html).
-//! The source for this documentation can be found on
-//! [GitHub](https://github.com/rust-lang/rust).
+//! https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.md).
+//! The source for this documentation can be found on [Github](https://github.com/rust-lang).
 //! To contribute changes, make sure you read the guidelines first, then submit
 //! pull-requests for your suggested changes.
 //!
 //! Contributions are appreciated! If you see a part of the docs that can be
-//! improved, submit a PR, or chat with us first on [Discord][rust-discord]
-//! #docs.
+//! improved, submit a PR, or chat with us first on irc.mozilla.org #rust-docs.
 //!
 //! # A Tour of The Rust Standard Library
 //!
@@ -152,42 +150,52 @@
 //! contains further primitive shared memory types, including [`atomic`] and
 //! [`mpsc`], which contains the channel types for message passing.
 //!
-//! [I/O]: io
-//! [`MIN`]: i32::MIN
-//! [`MAX`]: i32::MAX
-//! [page for the module `std::i32`]: crate::i32
-//! [TCP]: net::TcpStream
-//! [The Rust Prelude]: prelude
-//! [UDP]: net::UdpSocket
-//! [`Arc`]: sync::Arc
-//! [owned slice]: boxed
-//! [`Cell`]: cell::Cell
-//! [`FromStr`]: str::FromStr
-//! [`HashMap<K, V>`]: collections::HashMap
-//! [`Mutex`]: sync::Mutex
-//! [`Option<T>`]: option::Option
-//! [`Rc`]: rc::Rc
-//! [`RefCell`]: cell::RefCell
-//! [`Result<T, E>`]: result::Result
-//! [`Vec<T>`]: vec::Vec
-//! [`atomic`]: sync::atomic
+//! [I/O]: io/index.html
+//! [`MIN`]: i32/constant.MIN.html
+//! [TCP]: net/struct.TcpStream.html
+//! [The Rust Prelude]: prelude/index.html
+//! [UDP]: net/struct.UdpSocket.html
+//! [`Arc`]: sync/struct.Arc.html
+//! [owned slice]: boxed/index.html
+//! [`Cell`]: cell/struct.Cell.html
+//! [`FromStr`]: str/trait.FromStr.html
+//! [`HashMap<K, V>`]: collections/struct.HashMap.html
+//! [`Iterator`]: iter/trait.Iterator.html
+//! [`Mutex`]: sync/struct.Mutex.html
+//! [`Option<T>`]: option/enum.Option.html
+//! [`Rc`]: rc/index.html
+//! [`RefCell`]: cell/struct.RefCell.html
+//! [`Result<T, E>`]: result/enum.Result.html
+//! [`String`]: string/struct.String.html
+//! [`Vec<T>`]: vec/index.html
+//! [array]: primitive.array.html
+//! [slice]: primitive.slice.html
+//! [`atomic`]: sync/atomic/index.html
+//! [`collections`]: collections/index.html
 //! [`for`]: ../book/ch03-05-control-flow.html#looping-through-a-collection-with-for
-//! [`str`]: prim@str
-//! [`mpsc`]: sync::mpsc
-//! [`std::cmp`]: cmp
-//! [`std::slice`]: slice
+//! [`format!`]: macro.format.html
+//! [`fs`]: fs/index.html
+//! [`io`]: io/index.html
+//! [`iter`]: iter/index.html
+//! [`mpsc`]: sync/mpsc/index.html
+//! [`net`]: net/index.html
+//! [`option`]: option/index.html
+//! [`result`]: result/index.html
+//! [`std::cmp`]: cmp/index.html
+//! [`std::slice`]: slice/index.html
+//! [`str`]: primitive.str.html
+//! [`sync`]: sync/index.html
+//! [`thread`]: thread/index.html
 //! [`use std::env`]: env/index.html
 //! [`use`]: ../book/ch07-02-defining-modules-to-control-scope-and-privacy.html
 //! [crates.io]: https://crates.io
 //! [deref-coercions]: ../book/ch15-02-deref.html#implicit-deref-coercions-with-functions-and-methods
-//! [files]: fs::File
-//! [multithreading]: thread
+//! [files]: fs/struct.File.html
+//! [multithreading]: thread/index.html
 //! [other]: #what-is-in-the-standard-library-documentation
 //! [primitive types]: ../book/ch03-02-data-types.html
-//! [rust-discord]: https://discord.gg/rust-lang
 
-#![cfg_attr(not(feature = "restricted-std"), stable(feature = "rust1", since = "1.0.0"))]
-#![cfg_attr(feature = "restricted-std", unstable(feature = "restricted_std", issue = "none"))]
+#![stable(feature = "rust1", since = "1.0.0")]
 #![doc(
     html_root_url = "https://doc.rust-lang.org/nightly/",
     html_playground_url = "https://play.rust-lang.org/",
@@ -200,6 +208,7 @@
 #![warn(deprecated_in_future)]
 #![warn(missing_docs)]
 #![warn(missing_debug_implementations)]
+#![deny(intra_doc_link_resolution_failure)] // rustdoc is run without -D warnings
 #![allow(explicit_outlives_requirements)]
 #![allow(unused_lifetimes)]
 // Tell the compiler to link to either panic_abort or panic_unwind
@@ -209,9 +218,12 @@
 #![cfg_attr(test, feature(print_internals, set_stdio, update_panic_count))]
 #![cfg_attr(
     all(target_vendor = "fortanix", target_env = "sgx"),
-    feature(slice_index_methods, coerce_unsized, sgx_platform)
+    feature(slice_index_methods, coerce_unsized, sgx_platform, ptr_wrapping_offset_from)
 )]
-#![cfg_attr(all(test, target_vendor = "fortanix", target_env = "sgx"), feature(fixed_size_array))]
+#![cfg_attr(
+    all(test, target_vendor = "fortanix", target_env = "sgx"),
+    feature(fixed_size_array, maybe_uninit_extra)
+)]
 // std is implemented with unstable features, many of which are internal
 // compiler details that will never be stable
 // NB: the following list is sorted to minimize merge conflicts.
@@ -221,23 +233,19 @@
 #![feature(allocator_internals)]
 #![feature(allow_internal_unsafe)]
 #![feature(allow_internal_unstable)]
+#![feature(atomic_mut_ptr)]
 #![feature(arbitrary_self_types)]
 #![feature(array_error_internals)]
 #![feature(asm)]
 #![feature(associated_type_bounds)]
-#![feature(atomic_mut_ptr)]
 #![feature(box_syntax)]
 #![feature(c_variadic)]
-#![feature(can_vector)]
-#![feature(cfg_accessible)]
 #![feature(cfg_target_has_atomic)]
 #![feature(cfg_target_thread_local)]
 #![feature(char_error_internals)]
-#![feature(char_internals)]
 #![feature(clamp)]
 #![feature(concat_idents)]
 #![feature(const_cstr_unchecked)]
-#![feature(const_fn_transmute)]
 #![feature(const_raw_ptr_deref)]
 #![feature(container_error_extra)]
 #![feature(core_intrinsics)]
@@ -247,17 +255,14 @@
 #![feature(doc_cfg)]
 #![feature(doc_keyword)]
 #![feature(doc_masked)]
-#![cfg_attr(not(bootstrap), feature(doc_spotlight))]
+#![feature(doc_spotlight)]
 #![feature(dropck_eyepatch)]
 #![feature(duration_constants)]
 #![feature(exact_size_is_empty)]
 #![feature(exhaustive_patterns)]
-#![feature(extend_one)]
 #![feature(external_doc)]
 #![feature(fn_traits)]
 #![feature(format_args_nl)]
-#![feature(future_readiness_fns)]
-#![feature(gen_future)]
 #![feature(generator_trait)]
 #![feature(global_asm)]
 #![feature(hash_raw_entry)]
@@ -265,42 +270,31 @@
 #![feature(int_error_internals)]
 #![feature(int_error_matching)]
 #![feature(integer_atomics)]
-#![feature(into_future)]
 #![feature(lang_items)]
 #![feature(libc)]
 #![feature(link_args)]
 #![feature(linkage)]
-#![feature(llvm_asm)]
 #![feature(log_syntax)]
-#![feature(maybe_uninit_extra)]
 #![feature(maybe_uninit_ref)]
 #![feature(maybe_uninit_slice)]
-#![feature(min_specialization)]
 #![feature(needs_panic_runtime)]
-#![feature(negative_impls)]
 #![feature(never_type)]
 #![feature(nll)]
-#![feature(nonnull_slice_from_raw_parts)]
-#![feature(once_cell)]
 #![feature(optin_builtin_traits)]
-#![feature(or_patterns)]
 #![feature(panic_info_message)]
 #![feature(panic_internals)]
 #![feature(panic_unwind)]
 #![feature(prelude_import)]
 #![feature(ptr_internals)]
 #![feature(raw)]
-#![feature(raw_ref_macros)]
-#![feature(ready_macro)]
 #![feature(renamed_spin_loop)]
 #![feature(rustc_attrs)]
 #![feature(rustc_private)]
 #![feature(shrink_to)]
 #![feature(slice_concat_ext)]
 #![feature(slice_internals)]
-#![feature(slice_ptr_get)]
-#![feature(slice_ptr_len)]
-#![feature(slice_strip)]
+#![cfg_attr(bootstrap, feature(slice_patterns))]
+#![feature(specialization)]
 #![feature(staged_api)]
 #![feature(std_internals)]
 #![feature(stdsimd)]
@@ -309,15 +303,12 @@
 #![feature(test)]
 #![feature(thread_local)]
 #![feature(toowned_clone_into)]
-#![feature(total_cmp)]
 #![feature(trace_macros)]
+#![feature(track_caller)]
 #![feature(try_reserve)]
 #![feature(unboxed_closures)]
-#![feature(unsafe_block_in_unsafe_fn)]
 #![feature(untagged_unions)]
 #![feature(unwind_attributes)]
-#![feature(vec_into_raw_parts)]
-#![feature(wake_trait)]
 // NB: the above list is sorted to minimize merge conflicts.
 #![default_lib_allocator]
 
@@ -343,6 +334,12 @@ extern crate libc;
 #[allow(unused_extern_crates)]
 extern crate unwind;
 
+// Only needed for now for the `std_detect` module until that crate changes to
+// use `cfg_if::cfg_if!`
+#[macro_use]
+#[cfg(not(test))]
+extern crate cfg_if;
+
 // During testing, this crate is not actually the "real" std library, but rather
 // it links to the real std library, which was compiled from this same source
 // code. So any lang items std defines are conditionally excluded (or else they
@@ -357,11 +354,32 @@ extern crate std as realstd;
 mod macros {
 //! Standard library macros
 //!
-//! This module contains a set of macros which are exported from the standard
+//! This modules contains a set of macros which are exported from the standard
 //! library. Each macro is available for use when linking against the standard
 //! library.
 
-#[doc(include = "../../core/src/macros/panic.md")]
+#[cfg(bootstrap)]
+#[doc(include = "../libcore/macros/panic.md")]
+#[macro_export]
+#[stable(feature = "rust1", since = "1.0.0")]
+#[allow_internal_unstable(libstd_sys_internals)]
+macro_rules! panic {
+    () => ({
+        $crate::panic!("explicit panic")
+    });
+    ($msg:expr) => ({
+        $crate::rt::begin_panic($msg, &($crate::file!(), $crate::line!(), $crate::column!()))
+    });
+    ($msg:expr,) => ({
+        $crate::panic!($msg)
+    });
+    ($fmt:expr, $($arg:tt)+) => ({
+        $crate::rt::begin_panic_fmt(&$crate::format_args!($fmt, $($arg)+))
+    });
+}
+
+#[cfg(not(bootstrap))]
+#[doc(include = "../libcore/macros/panic.md")]
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow_internal_unstable(libstd_sys_internals)]
@@ -386,7 +404,9 @@ macro_rules! panic {
 /// Use `print!` only for the primary output of your program. Use
 /// [`eprint!`] instead to print error and progress messages.
 ///
-/// [flush]: crate::io::Write::flush
+/// [`println!`]: ../std/macro.println.html
+/// [flush]: ../std/io/trait.Write.html#tymethod.flush
+/// [`eprint!`]: ../std/macro.eprint.html
 ///
 /// # Panics
 ///
@@ -429,13 +449,12 @@ macro_rules! print {
 /// Use `println!` only for the primary output of your program. Use
 /// [`eprintln!`] instead to print error and progress messages.
 ///
-/// [`std::fmt`]: crate::fmt
-///
+/// [`format!`]: ../std/macro.format.html
+/// [`std::fmt`]: ../std/fmt/index.html
+/// [`eprintln!`]: ../std/macro.eprintln.html
 /// # Panics
 ///
-/// Panics if writing to [`io::stdout`] fails.
-///
-/// [`io::stdout`]: crate::io::stdout
+/// Panics if writing to `io::stdout` fails.
 ///
 /// # Examples
 ///
@@ -457,14 +476,14 @@ macro_rules! println {
 /// Prints to the standard error.
 ///
 /// Equivalent to the [`print!`] macro, except that output goes to
-/// [`io::stderr`] instead of [`io::stdout`]. See [`print!`] for
+/// [`io::stderr`] instead of `io::stdout`. See [`print!`] for
 /// example usage.
 ///
 /// Use `eprint!` only for error and progress messages. Use `print!`
 /// instead for the primary output of your program.
 ///
-/// [`io::stderr`]: crate::io::stderr
-/// [`io::stdout`]: crate::io::stdout
+/// [`io::stderr`]: ../std/io/struct.Stderr.html
+/// [`print!`]: ../std/macro.print.html
 ///
 /// # Panics
 ///
@@ -485,14 +504,14 @@ macro_rules! eprint {
 /// Prints to the standard error, with a newline.
 ///
 /// Equivalent to the [`println!`] macro, except that output goes to
-/// [`io::stderr`] instead of [`io::stdout`]. See [`println!`] for
+/// [`io::stderr`] instead of `io::stdout`. See [`println!`] for
 /// example usage.
 ///
 /// Use `eprintln!` only for error and progress messages. Use `println!`
 /// instead for the primary output of your program.
 ///
-/// [`io::stderr`]: crate::io::stderr
-/// [`io::stdout`]: crate::io::stdout
+/// [`io::stderr`]: ../std/io/struct.Stderr.html
+/// [`println!`]: ../std/macro.println.html
 ///
 /// # Panics
 ///
@@ -541,7 +560,7 @@ macro_rules! eprintln {
 /// builds or when debugging in release mode is significantly faster.
 ///
 /// Note that the macro is intended as a debugging tool and therefore you
-/// should avoid having uses of it in version control for long periods.
+/// should avoid having uses of it in version control for longer periods.
 /// Use cases involving debug output that should be added to version control
 /// are better served by macros such as [`debug!`] from the [`log`] crate.
 ///
@@ -679,6 +698,22 @@ pub mod prelude {
 //! things, particularly traits, which are used in almost every single Rust
 //! program.
 //!
+//! On a technical level, Rust inserts
+//!
+//! ```
+//! # #[allow(unused_extern_crates)]
+//! extern crate std;
+//! ```
+//!
+//! into the crate root of every crate, and
+//!
+//! ```
+//! # #[allow(unused_imports)]
+//! use std::prelude::v1::*;
+//! ```
+//!
+//! into every module.
+//!
 //! # Other preludes
 //!
 //! Preludes can be seen as a pattern to make using multiple types more
@@ -686,7 +721,7 @@ pub mod prelude {
 //! such as [`std::io::prelude`]. Various libraries in the Rust ecosystem may
 //! also define their own preludes.
 //!
-//! [`std::io::prelude`]: crate::io::prelude
+//! [`std::io::prelude`]: ../io/prelude/index.html
 //!
 //! The difference between 'the prelude' and these other preludes is that they
 //! are not automatically `use`'d, and must be imported manually. This is still
@@ -718,34 +753,67 @@ pub mod prelude {
 //! * [`std::iter`]::{[`Iterator`], [`Extend`], [`IntoIterator`],
 //!   [`DoubleEndedIterator`], [`ExactSizeIterator`]}. Iterators of various
 //!   kinds.
-//! * [`std::option`]::[`Option`]::{[`self`][`Option`], [`Some`], [`None`]}. A
-//!   type which expresses the presence or absence of a value. This type is so
-//!   commonly used, its variants are also exported.
-//! * [`std::result`]::[`Result`]::{[`self`][`Result`], [`Ok`], [`Err`]}. A type
-//!   for functions that may succeed or fail. Like [`Option`], its variants are
-//!   exported as well.
+//! * [`std::option`]::[`Option`]::{`self`, `Some`, `None`}. A type which
+//!   expresses the presence or absence of a value. This type is so commonly
+//!   used, its variants are also exported.
+//! * [`std::result`]::[`Result`]::{`self`, `Ok`, `Err`}. A type for functions
+//!   that may succeed or fail. Like [`Option`], its variants are exported as
+//!   well.
 //! * [`std::string`]::{[`String`], [`ToString`]}, heap allocated strings.
-//! * [`std::vec`]::[`Vec`], a growable, heap-allocated
+//! * [`std::vec`]::[`Vec`](../vec/struct.Vec.html), a growable, heap-allocated
 //!   vector.
 //!
-//! [`mem::drop`]: crate::mem::drop
-//! [`std::borrow`]: crate::borrow
-//! [`std::boxed`]: crate::boxed
-//! [`std::clone`]: crate::clone
-//! [`std::cmp`]: crate::cmp
-//! [`std::convert`]: crate::convert
-//! [`std::default`]: crate::default
-//! [`std::iter`]: crate::iter
-//! [`std::marker`]: crate::marker
-//! [`std::mem`]: crate::mem
-//! [`std::ops`]: crate::ops
-//! [`std::option`]: crate::option
-//! [`std::prelude::v1`]: v1
-//! [`std::result`]: crate::result
-//! [`std::slice`]: crate::slice
-//! [`std::string`]: crate::string
+//! [`AsMut`]: ../convert/trait.AsMut.html
+//! [`AsRef`]: ../convert/trait.AsRef.html
+//! [`Box`]: ../boxed/struct.Box.html
+//! [`Clone`]: ../clone/trait.Clone.html
+//! [`Copy`]: ../marker/trait.Copy.html
+//! [`Default`]: ../default/trait.Default.html
+//! [`DoubleEndedIterator`]: ../iter/trait.DoubleEndedIterator.html
+//! [`Drop`]: ../ops/trait.Drop.html
+//! [`Eq`]: ../cmp/trait.Eq.html
+//! [`ExactSizeIterator`]: ../iter/trait.ExactSizeIterator.html
+//! [`Extend`]: ../iter/trait.Extend.html
+//! [`FnMut`]: ../ops/trait.FnMut.html
+//! [`FnOnce`]: ../ops/trait.FnOnce.html
+//! [`Fn`]: ../ops/trait.Fn.html
+//! [`From`]: ../convert/trait.From.html
+//! [`IntoIterator`]: ../iter/trait.IntoIterator.html
+//! [`Into`]: ../convert/trait.Into.html
+//! [`Iterator`]: ../iter/trait.Iterator.html
+//! [`Option`]: ../option/enum.Option.html
+//! [`Ord`]: ../cmp/trait.Ord.html
+//! [`PartialEq`]: ../cmp/trait.PartialEq.html
+//! [`PartialOrd`]: ../cmp/trait.PartialOrd.html
+//! [`Result`]: ../result/enum.Result.html
+//! [`Send`]: ../marker/trait.Send.html
+//! [`Sized`]: ../marker/trait.Sized.html
+//! [`SliceConcatExt`]: ../slice/trait.SliceConcatExt.html
+//! [`String`]: ../string/struct.String.html
+//! [`Sync`]: ../marker/trait.Sync.html
+//! [`ToOwned`]: ../borrow/trait.ToOwned.html
+//! [`ToString`]: ../string/trait.ToString.html
+//! [`Unpin`]: ../marker/trait.Unpin.html
+//! [`Vec`]: ../vec/struct.Vec.html
+//! [`Clone::clone`]: ../clone/trait.Clone.html#tymethod.clone
+//! [`mem::drop`]: ../mem/fn.drop.html
+//! [`std::borrow`]: ../borrow/index.html
+//! [`std::boxed`]: ../boxed/index.html
+//! [`std::clone`]: ../clone/index.html
+//! [`std::cmp`]: ../cmp/index.html
+//! [`std::convert`]: ../convert/index.html
+//! [`std::default`]: ../default/index.html
+//! [`std::iter`]: ../iter/index.html
+//! [`std::marker`]: ../marker/index.html
+//! [`std::mem`]: ../mem/index.html
+//! [`std::ops`]: ../ops/index.html
+//! [`std::option`]: ../option/index.html
+//! [`std::prelude::v1`]: v1/index.html
+//! [`std::result`]: ../result/index.html
+//! [`std::slice`]: ../slice/index.html
+//! [`std::string`]: ../string/index.html
 //! [`std::vec`]: ../vec/index.html
-//! [`to_owned`]: crate::borrow::ToOwned::to_owned
+//! [`to_owned`]: ../borrow/trait.ToOwned.html#tymethod.to_owned
 //! [book-closures]: ../../book/ch13-01-closures.html
 //! [book-dtor]: ../../book/ch15-03-drop.html
 //! [book-enums]: ../../book/ch06-01-defining-an-enum.html
@@ -792,12 +860,11 @@ pub use crate::result::Result::{self, Err, Ok};
 
 // Re-exported built-in macros
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
-#[allow(deprecated)]
 #[doc(no_inline)]
 pub use core::prelude::v1::{
     asm, assert, cfg, column, compile_error, concat, concat_idents, env, file, format_args,
-    format_args_nl, global_asm, include, include_bytes, include_str, line, llvm_asm, log_syntax,
-    module_path, option_env, stringify, trace_macros,
+    format_args_nl, global_asm, include, include_bytes, include_str, line, log_syntax, module_path,
+    option_env, stringify, trace_macros,
 };
 
 // FIXME: Attribute and derive macros are not documented because for them rustdoc generates
@@ -809,14 +876,6 @@ pub use core::prelude::v1::{
     bench, global_allocator, test, test_case, Clone, Copy, Debug, Default, Eq, Hash, Ord,
     PartialEq, PartialOrd, RustcDecodable, RustcEncodable,
 };
-
-#[unstable(
-    feature = "cfg_accessible",
-    issue = "64797",
-    reason = "`cfg_accessible` is not fully implemented"
-)]
-#[doc(hidden)]
-pub use core::prelude::v1::cfg_accessible;
 
 // The file so far is equivalent to src/libcore/prelude/v1.rs,
 // and below to src/liballoc/prelude.rs.
@@ -932,9 +991,6 @@ pub mod f32 {
 //! *[See also the `f32` primitive type](../../std/primitive.f32.html).*
 //!
 //! Mathematically significant numbers are provided in the `consts` sub-module.
-//!
-//! Although using these constants won’t cause compilation warnings,
-//! new code should use the associated constants directly on the primitive type.
 
 #![stable(feature = "rust1", since = "1.0.0")]
 #![allow(missing_docs)]
@@ -1036,6 +1092,8 @@ impl f32 {
     /// # Examples
     ///
     /// ```
+    /// use std::f32;
+    ///
     /// let x = 3.6_f32;
     /// let y = -3.6_f32;
     /// let abs_difference_x = (x.fract() - 0.6).abs();
@@ -1056,6 +1114,8 @@ impl f32 {
     /// # Examples
     ///
     /// ```
+    /// use std::f32;
+    ///
     /// let x = 3.5_f32;
     /// let y = -3.5_f32;
     ///
@@ -1082,6 +1142,8 @@ impl f32 {
     /// # Examples
     ///
     /// ```
+    /// use std::f32;
+    ///
     /// let f = 3.5_f32;
     ///
     /// assert_eq!(f.signum(), 1.0);
@@ -1105,6 +1167,8 @@ impl f32 {
     /// # Examples
     ///
     /// ```
+    /// use std::f32;
+    ///
     /// let f = 3.5_f32;
     ///
     /// assert_eq!(f.copysign(0.42), 3.5_f32);
@@ -1129,6 +1193,8 @@ impl f32 {
     /// # Examples
     ///
     /// ```
+    /// use std::f32;
+    ///
     /// let m = 10.0_f32;
     /// let x = 4.0_f32;
     /// let b = 60.0_f32;
@@ -1188,7 +1254,7 @@ impl f32 {
     /// assert_eq!(a.rem_euclid(-b), 3.0);
     /// assert_eq!((-a).rem_euclid(-b), 1.0);
     /// // limitation due to round-off error
-    /// assert!((-f32::EPSILON).rem_euclid(3.0) != 0.0);
+    /// assert!((-std::f32::EPSILON).rem_euclid(3.0) != 0.0);
     /// ```
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[inline]
@@ -1203,6 +1269,8 @@ impl f32 {
     /// # Examples
     ///
     /// ```
+    /// use std::f32;
+    ///
     /// let x = 2.0_f32;
     /// let abs_difference = (x.powi(2) - (x * x)).abs();
     ///
@@ -1219,6 +1287,8 @@ impl f32 {
     /// # Examples
     ///
     /// ```
+    /// use std::f32;
+    ///
     /// let x = 2.0_f32;
     /// let abs_difference = (x.powf(2.0) - (x * x)).abs();
     ///
@@ -1237,6 +1307,8 @@ impl f32 {
     /// # Examples
     ///
     /// ```
+    /// use std::f32;
+    ///
     /// let positive = 4.0_f32;
     /// let negative = -4.0_f32;
     ///
@@ -1256,6 +1328,8 @@ impl f32 {
     /// # Examples
     ///
     /// ```
+    /// use std::f32;
+    ///
     /// let one = 1.0f32;
     /// // e^1
     /// let e = one.exp();
@@ -1276,6 +1350,8 @@ impl f32 {
     /// # Examples
     ///
     /// ```
+    /// use std::f32;
+    ///
     /// let f = 2.0f32;
     ///
     /// // 2^2 - 4 == 0
@@ -1294,6 +1370,8 @@ impl f32 {
     /// # Examples
     ///
     /// ```
+    /// use std::f32;
+    ///
     /// let one = 1.0f32;
     /// // e^1
     /// let e = one.exp();
@@ -1318,6 +1396,8 @@ impl f32 {
     /// # Examples
     ///
     /// ```
+    /// use std::f32;
+    ///
     /// let five = 5.0f32;
     ///
     /// // log5(5) - 1 == 0
@@ -1336,6 +1416,8 @@ impl f32 {
     /// # Examples
     ///
     /// ```
+    /// use std::f32;
+    ///
     /// let two = 2.0f32;
     ///
     /// // log2(2) - 1 == 0
@@ -1354,6 +1436,8 @@ impl f32 {
     /// # Examples
     ///
     /// ```
+    /// use std::f32;
+    ///
     /// let ten = 10.0f32;
     ///
     /// // log10(10) - 1 == 0
@@ -1375,6 +1459,8 @@ impl f32 {
     /// # Examples
     ///
     /// ```
+    /// use std::f32;
+    ///
     /// let x = 3.0f32;
     /// let y = -3.0f32;
     ///
@@ -1405,6 +1491,8 @@ impl f32 {
     /// # Examples
     ///
     /// ```
+    /// use std::f32;
+    ///
     /// let x = 8.0f32;
     ///
     /// // x^(1/3) - 2 == 0
@@ -1424,6 +1512,8 @@ impl f32 {
     /// # Examples
     ///
     /// ```
+    /// use std::f32;
+    ///
     /// let x = 2.0f32;
     /// let y = 3.0f32;
     ///
@@ -1443,7 +1533,9 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// let x = std::f32::consts::FRAC_PI_2;
+    /// use std::f32;
+    ///
+    /// let x = f32::consts::FRAC_PI_2;
     ///
     /// let abs_difference = (x.sin() - 1.0).abs();
     ///
@@ -1460,7 +1552,9 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// let x = 2.0 * std::f32::consts::PI;
+    /// use std::f32;
+    ///
+    /// let x = 2.0 * f32::consts::PI;
     ///
     /// let abs_difference = (x.cos() - 1.0).abs();
     ///
@@ -1477,7 +1571,9 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// let x = std::f32::consts::FRAC_PI_4;
+    /// use std::f32;
+    ///
+    /// let x = f32::consts::FRAC_PI_4;
     /// let abs_difference = (x.tan() - 1.0).abs();
     ///
     /// assert!(abs_difference <= f32::EPSILON);
@@ -1495,10 +1591,12 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// let f = std::f32::consts::FRAC_PI_2;
+    /// use std::f32;
+    ///
+    /// let f = f32::consts::FRAC_PI_2;
     ///
     /// // asin(sin(pi/2))
-    /// let abs_difference = (f.sin().asin() - std::f32::consts::FRAC_PI_2).abs();
+    /// let abs_difference = (f.sin().asin() - f32::consts::FRAC_PI_2).abs();
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
@@ -1515,10 +1613,12 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// let f = std::f32::consts::FRAC_PI_4;
+    /// use std::f32;
+    ///
+    /// let f = f32::consts::FRAC_PI_4;
     ///
     /// // acos(cos(pi/4))
-    /// let abs_difference = (f.cos().acos() - std::f32::consts::FRAC_PI_4).abs();
+    /// let abs_difference = (f.cos().acos() - f32::consts::FRAC_PI_4).abs();
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
@@ -1534,6 +1634,8 @@ impl f32 {
     /// # Examples
     ///
     /// ```
+    /// use std::f32;
+    ///
     /// let f = 1.0f32;
     ///
     /// // atan(tan(1))
@@ -1557,6 +1659,8 @@ impl f32 {
     /// # Examples
     ///
     /// ```
+    /// use std::f32;
+    ///
     /// // Positive angles measured counter-clockwise
     /// // from positive x axis
     /// // -pi/4 radians (45 deg clockwise)
@@ -1567,8 +1671,8 @@ impl f32 {
     /// let x2 = -3.0f32;
     /// let y2 = 3.0f32;
     ///
-    /// let abs_difference_1 = (y1.atan2(x1) - (-std::f32::consts::FRAC_PI_4)).abs();
-    /// let abs_difference_2 = (y2.atan2(x2) - (3.0 * std::f32::consts::FRAC_PI_4)).abs();
+    /// let abs_difference_1 = (y1.atan2(x1) - (-f32::consts::FRAC_PI_4)).abs();
+    /// let abs_difference_2 = (y2.atan2(x2) - (3.0 * f32::consts::FRAC_PI_4)).abs();
     ///
     /// assert!(abs_difference_1 <= f32::EPSILON);
     /// assert!(abs_difference_2 <= f32::EPSILON);
@@ -1585,7 +1689,9 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// let x = std::f32::consts::FRAC_PI_4;
+    /// use std::f32;
+    ///
+    /// let x = f32::consts::FRAC_PI_4;
     /// let f = x.sin_cos();
     ///
     /// let abs_difference_0 = (f.0 - x.sin()).abs();
@@ -1605,6 +1711,8 @@ impl f32 {
     /// # Examples
     ///
     /// ```
+    /// use std::f32;
+    ///
     /// let x = 6.0f32;
     ///
     /// // e^(ln(6)) - 1
@@ -1624,7 +1732,9 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// let x = std::f32::consts::E - 1.0;
+    /// use std::f32;
+    ///
+    /// let x = f32::consts::E - 1.0;
     ///
     /// // ln(1 + (e - 1)) == ln(e) == 1
     /// let abs_difference = (x.ln_1p() - 1.0).abs();
@@ -1642,7 +1752,9 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// let e = std::f32::consts::E;
+    /// use std::f32;
+    ///
+    /// let e = f32::consts::E;
     /// let x = 1.0f32;
     ///
     /// let f = x.sinh();
@@ -1663,7 +1775,9 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// let e = std::f32::consts::E;
+    /// use std::f32;
+    ///
+    /// let e = f32::consts::E;
     /// let x = 1.0f32;
     /// let f = x.cosh();
     /// // Solving cosh() at 1 gives this result
@@ -1684,7 +1798,9 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// let e = std::f32::consts::E;
+    /// use std::f32;
+    ///
+    /// let e = f32::consts::E;
     /// let x = 1.0f32;
     ///
     /// let f = x.tanh();
@@ -1705,6 +1821,8 @@ impl f32 {
     /// # Examples
     ///
     /// ```
+    /// use std::f32;
+    ///
     /// let x = 1.0f32;
     /// let f = x.sinh().asinh();
     ///
@@ -1723,6 +1841,8 @@ impl f32 {
     /// # Examples
     ///
     /// ```
+    /// use std::f32;
+    ///
     /// let x = 1.0f32;
     /// let f = x.cosh().acosh();
     ///
@@ -1741,7 +1861,9 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// let e = std::f32::consts::E;
+    /// use std::f32;
+    ///
+    /// let e = f32::consts::E;
     /// let f = e.tanh().atanh();
     ///
     /// let abs_difference = (f - e).abs();
@@ -1759,7 +1881,7 @@ impl f32 {
     /// Returns `max` if `self` is greater than `max`, and `min` if `self` is
     /// less than `min`. Otherwise this returns `self`.
     ///
-    /// Note that this function returns NaN if the initial value was NaN as
+    /// Not that this function returns NaN if the initial value was NaN as
     /// well.
     ///
     /// # Panics
@@ -1773,7 +1895,7 @@ impl f32 {
     /// assert!((-3.0f32).clamp(-2.0, 1.0) == -2.0);
     /// assert!((0.0f32).clamp(-2.0, 1.0) == 0.0);
     /// assert!((2.0f32).clamp(-2.0, 1.0) == 1.0);
-    /// assert!((f32::NAN).clamp(-2.0, 1.0).is_nan());
+    /// assert!((std::f32::NAN).clamp(-2.0, 1.0).is_nan());
     /// ```
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "clamp", issue = "44095")]
@@ -1793,9 +1915,6 @@ pub mod f64 {
 //! *[See also the `f64` primitive type](../../std/primitive.f64.html).*
 //!
 //! Mathematically significant numbers are provided in the `consts` sub-module.
-//!
-//! Although using these constants won’t cause compilation warnings,
-//! new code should use the associated constants directly on the primitive type.
 
 #![stable(feature = "rust1", since = "1.0.0")]
 #![allow(missing_docs)]
@@ -1917,6 +2036,8 @@ impl f64 {
     /// # Examples
     ///
     /// ```
+    /// use std::f64;
+    ///
     /// let x = 3.5_f64;
     /// let y = -3.5_f64;
     ///
@@ -1943,6 +2064,8 @@ impl f64 {
     /// # Examples
     ///
     /// ```
+    /// use std::f64;
+    ///
     /// let f = 3.5_f64;
     ///
     /// assert_eq!(f.signum(), 1.0);
@@ -1966,6 +2089,8 @@ impl f64 {
     /// # Examples
     ///
     /// ```
+    /// use std::f64;
+    ///
     /// let f = 3.5_f64;
     ///
     /// assert_eq!(f.copysign(0.42), 3.5_f64);
@@ -2049,7 +2174,7 @@ impl f64 {
     /// assert_eq!(a.rem_euclid(-b), 3.0);
     /// assert_eq!((-a).rem_euclid(-b), 1.0);
     /// // limitation due to round-off error
-    /// assert!((-f64::EPSILON).rem_euclid(3.0) != 0.0);
+    /// assert!((-std::f64::EPSILON).rem_euclid(3.0) != 0.0);
     /// ```
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[inline]
@@ -2304,7 +2429,9 @@ impl f64 {
     /// # Examples
     ///
     /// ```
-    /// let x = std::f64::consts::FRAC_PI_2;
+    /// use std::f64;
+    ///
+    /// let x = f64::consts::FRAC_PI_2;
     ///
     /// let abs_difference = (x.sin() - 1.0).abs();
     ///
@@ -2321,7 +2448,9 @@ impl f64 {
     /// # Examples
     ///
     /// ```
-    /// let x = 2.0 * std::f64::consts::PI;
+    /// use std::f64;
+    ///
+    /// let x = 2.0 * f64::consts::PI;
     ///
     /// let abs_difference = (x.cos() - 1.0).abs();
     ///
@@ -2338,7 +2467,9 @@ impl f64 {
     /// # Examples
     ///
     /// ```
-    /// let x = std::f64::consts::FRAC_PI_4;
+    /// use std::f64;
+    ///
+    /// let x = f64::consts::FRAC_PI_4;
     /// let abs_difference = (x.tan() - 1.0).abs();
     ///
     /// assert!(abs_difference < 1e-14);
@@ -2356,10 +2487,12 @@ impl f64 {
     /// # Examples
     ///
     /// ```
-    /// let f = std::f64::consts::FRAC_PI_2;
+    /// use std::f64;
+    ///
+    /// let f = f64::consts::FRAC_PI_2;
     ///
     /// // asin(sin(pi/2))
-    /// let abs_difference = (f.sin().asin() - std::f64::consts::FRAC_PI_2).abs();
+    /// let abs_difference = (f.sin().asin() - f64::consts::FRAC_PI_2).abs();
     ///
     /// assert!(abs_difference < 1e-10);
     /// ```
@@ -2376,10 +2509,12 @@ impl f64 {
     /// # Examples
     ///
     /// ```
-    /// let f = std::f64::consts::FRAC_PI_4;
+    /// use std::f64;
+    ///
+    /// let f = f64::consts::FRAC_PI_4;
     ///
     /// // acos(cos(pi/4))
-    /// let abs_difference = (f.cos().acos() - std::f64::consts::FRAC_PI_4).abs();
+    /// let abs_difference = (f.cos().acos() - f64::consts::FRAC_PI_4).abs();
     ///
     /// assert!(abs_difference < 1e-10);
     /// ```
@@ -2418,6 +2553,8 @@ impl f64 {
     /// # Examples
     ///
     /// ```
+    /// use std::f64;
+    ///
     /// // Positive angles measured counter-clockwise
     /// // from positive x axis
     /// // -pi/4 radians (45 deg clockwise)
@@ -2428,8 +2565,8 @@ impl f64 {
     /// let x2 = -3.0_f64;
     /// let y2 = 3.0_f64;
     ///
-    /// let abs_difference_1 = (y1.atan2(x1) - (-std::f64::consts::FRAC_PI_4)).abs();
-    /// let abs_difference_2 = (y2.atan2(x2) - (3.0 * std::f64::consts::FRAC_PI_4)).abs();
+    /// let abs_difference_1 = (y1.atan2(x1) - (-f64::consts::FRAC_PI_4)).abs();
+    /// let abs_difference_2 = (y2.atan2(x2) - (3.0 * f64::consts::FRAC_PI_4)).abs();
     ///
     /// assert!(abs_difference_1 < 1e-10);
     /// assert!(abs_difference_2 < 1e-10);
@@ -2446,7 +2583,9 @@ impl f64 {
     /// # Examples
     ///
     /// ```
-    /// let x = std::f64::consts::FRAC_PI_4;
+    /// use std::f64;
+    ///
+    /// let x = f64::consts::FRAC_PI_4;
     /// let f = x.sin_cos();
     ///
     /// let abs_difference_0 = (f.0 - x.sin()).abs();
@@ -2485,7 +2624,9 @@ impl f64 {
     /// # Examples
     ///
     /// ```
-    /// let x = std::f64::consts::E - 1.0;
+    /// use std::f64;
+    ///
+    /// let x = f64::consts::E - 1.0;
     ///
     /// // ln(1 + (e - 1)) == ln(e) == 1
     /// let abs_difference = (x.ln_1p() - 1.0).abs();
@@ -2503,7 +2644,9 @@ impl f64 {
     /// # Examples
     ///
     /// ```
-    /// let e = std::f64::consts::E;
+    /// use std::f64;
+    ///
+    /// let e = f64::consts::E;
     /// let x = 1.0_f64;
     ///
     /// let f = x.sinh();
@@ -2524,7 +2667,9 @@ impl f64 {
     /// # Examples
     ///
     /// ```
-    /// let e = std::f64::consts::E;
+    /// use std::f64;
+    ///
+    /// let e = f64::consts::E;
     /// let x = 1.0_f64;
     /// let f = x.cosh();
     /// // Solving cosh() at 1 gives this result
@@ -2545,7 +2690,9 @@ impl f64 {
     /// # Examples
     ///
     /// ```
-    /// let e = std::f64::consts::E;
+    /// use std::f64;
+    ///
+    /// let e = f64::consts::E;
     /// let x = 1.0_f64;
     ///
     /// let f = x.tanh();
@@ -2602,7 +2749,9 @@ impl f64 {
     /// # Examples
     ///
     /// ```
-    /// let e = std::f64::consts::E;
+    /// use std::f64;
+    ///
+    /// let e = f64::consts::E;
     /// let f = e.tanh().atanh();
     ///
     /// let abs_difference = (f - e).abs();
@@ -2620,7 +2769,7 @@ impl f64 {
     /// Returns `max` if `self` is greater than `max`, and `min` if `self` is
     /// less than `min`. Otherwise this returns `self`.
     ///
-    /// Note that this function returns NaN if the initial value was NaN as
+    /// Not that this function returns NaN if the initial value was NaN as
     /// well.
     ///
     /// # Panics
@@ -2634,7 +2783,7 @@ impl f64 {
     /// assert!((-3.0f64).clamp(-2.0, 1.0) == -2.0);
     /// assert!((0.0f64).clamp(-2.0, 1.0) == 0.0);
     /// assert!((2.0f64).clamp(-2.0, 1.0) == 1.0);
-    /// assert!((f64::NAN).clamp(-2.0, 1.0).is_nan());
+    /// assert!((std::f64::NAN).clamp(-2.0, 1.0).is_nan());
     /// ```
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "clamp", issue = "44095")]
@@ -2787,19 +2936,30 @@ pub mod thread {
 //!
 //! Note that the stack size of the main thread is *not* determined by Rust.
 //!
-//! [channels]: crate::sync::mpsc
-//! [`join`]: JoinHandle::join
-//! [`Result`]: crate::result::Result
-//! [`Ok`]: crate::result::Result::Ok
-//! [`Err`]: crate::result::Result::Err
-//! [`thread::current`]: current
-//! [`thread::Result`]: Result
-//! [`unpark`]: Thread::unpark
-//! [`Thread::name`]: Thread::name
-//! [`thread::park_timeout`]: park_timeout
-//! [`Cell`]: crate::cell::Cell
-//! [`RefCell`]: crate::cell::RefCell
-//! [`with`]: LocalKey::with
+//! [channels]: ../../std/sync/mpsc/index.html
+//! [`Arc`]: ../../std/sync/struct.Arc.html
+//! [`spawn`]: ../../std/thread/fn.spawn.html
+//! [`JoinHandle`]: ../../std/thread/struct.JoinHandle.html
+//! [`JoinHandle::thread`]: ../../std/thread/struct.JoinHandle.html#method.thread
+//! [`join`]: ../../std/thread/struct.JoinHandle.html#method.join
+//! [`Result`]: ../../std/result/enum.Result.html
+//! [`Ok`]: ../../std/result/enum.Result.html#variant.Ok
+//! [`Err`]: ../../std/result/enum.Result.html#variant.Err
+//! [`panic!`]: ../../std/macro.panic.html
+//! [`Builder`]: ../../std/thread/struct.Builder.html
+//! [`Builder::stack_size`]: ../../std/thread/struct.Builder.html#method.stack_size
+//! [`Builder::name`]: ../../std/thread/struct.Builder.html#method.name
+//! [`thread::current`]: ../../std/thread/fn.current.html
+//! [`thread::Result`]: ../../std/thread/type.Result.html
+//! [`Thread`]: ../../std/thread/struct.Thread.html
+//! [`park`]: ../../std/thread/fn.park.html
+//! [`unpark`]: ../../std/thread/struct.Thread.html#method.unpark
+//! [`Thread::name`]: ../../std/thread/struct.Thread.html#method.name
+//! [`thread::park_timeout`]: ../../std/thread/fn.park_timeout.html
+//! [`Cell`]: ../cell/struct.Cell.html
+//! [`RefCell`]: ../cell/struct.RefCell.html
+//! [`thread_local!`]: ../macro.thread_local.html
+//! [`with`]: struct.LocalKey.html#method.with
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -2902,7 +3062,9 @@ use crate::fmt;
 ///    not guard typically have a synthetic limit after which point no more
 ///    destructors are run.
 ///
-/// [`with`]: LocalKey::with
+/// [`with`]: ../../std/thread/struct.LocalKey.html#method.with
+/// [`thread_local!`]: ../../std/macro.thread_local.html
+/// [`Drop`]: ../../std/ops/trait.Drop.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct LocalKey<T: 'static> {
     // This outer `LocalKey<T>` type is what's going to be stored in statics,
@@ -2946,10 +3108,10 @@ impl<T: 'static> fmt::Debug for LocalKey<T> {
 /// # fn main() {}
 /// ```
 ///
-/// See [`LocalKey` documentation][`std::thread::LocalKey`] for more
+/// See [LocalKey documentation][`std::thread::LocalKey`] for more
 /// information.
 ///
-/// [`std::thread::LocalKey`]: crate::thread::LocalKey
+/// [`std::thread::LocalKey`]: ../std/thread/struct.LocalKey.html
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow_internal_unstable(thread_local_internals)]
@@ -3054,7 +3216,6 @@ impl<T: 'static> LocalKey<T> {
     /// This function will still `panic!()` if the key is uninitialized and the
     /// key's initializer panics.
     #[stable(feature = "thread_local_try_with", since = "1.26.0")]
-    #[inline]
     pub fn try_with<F, R>(&'static self, f: F) -> Result<R, AccessError>
     where
         F: FnOnce(&T) -> R,
@@ -3122,7 +3283,7 @@ pub mod fast {
     use crate::cell::Cell;
     use crate::fmt;
     use crate::mem;
-    use crate::sys::thread_local_dtor::register_dtor;
+    use crate::sys::fast_thread_local::register_dtor;
 
     #[derive(Copy, Clone)]
     enum DtorState {
@@ -3194,7 +3355,7 @@ pub mod os {
     use crate::fmt;
     use crate::marker;
     use crate::ptr;
-    use crate::sys_common::thread_local_key::StaticKey as OsStaticKey;
+    use crate::sys_common::thread_local::StaticKey as OsStaticKey;
 
     pub struct Key<T> {
         // OS-TLS key that we'll use to key off.
@@ -3339,12 +3500,12 @@ pub use self::local::statik::Key as __StaticLocalKeyInner;
 /// handler.join().unwrap();
 /// ```
 ///
-/// [`stack_size`]: Builder::stack_size
-/// [`name`]: Builder::name
-/// [`spawn`]: Builder::spawn
-/// [`thread::spawn`]: spawn
-/// [`io::Result`]: crate::io::Result
-/// [`unwrap`]: crate::result::Result::unwrap
+/// [`thread::spawn`]: ../../std/thread/fn.spawn.html
+/// [`stack_size`]: ../../std/thread/struct.Builder.html#method.stack_size
+/// [`name`]: ../../std/thread/struct.Builder.html#method.name
+/// [`spawn`]: ../../std/thread/struct.Builder.html#method.spawn
+/// [`io::Result`]: ../../std/io/type.Result.html
+/// [`unwrap`]: ../../std/result/enum.Result.html#method.unwrap
 /// [naming-threads]: ./index.html#naming-threads
 /// [stack-size]: ./index.html#stack-size
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -3444,7 +3605,9 @@ impl Builder {
     /// [`io::Result`] to capture any failure to create the thread at
     /// the OS level.
     ///
-    /// [`io::Result`]: crate::io::Result
+    /// [`spawn`]: ../../std/thread/fn.spawn.html
+    /// [`io::Result`]: ../../std/io/type.Result.html
+    /// [`JoinHandle`]: ../../std/thread/struct.JoinHandle.html
     ///
     /// # Panics
     ///
@@ -3529,7 +3692,11 @@ impl Builder {
     /// handler.join().unwrap();
     /// ```
     ///
-    /// [`io::Result`]: crate::io::Result
+    /// [`spawn`]: ../../std/thread/fn.spawn.html
+    /// [`Builder::spawn`]: ../../std/thread/struct.Builder.html#method.spawn
+    /// [`io::Result`]: ../../std/io/type.Result.html
+    /// [`JoinHandle`]: ../../std/thread/struct.JoinHandle.html
+    /// [`JoinHandle::join`]: ../../std/thread/struct.JoinHandle.html#method.join
     #[unstable(feature = "thread_spawn_unchecked", issue = "55132")]
     pub unsafe fn spawn_unchecked<'a, F, T>(self, f: F) -> io::Result<JoinHandle<T>>
     where
@@ -3552,7 +3719,7 @@ impl Builder {
 /// the main thread finishes). Additionally, the join handle provides a [`join`]
 /// method that can be used to join the child thread. If the child thread
 /// panics, [`join`] will return an [`Err`] containing the argument given to
-/// [`panic!`].
+/// [`panic`].
 ///
 /// This will create a thread using default parameters of [`Builder`], if you
 /// want to specify the stack size or the name of the thread, use this API
@@ -3639,9 +3806,15 @@ impl Builder {
 /// println!("{}", result);
 /// ```
 ///
-/// [`channels`]: crate::sync::mpsc
-/// [`join`]: JoinHandle::join
-/// [`Err`]: crate::result::Result::Err
+/// [`channels`]: ../../std/sync/mpsc/index.html
+/// [`JoinHandle`]: ../../std/thread/struct.JoinHandle.html
+/// [`join`]: ../../std/thread/struct.JoinHandle.html#method.join
+/// [`Err`]: ../../std/result/enum.Result.html#variant.Err
+/// [`panic`]: ../../std/macro.panic.html
+/// [`Builder::spawn`]: ../../std/thread/struct.Builder.html#method.spawn
+/// [`Builder`]: ../../std/thread/struct.Builder.html
+/// [`Send`]: ../../std/marker/trait.Send.html
+/// [`Sync`]: ../../std/marker/trait.Sync.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn spawn<F, T>(f: F) -> JoinHandle<T>
 where
@@ -3701,8 +3874,11 @@ pub fn current() -> Thread {
 /// thread::yield_now();
 /// ```
 ///
-/// [`channel`]: crate::sync::mpsc
-/// [`join`]: JoinHandle::join
+/// [`channel`]: ../../std/sync/mpsc/index.html
+/// [`spawn`]: ../../std/thread/fn.spawn.html
+/// [`join`]: ../../std/thread/struct.JoinHandle.html#method.join
+/// [`Mutex`]: ../../std/sync/struct.Mutex.html
+/// [`Condvar`]: ../../std/sync/struct.Condvar.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn yield_now() {
 }
@@ -3747,6 +3923,8 @@ pub fn yield_now() {
 ///     panic!()
 /// }
 /// ```
+///
+/// [Mutex]: ../../std/sync/struct.Mutex.html
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn panicking() -> bool {
@@ -3756,8 +3934,6 @@ pub fn panicking() -> bool {
 ///
 /// The thread may sleep longer than the duration specified due to scheduling
 /// specifics or platform-dependent functionality. It will never sleep less.
-///
-/// This function is blocking, and should not be used in `async` functions.
 ///
 /// # Platform-specific behavior
 ///
@@ -3783,8 +3959,6 @@ pub fn sleep_ms(ms: u32) {
 ///
 /// The thread may sleep longer than the duration specified due to scheduling
 /// specifics or platform-dependent functionality. It will never sleep less.
-///
-/// This function is blocking, and should not be used in `async` functions.
 ///
 /// # Platform-specific behavior
 ///
@@ -3900,8 +4074,10 @@ const NOTIFIED: usize = 2;
 /// parked_thread.join().unwrap();
 /// ```
 ///
-/// [`unpark`]: Thread::unpark
-/// [`thread::park_timeout`]: park_timeout
+/// [`Thread`]: ../../std/thread/struct.Thread.html
+/// [`park`]: ../../std/thread/fn.park.html
+/// [`unpark`]: ../../std/thread/struct.Thread.html#method.unpark
+/// [`thread::park_timeout`]: ../../std/thread/fn.park_timeout.html
 //
 // The implementation currently uses the trivial strategy of a Mutex+Condvar
 // with wakeup flag, which does not actually allow spurious wakeups. In the
@@ -3924,6 +4100,9 @@ pub fn park() {
 /// amount of time waited to be precisely `ms` long.
 ///
 /// See the [park documentation][`park`] for more detail.
+///
+/// [`park_timeout`]: fn.park_timeout.html
+/// [`park`]: ../../std/thread/fn.park.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_deprecated(since = "1.6.0", reason = "replaced by `std::thread::park_timeout`")]
 pub fn park_timeout_ms(ms: u32) {
@@ -3967,6 +4146,8 @@ pub fn park_timeout_ms(ms: u32) {
 ///     timeout_remaining = timeout - elapsed;
 /// }
 /// ```
+///
+/// [park]: fn.park.html
 #[stable(feature = "park_timeout", since = "1.4.0")]
 pub fn park_timeout(dur: Duration) {
 }
@@ -3995,7 +4176,8 @@ pub fn park_timeout(dur: Duration) {
 /// assert!(thread::current().id() != other_thread_id);
 /// ```
 ///
-/// [`id`]: Thread::id
+/// [`id`]: ../../std/thread/struct.Thread.html#method.id
+/// [`Thread`]: ../../std/thread/struct.Thread.html
 #[stable(feature = "thread_id", since = "1.19.0")]
 #[derive(Eq, PartialEq, Clone, Copy, Hash, Debug)]
 pub struct ThreadId(NonZeroU64);
@@ -4014,7 +4196,7 @@ impl ThreadId {
     /// it is not guaranteed which values new threads will return, and this may
     /// change across Rust versions.
     #[unstable(feature = "thread_id_value", issue = "67939")]
-    pub fn as_u64(&self) -> NonZeroU64 {
+    pub fn as_u64(&self) -> u64 {
 }
 }
 
@@ -4052,7 +4234,12 @@ struct Inner {
 /// should instead use a function like `spawn` to create new threads, see the
 /// docs of [`Builder`] and [`spawn`] for more details.
 ///
-/// [`thread::current`]: current
+/// [`Builder`]: ../../std/thread/struct.Builder.html
+/// [`JoinHandle::thread`]: ../../std/thread/struct.JoinHandle.html#method.thread
+/// [`JoinHandle`]: ../../std/thread/struct.JoinHandle.html
+/// [`thread::current`]: ../../std/thread/fn.current.html
+/// [`spawn`]: ../../std/thread/fn.spawn.html
+
 pub struct Thread {
     inner: Arc<Inner>,
 }
@@ -4093,6 +4280,8 @@ impl Thread {
     ///
     /// parked_thread.join().unwrap();
     /// ```
+    ///
+    /// [park]: fn.park.html
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn unpark(&self) {
 }
@@ -4206,7 +4395,7 @@ impl fmt::Debug for Thread {
 /// }
 /// ```
 ///
-/// [`Result`]: crate::result::Result
+/// [`Result`]: ../../std/result/enum.Result.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub type Result<T> = crate::result::Result<T, Box<dyn Any + Send + 'static>>;
 
@@ -4299,8 +4488,9 @@ impl<T> JoinInner<T> {
 /// thread::sleep(Duration::from_millis(1000));
 /// ```
 ///
-/// [`thread::Builder::spawn`]: Builder::spawn
-/// [`thread::spawn`]: spawn
+/// [`Clone`]: ../../std/clone/trait.Clone.html
+/// [`thread::spawn`]: fn.spawn.html
+/// [`thread::Builder::spawn`]: struct.Builder.html#method.spawn
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct JoinHandle<T>(JoinInner<T>);
 
@@ -4338,10 +4528,11 @@ impl<T> JoinHandle<T> {
     /// operations that happen after `join` returns.
     ///
     /// If the child thread panics, [`Err`] is returned with the parameter given
-    /// to [`panic!`].
+    /// to [`panic`].
     ///
-    /// [`Err`]: crate::result::Result::Err
-    /// [atomic memory orderings]: crate::sync::atomic
+    /// [`Err`]: ../../std/result/enum.Result.html#variant.Err
+    /// [`panic`]: ../../std/macro.panic.html
+    /// [atomic memory orderings]: ../../std/sync/atomic/index.html
     ///
     /// # Panics
     ///
@@ -4397,6 +4588,7 @@ mod tests {
     use crate::sync::mpsc::{channel, Sender};
     use crate::thread::{self, ThreadId};
     use crate::time::Duration;
+    use crate::u32;
 
     // !!! These tests are dangerous. If something is buggy, they will hang, !!!
     // !!! instead of exiting cleanly. This might wedge the buildbots.       !!!
@@ -4477,14 +4669,17 @@ mod tests {
 }
 
     #[test]
+    #[cfg_attr(target_env = "sgx", ignore)] // FIXME: https://github.com/fortanix/rust-sgx/issues/31
     fn test_park_timeout_unpark_not_called() {
 }
 
     #[test]
+    #[cfg_attr(target_env = "sgx", ignore)] // FIXME: https://github.com/fortanix/rust-sgx/issues/31
     fn test_park_timeout_unpark_called_other_thread() {
 }
 
     #[test]
+    #[cfg_attr(target_env = "sgx", ignore)] // FIXME: https://github.com/fortanix/rust-sgx/issues/31
     fn sleep_ms_smoke() {
 }
 
@@ -4517,6 +4712,9 @@ pub mod ascii {
 //!
 //! The [`escape_default`] function provides an iterator over the bytes of an
 //! escaped version of the character given.
+//!
+//! [`AsciiExt`]: trait.AsciiExt.html
+//! [`escape_default`]: fn.escape_default.html
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -4556,7 +4754,7 @@ pub trait AsciiExt {
     ///
     /// # Note
     ///
-    /// This method is deprecated in favor of the identically-named
+    /// This method will be deprecated in favor of the identically-named
     /// inherent methods on `u8`, `char`, `[u8]` and `str`.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn is_ascii(&self) -> bool;
@@ -4573,10 +4771,10 @@ pub trait AsciiExt {
     ///
     /// # Note
     ///
-    /// This method is deprecated in favor of the identically-named
+    /// This method will be deprecated in favor of the identically-named
     /// inherent methods on `u8`, `char`, `[u8]` and `str`.
     ///
-    /// [`make_ascii_uppercase`]: AsciiExt::make_ascii_uppercase
+    /// [`make_ascii_uppercase`]: #tymethod.make_ascii_uppercase
     /// [`str::to_uppercase`]: ../primitive.str.html#method.to_uppercase
     #[stable(feature = "rust1", since = "1.0.0")]
     #[allow(deprecated)]
@@ -4594,10 +4792,10 @@ pub trait AsciiExt {
     ///
     /// # Note
     ///
-    /// This method is deprecated in favor of the identically-named
+    /// This method will be deprecated in favor of the identically-named
     /// inherent methods on `u8`, `char`, `[u8]` and `str`.
     ///
-    /// [`make_ascii_lowercase`]: AsciiExt::make_ascii_lowercase
+    /// [`make_ascii_lowercase`]: #tymethod.make_ascii_lowercase
     /// [`str::to_lowercase`]: ../primitive.str.html#method.to_lowercase
     #[stable(feature = "rust1", since = "1.0.0")]
     #[allow(deprecated)]
@@ -4610,7 +4808,7 @@ pub trait AsciiExt {
     ///
     /// # Note
     ///
-    /// This method is deprecated in favor of the identically-named
+    /// This method will be deprecated in favor of the identically-named
     /// inherent methods on `u8`, `char`, `[u8]` and `str`.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn eq_ignore_ascii_case(&self, other: &Self) -> bool;
@@ -4625,10 +4823,10 @@ pub trait AsciiExt {
     ///
     /// # Note
     ///
-    /// This method is deprecated in favor of the identically-named
+    /// This method will be deprecated in favor of the identically-named
     /// inherent methods on `u8`, `char`, `[u8]` and `str`.
     ///
-    /// [`to_ascii_uppercase`]: AsciiExt::to_ascii_uppercase
+    /// [`to_ascii_uppercase`]: #tymethod.to_ascii_uppercase
     #[stable(feature = "ascii", since = "1.9.0")]
     fn make_ascii_uppercase(&mut self);
 
@@ -4642,10 +4840,10 @@ pub trait AsciiExt {
     ///
     /// # Note
     ///
-    /// This method is deprecated in favor of the identically-named
+    /// This method will be deprecated in favor of the identically-named
     /// inherent methods on `u8`, `char`, `[u8]` and `str`.
     ///
-    /// [`to_ascii_lowercase`]: AsciiExt::to_ascii_lowercase
+    /// [`to_ascii_lowercase`]: #tymethod.to_ascii_lowercase
     #[stable(feature = "ascii", since = "1.9.0")]
     fn make_ascii_lowercase(&mut self);
 }
@@ -4653,29 +4851,23 @@ pub trait AsciiExt {
 macro_rules! delegating_ascii_methods {
     () => {
         #[inline]
-        fn is_ascii(&self) -> bool {
-}
+        fn is_ascii(&self) -> bool { }
 
         #[inline]
-        fn to_ascii_uppercase(&self) -> Self::Owned {
-}
+        fn to_ascii_uppercase(&self) -> Self::Owned { }
 
         #[inline]
-        fn to_ascii_lowercase(&self) -> Self::Owned {
-}
+        fn to_ascii_lowercase(&self) -> Self::Owned { }
 
         #[inline]
-        fn eq_ignore_ascii_case(&self, o: &Self) -> bool {
-}
+        fn eq_ignore_ascii_case(&self, o: &Self) -> bool { }
 
         #[inline]
-        fn make_ascii_uppercase(&mut self) {
-}
+        fn make_ascii_uppercase(&mut self) { }
 
         #[inline]
-        fn make_ascii_lowercase(&mut self) {
-}
-    };
+        fn make_ascii_lowercase(&mut self) { }
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -4804,14 +4996,14 @@ pub mod backtrace {
 // `Backtrace`, but that's a relatively small price to pay relative to capturing
 // a backtrace or actually symbolizing it.
 
-use crate::backtrace_rs::{self, BytesOrWideString};
 use crate::env;
-use crate::ffi::c_void;
 use crate::fmt;
 use crate::sync::atomic::{AtomicUsize, Ordering::SeqCst};
 use crate::sync::Mutex;
 use crate::sys_common::backtrace::{lock, output_filename};
 use crate::vec::Vec;
+use backtrace::BytesOrWideString;
+use backtrace_rs as backtrace;
 
 /// A captured OS thread stack backtrace.
 ///
@@ -4855,37 +5047,19 @@ fn _assert_send_sync() {
 }
 
 struct BacktraceFrame {
-    frame: RawFrame,
+    frame: backtrace::Frame,
     symbols: Vec<BacktraceSymbol>,
 }
 
-enum RawFrame {
-    Actual(backtrace_rs::Frame),
-    #[cfg(test)]
-    Fake,
-}
-
 struct BacktraceSymbol {
+    name: Option<Vec<u8>>,
+    filename: Option<BytesOrWide>,
+    lineno: Option<u32>,
 }
 
 enum BytesOrWide {
     Bytes(Vec<u8>),
     Wide(Vec<u16>),
-}
-
-impl fmt::Debug for Backtrace {
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-}
-}
-
-impl fmt::Debug for BacktraceSymbol {
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-}
-}
-
-impl fmt::Debug for BytesOrWide {
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-}
 }
 
 impl Backtrace {
@@ -4928,11 +5102,6 @@ impl Backtrace {
     pub fn force_capture() -> Backtrace {
 }
 
-    /// Forcibly captures a disabled backtrace, regardless of environment
-    /// variable configuration.
-    pub const fn disabled() -> Backtrace {
-}
-
     // Capture a backtrace which start just before the function addressed by
     // `ip`
     fn create(ip: usize) -> Backtrace {
@@ -4950,18 +5119,14 @@ impl fmt::Display for Backtrace {
 }
 }
 
+impl fmt::Debug for Backtrace {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
+}
+
 impl Capture {
     fn resolve(&mut self) {
 }
-}
-
-impl RawFrame {
-    fn ip(&self) -> *mut c_void {
-}
-}
-
-#[test]
-fn test_debug() {
 }
 }
 pub mod collections {
@@ -5053,7 +5218,7 @@ pub mod collections {
 //! cost are suffixed with a `~`.
 //!
 //! All amortized costs are for the potential need to resize when capacity is
-//! exhausted. If a resize occurs it will take *O*(*n*) time. Our collections never
+//! exhausted. If a resize occurs it will take O(n) time. Our collections never
 //! automatically shrink, so removal operations aren't amortized. Over a
 //! sufficiently large series of operations, the average cost per operation will
 //! deterministically equal the given cost.
@@ -5077,10 +5242,10 @@ pub mod collections {
 //!
 //! For Sets, all operations have the cost of the equivalent Map operation.
 //!
-//! |              | get       | insert    | remove    | predecessor | append |
-//! |--------------|-----------|-----------|-----------|-------------|--------|
-//! | [`HashMap`]  | O(1)~     | O(1)~*    | O(1)~     | N/A         | N/A    |
-//! | [`BTreeMap`] | O(log(n)) | O(log(n)) | O(log(n)) | O(log(n))   | O(n+m) |
+//! |              | get       | insert   | remove   | predecessor | append |
+//! |--------------|-----------|----------|----------|-------------|--------|
+//! | [`HashMap`]  | O(1)~     | O(1)~*   | O(1)~    | N/A         | N/A    |
+//! | [`BTreeMap`] | O(log n)  | O(log n) | O(log n) | O(log n)    | O(n+m) |
 //!
 //! # Correct and Efficient Usage of Collections
 //!
@@ -5363,7 +5528,15 @@ pub mod collections {
 //! assert_eq!(map.keys().next().unwrap().b, "baz");
 //! ```
 //!
-//! [`IntoIterator`]: crate::iter::IntoIterator
+//! [`Vec`]: ../../std/vec/struct.Vec.html
+//! [`HashMap`]: ../../std/collections/struct.HashMap.html
+//! [`VecDeque`]: ../../std/collections/struct.VecDeque.html
+//! [`LinkedList`]: ../../std/collections/struct.LinkedList.html
+//! [`BTreeMap`]: ../../std/collections/struct.BTreeMap.html
+//! [`HashSet`]: ../../std/collections/struct.HashSet.html
+//! [`BTreeSet`]: ../../std/collections/struct.BTreeSet.html
+//! [`BinaryHeap`]: ../../std/collections/struct.BinaryHeap.html
+//! [`IntoIterator`]: ../../std/iter/trait.IntoIterator.html
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -5542,11 +5715,14 @@ use crate::sys;
 /// The easiest way to use `HashMap` with a custom key type is to derive [`Eq`] and [`Hash`].
 /// We must also derive [`PartialEq`].
 ///
-/// [`RefCell`]: crate::cell::RefCell
-/// [`Cell`]: crate::cell::Cell
-/// [`default`]: Default::default
-/// [`with_hasher`]: Self::with_hasher
-/// [`with_capacity_and_hasher`]: Self::with_capacity_and_hasher
+/// [`Eq`]: ../../std/cmp/trait.Eq.html
+/// [`Hash`]: ../../std/hash/trait.Hash.html
+/// [`PartialEq`]: ../../std/cmp/trait.PartialEq.html
+/// [`RefCell`]: ../../std/cell/struct.RefCell.html
+/// [`Cell`]: ../../std/cell/struct.Cell.html
+/// [`default`]: #method.default
+/// [`with_hasher`]: #method.with_hasher
+/// [`with_capacity_and_hasher`]: #method.with_capacity_and_hasher
 /// [`fnv`]: https://crates.io/crates/fnv
 ///
 /// ```
@@ -5589,13 +5765,12 @@ use crate::sys;
 /// ```
 
 #[derive(Clone)]
-#[cfg_attr(not(test), rustc_diagnostic_item = "hashmap_type")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct HashMap<K, V, S = RandomState> {
     base: base::HashMap<K, V, S>,
 }
 
-impl<K, V> HashMap<K, V, RandomState> {
+impl<K: Hash + Eq, V> HashMap<K, V, RandomState> {
     /// Creates an empty `HashMap`.
     ///
     /// The hash map is initially created with a capacity of 0, so it will not allocate until it
@@ -5630,63 +5805,6 @@ impl<K, V> HashMap<K, V, RandomState> {
 }
 
 impl<K, V, S> HashMap<K, V, S> {
-    /// Creates an empty `HashMap` which will use the given hash builder to hash
-    /// keys.
-    ///
-    /// The created map has the default initial capacity.
-    ///
-    /// Warning: `hash_builder` is normally randomly generated, and
-    /// is designed to allow HashMaps to be resistant to attacks that
-    /// cause many collisions and very poor performance. Setting it
-    /// manually using this function can expose a DoS attack vector.
-    ///
-    /// The `hash_builder` passed should implement the [`BuildHasher`] trait for
-    /// the HashMap to be useful, see its documentation for details.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::collections::HashMap;
-    /// use std::collections::hash_map::RandomState;
-    ///
-    /// let s = RandomState::new();
-    /// let mut map = HashMap::with_hasher(s);
-    /// map.insert(1, 2);
-    /// ```
-    #[inline]
-    #[stable(feature = "hashmap_build_hasher", since = "1.7.0")]
-    pub fn with_hasher(hash_builder: S) -> HashMap<K, V, S> {
-}
-
-    /// Creates an empty `HashMap` with the specified capacity, using `hash_builder`
-    /// to hash the keys.
-    ///
-    /// The hash map will be able to hold at least `capacity` elements without
-    /// reallocating. If `capacity` is 0, the hash map will not allocate.
-    ///
-    /// Warning: `hash_builder` is normally randomly generated, and
-    /// is designed to allow HashMaps to be resistant to attacks that
-    /// cause many collisions and very poor performance. Setting it
-    /// manually using this function can expose a DoS attack vector.
-    ///
-    /// The `hash_builder` passed should implement the [`BuildHasher`] trait for
-    /// the HashMap to be useful, see its documentation for details.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::collections::HashMap;
-    /// use std::collections::hash_map::RandomState;
-    ///
-    /// let s = RandomState::new();
-    /// let mut map = HashMap::with_capacity_and_hasher(10, s);
-    /// map.insert(1, 2);
-    /// ```
-    #[inline]
-    #[stable(feature = "hashmap_build_hasher", since = "1.7.0")]
-    pub fn with_capacity_and_hasher(capacity: usize, hash_builder: S) -> HashMap<K, V, S> {
-}
-
     /// Returns the number of elements the map can hold without reallocating.
     ///
     /// This number is a lower bound; the `HashMap<K, V>` might be able to hold
@@ -5894,8 +6012,67 @@ impl<K, V, S> HashMap<K, V, S> {
     #[inline]
     pub fn clear(&mut self) {
 }
+}
+
+impl<K, V, S> HashMap<K, V, S>
+where
+    K: Eq + Hash,
+    S: BuildHasher,
+{
+    /// Creates an empty `HashMap` which will use the given hash builder to hash
+    /// keys.
+    ///
+    /// The created map has the default initial capacity.
+    ///
+    /// Warning: `hash_builder` is normally randomly generated, and
+    /// is designed to allow HashMaps to be resistant to attacks that
+    /// cause many collisions and very poor performance. Setting it
+    /// manually using this function can expose a DoS attack vector.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::HashMap;
+    /// use std::collections::hash_map::RandomState;
+    ///
+    /// let s = RandomState::new();
+    /// let mut map = HashMap::with_hasher(s);
+    /// map.insert(1, 2);
+    /// ```
+    #[inline]
+    #[stable(feature = "hashmap_build_hasher", since = "1.7.0")]
+    pub fn with_hasher(hash_builder: S) -> HashMap<K, V, S> {
+}
+
+    /// Creates an empty `HashMap` with the specified capacity, using `hash_builder`
+    /// to hash the keys.
+    ///
+    /// The hash map will be able to hold at least `capacity` elements without
+    /// reallocating. If `capacity` is 0, the hash map will not allocate.
+    ///
+    /// Warning: `hash_builder` is normally randomly generated, and
+    /// is designed to allow HashMaps to be resistant to attacks that
+    /// cause many collisions and very poor performance. Setting it
+    /// manually using this function can expose a DoS attack vector.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::HashMap;
+    /// use std::collections::hash_map::RandomState;
+    ///
+    /// let s = RandomState::new();
+    /// let mut map = HashMap::with_capacity_and_hasher(10, s);
+    /// map.insert(1, 2);
+    /// ```
+    #[inline]
+    #[stable(feature = "hashmap_build_hasher", since = "1.7.0")]
+    pub fn with_capacity_and_hasher(capacity: usize, hash_builder: S) -> HashMap<K, V, S> {
+}
 
     /// Returns a reference to the map's [`BuildHasher`].
+    ///
+    /// [`BuildHasher`]: ../../std/hash/trait.BuildHasher.html
     ///
     /// # Examples
     ///
@@ -5911,13 +6088,7 @@ impl<K, V, S> HashMap<K, V, S> {
     #[stable(feature = "hashmap_public_hasher", since = "1.9.0")]
     pub fn hasher(&self) -> &S {
 }
-}
 
-impl<K, V, S> HashMap<K, V, S>
-where
-    K: Eq + Hash,
-    S: BuildHasher,
-{
     /// Reserves capacity for at least `additional` more elements to be inserted
     /// in the `HashMap`. The collection may reserve more space to avoid
     /// frequent reallocations.
@@ -5925,6 +6096,8 @@ where
     /// # Panics
     ///
     /// Panics if the new allocation size overflows [`usize`].
+    ///
+    /// [`usize`]: ../../std/primitive.usize.html
     ///
     /// # Examples
     ///
@@ -6038,6 +6211,9 @@ where
     /// [`Hash`] and [`Eq`] on the borrowed form *must* match those for
     /// the key type.
     ///
+    /// [`Eq`]: ../../std/cmp/trait.Eq.html
+    /// [`Hash`]: ../../std/hash/trait.Hash.html
+    ///
     /// # Examples
     ///
     /// ```
@@ -6062,6 +6238,9 @@ where
     /// The supplied key may be any borrowed form of the map's key type, but
     /// [`Hash`] and [`Eq`] on the borrowed form *must* match those for
     /// the key type.
+    ///
+    /// [`Eq`]: ../../std/cmp/trait.Eq.html
+    /// [`Hash`]: ../../std/hash/trait.Hash.html
     ///
     /// # Examples
     ///
@@ -6088,6 +6267,9 @@ where
     /// [`Hash`] and [`Eq`] on the borrowed form *must* match those for
     /// the key type.
     ///
+    /// [`Eq`]: ../../std/cmp/trait.Eq.html
+    /// [`Hash`]: ../../std/hash/trait.Hash.html
+    ///
     /// # Examples
     ///
     /// ```
@@ -6112,6 +6294,9 @@ where
     /// The key may be any borrowed form of the map's key type, but
     /// [`Hash`] and [`Eq`] on the borrowed form *must* match those for
     /// the key type.
+    ///
+    /// [`Eq`]: ../../std/cmp/trait.Eq.html
+    /// [`Hash`]: ../../std/hash/trait.Hash.html
     ///
     /// # Examples
     ///
@@ -6143,7 +6328,8 @@ where
     /// types that can be `==` without being identical. See the [module-level
     /// documentation] for more.
     ///
-    /// [module-level documentation]: crate::collections#insert-and-complex-keys
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
+    /// [module-level documentation]: index.html#insert-and-complex-keys
     ///
     /// # Examples
     ///
@@ -6170,6 +6356,9 @@ where
     /// [`Hash`] and [`Eq`] on the borrowed form *must* match those for
     /// the key type.
     ///
+    /// [`Eq`]: ../../std/cmp/trait.Eq.html
+    /// [`Hash`]: ../../std/hash/trait.Hash.html
+    ///
     /// # Examples
     ///
     /// ```
@@ -6195,6 +6384,9 @@ where
     /// The key may be any borrowed form of the map's key type, but
     /// [`Hash`] and [`Eq`] on the borrowed form *must* match those for
     /// the key type.
+    ///
+    /// [`Eq`]: ../../std/cmp/trait.Eq.html
+    /// [`Hash`]: ../../std/hash/trait.Hash.html
     ///
     /// # Examples
     ///
@@ -6236,50 +6428,6 @@ where
     where
         F: FnMut(&K, &mut V) -> bool,
     {
-}
-
-    /// Creates a consuming iterator visiting all the keys in arbitrary order.
-    /// The map cannot be used after calling this.
-    /// The iterator element type is `K`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(map_into_keys_values)]
-    /// use std::collections::HashMap;
-    ///
-    /// let mut map = HashMap::new();
-    /// map.insert("a", 1);
-    /// map.insert("b", 2);
-    /// map.insert("c", 3);
-    ///
-    /// let vec: Vec<&str> = map.into_keys().collect();
-    /// ```
-    #[inline]
-    #[unstable(feature = "map_into_keys_values", issue = "75294")]
-    pub fn into_keys(self) -> IntoKeys<K, V> {
-}
-
-    /// Creates a consuming iterator visiting all the values in arbitrary order.
-    /// The map cannot be used after calling this.
-    /// The iterator element type is `V`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(map_into_keys_values)]
-    /// use std::collections::HashMap;
-    ///
-    /// let mut map = HashMap::new();
-    /// map.insert("a", 1);
-    /// map.insert("b", 2);
-    /// map.insert("c", 3);
-    ///
-    /// let vec: Vec<i32> = map.into_values().collect();
-    /// ```
-    #[inline]
-    #[unstable(feature = "map_into_keys_values", issue = "75294")]
-    pub fn into_values(self) -> IntoValues<K, V> {
 }
 }
 
@@ -6367,8 +6515,9 @@ where
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K, V, S> Debug for HashMap<K, V, S>
 where
-    K: Debug,
+    K: Eq + Hash + Debug,
     V: Debug,
+    S: BuildHasher,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 }
@@ -6377,7 +6526,8 @@ where
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K, V, S> Default for HashMap<K, V, S>
 where
-    S: Default,
+    K: Eq + Hash,
+    S: BuildHasher + Default,
 {
     /// Creates an empty `HashMap<K, V, S>`, with the `Default` value for the hasher.
     #[inline]
@@ -6409,7 +6559,8 @@ where
 /// This `struct` is created by the [`iter`] method on [`HashMap`]. See its
 /// documentation for more.
 ///
-/// [`iter`]: HashMap::iter
+/// [`iter`]: struct.HashMap.html#method.iter
+/// [`HashMap`]: struct.HashMap.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Iter<'a, K: 'a, V: 'a> {
     base: base::Iter<'a, K, V>,
@@ -6434,7 +6585,8 @@ impl<K: Debug, V: Debug> fmt::Debug for Iter<'_, K, V> {
 /// This `struct` is created by the [`iter_mut`] method on [`HashMap`]. See its
 /// documentation for more.
 ///
-/// [`iter_mut`]: HashMap::iter_mut
+/// [`iter_mut`]: struct.HashMap.html#method.iter_mut
+/// [`HashMap`]: struct.HashMap.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IterMut<'a, K: 'a, V: 'a> {
     base: base::IterMut<'a, K, V>,
@@ -6452,7 +6604,8 @@ impl<'a, K, V> IterMut<'a, K, V> {
 /// This `struct` is created by the [`into_iter`] method on [`HashMap`]
 /// (provided by the `IntoIterator` trait). See its documentation for more.
 ///
-/// [`into_iter`]: IntoIterator::into_iter
+/// [`into_iter`]: struct.HashMap.html#method.into_iter
+/// [`HashMap`]: struct.HashMap.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<K, V> {
     base: base::IntoIter<K, V>,
@@ -6470,7 +6623,8 @@ impl<K, V> IntoIter<K, V> {
 /// This `struct` is created by the [`keys`] method on [`HashMap`]. See its
 /// documentation for more.
 ///
-/// [`keys`]: HashMap::keys
+/// [`keys`]: struct.HashMap.html#method.keys
+/// [`HashMap`]: struct.HashMap.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Keys<'a, K: 'a, V: 'a> {
     inner: Iter<'a, K, V>,
@@ -6495,7 +6649,8 @@ impl<K: Debug, V> fmt::Debug for Keys<'_, K, V> {
 /// This `struct` is created by the [`values`] method on [`HashMap`]. See its
 /// documentation for more.
 ///
-/// [`values`]: HashMap::values
+/// [`values`]: struct.HashMap.html#method.values
+/// [`HashMap`]: struct.HashMap.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Values<'a, K: 'a, V: 'a> {
     inner: Iter<'a, K, V>,
@@ -6520,7 +6675,8 @@ impl<K, V: Debug> fmt::Debug for Values<'_, K, V> {
 /// This `struct` is created by the [`drain`] method on [`HashMap`]. See its
 /// documentation for more.
 ///
-/// [`drain`]: HashMap::drain
+/// [`drain`]: struct.HashMap.html#method.drain
+/// [`HashMap`]: struct.HashMap.html
 #[stable(feature = "drain", since = "1.6.0")]
 pub struct Drain<'a, K: 'a, V: 'a> {
     base: base::Drain<'a, K, V>,
@@ -6538,39 +6694,18 @@ impl<'a, K, V> Drain<'a, K, V> {
 /// This `struct` is created by the [`values_mut`] method on [`HashMap`]. See its
 /// documentation for more.
 ///
-/// [`values_mut`]: HashMap::values_mut
+/// [`values_mut`]: struct.HashMap.html#method.values_mut
+/// [`HashMap`]: struct.HashMap.html
 #[stable(feature = "map_values_mut", since = "1.10.0")]
 pub struct ValuesMut<'a, K: 'a, V: 'a> {
     inner: IterMut<'a, K, V>,
-}
-
-/// An owning iterator over the keys of a `HashMap`.
-///
-/// This `struct` is created by the [`into_keys`] method on [`HashMap`].
-/// See its documentation for more.
-///
-/// [`into_keys`]: HashMap::into_keys
-#[unstable(feature = "map_into_keys_values", issue = "75294")]
-pub struct IntoKeys<K, V> {
-    inner: IntoIter<K, V>,
-}
-
-/// An owning iterator over the values of a `HashMap`.
-///
-/// This `struct` is created by the [`into_values`] method on [`HashMap`].
-/// See its documentation for more.
-///
-/// [`into_values`]: HashMap::into_values
-#[unstable(feature = "map_into_keys_values", issue = "75294")]
-pub struct IntoValues<K, V> {
-    inner: IntoIter<K, V>,
 }
 
 /// A builder for computing where in a HashMap a key-value pair would be stored.
 ///
 /// See the [`HashMap::raw_entry_mut`] docs for usage examples.
 ///
-/// [`HashMap::raw_entry_mut`]: HashMap::raw_entry_mut
+/// [`HashMap::raw_entry_mut`]: struct.HashMap.html#method.raw_entry_mut
 
 #[unstable(feature = "hash_raw_entry", issue = "56167")]
 pub struct RawEntryBuilderMut<'a, K: 'a, V: 'a, S: 'a> {
@@ -6584,8 +6719,9 @@ pub struct RawEntryBuilderMut<'a, K: 'a, V: 'a, S: 'a> {
 /// This `enum` is constructed through the [`raw_entry_mut`] method on [`HashMap`],
 /// then calling one of the methods of that [`RawEntryBuilderMut`].
 ///
+/// [`HashMap`]: struct.HashMap.html
 /// [`Entry`]: enum.Entry.html
-/// [`raw_entry_mut`]: HashMap::raw_entry_mut
+/// [`raw_entry_mut`]: struct.HashMap.html#method.raw_entry_mut
 /// [`RawEntryBuilderMut`]: struct.RawEntryBuilderMut.html
 #[unstable(feature = "hash_raw_entry", issue = "56167")]
 pub enum RawEntryMut<'a, K: 'a, V: 'a, S: 'a> {
@@ -6597,6 +6733,8 @@ pub enum RawEntryMut<'a, K: 'a, V: 'a, S: 'a> {
 
 /// A view into an occupied entry in a `HashMap`.
 /// It is part of the [`RawEntryMut`] enum.
+///
+/// [`RawEntryMut`]: enum.RawEntryMut.html
 #[unstable(feature = "hash_raw_entry", issue = "56167")]
 pub struct RawOccupiedEntryMut<'a, K: 'a, V: 'a> {
     base: base::RawOccupiedEntryMut<'a, K, V>,
@@ -6604,6 +6742,8 @@ pub struct RawOccupiedEntryMut<'a, K: 'a, V: 'a> {
 
 /// A view into a vacant entry in a `HashMap`.
 /// It is part of the [`RawEntryMut`] enum.
+///
+/// [`RawEntryMut`]: enum.RawEntryMut.html
 #[unstable(feature = "hash_raw_entry", issue = "56167")]
 pub struct RawVacantEntryMut<'a, K: 'a, V: 'a, S: 'a> {
     base: base::RawVacantEntryMut<'a, K, V, S>,
@@ -6613,7 +6753,7 @@ pub struct RawVacantEntryMut<'a, K: 'a, V: 'a, S: 'a> {
 ///
 /// See the [`HashMap::raw_entry`] docs for usage examples.
 ///
-/// [`HashMap::raw_entry`]: HashMap::raw_entry
+/// [`HashMap::raw_entry`]: struct.HashMap.html#method.raw_entry
 #[unstable(feature = "hash_raw_entry", issue = "56167")]
 pub struct RawEntryBuilder<'a, K: 'a, V: 'a, S: 'a> {
     map: &'a HashMap<K, V, S>,
@@ -6914,7 +7054,8 @@ impl<K, V, S> Debug for RawEntryBuilder<'_, K, V, S> {
 ///
 /// This `enum` is constructed from the [`entry`] method on [`HashMap`].
 ///
-/// [`entry`]: HashMap::entry
+/// [`HashMap`]: struct.HashMap.html
+/// [`entry`]: struct.HashMap.html#method.entry
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum Entry<'a, K: 'a, V: 'a> {
     /// An occupied entry.
@@ -7156,58 +7297,6 @@ where
 }
 }
 
-#[unstable(feature = "map_into_keys_values", issue = "75294")]
-impl<K, V> Iterator for IntoKeys<K, V> {
-    type Item = K;
-
-    #[inline]
-    fn next(&mut self) -> Option<K> {
-}
-    #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-}
-}
-#[unstable(feature = "map_into_keys_values", issue = "75294")]
-impl<K, V> ExactSizeIterator for IntoKeys<K, V> {
-    #[inline]
-    fn len(&self) -> usize {
-}
-}
-#[unstable(feature = "map_into_keys_values", issue = "75294")]
-impl<K, V> FusedIterator for IntoKeys<K, V> {}
-
-#[unstable(feature = "map_into_keys_values", issue = "75294")]
-impl<K: Debug, V: Debug> fmt::Debug for IntoKeys<K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-}
-}
-
-#[unstable(feature = "map_into_keys_values", issue = "75294")]
-impl<K, V> Iterator for IntoValues<K, V> {
-    type Item = V;
-
-    #[inline]
-    fn next(&mut self) -> Option<V> {
-}
-    #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-}
-}
-#[unstable(feature = "map_into_keys_values", issue = "75294")]
-impl<K, V> ExactSizeIterator for IntoValues<K, V> {
-    #[inline]
-    fn len(&self) -> usize {
-}
-}
-#[unstable(feature = "map_into_keys_values", issue = "75294")]
-impl<K, V> FusedIterator for IntoValues<K, V> {}
-
-#[unstable(feature = "map_into_keys_values", issue = "75294")]
-impl<K: Debug, V: Debug> fmt::Debug for IntoValues<K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-}
-}
-
 #[stable(feature = "drain", since = "1.6.0")]
 impl<'a, K, V> Iterator for Drain<'a, K, V> {
     type Item = (K, V);
@@ -7278,27 +7367,6 @@ impl<'a, K, V> Entry<'a, K, V> {
     /// ```
     #[inline]
     pub fn or_insert_with<F: FnOnce() -> V>(self, default: F) -> &'a mut V {
-}
-
-    #[unstable(feature = "or_insert_with_key", issue = "71024")]
-    /// Ensures a value is in the entry by inserting, if empty, the result of the default function,
-    /// which takes the key as its argument, and returns a mutable reference to the value in the
-    /// entry.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(or_insert_with_key)]
-    /// use std::collections::HashMap;
-    ///
-    /// let mut map: HashMap<&str, usize> = HashMap::new();
-    ///
-    /// map.entry("poneyland").or_insert_with_key(|key| key.chars().count());
-    ///
-    /// assert_eq!(map["poneyland"], 9);
-    /// ```
-    #[inline]
-    pub fn or_insert_with_key<F: FnOnce(&K) -> V>(self, default: F) -> &'a mut V {
 }
 
     /// Returns a reference to this entry's key.
@@ -7450,7 +7518,7 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
     /// If you need a reference to the `OccupiedEntry` which may outlive the
     /// destruction of the `Entry` value, see [`into_mut`].
     ///
-    /// [`into_mut`]: Self::into_mut
+    /// [`into_mut`]: #method.into_mut
     ///
     /// # Examples
     ///
@@ -7482,7 +7550,7 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
     ///
     /// If you need multiple references to the `OccupiedEntry`, see [`get_mut`].
     ///
-    /// [`get_mut`]: Self::get_mut
+    /// [`get_mut`]: #method.get_mut
     ///
     /// # Examples
     ///
@@ -7705,14 +7773,6 @@ where
     #[inline]
     fn extend<T: IntoIterator<Item = (K, V)>>(&mut self, iter: T) {
 }
-
-    #[inline]
-    fn extend_one(&mut self, (k, v): (K, V)) {
-}
-
-    #[inline]
-    fn extend_reserve(&mut self, additional: usize) {
-}
 }
 
 #[stable(feature = "hash_extend_copy", since = "1.4.0")]
@@ -7725,14 +7785,6 @@ where
     #[inline]
     fn extend<T: IntoIterator<Item = (&'a K, &'a V)>>(&mut self, iter: T) {
 }
-
-    #[inline]
-    fn extend_one(&mut self, (&k, &v): (&'a K, &'a V)) {
-}
-
-    #[inline]
-    fn extend_reserve(&mut self, additional: usize) {
-}
 }
 
 /// `RandomState` is the default state for [`HashMap`] types.
@@ -7740,6 +7792,9 @@ where
 /// A particular instance `RandomState` will create the same instances of
 /// [`Hasher`], but the hashers created by two different `RandomState`
 /// instances are unlikely to produce the same result for the same values.
+///
+/// [`HashMap`]: struct.HashMap.html
+/// [`Hasher`]: ../../hash/trait.Hasher.html
 ///
 /// # Examples
 ///
@@ -7789,6 +7844,9 @@ impl BuildHasher for RandomState {
 ///
 /// The internal algorithm is not specified, and so it and its hashes should
 /// not be relied upon over releases.
+///
+/// [`RandomState`]: struct.RandomState.html
+/// [`Hasher`]: ../../hash/trait.Hasher.html
 #[stable(feature = "hashmap_default_hasher", since = "1.13.0")]
 #[allow(deprecated)]
 #[derive(Clone, Debug)]
@@ -7847,7 +7905,7 @@ fn map_entry<'a, K: 'a, V: 'a>(raw: base::RustcEntry<'a, K, V>) -> Entry<'a, K, 
 }
 
 #[inline]
-fn map_try_reserve_error(err: hashbrown::TryReserveError) -> TryReserveError {
+fn map_collection_alloc_err(err: hashbrown::CollectionAllocErr) -> TryReserveError {
 }
 
 #[inline]
@@ -7965,16 +8023,19 @@ use super::map::{self, HashMap, Keys, RandomState};
 /// // use the values stored in the set
 /// ```
 ///
-/// [`RefCell`]: crate::cell::RefCell
-/// [`Cell`]: crate::cell::Cell
+/// [`Cell`]: ../../std/cell/struct.Cell.html
+/// [`Eq`]: ../../std/cmp/trait.Eq.html
+/// [`Hash`]: ../../std/hash/trait.Hash.html
+/// [`HashMap`]: struct.HashMap.html
+/// [`PartialEq`]: ../../std/cmp/trait.PartialEq.html
+/// [`RefCell`]: ../../std/cell/struct.RefCell.html
 #[derive(Clone)]
-#[cfg_attr(not(test), rustc_diagnostic_item = "hashset_type")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct HashSet<T, S = RandomState> {
     map: HashMap<T, (), S>,
 }
 
-impl<T> HashSet<T, RandomState> {
+impl<T: Hash + Eq> HashSet<T, RandomState> {
     /// Creates an empty `HashSet`.
     ///
     /// The hash set is initially created with a capacity of 0, so it will not allocate until it
@@ -8117,7 +8178,13 @@ impl<T, S> HashSet<T, S> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn clear(&mut self) {
 }
+}
 
+impl<T, S> HashSet<T, S>
+where
+    T: Eq + Hash,
+    S: BuildHasher,
+{
     /// Creates a new empty hash set which will use the given hasher to hash
     /// keys.
     ///
@@ -8127,9 +8194,6 @@ impl<T, S> HashSet<T, S> {
     /// is designed to allow `HashSet`s to be resistant to attacks that
     /// cause many collisions and very poor performance. Setting it
     /// manually using this function can expose a DoS attack vector.
-    ///
-    /// The `hash_builder` passed should implement the [`BuildHasher`] trait for
-    /// the HashMap to be useful, see its documentation for details.
     ///
     /// # Examples
     ///
@@ -8157,9 +8221,6 @@ impl<T, S> HashSet<T, S> {
     /// cause many collisions and very poor performance. Setting it
     /// manually using this function can expose a DoS attack vector.
     ///
-    /// The `hash_builder` passed should implement the [`BuildHasher`] trait for
-    /// the HashMap to be useful, see its documentation for details.
-    ///
     /// # Examples
     ///
     /// ```
@@ -8177,6 +8238,8 @@ impl<T, S> HashSet<T, S> {
 
     /// Returns a reference to the set's [`BuildHasher`].
     ///
+    /// [`BuildHasher`]: ../../std/hash/trait.BuildHasher.html
+    ///
     /// # Examples
     ///
     /// ```
@@ -8191,13 +8254,7 @@ impl<T, S> HashSet<T, S> {
     #[stable(feature = "hashmap_public_hasher", since = "1.9.0")]
     pub fn hasher(&self) -> &S {
 }
-}
 
-impl<T, S> HashSet<T, S>
-where
-    T: Eq + Hash,
-    S: BuildHasher,
-{
     /// Reserves capacity for at least `additional` more elements to be inserted
     /// in the `HashSet`. The collection may reserve more space to avoid
     /// frequent reallocations.
@@ -8407,6 +8464,9 @@ where
     /// assert_eq!(set.contains(&1), true);
     /// assert_eq!(set.contains(&4), false);
     /// ```
+    ///
+    /// [`Eq`]: ../../std/cmp/trait.Eq.html
+    /// [`Hash`]: ../../std/hash/trait.Hash.html
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn contains<Q: ?Sized>(&self, value: &Q) -> bool
@@ -8431,6 +8491,9 @@ where
     /// assert_eq!(set.get(&2), Some(&2));
     /// assert_eq!(set.get(&4), None);
     /// ```
+    ///
+    /// [`Eq`]: ../../std/cmp/trait.Eq.html
+    /// [`Hash`]: ../../std/hash/trait.Hash.html
     #[inline]
     #[stable(feature = "set_recovery", since = "1.9.0")]
     pub fn get<Q: ?Sized>(&self, value: &Q) -> Option<&T>
@@ -8647,6 +8710,9 @@ where
     /// assert_eq!(set.remove(&2), true);
     /// assert_eq!(set.remove(&2), false);
     /// ```
+    ///
+    /// [`Eq`]: ../../std/cmp/trait.Eq.html
+    /// [`Hash`]: ../../std/hash/trait.Hash.html
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn remove<Q: ?Sized>(&mut self, value: &Q) -> bool
@@ -8671,6 +8737,9 @@ where
     /// assert_eq!(set.take(&2), Some(2));
     /// assert_eq!(set.take(&2), None);
     /// ```
+    ///
+    /// [`Eq`]: ../../std/cmp/trait.Eq.html
+    /// [`Hash`]: ../../std/hash/trait.Hash.html
     #[inline]
     #[stable(feature = "set_recovery", since = "1.9.0")]
     pub fn take<Q: ?Sized>(&mut self, value: &Q) -> Option<T>
@@ -8723,7 +8792,8 @@ where
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, S> fmt::Debug for HashSet<T, S>
 where
-    T: fmt::Debug,
+    T: Eq + Hash + fmt::Debug,
+    S: BuildHasher,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 }
@@ -8749,14 +8819,6 @@ where
     #[inline]
     fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
 }
-
-    #[inline]
-    fn extend_one(&mut self, item: T) {
-}
-
-    #[inline]
-    fn extend_reserve(&mut self, additional: usize) {
-}
 }
 
 #[stable(feature = "hash_extend_copy", since = "1.4.0")]
@@ -8768,20 +8830,13 @@ where
     #[inline]
     fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
 }
-
-    #[inline]
-    fn extend_one(&mut self, &item: &'a T) {
-}
-
-    #[inline]
-    fn extend_reserve(&mut self, additional: usize) {
-}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, S> Default for HashSet<T, S>
 where
-    S: Default,
+    T: Eq + Hash,
+    S: BuildHasher + Default,
 {
     /// Creates an empty `HashSet<T, S>` with the `Default` value for the hasher.
     #[inline]
@@ -8922,7 +8977,8 @@ where
 /// This `struct` is created by the [`iter`] method on [`HashSet`].
 /// See its documentation for more.
 ///
-/// [`iter`]: HashSet::iter
+/// [`HashSet`]: struct.HashSet.html
+/// [`iter`]: struct.HashSet.html#method.iter
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Iter<'a, K: 'a> {
     iter: Keys<'a, K, ()>,
@@ -8933,7 +8989,8 @@ pub struct Iter<'a, K: 'a> {
 /// This `struct` is created by the [`into_iter`] method on [`HashSet`]
 /// (provided by the `IntoIterator` trait). See its documentation for more.
 ///
-/// [`into_iter`]: IntoIterator::into_iter
+/// [`HashSet`]: struct.HashSet.html
+/// [`into_iter`]: struct.HashSet.html#method.into_iter
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<K> {
     iter: map::IntoIter<K, ()>,
@@ -8944,7 +9001,8 @@ pub struct IntoIter<K> {
 /// This `struct` is created by the [`drain`] method on [`HashSet`].
 /// See its documentation for more.
 ///
-/// [`drain`]: HashSet::drain
+/// [`HashSet`]: struct.HashSet.html
+/// [`drain`]: struct.HashSet.html#method.drain
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Drain<'a, K: 'a> {
     iter: map::Drain<'a, K, ()>,
@@ -8955,7 +9013,8 @@ pub struct Drain<'a, K: 'a> {
 /// This `struct` is created by the [`intersection`] method on [`HashSet`].
 /// See its documentation for more.
 ///
-/// [`intersection`]: HashSet::intersection
+/// [`HashSet`]: struct.HashSet.html
+/// [`intersection`]: struct.HashSet.html#method.intersection
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Intersection<'a, T: 'a, S: 'a> {
     // iterator of the first set
@@ -8969,7 +9028,8 @@ pub struct Intersection<'a, T: 'a, S: 'a> {
 /// This `struct` is created by the [`difference`] method on [`HashSet`].
 /// See its documentation for more.
 ///
-/// [`difference`]: HashSet::difference
+/// [`HashSet`]: struct.HashSet.html
+/// [`difference`]: struct.HashSet.html#method.difference
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Difference<'a, T: 'a, S: 'a> {
     // iterator of the first set
@@ -8983,7 +9043,8 @@ pub struct Difference<'a, T: 'a, S: 'a> {
 /// This `struct` is created by the [`symmetric_difference`] method on
 /// [`HashSet`]. See its documentation for more.
 ///
-/// [`symmetric_difference`]: HashSet::symmetric_difference
+/// [`HashSet`]: struct.HashSet.html
+/// [`symmetric_difference`]: struct.HashSet.html#method.symmetric_difference
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct SymmetricDifference<'a, T: 'a, S: 'a> {
     iter: Chain<Difference<'a, T, S>, Difference<'a, T, S>>,
@@ -8994,7 +9055,8 @@ pub struct SymmetricDifference<'a, T: 'a, S: 'a> {
 /// This `struct` is created by the [`union`] method on [`HashSet`].
 /// See its documentation for more.
 ///
-/// [`union`]: HashSet::union
+/// [`HashSet`]: struct.HashSet.html
+/// [`union`]: struct.HashSet.html#method.union
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Union<'a, T: 'a, S: 'a> {
     iter: Chain<Iter<'a, T>, Difference<'a, T, S>>,
@@ -9324,6 +9386,9 @@ pub mod env {
 //! There are several functions and structs in this module that have a
 //! counterpart ending in `os`. Those ending in `os` will return an [`OsString`]
 //! and those without will return a [`String`].
+//!
+//! [`OsString`]: ../../std/ffi/struct.OsString.html
+//! [`String`]: ../string/struct.String.html
 
 #![stable(feature = "env", since = "1.0.0")]
 
@@ -9345,6 +9410,9 @@ use crate::sys::os as os_imp;
 /// * Current directory does not exist.
 /// * There are insufficient permissions to access the current directory.
 ///
+/// [`PathBuf`]: ../../std/path/struct.PathBuf.html
+/// [`Err`]: ../../std/result/enum.Result.html#method.err
+///
 /// # Examples
 ///
 /// ```
@@ -9363,6 +9431,8 @@ pub fn current_dir() -> io::Result<PathBuf> {
 /// Changes the current working directory to the specified path.
 ///
 /// Returns an [`Err`] if the operation fails.
+///
+/// [`Err`]: ../../std/result/enum.Result.html#method.err
 ///
 /// # Examples
 ///
@@ -9383,7 +9453,7 @@ pub fn set_current_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// This structure is created by the [`std::env::vars`] function. See its
 /// documentation for more.
 ///
-/// [`std::env::vars`]: vars
+/// [`std::env::vars`]: fn.vars.html
 #[stable(feature = "env", since = "1.0.0")]
 pub struct Vars {
     inner: VarsOs,
@@ -9394,7 +9464,7 @@ pub struct Vars {
 /// This structure is created by the [`std::env::vars_os`] function. See
 /// its documentation for more.
 ///
-/// [`std::env::vars_os`]: vars_os
+/// [`std::env::vars_os`]: fn.vars_os.html
 #[stable(feature = "env", since = "1.0.0")]
 pub struct VarsOs {
     inner: os_imp::Env,
@@ -9413,7 +9483,7 @@ pub struct VarsOs {
 /// environment is not valid unicode. If this is not desired, consider using the
 /// [`env::vars_os`] function.
 ///
-/// [`env::vars_os`]: vars_os
+/// [`env::vars_os`]: fn.vars_os.html
 ///
 /// # Examples
 ///
@@ -9516,6 +9586,8 @@ fn _var(key: &OsStr) -> Result<String, VarError> {
 /// Fetches the environment variable `key` from the current process, returning
 /// [`None`] if the variable isn't set.
 ///
+/// [`None`]: ../option/enum.Option.html#variant.None
+///
 /// # Panics
 ///
 /// This function may panic if `key` is empty, contains an ASCII equals sign
@@ -9543,7 +9615,7 @@ fn _var_os(key: &OsStr) -> Option<OsString> {
 /// The error type for operations interacting with environment variables.
 /// Possibly returned from the [`env::var`] function.
 ///
-/// [`env::var`]: var
+/// [`env::var`]: fn.var.html
 #[derive(Debug, PartialEq, Eq, Clone)]
 #[stable(feature = "env", since = "1.0.0")]
 pub enum VarError {
@@ -9654,7 +9726,8 @@ fn _remove_var(k: &OsStr) {
 /// This structure is created by the [`std::env::split_paths`] function. See its
 /// documentation for more.
 ///
-/// [`std::env::split_paths`]: split_paths
+/// [`PathBuf`]: ../../std/path/struct.PathBuf.html
+/// [`std::env::split_paths`]: fn.split_paths.html
 #[stable(feature = "env", since = "1.0.0")]
 pub struct SplitPaths<'a> {
     inner: os_imp::SplitPaths<'a>,
@@ -9681,6 +9754,8 @@ pub struct SplitPaths<'a> {
 ///     None => println!("{} is not defined in the environment.", key)
 /// }
 /// ```
+///
+/// [`PathBuf`]: ../../std/path/struct.PathBuf.html
 #[stable(feature = "env", since = "1.0.0")]
 pub fn split_paths<T: AsRef<OsStr> + ?Sized>(unparsed: &T) -> SplitPaths<'_> {
 }
@@ -9703,7 +9778,7 @@ impl fmt::Debug for SplitPaths<'_> {
 /// The error type for operations on the `PATH` variable. Possibly returned from
 /// the [`env::join_paths`] function.
 ///
-/// [`env::join_paths`]: join_paths
+/// [`env::join_paths`]: fn.join_paths.html
 #[derive(Debug)]
 #[stable(feature = "env", since = "1.0.0")]
 pub struct JoinPathsError {
@@ -9715,9 +9790,13 @@ pub struct JoinPathsError {
 ///
 /// # Errors
 ///
-/// Returns an [`Err`] (containing an error message) if one of the input
+/// Returns an [`Err`][err] (containing an error message) if one of the input
 /// [`Path`]s contains an invalid character for constructing the `PATH`
 /// variable (a double quote on Windows or a colon on Unix).
+///
+/// [`Path`]: ../../std/path/struct.Path.html
+/// [`OsString`]: ../../std/ffi/struct.OsString.html
+/// [err]: ../../std/result/enum.Result.html#variant.Err
 ///
 /// # Examples
 ///
@@ -9769,7 +9848,7 @@ pub struct JoinPathsError {
 /// }
 /// ```
 ///
-/// [`env::split_paths`]: split_paths
+/// [`env::split_paths`]: fn.split_paths.html
 #[stable(feature = "env", since = "1.0.0")]
 pub fn join_paths<I, T>(paths: I) -> Result<OsString, JoinPathsError>
 where
@@ -9825,7 +9904,7 @@ impl Error for JoinPathsError {
 #[rustc_deprecated(
     since = "1.29.0",
     reason = "This function's behavior is unexpected and probably not what you want. \
-              Consider using a crate from crates.io instead."
+              Consider using the home_dir function from https://crates.io/crates/dirs instead."
 )]
 #[stable(feature = "env", since = "1.0.0")]
 pub fn home_dir() -> Option<PathBuf> {
@@ -9943,7 +10022,8 @@ pub fn current_exe() -> io::Result<PathBuf> {
 /// set to arbitrary text, and may not even exist. This means this property
 /// should not be relied upon for security purposes.
 ///
-/// [`std::env::args`]: args
+/// [`String`]: ../string/struct.String.html
+/// [`std::env::args`]: ./fn.args.html
 #[stable(feature = "env", since = "1.0.0")]
 pub struct Args {
     inner: ArgsOs,
@@ -9959,7 +10039,8 @@ pub struct Args {
 /// set to arbitrary text, and may not even exist. This means this property
 /// should not be relied upon for security purposes.
 ///
-/// [`std::env::args_os`]: args_os
+/// [`OsString`]: ../ffi/struct.OsString.html
+/// [`std::env::args_os`]: ./fn.args_os.html
 #[stable(feature = "env", since = "1.0.0")]
 pub struct ArgsOs {
     inner: sys::args::Args,
@@ -9976,8 +10057,8 @@ pub struct ArgsOs {
 /// (such as `*` and `?`). On Windows this is not done, and such arguments are
 /// passed as-is.
 ///
-/// On glibc Linux systems, arguments are retrieved by placing a function in ".init_array".
-/// Glibc passes argc, argv, and envp to functions in ".init_array", as a non-standard extension.
+/// On glibc Linux, arguments are retrieved by placing a function in .init_array.
+/// glibc passes argc, argv, and envp to functions in .init_array, as a non-standard extension.
 /// This allows `std::env::args` to work even in a `cdylib` or `staticlib`, as it does on macOS
 /// and Windows.
 ///
@@ -9997,6 +10078,8 @@ pub struct ArgsOs {
 ///     println!("{}", argument);
 /// }
 /// ```
+///
+/// [`args_os`]: ./fn.args_os.html
 #[stable(feature = "env", since = "1.0.0")]
 pub fn args() -> Args {
 }
@@ -10008,8 +10091,8 @@ pub fn args() -> Args {
 /// set to arbitrary text, and it may not even exist, so this property should
 /// not be relied upon for security purposes.
 ///
-/// On glibc Linux systems, arguments are retrieved by placing a function in ".init_array".
-/// Glibc passes argc, argv, and envp to functions in ".init_array", as a non-standard extension.
+/// On glibc Linux, arguments are retrieved by placing a function in .init_array.
+/// glibc passes argc, argv, and envp to functions in .init_array, as a non-standard extension.
 /// This allows `std::env::args` to work even in a `cdylib` or `staticlib`, as it does on macOS
 /// and Windows.
 ///
@@ -10119,7 +10202,7 @@ pub mod consts {
     /// - s390x
     /// - sparc64
     #[stable(feature = "env", since = "1.0.0")]
-    pub const ARCH: &str = env!("STD_ENV_ARCH");
+    pub const ARCH: &str = super::arch::ARCH;
 
     /// The family of the operating system. Example value is `unix`.
     ///
@@ -10203,6 +10286,81 @@ pub mod consts {
     pub const EXE_EXTENSION: &str = os::EXE_EXTENSION;
 }
 
+#[cfg(target_arch = "x86")]
+mod arch {
+    pub const ARCH: &str = "x86";
+}
+
+#[cfg(target_arch = "x86_64")]
+mod arch {
+    pub const ARCH: &str = "x86_64";
+}
+
+#[cfg(target_arch = "arm")]
+mod arch {
+    pub const ARCH: &str = "arm";
+}
+
+#[cfg(target_arch = "aarch64")]
+mod arch {
+    pub const ARCH: &str = "aarch64";
+}
+
+#[cfg(target_arch = "mips")]
+mod arch {
+    pub const ARCH: &str = "mips";
+}
+
+#[cfg(target_arch = "mips64")]
+mod arch {
+    pub const ARCH: &str = "mips64";
+}
+
+#[cfg(target_arch = "powerpc")]
+mod arch {
+    pub const ARCH: &str = "powerpc";
+}
+
+#[cfg(target_arch = "powerpc64")]
+mod arch {
+    pub const ARCH: &str = "powerpc64";
+}
+
+#[cfg(target_arch = "s390x")]
+mod arch {
+    pub const ARCH: &str = "s390x";
+}
+
+#[cfg(target_arch = "sparc64")]
+mod arch {
+    pub const ARCH: &str = "sparc64";
+}
+
+#[cfg(target_arch = "le32")]
+mod arch {
+    pub const ARCH: &str = "le32";
+}
+
+#[cfg(target_arch = "asmjs")]
+mod arch {
+    pub const ARCH: &str = "asmjs";
+}
+
+#[cfg(target_arch = "wasm32")]
+mod arch {
+    pub const ARCH: &str = "wasm32";
+}
+
+#[cfg(target_arch = "hexagon")]
+mod arch {
+    pub const ARCH: &'static str = "hexagon";
+}
+
+#[cfg(target_arch = "riscv64")]
+mod arch {
+    pub const ARCH: &'static str = "riscv64";
+}
+
 #[cfg(test)]
 mod tests {
 }
@@ -10224,9 +10382,8 @@ pub mod error {
 // reconsider what crate these items belong in.
 
 use core::array;
-use core::convert::Infallible;
 
-use crate::alloc::{AllocErr, LayoutErr};
+use crate::alloc::{AllocErr, CannotReallocInPlace, LayoutErr};
 use crate::any::TypeId;
 use crate::backtrace::Backtrace;
 use crate::borrow::Cow;
@@ -10250,8 +10407,10 @@ use crate::string;
 /// provide its own errors while also revealing some of the implementation for
 /// debugging via [`source`] chains.
 ///
-/// [`Result<T, E>`]: Result
-/// [`source`]: Error::source
+/// [`Result<T, E>`]: ../result/enum.Result.html
+/// [`Display`]: ../fmt/trait.Display.html
+/// [`Debug`]: ../fmt/trait.Debug.html
+/// [`source`]: trait.Error.html#method.source
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Error: Debug + Display {
     /// The lower-level source of this error, if any.
@@ -10297,7 +10456,7 @@ pub trait Error: Debug + Display {
     /// fn main() {
     ///     match get_super_error() {
     ///         Err(e) => {
-    ///             println!("Error: {}", e);
+    ///             println!("Error: {}", e.description());
     ///             println!("Caused by: {}", e.source().unwrap());
     ///         }
     ///         _ => println!("No error"),
@@ -10367,6 +10526,8 @@ mod private {
 impl<'a, E: Error + 'a> From<E> for Box<dyn Error + 'a> {
     /// Converts a type of [`Error`] into a box of dyn [`Error`].
     ///
+    /// [`Error`]: ../error/trait.Error.html
+    ///
     /// # Examples
     ///
     /// ```
@@ -10398,6 +10559,8 @@ impl<'a, E: Error + 'a> From<E> for Box<dyn Error + 'a> {
 impl<'a, E: Error + Send + Sync + 'a> From<E> for Box<dyn Error + Send + Sync + 'a> {
     /// Converts a type of [`Error`] + [`Send`] + [`Sync`] into a box of
     /// dyn [`Error`] + [`Send`] + [`Sync`].
+    ///
+    /// [`Error`]: ../error/trait.Error.html
     ///
     /// # Examples
     ///
@@ -10435,6 +10598,8 @@ impl<'a, E: Error + Send + Sync + 'a> From<E> for Box<dyn Error + Send + Sync + 
 impl From<String> for Box<dyn Error + Send + Sync> {
     /// Converts a [`String`] into a box of dyn [`Error`] + [`Send`] + [`Sync`].
     ///
+    /// [`Error`]: ../error/trait.Error.html
+    ///
     /// # Examples
     ///
     /// ```
@@ -10455,6 +10620,8 @@ impl From<String> for Box<dyn Error + Send + Sync> {
 impl From<String> for Box<dyn Error> {
     /// Converts a [`String`] into a box of dyn [`Error`].
     ///
+    /// [`Error`]: ../error/trait.Error.html
+    ///
     /// # Examples
     ///
     /// ```
@@ -10473,7 +10640,7 @@ impl From<String> for Box<dyn Error> {
 impl<'a> From<&str> for Box<dyn Error + Send + Sync + 'a> {
     /// Converts a [`str`] into a box of dyn [`Error`] + [`Send`] + [`Sync`].
     ///
-    /// [`str`]: prim@str
+    /// [`Error`]: ../error/trait.Error.html
     ///
     /// # Examples
     ///
@@ -10495,7 +10662,7 @@ impl<'a> From<&str> for Box<dyn Error + Send + Sync + 'a> {
 impl From<&str> for Box<dyn Error> {
     /// Converts a [`str`] into a box of dyn [`Error`].
     ///
-    /// [`str`]: prim@str
+    /// [`Error`]: ../error/trait.Error.html
     ///
     /// # Examples
     ///
@@ -10514,6 +10681,9 @@ impl From<&str> for Box<dyn Error> {
 #[stable(feature = "cow_box_error", since = "1.22.0")]
 impl<'a, 'b> From<Cow<'b, str>> for Box<dyn Error + Send + Sync + 'a> {
     /// Converts a [`Cow`] into a box of dyn [`Error`] + [`Send`] + [`Sync`].
+    ///
+    /// [`Cow`]: ../borrow/enum.Cow.html
+    /// [`Error`]: ../error/trait.Error.html
     ///
     /// # Examples
     ///
@@ -10534,6 +10704,9 @@ impl<'a, 'b> From<Cow<'b, str>> for Box<dyn Error + Send + Sync + 'a> {
 #[stable(feature = "cow_box_error", since = "1.22.0")]
 impl<'a> From<Cow<'a, str>> for Box<dyn Error> {
     /// Converts a [`Cow`] into a box of dyn [`Error`].
+    ///
+    /// [`Cow`]: ../borrow/enum.Cow.html
+    /// [`Error`]: ../error/trait.Error.html
     ///
     /// # Examples
     ///
@@ -10566,6 +10739,13 @@ impl Error for AllocErr {}
     issue = "32838"
 )]
 impl Error for LayoutErr {}
+
+#[unstable(
+    feature = "allocator_api",
+    reason = "the precise API and guarantees it provides may be tweaked.",
+    issue = "32838"
+)]
+impl Error for CannotReallocInPlace {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Error for str::ParseBoolError {
@@ -10624,7 +10804,7 @@ impl Error for string::FromUtf16Error {
 }
 
 #[stable(feature = "str_parse_error2", since = "1.8.0")]
-impl Error for Infallible {
+impl Error for string::ParseError {
     fn description(&self) -> &str {
 }
 }
@@ -10684,9 +10864,6 @@ impl Error for char::ParseCharError {
     fn description(&self) -> &str {
 }
 }
-
-#[unstable(feature = "try_reserve", reason = "new API", issue = "48043")]
-impl Error for alloc::collections::TryReserveError {}
 
 // Copied from `any.rs`.
 impl dyn Error + 'static {
@@ -10810,7 +10987,7 @@ impl dyn Error {
     /// assert!(iter.next().is_none());
     /// ```
     ///
-    /// [`source`]: Error::source
+    /// [`source`]: trait.Error.html#method.source
     #[unstable(feature = "error_iter", issue = "58520")]
     #[inline]
     pub fn chain(&self) -> Chain<'_> {
@@ -10821,6 +10998,8 @@ impl dyn Error {
 ///
 /// If you want to omit the initial error and only process
 /// its sources, use `skip(1)`.
+///
+/// [`Error`]: trait.Error.html
 #[unstable(feature = "error_iter", issue = "58520")]
 #[derive(Clone, Debug)]
 pub struct Chain<'a> {
@@ -10901,8 +11080,8 @@ pub mod ffi {
 //! terminator, so the buffer length is really `len+1` characters.
 //! Rust strings don't have a nul terminator; their length is always
 //! stored and does not need to be calculated. While in Rust
-//! accessing a string's length is a `O(1)` operation (because the
-//! length is stored); in C it is an `O(length)` operation because the
+//! accessing a string's length is a O(1) operation (because the
+//! length is stored); in C it is an O(length) operation because the
 //! length needs to be computed by scanning the string for the nul
 //! terminator.
 //!
@@ -10946,7 +11125,7 @@ pub mod ffi {
 //! [`env::var_os()`] is used to query environment variables; it
 //! returns an [`Option`]`<`[`OsString`]`>`. If the environment variable
 //! exists you will get a [`Some`]`(os_string)`, which you can *then* try to
-//! convert to a Rust string. This yields a [`Result`], so that
+//! convert to a Rust string. This yields a [`Result<>`], so that
 //! your code can detect errors in case the environment variable did
 //! not in fact contain valid Unicode data.
 //!
@@ -10982,29 +11161,39 @@ pub mod ffi {
 //! method is an [`OsString`] which can be round-tripped to a Windows
 //! string losslessly.
 //!
+//! [`String`]: ../string/struct.String.html
+//! [`str`]: ../primitive.str.html
+//! [`char`]: ../primitive.char.html
+//! [`u8`]: ../primitive.u8.html
+//! [`u16`]: ../primitive.u16.html
 //! [Unicode scalar value]: http://www.unicode.org/glossary/#unicode_scalar_value
 //! [Unicode code point]: http://www.unicode.org/glossary/#code_point
-//! [`env::set_var()`]: crate::env::set_var
-//! [`env::var_os()`]: crate::env::var_os
-//! [unix.OsStringExt]: crate::os::unix::ffi::OsStringExt
-//! [`from_vec`]: crate::os::unix::ffi::OsStringExt::from_vec
-//! [`into_vec`]: crate::os::unix::ffi::OsStringExt::into_vec
-//! [unix.OsStrExt]: crate::os::unix::ffi::OsStrExt
-//! [`from_bytes`]: crate::os::unix::ffi::OsStrExt::from_bytes
-//! [`as_bytes`]: crate::os::unix::ffi::OsStrExt::as_bytes
-//! [`OsStrExt`]: crate::os::unix::ffi::OsStrExt
-//! [windows.OsStrExt]: crate::os::windows::ffi::OsStrExt
-//! [`encode_wide`]: crate::os::windows::ffi::OsStrExt::encode_wide
-//! [`collect`]: crate::iter::Iterator::collect
-//! [windows.OsStringExt]: crate::os::windows::ffi::OsStringExt
-//! [`from_wide`]: crate::os::windows::ffi::OsStringExt::from_wide
+//! [`CString`]: struct.CString.html
+//! [`CStr`]: struct.CStr.html
+//! [`OsString`]: struct.OsString.html
+//! [`OsStr`]: struct.OsStr.html
+//! [`env::set_var()`]: ../env/fn.set_var.html
+//! [`env::var_os()`]: ../env/fn.var_os.html
+//! [`Result<>`]: ../result/enum.Result.html
+//! [unix.OsStringExt]: ../os/unix/ffi/trait.OsStringExt.html
+//! [`from_vec`]: ../os/unix/ffi/trait.OsStringExt.html#tymethod.from_vec
+//! [`into_vec`]: ../os/unix/ffi/trait.OsStringExt.html#tymethod.into_vec
+//! [unix.OsStrExt]: ../os/unix/ffi/trait.OsStrExt.html
+//! [`from_bytes`]: ../os/unix/ffi/trait.OsStrExt.html#tymethod.from_bytes
+//! [`as_bytes`]: ../os/unix/ffi/trait.OsStrExt.html#tymethod.as_bytes
+//! [`OsStrExt`]: ../os/unix/ffi/trait.OsStrExt.html
+//! [windows.OsStrExt]: ../os/windows/ffi/trait.OsStrExt.html
+//! [`encode_wide`]: ../os/windows/ffi/trait.OsStrExt.html#tymethod.encode_wide
+//! [`collect`]: ../iter/trait.Iterator.html#method.collect
+//! [windows.OsStringExt]: ../os/windows/ffi/trait.OsStringExt.html
+//! [`from_wide`]: ../os/windows/ffi/trait.OsStringExt.html#tymethod.from_wide
+//! [`Option`]: ../option/enum.Option.html
+//! [`Some`]: ../option/enum.Option.html#variant.Some
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
 #[stable(feature = "cstr_from_bytes", since = "1.10.0")]
 pub use self::c_str::FromBytesWithNulError;
-#[unstable(feature = "cstring_from_vec_with_nul", issue = "73179")]
-pub use self::c_str::FromVecWithNulError;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::c_str::{CStr, CString, IntoStringError, NulError};
 
@@ -11023,7 +11212,6 @@ pub use core::ffi::c_void;
 pub use core::ffi::{VaList, VaListImpl};
 
 mod c_str {
-#![deny(unsafe_op_in_unsafe_fn)]
 use crate::ascii;
 use crate::borrow::{Borrow, Cow};
 use crate::cmp::Ordering;
@@ -11032,7 +11220,6 @@ use crate::fmt::{self, Write};
 use crate::io;
 use crate::mem;
 use crate::memchr;
-use crate::num::NonZeroU8;
 use crate::ops;
 use crate::os::raw::c_char;
 use crate::ptr;
@@ -11061,23 +11248,23 @@ use crate::sys;
 /// example, you can build a `CString` straight out of a [`String`] or
 /// a [`&str`], since both implement that trait).
 ///
-/// The [`CString::new`] method will actually check that the provided `&[u8]`
+/// The [`new`] method will actually check that the provided `&[u8]`
 /// does not have 0 bytes in the middle, and return an error if it
 /// finds one.
 ///
 /// # Extracting a raw pointer to the whole C string
 ///
-/// `CString` implements a [`as_ptr`][`CStr::as_ptr`] method through the [`Deref`]
+/// `CString` implements a [`as_ptr`] method through the [`Deref`]
 /// trait. This method will give you a `*const c_char` which you can
 /// feed directly to extern functions that expect a nul-terminated
-/// string, like C's `strdup()`. Notice that [`as_ptr`][`CStr::as_ptr`] returns a
+/// string, like C's `strdup()`. Notice that [`as_ptr`] returns a
 /// read-only pointer; if the C code writes to it, that causes
 /// undefined behavior.
 ///
 /// # Extracting a slice of the whole C string
 ///
 /// Alternatively, you can obtain a `&[`[`u8`]`]` slice from a
-/// `CString` with the [`CString::as_bytes`] method. Slices produced in this
+/// `CString` with the [`as_bytes`] method. Slices produced in this
 /// way do *not* contain the trailing nul terminator. This is useful
 /// when you will be calling an extern function that takes a `*const
 /// u8` argument which is not necessarily nul-terminated, plus another
@@ -11086,7 +11273,7 @@ use crate::sys;
 /// [`len`][slice.len] method.
 ///
 /// If you need a `&[`[`u8`]`]` slice *with* the nul terminator, you
-/// can use [`CString::as_bytes_with_nul`] instead.
+/// can use [`as_bytes_with_nul`] instead.
 ///
 /// Once you have the kind of slice you need (with or without a nul
 /// terminator), you can call the slice's own
@@ -11094,11 +11281,20 @@ use crate::sys;
 /// extern functions. See the documentation for that function for a
 /// discussion on ensuring the lifetime of the raw pointer.
 ///
-/// [`&str`]: prim@str
+/// [`Into`]: ../convert/trait.Into.html
+/// [`Vec`]: ../vec/struct.Vec.html
+/// [`String`]: ../string/struct.String.html
+/// [`&str`]: ../primitive.str.html
+/// [`u8`]: ../primitive.u8.html
+/// [`new`]: #method.new
+/// [`as_bytes`]: #method.as_bytes
+/// [`as_bytes_with_nul`]: #method.as_bytes_with_nul
+/// [`as_ptr`]: #method.as_ptr
 /// [slice.as_ptr]: ../primitive.slice.html#method.as_ptr
 /// [slice.len]: ../primitive.slice.html#method.len
-/// [`Deref`]: ops::Deref
-/// [`&CStr`]: CStr
+/// [`Deref`]: ../ops/trait.Deref.html
+/// [`CStr`]: struct.CStr.html
+/// [`&CStr`]: struct.CStr.html
 ///
 /// # Examples
 ///
@@ -11130,6 +11326,7 @@ use crate::sys;
 /// documentation of `CString` before use, as improper ownership management
 /// of `CString` instances can lead to invalid memory accesses, memory leaks,
 /// and other memory errors.
+
 #[derive(PartialEq, PartialOrd, Eq, Ord, Hash, Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct CString {
@@ -11153,8 +11350,8 @@ pub struct CString {
 ///
 /// Note that this structure is **not** `repr(C)` and is not recommended to be
 /// placed in the signatures of FFI functions. Instead, safe wrappers of FFI
-/// functions may leverage the unsafe [`CStr::from_ptr`] constructor to provide
-/// a safe interface to other consumers.
+/// functions may leverage the unsafe [`from_ptr`] constructor to provide a safe
+/// interface to other consumers.
 ///
 /// # Examples
 ///
@@ -11205,7 +11402,11 @@ pub struct CString {
 /// println!("string: {}", my_string_safe());
 /// ```
 ///
-/// [`&str`]: prim@str
+/// [`u8`]: ../primitive.u8.html
+/// [`&str`]: ../primitive.str.html
+/// [`String`]: ../string/struct.String.html
+/// [`CString`]: struct.CString.html
+/// [`from_ptr`]: #method.from_ptr
 #[derive(Hash)]
 #[stable(feature = "rust1", since = "1.0.0")]
 // FIXME:
@@ -11230,6 +11431,9 @@ pub struct CStr {
 /// This error is created by the [`new`][`CString::new`] method on
 /// [`CString`]. See its documentation for more.
 ///
+/// [`CString`]: struct.CString.html
+/// [`CString::new`]: struct.CString.html#method.new
+///
 /// # Examples
 ///
 /// ```
@@ -11243,11 +11447,15 @@ pub struct NulError(usize, Vec<u8>);
 
 /// An error indicating that a nul byte was not in the expected position.
 ///
-/// The slice used to create a [`CStr`] must have one and only one nul byte,
-/// positioned at the end.
+/// The slice used to create a [`CStr`] must have one and only one nul
+/// byte at the end of the slice.
 ///
-/// This error is created by the [`CStr::from_bytes_with_nul`] method.
-/// See its documentation for more.
+/// This error is created by the
+/// [`from_bytes_with_nul`][`CStr::from_bytes_with_nul`] method on
+/// [`CStr`]. See its documentation for more.
+///
+/// [`CStr`]: struct.CStr.html
+/// [`CStr::from_bytes_with_nul`]: struct.CStr.html#method.from_bytes_with_nul
 ///
 /// # Examples
 ///
@@ -11260,29 +11468,6 @@ pub struct NulError(usize, Vec<u8>);
 #[stable(feature = "cstr_from_bytes", since = "1.10.0")]
 pub struct FromBytesWithNulError {
     kind: FromBytesWithNulErrorKind,
-}
-
-/// An error indicating that a nul byte was not in the expected position.
-///
-/// The vector used to create a [`CString`] must have one and only one nul byte,
-/// positioned at the end.
-///
-/// This error is created by the [`CString::from_vec_with_nul`] method.
-/// See its documentation for more.
-///
-/// # Examples
-///
-/// ```
-/// #![feature(cstring_from_vec_with_nul)]
-/// use std::ffi::{CString, FromVecWithNulError};
-///
-/// let _: FromVecWithNulError = CString::from_vec_with_nul(b"f\0oo".to_vec()).unwrap_err();
-/// ```
-#[derive(Clone, PartialEq, Eq, Debug)]
-#[unstable(feature = "cstring_from_vec_with_nul", issue = "73179")]
-pub struct FromVecWithNulError {
-    error_kind: FromBytesWithNulErrorKind,
-    bytes: Vec<u8>,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -11298,61 +11483,19 @@ impl FromBytesWithNulError {
 }
 }
 
-#[unstable(feature = "cstring_from_vec_with_nul", issue = "73179")]
-impl FromVecWithNulError {
-    /// Returns a slice of [`u8`]s bytes that were attempted to convert to a [`CString`].
-    ///
-    /// # Examples
-    ///
-    /// Basic usage:
-    ///
-    /// ```
-    /// #![feature(cstring_from_vec_with_nul)]
-    /// use std::ffi::CString;
-    ///
-    /// // Some invalid bytes in a vector
-    /// let bytes = b"f\0oo".to_vec();
-    ///
-    /// let value = CString::from_vec_with_nul(bytes.clone());
-    ///
-    /// assert_eq!(&bytes[..], value.unwrap_err().as_bytes());
-    /// ```
-    pub fn as_bytes(&self) -> &[u8] {
-}
-
-    /// Returns the bytes that were attempted to convert to a [`CString`].
-    ///
-    /// This method is carefully constructed to avoid allocation. It will
-    /// consume the error, moving out the bytes, so that a copy of the bytes
-    /// does not need to be made.
-    ///
-    /// # Examples
-    ///
-    /// Basic usage:
-    ///
-    /// ```
-    /// #![feature(cstring_from_vec_with_nul)]
-    /// use std::ffi::CString;
-    ///
-    /// // Some invalid bytes in a vector
-    /// let bytes = b"f\0oo".to_vec();
-    ///
-    /// let value = CString::from_vec_with_nul(bytes.clone());
-    ///
-    /// assert_eq!(bytes, value.unwrap_err().into_bytes());
-    /// ```
-    pub fn into_bytes(self) -> Vec<u8> {
-}
-}
-
 /// An error indicating invalid UTF-8 when converting a [`CString`] into a [`String`].
 ///
-/// `CString` is just a wrapper over a buffer of bytes with a nul terminator;
-/// [`CString::into_string`] performs UTF-8 validation on those bytes and may
-/// return this error.
+/// `CString` is just a wrapper over a buffer of bytes with a nul
+/// terminator; [`into_string`][`CString::into_string`] performs UTF-8
+/// validation on those bytes and may return this error.
 ///
-/// This `struct` is created by [`CString::into_string()`]. See
+/// This `struct` is created by the
+/// [`into_string`][`CString::into_string`] method on [`CString`]. See
 /// its documentation for more.
+///
+/// [`String`]: ../string/struct.String.html
+/// [`CString`]: struct.CString.html
+/// [`CString::into_string`]: struct.CString.html#method.into_string
 #[derive(Clone, PartialEq, Eq, Debug)]
 #[stable(feature = "cstring_into", since = "1.7.0")]
 pub struct IntoStringError {
@@ -11388,6 +11531,8 @@ impl CString {
     /// This function will return an error if the supplied bytes contain an
     /// internal 0 byte. The [`NulError`] returned will contain the bytes as well as
     /// the position of the nul byte.
+    ///
+    /// [`NulError`]: struct.NulError.html
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new<T: Into<Vec<u8>>>(t: T) -> Result<CString, NulError> {
 }
@@ -11398,9 +11543,11 @@ impl CString {
     /// Creates a C-compatible string by consuming a byte vector,
     /// without checking for interior 0 bytes.
     ///
-    /// This method is equivalent to [`CString::new`] except that no runtime
-    /// assertion is made that `v` contains no 0 bytes, and it requires an
-    /// actual byte vector, not anything that can be converted to one with Into.
+    /// This method is equivalent to [`new`] except that no runtime assertion
+    /// is made that `v` contains no 0 bytes, and it requires an actual
+    /// byte vector, not anything that can be converted to one with Into.
+    ///
+    /// [`new`]: #method.new
     ///
     /// # Examples
     ///
@@ -11416,29 +11563,25 @@ impl CString {
     pub unsafe fn from_vec_unchecked(mut v: Vec<u8>) -> CString {
 }
 
-    /// Retakes ownership of a `CString` that was transferred to C via
-    /// [`CString::into_raw`].
+    /// Retakes ownership of a `CString` that was transferred to C via [`into_raw`].
     ///
     /// Additionally, the length of the string will be recalculated from the pointer.
     ///
     /// # Safety
     ///
     /// This should only ever be called with a pointer that was earlier
-    /// obtained by calling [`CString::into_raw`]. Other usage (e.g., trying to take
+    /// obtained by calling [`into_raw`] on a `CString`. Other usage (e.g., trying to take
     /// ownership of a string that was allocated by foreign code) is likely to lead
     /// to undefined behavior or allocator corruption.
-    ///
-    /// It should be noted that the length isn't just "recomputed," but that
-    /// the recomputed length must match the original length from the
-    /// [`CString::into_raw`] call. This means the [`CString::into_raw`]/`from_raw`
-    /// methods should not be used when passing the string to C functions that can
-    /// modify the string's length.
     ///
     /// > **Note:** If you need to borrow a string that was allocated by
     /// > foreign code, use [`CStr`]. If you need to take ownership of
     /// > a string that was allocated by foreign code, you will need to
     /// > make your own provisions for freeing it appropriately, likely
     /// > with the foreign code's API to do that.
+    ///
+    /// [`into_raw`]: #method.into_raw
+    /// [`CStr`]: struct.CStr.html
     ///
     /// # Examples
     ///
@@ -11467,16 +11610,13 @@ impl CString {
     /// Consumes the `CString` and transfers ownership of the string to a C caller.
     ///
     /// The pointer which this function returns must be returned to Rust and reconstituted using
-    /// [`CString::from_raw`] to be properly deallocated. Specifically, one
+    /// [`from_raw`] to be properly deallocated. Specifically, one
     /// should *not* use the standard C `free()` function to deallocate
     /// this string.
     ///
-    /// Failure to call [`CString::from_raw`] will lead to a memory leak.
+    /// Failure to call [`from_raw`] will lead to a memory leak.
     ///
-    /// The C side must **not** modify the length of the string (by writing a
-    /// `NULL` somewhere inside the string or removing the final one) before
-    /// it makes it back into Rust using [`CString::from_raw`]. See the safety section
-    /// in [`CString::from_raw`].
+    /// [`from_raw`]: #method.from_raw
     ///
     /// # Examples
     ///
@@ -11505,6 +11645,8 @@ impl CString {
     /// Converts the `CString` into a [`String`] if it contains valid UTF-8 data.
     ///
     /// On failure, ownership of the original `CString` is returned.
+    ///
+    /// [`String`]: ../string/struct.String.html
     ///
     /// # Examples
     ///
@@ -11544,8 +11686,10 @@ impl CString {
     pub fn into_bytes(self) -> Vec<u8> {
 }
 
-    /// Equivalent to [`CString::into_bytes()`] except that the
-    /// returned vector includes the trailing nul terminator.
+    /// Equivalent to the [`into_bytes`] function except that the returned vector
+    /// includes the trailing nul terminator.
+    ///
+    /// [`into_bytes`]: #method.into_bytes
     ///
     /// # Examples
     ///
@@ -11565,7 +11709,9 @@ impl CString {
     /// The returned slice does **not** contain the trailing nul
     /// terminator, and it is guaranteed to not have any interior nul
     /// bytes. If you need the nul terminator, use
-    /// [`CString::as_bytes_with_nul`] instead.
+    /// [`as_bytes_with_nul`] instead.
+    ///
+    /// [`as_bytes_with_nul`]: #method.as_bytes_with_nul
     ///
     /// # Examples
     ///
@@ -11581,8 +11727,10 @@ impl CString {
     pub fn as_bytes(&self) -> &[u8] {
 }
 
-    /// Equivalent to [`CString::as_bytes()`] except that the
-    /// returned slice includes the trailing nul terminator.
+    /// Equivalent to the [`as_bytes`] function except that the returned slice
+    /// includes the trailing nul terminator.
+    ///
+    /// [`as_bytes`]: #method.as_bytes
     ///
     /// # Examples
     ///
@@ -11599,6 +11747,8 @@ impl CString {
 }
 
     /// Extracts a [`CStr`] slice containing the entire string.
+    ///
+    /// [`CStr`]: struct.CStr.html
     ///
     /// # Examples
     ///
@@ -11617,6 +11767,8 @@ impl CString {
 
     /// Converts this `CString` into a boxed [`CStr`].
     ///
+    /// [`CStr`]: struct.CStr.html
+    ///
     /// # Examples
     ///
     /// ```
@@ -11632,68 +11784,9 @@ impl CString {
 }
 
     /// Bypass "move out of struct which implements [`Drop`] trait" restriction.
+    ///
+    /// [`Drop`]: ../ops/trait.Drop.html
     fn into_inner(self) -> Box<[u8]> {
-}
-
-    /// Converts a [`Vec`]`<u8>` to a [`CString`] without checking the
-    /// invariants on the given [`Vec`].
-    ///
-    /// # Safety
-    ///
-    /// The given [`Vec`] **must** have one nul byte as its last element.
-    /// This means it cannot be empty nor have any other nul byte anywhere else.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// #![feature(cstring_from_vec_with_nul)]
-    /// use std::ffi::CString;
-    /// assert_eq!(
-    ///     unsafe { CString::from_vec_with_nul_unchecked(b"abc\0".to_vec()) },
-    ///     unsafe { CString::from_vec_unchecked(b"abc".to_vec()) }
-    /// );
-    /// ```
-    #[unstable(feature = "cstring_from_vec_with_nul", issue = "73179")]
-    pub unsafe fn from_vec_with_nul_unchecked(v: Vec<u8>) -> Self {
-}
-
-    /// Attempts to converts a [`Vec`]`<u8>` to a [`CString`].
-    ///
-    /// Runtime checks are present to ensure there is only one nul byte in the
-    /// [`Vec`], its last element.
-    ///
-    /// # Errors
-    ///
-    /// If a nul byte is present and not the last element or no nul bytes
-    /// is present, an error will be returned.
-    ///
-    /// # Examples
-    ///
-    /// A successful conversion will produce the same result as [`CString::new`]
-    /// when called without the ending nul byte.
-    ///
-    /// ```
-    /// #![feature(cstring_from_vec_with_nul)]
-    /// use std::ffi::CString;
-    /// assert_eq!(
-    ///     CString::from_vec_with_nul(b"abc\0".to_vec())
-    ///         .expect("CString::from_vec_with_nul failed"),
-    ///     CString::new(b"abc".to_vec()).expect("CString::new failed")
-    /// );
-    /// ```
-    ///
-    /// A incorrectly formatted [`Vec`] will produce an error.
-    ///
-    /// ```
-    /// #![feature(cstring_from_vec_with_nul)]
-    /// use std::ffi::{CString, FromVecWithNulError};
-    /// // Interior nul byte
-    /// let _: FromVecWithNulError = CString::from_vec_with_nul(b"a\0bc".to_vec()).unwrap_err();
-    /// // No nul byte
-    /// let _: FromVecWithNulError = CString::from_vec_with_nul(b"abc".to_vec()).unwrap_err();
-    /// ```
-    #[unstable(feature = "cstring_from_vec_with_nul", issue = "73179")]
-    pub fn from_vec_with_nul(v: Vec<u8>) -> Result<Self, FromVecWithNulError> {
 }
 }
 
@@ -11727,6 +11820,9 @@ impl From<CString> for Vec<u8> {
     /// Converts a [`CString`] into a [`Vec`]`<u8>`.
     ///
     /// The conversion consumes the [`CString`], and removes the terminating NUL byte.
+    ///
+    /// [`Vec`]: ../vec/struct.Vec.html
+    /// [`CString`]: ../ffi/struct.CString.html
     #[inline]
     fn from(s: CString) -> Vec<u8> {
 }
@@ -11771,27 +11867,14 @@ impl From<&CStr> for Box<CStr> {
 }
 }
 
-#[stable(feature = "box_from_cow", since = "1.45.0")]
-impl From<Cow<'_, CStr>> for Box<CStr> {
-    #[inline]
-    fn from(cow: Cow<'_, CStr>) -> Box<CStr> {
-}
-}
-
 #[stable(feature = "c_string_from_box", since = "1.18.0")]
 impl From<Box<CStr>> for CString {
     /// Converts a [`Box`]`<CStr>` into a [`CString`] without copying or allocating.
+    ///
+    /// [`Box`]: ../boxed/struct.Box.html
+    /// [`CString`]: ../ffi/struct.CString.html
     #[inline]
     fn from(s: Box<CStr>) -> CString {
-}
-}
-
-#[stable(feature = "cstring_from_vec_of_nonzerou8", since = "1.43.0")]
-impl From<Vec<NonZeroU8>> for CString {
-    /// Converts a [`Vec`]`<`[`NonZeroU8`]`>` into a [`CString`] without
-    /// copying nor checking for inner null bytes.
-    #[inline]
-    fn from(v: Vec<NonZeroU8>) -> CString {
 }
 }
 
@@ -11805,6 +11888,9 @@ impl Clone for Box<CStr> {
 #[stable(feature = "box_from_c_string", since = "1.20.0")]
 impl From<CString> for Box<CStr> {
     /// Converts a [`CString`] into a [`Box`]`<CStr>` without copying or allocating.
+    ///
+    /// [`CString`]: ../ffi/struct.CString.html
+    /// [`Box`]: ../boxed/struct.Box.html
     #[inline]
     fn from(s: CString) -> Box<CStr> {
 }
@@ -11834,6 +11920,9 @@ impl<'a> From<&'a CString> for Cow<'a, CStr> {
 #[stable(feature = "shared_from_slice2", since = "1.24.0")]
 impl From<CString> for Arc<CStr> {
     /// Converts a [`CString`] into a [`Arc`]`<CStr>` without copying or allocating.
+    ///
+    /// [`CString`]: ../ffi/struct.CString.html
+    /// [`Arc`]: ../sync/struct.Arc.html
     #[inline]
     fn from(s: CString) -> Arc<CStr> {
 }
@@ -11849,6 +11938,9 @@ impl From<&CStr> for Arc<CStr> {
 #[stable(feature = "shared_from_slice2", since = "1.24.0")]
 impl From<CString> for Rc<CStr> {
     /// Converts a [`CString`] into a [`Rc`]`<CStr>` without copying or allocating.
+    ///
+    /// [`CString`]: ../ffi/struct.CString.html
+    /// [`Rc`]: ../rc/struct.Rc.html
     #[inline]
     fn from(s: CString) -> Rc<CStr> {
 }
@@ -11870,6 +11962,8 @@ impl Default for Box<CStr> {
 impl NulError {
     /// Returns the position of the nul byte in the slice that caused
     /// [`CString::new`] to fail.
+    ///
+    /// [`CString::new`]: struct.CString.html#method.new
     ///
     /// # Examples
     ///
@@ -11918,6 +12012,9 @@ impl fmt::Display for NulError {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl From<NulError> for io::Error {
     /// Converts a [`NulError`] into a [`io::Error`].
+    ///
+    /// [`NulError`]: ../ffi/struct.NulError.html
+    /// [`io::Error`]: ../io/struct.Error.html
     fn from(_: NulError) -> io::Error {
 }
 }
@@ -11936,18 +12033,11 @@ impl fmt::Display for FromBytesWithNulError {
 }
 }
 
-#[unstable(feature = "cstring_from_vec_with_nul", issue = "73179")]
-impl Error for FromVecWithNulError {}
-
-#[unstable(feature = "cstring_from_vec_with_nul", issue = "73179")]
-impl fmt::Display for FromVecWithNulError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-}
-}
-
 impl IntoStringError {
     /// Consumes this error, returning original [`CString`] which generated the
     /// error.
+    ///
+    /// [`CString`]: struct.CString.html
     #[stable(feature = "cstring_into", since = "1.7.0")]
     pub fn into_cstring(self) -> CString {
 }
@@ -12104,8 +12194,7 @@ impl CStr {
     ///
     /// This happens because the pointer returned by `as_ptr` does not carry any
     /// lifetime information and the [`CString`] is deallocated immediately after
-    /// the `CString::new("Hello").expect("CString::new failed").as_ptr()`
-    /// expression is evaluated.
+    /// the `CString::new("Hello").expect("CString::new failed").as_ptr()` expression is evaluated.
     /// To fix the problem, bind the `CString` to a local variable:
     ///
     /// ```no_run
@@ -12120,8 +12209,10 @@ impl CStr {
     /// }
     /// ```
     ///
-    /// This way, the lifetime of the [`CString`] in `hello` encompasses
+    /// This way, the lifetime of the `CString` in `hello` encompasses
     /// the lifetime of `ptr` and the `unsafe` block.
+    ///
+    /// [`CString`]: struct.CString.html
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_str_as_ptr", since = "1.32.0")]
@@ -12152,12 +12243,14 @@ impl CStr {
 
     /// Converts this C string to a byte slice containing the trailing 0 byte.
     ///
-    /// This function is the equivalent of [`CStr::to_bytes`] except that it
-    /// will retain the trailing nul terminator instead of chopping it off.
+    /// This function is the equivalent of [`to_bytes`] except that it will retain
+    /// the trailing nul terminator instead of chopping it off.
     ///
     /// > **Note**: This method is currently implemented as a 0-cost cast, but
     /// > it is planned to alter its definition in the future to perform the
     /// > length calculation whenever this method is called.
+    ///
+    /// [`to_bytes`]: #method.to_bytes
     ///
     /// # Examples
     ///
@@ -12178,7 +12271,7 @@ impl CStr {
     /// function will return the corresponding [`&str`] slice. Otherwise,
     /// it will return an error with details of where UTF-8 validation failed.
     ///
-    /// [`&str`]: prim@str
+    /// [`&str`]: ../primitive.str.html
     ///
     /// # Examples
     ///
@@ -12201,10 +12294,12 @@ impl CStr {
     /// [`U+FFFD REPLACEMENT CHARACTER`][U+FFFD] and return a
     /// [`Cow`]`::`[`Owned`]`(`[`String`]`)` with the result.
     ///
-    /// [`str`]: prim@str
-    /// [`Borrowed`]: Cow::Borrowed
-    /// [`Owned`]: Cow::Owned
-    /// [U+FFFD]: crate::char::REPLACEMENT_CHARACTER
+    /// [`Cow`]: ../borrow/enum.Cow.html
+    /// [`Borrowed`]: ../borrow/enum.Cow.html#variant.Borrowed
+    /// [`Owned`]: ../borrow/enum.Cow.html#variant.Owned
+    /// [`str`]: ../primitive.str.html
+    /// [`String`]: ../string/struct.String.html
+    /// [U+FFFD]: ../char/constant.REPLACEMENT_CHARACTER.html
     ///
     /// # Examples
     ///
@@ -12237,6 +12332,9 @@ impl CStr {
 }
 
     /// Converts a [`Box`]`<CStr>` into a [`CString`] without copying or allocating.
+    ///
+    /// [`Box`]: ../boxed/struct.Box.html
+    /// [`CString`]: struct.CString.html
     ///
     /// # Examples
     ///
@@ -12276,9 +12374,6 @@ impl ToOwned for CStr {
 
     fn to_owned(&self) -> CString {
 }
-
-    fn clone_into(&self, target: &mut CString) {
-}
 }
 
 #[stable(feature = "cstring_asref", since = "1.7.0")]
@@ -12293,14 +12388,6 @@ impl ops::Index<ops::RangeFull> for CString {
 
     #[inline]
     fn index(&self, _index: ops::RangeFull) -> &CStr {
-}
-}
-
-#[stable(feature = "cstr_range_from", since = "1.47.0")]
-impl ops::Index<ops::RangeFrom<usize>> for CStr {
-    type Output = CStr;
-
-    fn index(&self, index: ops::RangeFrom<usize>) -> &CStr {
 }
 }
 
@@ -12329,7 +12416,6 @@ use crate::fmt;
 use crate::hash::{Hash, Hasher};
 use crate::ops;
 use crate::rc::Rc;
-use crate::str::FromStr;
 use crate::sync::Arc;
 
 use crate::sys::os_str::{Buf, Slice};
@@ -12372,14 +12458,14 @@ use crate::sys_common::{AsInner, FromInner, IntoInner};
 /// create an `OsString` from a normal Rust string.
 ///
 /// **From slices:** Just like you can start with an empty Rust
-/// [`String`] and then [`String::push_str`] `&str`
+/// [`String`] and then [`push_str`][String.push_str] `&str`
 /// sub-string slices into it, you can create an empty `OsString` with
-/// the [`OsString::new`] method and then push string slices into it with the
-/// [`OsString::push`] method.
+/// the [`new`] method and then push string slices into it with the
+/// [`push`] method.
 ///
 /// # Extracting a borrowed reference to the whole OS string
 ///
-/// You can use the [`OsString::as_os_str`] method to get an `&`[`OsStr`] from
+/// You can use the [`as_os_str`] method to get an `&`[`OsStr`] from
 /// an `OsString`; this is effectively a borrowed reference to the
 /// whole string.
 ///
@@ -12388,9 +12474,18 @@ use crate::sys_common::{AsInner, FromInner, IntoInner};
 /// See the [module's toplevel documentation about conversions][conversions] for a discussion on
 /// the traits which `OsString` implements for [conversions] from/to native representations.
 ///
-/// [`&OsStr`]: OsStr
-/// [`&str`]: str
-/// [`CStr`]: crate::ffi::CStr
+/// [`OsStr`]: struct.OsStr.html
+/// [`&OsStr`]: struct.OsStr.html
+/// [`CStr`]: struct.CStr.html
+/// [`From`]: ../convert/trait.From.html
+/// [`String`]: ../string/struct.String.html
+/// [`&str`]: ../primitive.str.html
+/// [`u8`]: ../primitive.u8.html
+/// [`u16`]: ../primitive.u16.html
+/// [String.push_str]: ../string/struct.String.html#method.push_str
+/// [`new`]: #method.new
+/// [`push`]: #method.push
+/// [`as_os_str`]: #method.as_os_str
 /// [conversions]: index.html#conversions
 #[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -12409,7 +12504,9 @@ pub struct OsString {
 /// See the [module's toplevel documentation about conversions][conversions] for a discussion on
 /// the traits which `OsStr` implements for [conversions] from/to native representations.
 ///
-/// [`&str`]: str
+/// [`OsString`]: struct.OsString.html
+/// [`&str`]: ../primitive.str.html
+/// [`String`]: ../string/struct.String.html
 /// [conversions]: index.html#conversions
 #[stable(feature = "rust1", since = "1.0.0")]
 // FIXME:
@@ -12438,6 +12535,8 @@ impl OsString {
 
     /// Converts to an [`OsStr`] slice.
     ///
+    /// [`OsStr`]: struct.OsStr.html
+    ///
     /// # Examples
     ///
     /// ```
@@ -12455,6 +12554,8 @@ impl OsString {
     ///
     /// On failure, ownership of the original `OsString` is returned.
     ///
+    /// [`String`]: ../../std/string/struct.String.html
+    ///
     /// # Examples
     ///
     /// ```
@@ -12470,7 +12571,7 @@ impl OsString {
 
     /// Extends the string with the given [`&OsStr`] slice.
     ///
-    /// [`&OsStr`]: OsStr
+    /// [`&OsStr`]: struct.OsStr.html
     ///
     /// # Examples
     ///
@@ -12632,6 +12733,8 @@ impl OsString {
 
     /// Converts this `OsString` into a boxed [`OsStr`].
     ///
+    /// [`OsStr`]: struct.OsStr.html
+    ///
     /// # Examples
     ///
     /// ```
@@ -12651,6 +12754,8 @@ impl From<String> for OsString {
     /// Converts a [`String`] into a [`OsString`].
     ///
     /// The conversion copies the data, and includes an allocation on the heap.
+    ///
+    /// [`OsString`]: ../../std/ffi/struct.OsString.html
     fn from(s: String) -> OsString {
 }
 }
@@ -12670,26 +12775,12 @@ impl ops::Index<ops::RangeFull> for OsString {
 }
 }
 
-#[stable(feature = "mut_osstr", since = "1.44.0")]
-impl ops::IndexMut<ops::RangeFull> for OsString {
-    #[inline]
-    fn index_mut(&mut self, _index: ops::RangeFull) -> &mut OsStr {
-}
-}
-
 #[stable(feature = "rust1", since = "1.0.0")]
 impl ops::Deref for OsString {
     type Target = OsStr;
 
     #[inline]
     fn deref(&self) -> &OsStr {
-}
-}
-
-#[stable(feature = "mut_osstr", since = "1.44.0")]
-impl ops::DerefMut for OsString {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut OsStr {
 }
 }
 
@@ -12799,15 +12890,11 @@ impl OsStr {
     fn from_inner(inner: &Slice) -> &OsStr {
 }
 
-    #[inline]
-    fn from_inner_mut(inner: &mut Slice) -> &mut OsStr {
-}
-
     /// Yields a [`&str`] slice if the `OsStr` is valid Unicode.
     ///
     /// This conversion may entail doing a check for UTF-8 validity.
     ///
-    /// [`&str`]: str
+    /// [`&str`]: ../../std/primitive.str.html
     ///
     /// # Examples
     ///
@@ -12826,7 +12913,9 @@ impl OsStr {
     /// Any non-Unicode sequences are replaced with
     /// [`U+FFFD REPLACEMENT CHARACTER`][U+FFFD].
     ///
-    /// [U+FFFD]: crate::char::REPLACEMENT_CHARACTER
+    /// [`Cow`]: ../../std/borrow/enum.Cow.html
+    /// [`str`]: ../../std/primitive.str.html
+    /// [U+FFFD]: ../../std/char/constant.REPLACEMENT_CHARACTER.html
     ///
     /// # Examples
     ///
@@ -12871,6 +12960,8 @@ impl OsStr {
 }
 
     /// Copies the slice into an owned [`OsString`].
+    ///
+    /// [`OsString`]: struct.OsString.html
     ///
     /// # Examples
     ///
@@ -12917,6 +13008,9 @@ impl OsStr {
     /// This number is simply useful for passing to other methods, like
     /// [`OsString::with_capacity`] to avoid reallocations.
     ///
+    /// [`OsString`]: struct.OsString.html
+    /// [`OsString::with_capacity`]: struct.OsString.html#method.with_capacity
+    ///
     /// # Examples
     ///
     /// ```
@@ -12933,6 +13027,9 @@ impl OsStr {
 }
 
     /// Converts a [`Box`]`<OsStr>` into an [`OsString`] without copying or allocating.
+    ///
+    /// [`Box`]: ../boxed/struct.Box.html
+    /// [`OsString`]: struct.OsString.html
     #[stable(feature = "into_boxed_os_str", since = "1.20.0")]
     pub fn into_os_string(self: Box<OsStr>) -> OsString {
 }
@@ -12944,133 +13041,6 @@ impl OsStr {
     #[inline]
     fn bytes(&self) -> &[u8] {
 }
-
-    /// Converts this string to its ASCII lower case equivalent in-place.
-    ///
-    /// ASCII letters 'A' to 'Z' are mapped to 'a' to 'z',
-    /// but non-ASCII letters are unchanged.
-    ///
-    /// To return a new lowercased value without modifying the existing one, use
-    /// [`OsStr::to_ascii_lowercase`].
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(osstring_ascii)]
-    /// use std::ffi::OsString;
-    ///
-    /// let mut s = OsString::from("GRÜßE, JÜRGEN ❤");
-    ///
-    /// s.make_ascii_lowercase();
-    ///
-    /// assert_eq!("grÜße, jÜrgen ❤", s);
-    /// ```
-    #[unstable(feature = "osstring_ascii", issue = "70516")]
-    pub fn make_ascii_lowercase(&mut self) {
-}
-
-    /// Converts this string to its ASCII upper case equivalent in-place.
-    ///
-    /// ASCII letters 'a' to 'z' are mapped to 'A' to 'Z',
-    /// but non-ASCII letters are unchanged.
-    ///
-    /// To return a new uppercased value without modifying the existing one, use
-    /// [`OsStr::to_ascii_uppercase`].
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(osstring_ascii)]
-    /// use std::ffi::OsString;
-    ///
-    /// let mut s = OsString::from("Grüße, Jürgen ❤");
-    ///
-    /// s.make_ascii_uppercase();
-    ///
-    /// assert_eq!("GRüßE, JüRGEN ❤", s);
-    /// ```
-    #[unstable(feature = "osstring_ascii", issue = "70516")]
-    pub fn make_ascii_uppercase(&mut self) {
-}
-
-    /// Returns a copy of this string where each character is mapped to its
-    /// ASCII lower case equivalent.
-    ///
-    /// ASCII letters 'A' to 'Z' are mapped to 'a' to 'z',
-    /// but non-ASCII letters are unchanged.
-    ///
-    /// To lowercase the value in-place, use [`OsStr::make_ascii_lowercase`].
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(osstring_ascii)]
-    /// use std::ffi::OsString;
-    /// let s = OsString::from("Grüße, Jürgen ❤");
-    ///
-    /// assert_eq!("grüße, jürgen ❤", s.to_ascii_lowercase());
-    /// ```
-    #[unstable(feature = "osstring_ascii", issue = "70516")]
-    pub fn to_ascii_lowercase(&self) -> OsString {
-}
-
-    /// Returns a copy of this string where each character is mapped to its
-    /// ASCII upper case equivalent.
-    ///
-    /// ASCII letters 'a' to 'z' are mapped to 'A' to 'Z',
-    /// but non-ASCII letters are unchanged.
-    ///
-    /// To uppercase the value in-place, use [`OsStr::make_ascii_uppercase`].
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(osstring_ascii)]
-    /// use std::ffi::OsString;
-    /// let s = OsString::from("Grüße, Jürgen ❤");
-    ///
-    /// assert_eq!("GRüßE, JüRGEN ❤", s.to_ascii_uppercase());
-    /// ```
-    #[unstable(feature = "osstring_ascii", issue = "70516")]
-    pub fn to_ascii_uppercase(&self) -> OsString {
-}
-
-    /// Checks if all characters in this string are within the ASCII range.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(osstring_ascii)]
-    /// use std::ffi::OsString;
-    ///
-    /// let ascii = OsString::from("hello!\n");
-    /// let non_ascii = OsString::from("Grüße, Jürgen ❤");
-    ///
-    /// assert!(ascii.is_ascii());
-    /// assert!(!non_ascii.is_ascii());
-    /// ```
-    #[unstable(feature = "osstring_ascii", issue = "70516")]
-    pub fn is_ascii(&self) -> bool {
-}
-
-    /// Checks that two strings are an ASCII case-insensitive match.
-    ///
-    /// Same as `to_ascii_lowercase(a) == to_ascii_lowercase(b)`,
-    /// but without allocating and copying temporaries.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(osstring_ascii)]
-    /// use std::ffi::OsString;
-    ///
-    /// assert!(OsString::from("Ferris").eq_ignore_ascii_case("FERRIS"));
-    /// assert!(OsString::from("Ferrös").eq_ignore_ascii_case("FERRöS"));
-    /// assert!(!OsString::from("Ferrös").eq_ignore_ascii_case("FERRÖS"));
-    /// ```
-    #[unstable(feature = "osstring_ascii", issue = "70516")]
-    pub fn eq_ignore_ascii_case<S: ?Sized + AsRef<OsStr>>(&self, other: &S) -> bool {
-}
 }
 
 #[stable(feature = "box_from_os_str", since = "1.17.0")]
@@ -13079,17 +13049,13 @@ impl From<&OsStr> for Box<OsStr> {
 }
 }
 
-#[stable(feature = "box_from_cow", since = "1.45.0")]
-impl From<Cow<'_, OsStr>> for Box<OsStr> {
-    #[inline]
-    fn from(cow: Cow<'_, OsStr>) -> Box<OsStr> {
-}
-}
-
 #[stable(feature = "os_string_from_box", since = "1.18.0")]
 impl From<Box<OsStr>> for OsString {
     /// Converts a [`Box`]`<`[`OsStr`]`>` into a `OsString` without copying or
     /// allocating.
+    ///
+    /// [`Box`]: ../boxed/struct.Box.html
+    /// [`OsStr`]: ../ffi/struct.OsStr.html
     fn from(boxed: Box<OsStr>) -> OsString {
 }
 }
@@ -13097,6 +13063,9 @@ impl From<Box<OsStr>> for OsString {
 #[stable(feature = "box_from_os_string", since = "1.20.0")]
 impl From<OsString> for Box<OsStr> {
     /// Converts a [`OsString`] into a [`Box`]`<OsStr>` without copying or allocating.
+    ///
+    /// [`Box`]: ../boxed/struct.Box.html
+    /// [`OsString`]: ../ffi/struct.OsString.html
     fn from(s: OsString) -> Box<OsStr> {
 }
 }
@@ -13111,6 +13080,9 @@ impl Clone for Box<OsStr> {
 #[stable(feature = "shared_from_slice2", since = "1.24.0")]
 impl From<OsString> for Arc<OsStr> {
     /// Converts a [`OsString`] into a [`Arc`]`<OsStr>` without copying or allocating.
+    ///
+    /// [`Arc`]: ../sync/struct.Arc.html
+    /// [`OsString`]: ../ffi/struct.OsString.html
     #[inline]
     fn from(s: OsString) -> Arc<OsStr> {
 }
@@ -13126,6 +13098,9 @@ impl From<&OsStr> for Arc<OsStr> {
 #[stable(feature = "shared_from_slice2", since = "1.24.0")]
 impl From<OsString> for Rc<OsStr> {
     /// Converts a [`OsString`] into a [`Rc`]`<OsStr>` without copying or allocating.
+    ///
+    /// [`Rc`]: ../rc/struct.Rc.html
+    /// [`OsString`]: ../ffi/struct.OsString.html
     #[inline]
     fn from(s: OsString) -> Rc<OsStr> {
 }
@@ -13354,14 +13329,6 @@ impl AsInner<Slice> for OsStr {
 }
 }
 
-#[stable(feature = "osstring_from_str", since = "1.45.0")]
-impl FromStr for OsString {
-    type Err = core::convert::Infallible;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-}
-}
-
 #[cfg(test)]
 mod tests {
 }
@@ -13378,7 +13345,6 @@ pub mod fs {
 //! extension traits of `std::os::$platform`.
 
 #![stable(feature = "rust1", since = "1.0.0")]
-#![deny(unsafe_op_in_unsafe_fn)]
 
 use crate::ffi::OsString;
 use crate::fmt;
@@ -13400,7 +13366,7 @@ use crate::time::SystemTime;
 ///
 /// # Examples
 ///
-/// Creates a new file and write bytes to it (you can also use [`write()`]):
+/// Creates a new file and write bytes to it (you can also use [`write`]):
 ///
 /// ```no_run
 /// use std::fs::File;
@@ -13454,8 +13420,14 @@ use crate::time::SystemTime;
 /// by different processes. Avoid assuming that holding a `&File` means that the
 /// file will not change.
 ///
-/// [`BufReader<R>`]: io::BufReader
-/// [`sync_all`]: File::sync_all
+/// [`Seek`]: ../io/trait.Seek.html
+/// [`String`]: ../string/struct.String.html
+/// [`Read`]: ../io/trait.Read.html
+/// [`Write`]: ../io/trait.Write.html
+/// [`BufReader<R>`]: ../io/struct.BufReader.html
+/// [`sync_all`]: struct.File.html#method.sync_all
+/// [`read`]: fn.read.html
+/// [`write`]: fn.write.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct File {
     inner: fs_imp::File,
@@ -13467,6 +13439,9 @@ pub struct File {
 /// [`symlink_metadata`] function or method and represents known
 /// metadata about a file such as its permissions, size, modification
 /// times, etc.
+///
+/// [`metadata`]: fn.metadata.html
+/// [`symlink_metadata`]: fn.symlink_metadata.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone)]
 pub struct Metadata(fs_imp::FileAttr);
@@ -13485,11 +13460,18 @@ pub struct Metadata(fs_imp::FileAttr);
 ///
 /// This [`io::Result`] will be an [`Err`] if there's some sort of intermittent
 /// IO error during iteration.
+///
+/// [`read_dir`]: fn.read_dir.html
+/// [`DirEntry`]: struct.DirEntry.html
+/// [`io::Result`]: ../io/type.Result.html
+/// [`Err`]: ../result/enum.Result.html#variant.Err
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug)]
 pub struct ReadDir(fs_imp::ReadDir);
 
 /// Entries returned by the [`ReadDir`] iterator.
+///
+/// [`ReadDir`]: struct.ReadDir.html
 ///
 /// An instance of `DirEntry` represents an entry inside of a directory on the
 /// filesystem. Each entry can be inspected via methods to learn about the full
@@ -13504,11 +13486,20 @@ pub struct DirEntry(fs_imp::DirEntry);
 /// [`File::create`] methods are aliases for commonly used options using this
 /// builder.
 ///
-/// Generally speaking, when using `OpenOptions`, you'll first call
-/// [`OpenOptions::new`], then chain calls to methods to set each option, then
-/// call [`OpenOptions::open`], passing the path of the file you're trying to
-/// open. This will give you a [`io::Result`] with a [`File`] inside that you
-/// can further operate on.
+/// [`File`]: struct.File.html
+/// [`File::open`]: struct.File.html#method.open
+/// [`File::create`]: struct.File.html#method.create
+///
+/// Generally speaking, when using `OpenOptions`, you'll first call [`new`],
+/// then chain calls to methods to set each option, then call [`open`],
+/// passing the path of the file you're trying to open. This will give you a
+/// [`io::Result`][result] with a [`File`][file] inside that you can further
+/// operate on.
+///
+/// [`new`]: struct.OpenOptions.html#method.new
+/// [`open`]: struct.OpenOptions.html#method.open
+/// [result]: ../io/type.Result.html
+/// [file]: struct.File.html
 ///
 /// # Examples
 ///
@@ -13538,18 +13529,21 @@ pub struct OpenOptions(fs_imp::OpenOptions);
 
 /// Representation of the various permissions on a file.
 ///
-/// This module only currently provides one bit of information,
-/// [`Permissions::readonly`], which is exposed on all currently supported
-/// platforms. Unix-specific functionality, such as mode bits, is available
-/// through the [`PermissionsExt`] trait.
+/// This module only currently provides one bit of information, [`readonly`],
+/// which is exposed on all currently supported platforms. Unix-specific
+/// functionality, such as mode bits, is available through the
+/// [`PermissionsExt`] trait.
 ///
-/// [`PermissionsExt`]: crate::os::unix::fs::PermissionsExt
+/// [`readonly`]: struct.Permissions.html#method.readonly
+/// [`PermissionsExt`]: ../os/unix/fs/trait.PermissionsExt.html
 #[derive(Clone, PartialEq, Eq, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Permissions(fs_imp::FilePermissions);
 
 /// A structure representing a type of file with accessors for each file type.
 /// It is returned by [`Metadata::file_type`] method.
+///
+/// [`Metadata::file_type`]: struct.Metadata.html#method.file_type
 #[stable(feature = "file_type", since = "1.1.0")]
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct FileType(fs_imp::FileType);
@@ -13573,17 +13567,22 @@ fn initial_buffer_size(file: &File) -> usize {
 /// This is a convenience function for using [`File::open`] and [`read_to_end`]
 /// with fewer imports and without an intermediate variable. It pre-allocates a
 /// buffer based on the file size when available, so it is generally faster than
-/// reading into a vector created with [`Vec::new()`].
+/// reading into a vector created with `Vec::new()`.
 ///
-/// [`read_to_end`]: Read::read_to_end
+/// [`File::open`]: struct.File.html#method.open
+/// [`read_to_end`]: ../io/trait.Read.html#method.read_to_end
 ///
 /// # Errors
 ///
 /// This function will return an error if `path` does not already exist.
 /// Other errors may also be returned according to [`OpenOptions::open`].
 ///
+/// [`OpenOptions::open`]: struct.OpenOptions.html#method.open
+///
 /// It will also return an error if it encounters while reading an error
-/// of a kind other than [`io::ErrorKind::Interrupted`].
+/// of a kind other than [`ErrorKind::Interrupted`].
+///
+/// [`ErrorKind::Interrupted`]: ../../std/io/enum.ErrorKind.html#variant.Interrupted
 ///
 /// # Examples
 ///
@@ -13605,18 +13604,23 @@ pub fn read<P: AsRef<Path>>(path: P) -> io::Result<Vec<u8>> {
 /// This is a convenience function for using [`File::open`] and [`read_to_string`]
 /// with fewer imports and without an intermediate variable. It pre-allocates a
 /// buffer based on the file size when available, so it is generally faster than
-/// reading into a string created with [`String::new()`].
+/// reading into a string created with `String::new()`.
 ///
-/// [`read_to_string`]: Read::read_to_string
+/// [`File::open`]: struct.File.html#method.open
+/// [`read_to_string`]: ../io/trait.Read.html#method.read_to_string
 ///
 /// # Errors
 ///
 /// This function will return an error if `path` does not already exist.
 /// Other errors may also be returned according to [`OpenOptions::open`].
 ///
+/// [`OpenOptions::open`]: struct.OpenOptions.html#method.open
+///
 /// It will also return an error if it encounters while reading an error
-/// of a kind other than [`io::ErrorKind::Interrupted`],
+/// of a kind other than [`ErrorKind::Interrupted`],
 /// or if the contents of the file are not valid UTF-8.
+///
+/// [`ErrorKind::Interrupted`]: ../../std/io/enum.ErrorKind.html#variant.Interrupted
 ///
 /// # Examples
 ///
@@ -13641,7 +13645,8 @@ pub fn read_to_string<P: AsRef<Path>>(path: P) -> io::Result<String> {
 /// This is a convenience function for using [`File::create`] and [`write_all`]
 /// with fewer imports.
 ///
-/// [`write_all`]: Write::write_all
+/// [`File::create`]: struct.File.html#method.create
+/// [`write_all`]: ../io/trait.Write.html#method.write_all
 ///
 /// # Examples
 ///
@@ -13668,6 +13673,8 @@ impl File {
     /// This function will return an error if `path` does not already exist.
     /// Other errors may also be returned according to [`OpenOptions::open`].
     ///
+    /// [`OpenOptions::open`]: struct.OpenOptions.html#method.open
+    ///
     /// # Examples
     ///
     /// ```no_run
@@ -13688,6 +13695,8 @@ impl File {
     /// and will truncate it if it does.
     ///
     /// See the [`OpenOptions::open`] function for more details.
+    ///
+    /// [`OpenOptions::open`]: struct.OpenOptions.html#method.open
     ///
     /// # Examples
     ///
@@ -13711,10 +13720,12 @@ impl File {
     ///
     /// It is equivalent to `OpenOptions::new()` but allows you to write more
     /// readable code. Instead of `OpenOptions::new().read(true).open("foo.txt")`
-    /// you can write `File::with_options().read(true).open("foo.txt")`. This
+    /// you can write `File::with_options().read(true).open("foo.txt"). This
     /// also avoids the need to import `OpenOptions`.
     ///
     /// See the [`OpenOptions::new`] function for more details.
+    ///
+    /// [`OpenOptions::new`]: struct.OpenOptions.html#method.new
     ///
     /// # Examples
     ///
@@ -13768,7 +13779,7 @@ impl File {
     /// Note that some platforms may simply implement this in terms of
     /// [`sync_all`].
     ///
-    /// [`sync_all`]: File::sync_all
+    /// [`sync_all`]: struct.File.html#method.sync_all
     ///
     /// # Examples
     ///
@@ -13949,10 +13960,6 @@ impl Read for File {
 }
 
     #[inline]
-    fn is_read_vectored(&self) -> bool {
-}
-
-    #[inline]
     unsafe fn initializer(&self) -> Initializer {
 }
 }
@@ -13962,10 +13969,6 @@ impl Write for File {
 }
 
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-}
-
-    #[inline]
-    fn is_write_vectored(&self) -> bool {
 }
 
     fn flush(&mut self) -> io::Result<()> {
@@ -13985,10 +13988,6 @@ impl Read for &File {
 }
 
     #[inline]
-    fn is_read_vectored(&self) -> bool {
-}
-
-    #[inline]
     unsafe fn initializer(&self) -> Initializer {
 }
 }
@@ -13998,10 +13997,6 @@ impl Write for &File {
 }
 
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-}
-
-    #[inline]
-    fn is_write_vectored(&self) -> bool {
 }
 
     fn flush(&mut self) -> io::Result<()> {
@@ -14027,7 +14022,7 @@ impl OpenOptions {
     /// let file = options.read(true).open("foo.txt");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn new() -> Self {
+    pub fn new() -> OpenOptions {
 }
 
     /// Sets the option for read access.
@@ -14043,7 +14038,7 @@ impl OpenOptions {
     /// let file = OpenOptions::new().read(true).open("foo.txt");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn read(&mut self, read: bool) -> &mut Self {
+    pub fn read(&mut self, read: bool) -> &mut OpenOptions {
 }
 
     /// Sets the option for write access.
@@ -14062,7 +14057,7 @@ impl OpenOptions {
     /// let file = OpenOptions::new().write(true).open("foo.txt");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn write(&mut self, write: bool) -> &mut Self {
+    pub fn write(&mut self, write: bool) -> &mut OpenOptions {
 }
 
     /// Sets the option for the append mode.
@@ -14089,13 +14084,15 @@ impl OpenOptions {
     ///
     /// ## Note
     ///
-    /// This function doesn't create the file if it doesn't exist. Use the
-    /// [`OpenOptions::create`] method to do so.
+    /// This function doesn't create the file if it doesn't exist. Use the [`create`]
+    /// method to do so.
     ///
-    /// [`write()`]: Write::write
-    /// [`flush()`]: Write::flush
-    /// [`seek`]: Seek::seek
-    /// [`Current`]: SeekFrom::Current
+    /// [`write()`]: ../../std/fs/struct.File.html#method.write
+    /// [`flush()`]: ../../std/fs/struct.File.html#method.flush
+    /// [`seek`]: ../../std/fs/struct.File.html#method.seek
+    /// [`SeekFrom`]: ../../std/io/enum.SeekFrom.html
+    /// [`Current`]: ../../std/io/enum.SeekFrom.html#variant.Current
+    /// [`create`]: #method.create
     ///
     /// # Examples
     ///
@@ -14105,7 +14102,7 @@ impl OpenOptions {
     /// let file = OpenOptions::new().append(true).open("foo.txt");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn append(&mut self, append: bool) -> &mut Self {
+    pub fn append(&mut self, append: bool) -> &mut OpenOptions {
 }
 
     /// Sets the option for truncating a previous file.
@@ -14123,13 +14120,19 @@ impl OpenOptions {
     /// let file = OpenOptions::new().write(true).truncate(true).open("foo.txt");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn truncate(&mut self, truncate: bool) -> &mut Self {
+    pub fn truncate(&mut self, truncate: bool) -> &mut OpenOptions {
 }
 
-    /// Sets the option to create a new file, or open it if it already exists.
+    /// Sets the option for creating a new file.
     ///
-    /// In order for the file to be created, [`OpenOptions::write`] or
-    /// [`OpenOptions::append`] access must be used.
+    /// This option indicates whether a new file will be created if the file
+    /// does not yet already exist.
+    ///
+    /// In order for the file to be created, [`write`] or [`append`] access must
+    /// be used.
+    ///
+    /// [`write`]: #method.write
+    /// [`append`]: #method.append
     ///
     /// # Examples
     ///
@@ -14139,13 +14142,14 @@ impl OpenOptions {
     /// let file = OpenOptions::new().write(true).create(true).open("foo.txt");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn create(&mut self, create: bool) -> &mut Self {
+    pub fn create(&mut self, create: bool) -> &mut OpenOptions {
 }
 
-    /// Sets the option to create a new file, failing if it already exists.
+    /// Sets the option to always create a new file.
     ///
-    /// No file is allowed to exist at the target location, also no (dangling) symlink. In this
-    /// way, if the call succeeds, the file returned is guaranteed to be new.
+    /// This option indicates whether a new file will be created.
+    /// No file is allowed to exist at the target location, also no (dangling)
+    /// symlink.
     ///
     /// This option is useful because it is atomic. Otherwise between checking
     /// whether a file exists and creating a new one, the file may have been
@@ -14157,8 +14161,8 @@ impl OpenOptions {
     /// The file must be opened with write or append access in order to create
     /// a new file.
     ///
-    /// [`.create()`]: OpenOptions::create
-    /// [`.truncate()`]: OpenOptions::truncate
+    /// [`.create()`]: #method.create
+    /// [`.truncate()`]: #method.truncate
     ///
     /// # Examples
     ///
@@ -14170,7 +14174,7 @@ impl OpenOptions {
     ///                              .open("foo.txt");
     /// ```
     #[stable(feature = "expand_open_options2", since = "1.9.0")]
-    pub fn create_new(&mut self, create_new: bool) -> &mut Self {
+    pub fn create_new(&mut self, create_new: bool) -> &mut OpenOptions {
 }
 
     /// Opens a file at `path` with the options specified by `self`.
@@ -14179,9 +14183,9 @@ impl OpenOptions {
     ///
     /// This function will return an error under a number of different
     /// circumstances. Some of these error conditions are listed here, together
-    /// with their [`io::ErrorKind`]. The mapping to [`io::ErrorKind`]s is not
-    /// part of the compatibility contract of the function, especially the
-    /// [`Other`] kind might change to more specific kinds in the future.
+    /// with their [`ErrorKind`]. The mapping to [`ErrorKind`]s is not part of
+    /// the compatibility contract of the function, especially the `Other` kind
+    /// might change to more specific kinds in the future.
     ///
     /// * [`NotFound`]: The specified file does not exist and neither `create`
     ///   or `create_new` is set.
@@ -14210,11 +14214,12 @@ impl OpenOptions {
     /// let file = OpenOptions::new().read(true).open("foo.txt");
     /// ```
     ///
-    /// [`AlreadyExists`]: io::ErrorKind::AlreadyExists
-    /// [`InvalidInput`]: io::ErrorKind::InvalidInput
-    /// [`NotFound`]: io::ErrorKind::NotFound
-    /// [`Other`]: io::ErrorKind::Other
-    /// [`PermissionDenied`]: io::ErrorKind::PermissionDenied
+    /// [`ErrorKind`]: ../io/enum.ErrorKind.html
+    /// [`AlreadyExists`]: ../io/enum.ErrorKind.html#variant.AlreadyExists
+    /// [`InvalidInput`]: ../io/enum.ErrorKind.html#variant.InvalidInput
+    /// [`NotFound`]: ../io/enum.ErrorKind.html#variant.NotFound
+    /// [`Other`]: ../io/enum.ErrorKind.html#variant.Other
+    /// [`PermissionDenied`]: ../io/enum.ErrorKind.html#variant.PermissionDenied
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn open<P: AsRef<Path>>(&self, path: P) -> io::Result<File> {
 }
@@ -14254,8 +14259,11 @@ impl Metadata {
 
     /// Returns `true` if this metadata is for a directory. The
     /// result is mutually exclusive to the result of
-    /// [`Metadata::is_file`], and will be false for symlink metadata
+    /// [`is_file`], and will be false for symlink metadata
     /// obtained from [`symlink_metadata`].
+    ///
+    /// [`is_file`]: struct.Metadata.html#method.is_file
+    /// [`symlink_metadata`]: fn.symlink_metadata.html
     ///
     /// # Examples
     ///
@@ -14275,14 +14283,11 @@ impl Metadata {
 
     /// Returns `true` if this metadata is for a regular file. The
     /// result is mutually exclusive to the result of
-    /// [`Metadata::is_dir`], and will be false for symlink metadata
+    /// [`is_dir`], and will be false for symlink metadata
     /// obtained from [`symlink_metadata`].
     ///
-    /// When the goal is simply to read from (or write to) the source, the most
-    /// reliable way to test the source can be read (or written to) is to open
-    /// it. Only using `is_file` can break workflows like `diff <( prog_a )` on
-    /// a Unix-like system for example. See [`File::open`] or
-    /// [`OpenOptions::open`] for more information.
+    /// [`is_dir`]: struct.Metadata.html#method.is_dir
+    /// [`symlink_metadata`]: fn.symlink_metadata.html
     ///
     /// # Examples
     ///
@@ -14475,7 +14480,9 @@ impl Permissions {
     /// writing.
     ///
     /// This operation does **not** modify the filesystem. To modify the
-    /// filesystem use the [`set_permissions`] function.
+    /// filesystem use the [`fs::set_permissions`] function.
+    ///
+    /// [`fs::set_permissions`]: fn.set_permissions.html
     ///
     /// # Examples
     ///
@@ -14508,8 +14515,8 @@ impl FileType {
     /// [`is_file`] and [`is_symlink`]; only zero or one of these
     /// tests may pass.
     ///
-    /// [`is_file`]: FileType::is_file
-    /// [`is_symlink`]: FileType::is_symlink
+    /// [`is_file`]: struct.FileType.html#method.is_file
+    /// [`is_symlink`]: struct.FileType.html#method.is_symlink
     ///
     /// # Examples
     ///
@@ -14533,14 +14540,8 @@ impl FileType {
     /// [`is_dir`] and [`is_symlink`]; only zero or one of these
     /// tests may pass.
     ///
-    /// When the goal is simply to read from (or write to) the source, the most
-    /// reliable way to test the source can be read (or written to) is to open
-    /// it. Only using `is_file` can break workflows like `diff <( prog_a )` on
-    /// a Unix-like system for example. See [`File::open`] or
-    /// [`OpenOptions::open`] for more information.
-    ///
-    /// [`is_dir`]: FileType::is_dir
-    /// [`is_symlink`]: FileType::is_symlink
+    /// [`is_dir`]: struct.FileType.html#method.is_dir
+    /// [`is_symlink`]: struct.FileType.html#method.is_symlink
     ///
     /// # Examples
     ///
@@ -14570,11 +14571,12 @@ impl FileType {
     /// follows symbolic links, so [`is_symlink`] would always
     /// return `false` for the target file.
     ///
-    /// [`fs::metadata`]: metadata
-    /// [`fs::symlink_metadata`]: symlink_metadata
-    /// [`is_dir`]: FileType::is_dir
-    /// [`is_file`]: FileType::is_file
-    /// [`is_symlink`]: FileType::is_symlink
+    /// [`Metadata`]: struct.Metadata.html
+    /// [`fs::metadata`]: fn.metadata.html
+    /// [`fs::symlink_metadata`]: fn.symlink_metadata.html
+    /// [`is_dir`]: struct.FileType.html#method.is_dir
+    /// [`is_file`]: struct.FileType.html#method.is_file
+    /// [`is_symlink`]: struct.FileType.html#method.is_symlink
     ///
     /// # Examples
     ///
@@ -14653,10 +14655,7 @@ impl DirEntry {
     /// Returns the metadata for the file that this entry points at.
     ///
     /// This function will not traverse symlinks if this entry points at a
-    /// symlink. To traverse symlinks use [`fs::metadata`] or [`fs::File::metadata`].
-    ///
-    /// [`fs::metadata`]: metadata
-    /// [`fs::File::metadata`]: File::metadata
+    /// symlink.
     ///
     /// # Platform-specific behavior
     ///
@@ -14774,7 +14773,6 @@ impl AsInner<fs_imp::DirEntry> for DirEntry {
 /// limited to just these cases:
 ///
 /// * `path` points to a directory.
-/// * The file doesn't exist.
 /// * The user lacks permissions to remove the file.
 ///
 /// # Examples
@@ -14917,6 +14915,9 @@ pub fn rename<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<()> 
 /// If you’re wanting to copy the contents of one file to another and you’re
 /// working with [`File`]s, see the [`io::copy`] function.
 ///
+/// [`io::copy`]: ../io/fn.copy.html
+/// [`File`]: ./struct.File.html
+///
 /// # Platform-specific behavior
 ///
 /// This function currently corresponds to the `open` function in Unix
@@ -14996,9 +14997,10 @@ pub fn hard_link<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) -> io::Result<(
 /// and [`std::os::windows::fs::symlink_file`] or [`symlink_dir`] should be
 /// used instead to make the intent explicit.
 ///
-/// [`std::os::unix::fs::symlink`]: crate::os::unix::fs::symlink
-/// [`std::os::windows::fs::symlink_file`]: crate::os::windows::fs::symlink_file
-/// [`symlink_dir`]: crate::os::windows::fs::symlink_dir
+/// [`std::os::unix::fs::symlink`]: ../os/unix/fs/fn.symlink.html
+/// [`std::os::windows::fs::symlink_file`]: ../os/windows/fs/fn.symlink_file.html
+/// [`symlink_dir`]: ../os/windows/fs/fn.symlink_dir.html
+///
 ///
 /// # Examples
 ///
@@ -15117,6 +15119,8 @@ pub fn canonicalize<P: AsRef<Path>>(path: P) -> io::Result<PathBuf> {
 ///   function.)
 /// * `path` already exists.
 ///
+/// [`create_dir_all`]: fn.create_dir_all.html
+///
 /// # Examples
 ///
 /// ```no_run
@@ -15158,7 +15162,7 @@ pub fn create_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// concurrently from multiple threads or processes is guaranteed not to fail
 /// due to a race condition with itself.
 ///
-/// [`fs::create_dir`]: create_dir
+/// [`fs::create_dir`]: fn.create_dir.html
 ///
 /// # Examples
 ///
@@ -15174,7 +15178,7 @@ pub fn create_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 pub fn create_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
 }
 
-/// Removes an empty directory.
+/// Removes an existing, empty directory.
 ///
 /// # Platform-specific behavior
 ///
@@ -15189,8 +15193,6 @@ pub fn create_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// This function will return an error in the following situations, but is not
 /// limited to just these cases:
 ///
-/// * `path` doesn't exist.
-/// * `path` isn't a directory.
 /// * The user lacks permissions to remove the directory at the provided `path`.
 /// * The directory isn't empty.
 ///
@@ -15227,8 +15229,8 @@ pub fn remove_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 ///
 /// See [`fs::remove_file`] and [`fs::remove_dir`].
 ///
-/// [`fs::remove_file`]: remove_file
-/// [`fs::remove_dir`]: remove_dir
+/// [`fs::remove_file`]:  fn.remove_file.html
+/// [`fs::remove_dir`]: fn.remove_dir.html
 ///
 /// # Examples
 ///
@@ -15248,6 +15250,9 @@ pub fn remove_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
 ///
 /// The iterator will yield instances of [`io::Result`]`<`[`DirEntry`]`>`.
 /// New errors may be encountered after an iterator is initially constructed.
+///
+/// [`io::Result`]: ../io/type.Result.html
+/// [`DirEntry`]: struct.DirEntry.html
 ///
 /// # Platform-specific behavior
 ///
@@ -15996,14 +16001,24 @@ pub mod io {
 //! contract. The implementation of many of these functions are subject to change over
 //! time and may call fewer or more syscalls/library functions.
 //!
-//! [`File`]: crate::fs::File
-//! [`TcpStream`]: crate::net::TcpStream
-//! [`Vec<T>`]: Vec
-//! [`io::stdout`]: stdout
-//! [`io::Result`]: self::Result
+//! [`Read`]: trait.Read.html
+//! [`Write`]: trait.Write.html
+//! [`Seek`]: trait.Seek.html
+//! [`BufRead`]: trait.BufRead.html
+//! [`File`]: ../fs/struct.File.html
+//! [`TcpStream`]: ../net/struct.TcpStream.html
+//! [`Vec<T>`]: ../vec/struct.Vec.html
+//! [`BufReader`]: struct.BufReader.html
+//! [`BufWriter`]: struct.BufWriter.html
+//! [`Write::write`]: trait.Write.html#tymethod.write
+//! [`io::stdout`]: fn.stdout.html
+//! [`println!`]: ../macro.println.html
+//! [`Lines`]: struct.Lines.html
+//! [`io::Result`]: type.Result.html
 //! [`?` operator]: ../../book/appendix-02-operators.html
-//! [`Result`]: crate::result::Result
-//! [`.unwrap()`]: crate::result::Result::unwrap
+//! [`Read::read`]: trait.Read.html#tymethod.read
+//! [`Result`]: ../result/enum.Result.html
+//! [`.unwrap()`]: ../result/enum.Result.html#method.unwrap
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -16060,16 +16075,17 @@ use crate::memchr;
 /// *repeated* read calls to the same file or network socket. It does not
 /// help when reading very large amounts at once, or reading just one or a few
 /// times. It also provides no advantage when reading from a source that is
-/// already in memory, like a [`Vec`]`<u8>`.
+/// already in memory, like a `Vec<u8>`.
 ///
 /// When the `BufReader<R>` is dropped, the contents of its buffer will be
 /// discarded. Creating multiple instances of a `BufReader<R>` on the same
 /// stream can cause data loss. Reading from the underlying reader after
-/// unwrapping the `BufReader<R>` with [`BufReader::into_inner`] can also cause
+/// unwrapping the `BufReader<R>` with `BufReader::into_inner` can also cause
 /// data loss.
 ///
-/// [`TcpStream::read`]: Read::read
-/// [`TcpStream`]: crate::net::TcpStream
+/// [`Read`]: ../../std/io/trait.Read.html
+/// [`TcpStream::read`]: ../../std/net/struct.TcpStream.html#method.read
+/// [`TcpStream`]: ../../std/net/struct.TcpStream.html
 ///
 /// # Examples
 ///
@@ -16184,9 +16200,7 @@ impl<R> BufReader<R> {
 
     /// Returns a reference to the internally buffered data.
     ///
-    /// Unlike [`fill_buf`], this will not attempt to fill the buffer if it is empty.
-    ///
-    /// [`fill_buf`]: BufRead::fill_buf
+    /// Unlike `fill_buf`, this will not attempt to fill the buffer if it is empty.
     ///
     /// # Examples
     ///
@@ -16207,28 +16221,6 @@ impl<R> BufReader<R> {
     /// ```
     #[stable(feature = "bufreader_buffer", since = "1.37.0")]
     pub fn buffer(&self) -> &[u8] {
-}
-
-    /// Returns the number of bytes the internal buffer can hold at once.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// use std::io::{BufReader, BufRead};
-    /// use std::fs::File;
-    ///
-    /// fn main() -> std::io::Result<()> {
-    ///     let f = File::open("log.txt")?;
-    ///     let mut reader = BufReader::new(f);
-    ///
-    ///     let capacity = reader.capacity();
-    ///     let buffer = reader.fill_buf()?;
-    ///     assert!(buffer.len() <= capacity);
-    ///     Ok(())
-    /// }
-    /// ```
-    #[stable(feature = "buffered_io_capacity", since = "1.46.0")]
-    pub fn capacity(&self) -> usize {
 }
 
     /// Unwraps this `BufReader<R>`, returning the underlying reader.
@@ -16278,9 +16270,6 @@ impl<R: Read> Read for BufReader<R> {
     fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
 }
 
-    fn is_read_vectored(&self) -> bool {
-}
-
     // we can't skip unconditionally because of the large buffer case in read.
     unsafe fn initializer(&self) -> Initializer {
 }
@@ -16308,26 +16297,27 @@ where
 impl<R: Seek> Seek for BufReader<R> {
     /// Seek to an offset, in bytes, in the underlying reader.
     ///
-    /// The position used for seeking with [`SeekFrom::Current`]`(_)` is the
+    /// The position used for seeking with `SeekFrom::Current(_)` is the
     /// position the underlying reader would be at if the `BufReader<R>` had no
     /// internal buffer.
     ///
     /// Seeking always discards the internal buffer, even if the seek position
     /// would otherwise fall within it. This guarantees that calling
-    /// [`BufReader::into_inner()`] immediately after a seek yields the underlying reader
+    /// `.into_inner()` immediately after a seek yields the underlying reader
     /// at the same position.
     ///
     /// To seek without discarding the internal buffer, use [`BufReader::seek_relative`].
     ///
     /// See [`std::io::Seek`] for more details.
     ///
-    /// Note: In the edge case where you're seeking with [`SeekFrom::Current`]`(n)`
+    /// Note: In the edge case where you're seeking with `SeekFrom::Current(n)`
     /// where `n` minus the internal buffer length overflows an `i64`, two
     /// seeks will be performed instead of one. If the second seek returns
-    /// [`Err`], the underlying reader will be left at the same position it would
-    /// have if you called `seek` with [`SeekFrom::Current`]`(0)`.
+    /// `Err`, the underlying reader will be left at the same position it would
+    /// have if you called `seek` with `SeekFrom::Current(0)`.
     ///
-    /// [`std::io::Seek`]: Seek
+    /// [`BufReader::seek_relative`]: struct.BufReader.html#method.seek_relative
+    /// [`std::io::Seek`]: trait.Seek.html
     fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> {
 }
 }
@@ -16344,10 +16334,10 @@ impl<R: Seek> Seek for BufReader<R> {
 /// *repeated* write calls to the same file or network socket. It does not
 /// help when writing very large amounts at once, or writing just one or a few
 /// times. It also provides no advantage when writing to a destination that is
-/// in memory, like a [`Vec`]<u8>`.
+/// in memory, like a `Vec<u8>`.
 ///
 /// It is critical to call [`flush`] before `BufWriter<W>` is dropped. Though
-/// dropping will attempt to flush the contents of the buffer, any errors
+/// dropping will attempt to flush the the contents of the buffer, any errors
 /// that happen in the process of dropping will be ignored. Calling [`flush`]
 /// ensures that the buffer is empty and thus dropping will not even attempt
 /// file operations.
@@ -16388,9 +16378,10 @@ impl<R: Seek> Seek for BufReader<R> {
 /// together by the buffer and will all be written out in one system call when
 /// the `stream` is flushed.
 ///
-/// [`TcpStream::write`]: Write::write
-/// [`TcpStream`]: crate::net::TcpStream
-/// [`flush`]: Write::flush
+/// [`Write`]: ../../std/io/trait.Write.html
+/// [`TcpStream::write`]: ../../std/net/struct.TcpStream.html#method.write
+/// [`TcpStream`]: ../../std/net/struct.TcpStream.html
+/// [`flush`]: #method.flush
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct BufWriter<W: Write> {
     inner: Option<W>,
@@ -16401,7 +16392,7 @@ pub struct BufWriter<W: Write> {
     panicked: bool,
 }
 
-/// An error returned by [`BufWriter::into_inner`] which combines an error that
+/// An error returned by `into_inner` which combines an error that
 /// happened while writing out the buffer, and the buffered writer object
 /// which may be used to recover from the condition.
 ///
@@ -16518,32 +16509,13 @@ impl<W: Write> BufWriter<W> {
     pub fn buffer(&self) -> &[u8] {
 }
 
-    /// Returns the number of bytes the internal buffer can hold without flushing.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// use std::io::BufWriter;
-    /// use std::net::TcpStream;
-    ///
-    /// let buf_writer = BufWriter::new(TcpStream::connect("127.0.0.1:34254").unwrap());
-    ///
-    /// // Check the capacity of the inner buffer
-    /// let capacity = buf_writer.capacity();
-    /// // Calculate how many bytes can be written without flushing
-    /// let without_flush = capacity - buf_writer.buffer().len();
-    /// ```
-    #[stable(feature = "buffered_io_capacity", since = "1.46.0")]
-    pub fn capacity(&self) -> usize {
-}
-
     /// Unwraps this `BufWriter<W>`, returning the underlying writer.
     ///
     /// The buffer is written out before returning the writer.
     ///
     /// # Errors
     ///
-    /// An [`Err`] will be returned if an error occurs while flushing the buffer.
+    /// An `Err` will be returned if an error occurs while flushing the buffer.
     ///
     /// # Examples
     ///
@@ -16567,9 +16539,6 @@ impl<W: Write> Write for BufWriter<W> {
 }
 
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-}
-
-    fn is_write_vectored(&self) -> bool {
 }
 
     fn flush(&mut self) -> io::Result<()> {
@@ -16601,8 +16570,7 @@ impl<W: Write> Drop for BufWriter<W> {
 }
 
 impl<W> IntoInnerError<W> {
-    /// Returns the error which caused the call to [`BufWriter::into_inner()`]
-    /// to fail.
+    /// Returns the error which caused the call to `into_inner()` to fail.
     ///
     /// This error was returned when attempting to write the internal buffer.
     ///
@@ -16691,14 +16659,16 @@ impl<W> fmt::Display for IntoInnerError<W> {
 /// Wraps a writer and buffers output to it, flushing whenever a newline
 /// (`0x0a`, `'\n'`) is detected.
 ///
-/// The [`BufWriter`] struct wraps a writer and buffers its output.
+/// The [`BufWriter`][bufwriter] struct wraps a writer and buffers its output.
 /// But it only does this batched write when it goes out of scope, or when the
 /// internal buffer is full. Sometimes, you'd prefer to write each line as it's
 /// completed, rather than the entire buffer at once. Enter `LineWriter`. It
 /// does exactly that.
 ///
-/// Like [`BufWriter`], a `LineWriter`’s buffer will also be flushed when the
+/// Like [`BufWriter`][bufwriter], a `LineWriter`’s buffer will also be flushed when the
 /// `LineWriter` goes out of scope or when its internal buffer is full.
+///
+/// [bufwriter]: struct.BufWriter.html
 ///
 /// If there's still a partial line in the buffer when the `LineWriter` is
 /// dropped, it will flush those contents.
@@ -16844,7 +16814,7 @@ impl<W: Write> LineWriter<W> {
     ///
     /// # Errors
     ///
-    /// An [`Err`] will be returned if an error occurs while flushing the buffer.
+    /// An `Err` will be returned if an error occurs while flushing the buffer.
     ///
     /// # Examples
     ///
@@ -16905,7 +16875,7 @@ use core::convert::TryInto;
 /// [`Seek`] implementation.
 ///
 /// `Cursor`s are used with in-memory buffers, anything implementing
-/// [`AsRef`]`<[u8]>`, to allow them to implement [`Read`] and/or [`Write`],
+/// `AsRef<[u8]>`, to allow them to implement [`Read`] and/or [`Write`],
 /// allowing these buffers to be used anywhere you might use a reader or writer
 /// that does actual I/O.
 ///
@@ -16919,8 +16889,12 @@ use core::convert::TryInto;
 /// code, but use an in-memory buffer in our tests. We can do this with
 /// `Cursor`:
 ///
-/// [bytes]: crate::slice
-/// [`File`]: crate::fs::File
+/// [`Seek`]: trait.Seek.html
+/// [`Read`]: ../../std/io/trait.Read.html
+/// [`Write`]: ../../std/io/trait.Write.html
+/// [`Vec`]: ../../std/vec/struct.Vec.html
+/// [bytes]: ../../std/primitive.slice.html
+/// [`File`]: ../fs/struct.File.html
 ///
 /// ```no_run
 /// use std::io::prelude::*;
@@ -16973,8 +16947,8 @@ pub struct Cursor<T> {
 impl<T> Cursor<T> {
     /// Creates a new cursor wrapping the provided underlying in-memory buffer.
     ///
-    /// Cursor initial position is `0` even if underlying buffer (e.g., [`Vec`])
-    /// is not empty. So writing to cursor starts with overwriting [`Vec`]
+    /// Cursor initial position is `0` even if underlying buffer (e.g., `Vec`)
+    /// is not empty. So writing to cursor starts with overwriting `Vec`
     /// content, not with appending to it.
     ///
     /// # Examples
@@ -17115,9 +17089,6 @@ where
     fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
 }
 
-    fn is_read_vectored(&self) -> bool {
-}
-
     fn read_exact(&mut self, buf: &mut [u8]) -> io::Result<()> {
 }
 
@@ -17172,10 +17143,6 @@ impl Write for Cursor<&mut [u8]> {
 }
 
     #[inline]
-    fn is_write_vectored(&self) -> bool {
-}
-
-    #[inline]
     fn flush(&mut self) -> io::Result<()> {
 }
 }
@@ -17189,10 +17156,6 @@ impl Write for Cursor<&mut Vec<u8>> {
 }
 
     #[inline]
-    fn is_write_vectored(&self) -> bool {
-}
-
-    #[inline]
     fn flush(&mut self) -> io::Result<()> {
 }
 }
@@ -17203,10 +17166,6 @@ impl Write for Cursor<Vec<u8>> {
 }
 
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-}
-
-    #[inline]
-    fn is_write_vectored(&self) -> bool {
 }
 
     #[inline]
@@ -17225,10 +17184,6 @@ impl Write for Cursor<Box<[u8]>> {
 }
 
     #[inline]
-    fn is_write_vectored(&self) -> bool {
-}
-
-    #[inline]
     fn flush(&mut self) -> io::Result<()> {
 }
 }
@@ -17244,7 +17199,8 @@ use crate::fmt;
 use crate::result;
 use crate::sys;
 
-/// A specialized [`Result`] type for I/O operations.
+/// A specialized [`Result`](../result/enum.Result.html) type for I/O
+/// operations.
 ///
 /// This type is broadly used across [`std::io`] for any operation which may
 /// produce an error.
@@ -17255,13 +17211,12 @@ use crate::sys;
 /// While usual Rust style is to import types directly, aliases of [`Result`]
 /// often are not, to make it easier to distinguish between them. [`Result`] is
 /// generally assumed to be [`std::result::Result`][`Result`], and so users of this alias
-/// will generally use `io::Result` instead of shadowing the [prelude]'s import
+/// will generally use `io::Result` instead of shadowing the prelude's import
 /// of [`std::result::Result`][`Result`].
 ///
-/// [`std::io`]: crate::io
-/// [`io::Error`]: Error
-/// [`Result`]: crate::result::Result
-/// [prelude]: crate::prelude
+/// [`std::io`]: ../io/index.html
+/// [`io::Error`]: ../io/struct.Error.html
+/// [`Result`]: ../result/enum.Result.html
 ///
 /// # Examples
 ///
@@ -17288,9 +17243,10 @@ pub type Result<T> = result::Result<T, Error>;
 /// `Error` can be created with crafted error messages and a particular value of
 /// [`ErrorKind`].
 ///
-/// [`Read`]: crate::io::Read
-/// [`Write`]: crate::io::Write
-/// [`Seek`]: crate::io::Seek
+/// [`Read`]: ../io/trait.Read.html
+/// [`Write`]: ../io/trait.Write.html
+/// [`Seek`]: ../io/trait.Seek.html
+/// [`ErrorKind`]: enum.ErrorKind.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Error {
     repr: Repr,
@@ -17321,7 +17277,7 @@ struct Custom {
 ///
 /// It is used with the [`io::Error`] type.
 ///
-/// [`io::Error`]: Error
+/// [`io::Error`]: struct.Error.html
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(deprecated)]
@@ -17375,7 +17331,7 @@ pub enum ErrorKind {
     /// For example, a function that reads a file into a string will error with
     /// `InvalidData` if the file's contents are not valid UTF-8.
     ///
-    /// [`InvalidInput`]: ErrorKind::InvalidInput
+    /// [`InvalidInput`]: #variant.InvalidInput
     #[stable(feature = "io_invalid_data", since = "1.2.0")]
     InvalidData,
     /// The I/O operation's timeout expired, causing it to be canceled.
@@ -17388,8 +17344,8 @@ pub enum ErrorKind {
     /// particular number of bytes but only a smaller number of bytes could be
     /// written.
     ///
-    /// [`write`]: crate::io::Write::write
-    /// [`Ok(0)`]: Ok
+    /// [`write`]: ../../std/io/trait.Write.html#tymethod.write
+    /// [`Ok(0)`]: ../../std/io/type.Result.html
     #[stable(feature = "rust1", since = "1.0.0")]
     WriteZero,
     /// This operation was interrupted.
@@ -17398,11 +17354,6 @@ pub enum ErrorKind {
     #[stable(feature = "rust1", since = "1.0.0")]
     Interrupted,
     /// Any I/O error not part of this list.
-    ///
-    /// Errors that are `Other` now may move to a different or a new
-    /// [`ErrorKind`] variant in the future. It is not recommended to match
-    /// an error against `Other` and to expect any additional characteristics,
-    /// e.g., a specific [`Error::raw_os_error`] return value.
     #[stable(feature = "rust1", since = "1.0.0")]
     Other,
 
@@ -17438,6 +17389,9 @@ impl From<ErrorKind> for Error {
     /// let error = Error::from(not_found);
     /// assert_eq!("entity not found", format!("{}", error));
     /// ```
+    ///
+    /// [`ErrorKind`]: ../../std/io/enum.ErrorKind.html
+    /// [`Error`]: ../../std/io/struct.Error.html
     #[inline]
     fn from(kind: ErrorKind) -> Error {
 }
@@ -17449,7 +17403,7 @@ impl Error {
     ///
     /// This function is used to generically create I/O errors which do not
     /// originate from the OS itself. The `error` argument is an arbitrary
-    /// payload which will be contained in this [`Error`].
+    /// payload which will be contained in this `Error`.
     ///
     /// # Examples
     ///
@@ -17476,7 +17430,7 @@ impl Error {
     ///
     /// This function reads the value of `errno` for the target platform (e.g.
     /// `GetLastError` on Windows) and will return a corresponding instance of
-    /// [`Error`] for the error code.
+    /// `Error` for the error code.
     ///
     /// # Examples
     ///
@@ -17489,7 +17443,7 @@ impl Error {
     pub fn last_os_error() -> Error {
 }
 
-    /// Creates a new instance of an [`Error`] from a particular OS error code.
+    /// Creates a new instance of an `Error` from a particular OS error code.
     ///
     /// # Examples
     ///
@@ -17520,12 +17474,9 @@ impl Error {
 
     /// Returns the OS error that this error represents (if any).
     ///
-    /// If this [`Error`] was constructed via [`last_os_error`] or
-    /// [`from_raw_os_error`], then this function will return [`Some`], otherwise
-    /// it will return [`None`].
-    ///
-    /// [`last_os_error`]: Error::last_os_error
-    /// [`from_raw_os_error`]: Error::from_raw_os_error
+    /// If this `Error` was constructed via `last_os_error` or
+    /// `from_raw_os_error`, then this function will return `Some`, otherwise
+    /// it will return `None`.
     ///
     /// # Examples
     ///
@@ -17553,10 +17504,8 @@ impl Error {
 
     /// Returns a reference to the inner error wrapped by this error (if any).
     ///
-    /// If this [`Error`] was constructed via [`new`] then this function will
-    /// return [`Some`], otherwise it will return [`None`].
-    ///
-    /// [`new`]: Error::new
+    /// If this `Error` was constructed via `new` then this function will
+    /// return `Some`, otherwise it will return `None`.
     ///
     /// # Examples
     ///
@@ -17585,10 +17534,8 @@ impl Error {
     /// Returns a mutable reference to the inner error wrapped by this error
     /// (if any).
     ///
-    /// If this [`Error`] was constructed via [`new`] then this function will
-    /// return [`Some`], otherwise it will return [`None`].
-    ///
-    /// [`new`]: Error::new
+    /// If this `Error` was constructed via `new` then this function will
+    /// return `Some`, otherwise it will return `None`.
     ///
     /// # Examples
     ///
@@ -17650,10 +17597,8 @@ impl Error {
 
     /// Consumes the `Error`, returning its inner error (if any).
     ///
-    /// If this [`Error`] was constructed via [`new`] then this function will
-    /// return [`Some`], otherwise it will return [`None`].
-    ///
-    /// [`new`]: Error::new
+    /// If this `Error` was constructed via `new` then this function will
+    /// return `Some`, otherwise it will return `None`.
     ///
     /// # Examples
     ///
@@ -17679,7 +17624,7 @@ impl Error {
     pub fn into_inner(self) -> Option<Box<dyn error::Error + Send + Sync>> {
 }
 
-    /// Returns the corresponding [`ErrorKind`] for this error.
+    /// Returns the corresponding `ErrorKind` for this error.
     ///
     /// # Examples
     ///
@@ -17691,9 +17636,9 @@ impl Error {
     /// }
     ///
     /// fn main() {
-    ///     // Will print "Other".
+    ///     // Will print "No inner error".
     ///     print_error(Error::last_os_error());
-    ///     // Will print "AddrInUse".
+    ///     // Will print "Inner error: ...".
     ///     print_error(Error::new(ErrorKind::AddrInUse, "oh no!"));
     /// }
     /// ```
@@ -17756,10 +17701,6 @@ impl<R: Read + ?Sized> Read for &mut R {
 }
 
     #[inline]
-    fn is_read_vectored(&self) -> bool {
-}
-
-    #[inline]
     unsafe fn initializer(&self) -> Initializer {
 }
 
@@ -17783,10 +17724,6 @@ impl<W: Write + ?Sized> Write for &mut W {
 
     #[inline]
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-}
-
-    #[inline]
-    fn is_write_vectored(&self) -> bool {
 }
 
     #[inline]
@@ -17837,10 +17774,6 @@ impl<R: Read + ?Sized> Read for Box<R> {
 }
 
     #[inline]
-    fn is_read_vectored(&self) -> bool {
-}
-
-    #[inline]
     unsafe fn initializer(&self) -> Initializer {
 }
 
@@ -17864,10 +17797,6 @@ impl<W: Write + ?Sized> Write for Box<W> {
 
     #[inline]
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-}
-
-    #[inline]
-    fn is_write_vectored(&self) -> bool {
 }
 
     #[inline]
@@ -17932,10 +17861,6 @@ impl Read for &[u8] {
 }
 
     #[inline]
-    fn is_read_vectored(&self) -> bool {
-}
-
-    #[inline]
     unsafe fn initializer(&self) -> Initializer {
 }
 
@@ -17975,10 +17900,6 @@ impl Write for &mut [u8] {
 }
 
     #[inline]
-    fn is_write_vectored(&self) -> bool {
-}
-
-    #[inline]
     fn write_all(&mut self, data: &[u8]) -> io::Result<()> {
 }
 
@@ -17997,10 +17918,6 @@ impl Write for Vec<u8> {
 
     #[inline]
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-}
-
-    #[inline]
-    fn is_write_vectored(&self) -> bool {
 }
 
     #[inline]
@@ -18076,7 +17993,7 @@ use crate::cell::RefCell;
 use crate::fmt;
 use crate::io::lazy::Lazy;
 use crate::io::{self, BufReader, Initializer, IoSlice, IoSliceMut, LineWriter};
-use crate::sync::{Arc, Mutex, MutexGuard, Once};
+use crate::sync::{Arc, Mutex, MutexGuard};
 use crate::sys::stdio;
 use crate::sys_common::remutex::{ReentrantMutex, ReentrantMutexGuard};
 use crate::thread::LocalKey;
@@ -18120,8 +18037,7 @@ struct StderrRaw(stdio::Stderr);
 /// handles is **not** available to raw handles returned from this function.
 ///
 /// The returned handle has no external synchronization or buffering.
-#[unstable(feature = "libstd_sys_internals", issue = "none")]
-const fn stdin_raw() -> StdinRaw {
+fn stdin_raw() -> io::Result<StdinRaw> {
 }
 
 /// Constructs a new raw handle to the standard output stream of this process.
@@ -18133,8 +18049,7 @@ const fn stdin_raw() -> StdinRaw {
 ///
 /// The returned handle has no external synchronization or buffering layered on
 /// top.
-#[unstable(feature = "libstd_sys_internals", issue = "none")]
-const fn stdout_raw() -> StdoutRaw {
+fn stdout_raw() -> io::Result<StdoutRaw> {
 }
 
 /// Constructs a new raw handle to the standard error stream of this process.
@@ -18144,8 +18059,7 @@ const fn stdout_raw() -> StdoutRaw {
 ///
 /// The returned handle has no external synchronization or buffering layered on
 /// top.
-#[unstable(feature = "libstd_sys_internals", issue = "none")]
-const fn stderr_raw() -> StderrRaw {
+fn stderr_raw() -> io::Result<StderrRaw> {
 }
 
 impl Read for StdinRaw {
@@ -18156,20 +18070,9 @@ impl Read for StdinRaw {
 }
 
     #[inline]
-    fn is_read_vectored(&self) -> bool {
-}
-
-    #[inline]
     unsafe fn initializer(&self) -> Initializer {
 }
-
-    fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
 }
-
-    fn read_to_string(&mut self, buf: &mut String) -> io::Result<usize> {
-}
-}
-
 impl Write for StdoutRaw {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
 }
@@ -18177,23 +18080,9 @@ impl Write for StdoutRaw {
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
 }
 
-    #[inline]
-    fn is_write_vectored(&self) -> bool {
-}
-
     fn flush(&mut self) -> io::Result<()> {
 }
-
-    fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
 }
-
-    fn write_all_vectored(&mut self, bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
-}
-
-    fn write_fmt(&mut self, fmt: fmt::Arguments<'_>) -> io::Result<()> {
-}
-}
-
 impl Write for StderrRaw {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
 }
@@ -18201,20 +18090,31 @@ impl Write for StderrRaw {
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
 }
 
-    #[inline]
-    fn is_write_vectored(&self) -> bool {
+    fn flush(&mut self) -> io::Result<()> {
+}
+}
+
+enum Maybe<T> {
+    Real(T),
+    Fake,
+}
+
+impl<W: io::Write> io::Write for Maybe<W> {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+}
+
+    fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
 }
 
     fn flush(&mut self) -> io::Result<()> {
 }
-
-    fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
 }
 
-    fn write_all_vectored(&mut self, bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
+impl<R: io::Read> io::Read for Maybe<R> {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
 }
 
-    fn write_fmt(&mut self, fmt: fmt::Arguments<'_>) -> io::Result<()> {
+    fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
 }
 }
 
@@ -18233,29 +18133,16 @@ fn handle_ebadf<T>(r: io::Result<T>, default: T) -> io::Result<T> {
 ///
 /// Created by the [`io::stdin`] method.
 ///
-/// [`io::stdin`]: stdin
+/// [`io::stdin`]: fn.stdin.html
+/// [`BufRead`]: trait.BufRead.html
 ///
 /// ### Note: Windows Portability Consideration
-///
 /// When operating in a console, the Windows implementation of this stream does not support
 /// non-UTF-8 byte sequences. Attempting to read bytes that are not valid UTF-8 will return
 /// an error.
-///
-/// # Examples
-///
-/// ```no_run
-/// use std::io::{self, Read};
-///
-/// fn main() -> io::Result<()> {
-///     let mut buffer = String::new();
-///     let mut stdin = io::stdin(); // We get `Stdin` here.
-///     stdin.read_to_string(&mut buffer)?;
-///     Ok(())
-/// }
-/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Stdin {
-    inner: Arc<Mutex<BufReader<StdinRaw>>>,
+    inner: Arc<Mutex<BufReader<Maybe<StdinRaw>>>>,
 }
 
 /// A locked reference to the `Stdin` handle.
@@ -18263,30 +18150,17 @@ pub struct Stdin {
 /// This handle implements both the [`Read`] and [`BufRead`] traits, and
 /// is constructed via the [`Stdin::lock`] method.
 ///
-/// ### Note: Windows Portability Consideration
+/// [`Read`]: trait.Read.html
+/// [`BufRead`]: trait.BufRead.html
+/// [`Stdin::lock`]: struct.Stdin.html#method.lock
 ///
+/// ### Note: Windows Portability Consideration
 /// When operating in a console, the Windows implementation of this stream does not support
 /// non-UTF-8 byte sequences. Attempting to read bytes that are not valid UTF-8 will return
 /// an error.
-///
-/// # Examples
-///
-/// ```no_run
-/// use std::io::{self, Read};
-///
-/// fn main() -> io::Result<()> {
-///     let mut buffer = String::new();
-///     let stdin = io::stdin(); // We get `Stdin` here.
-///     {
-///         let mut stdin_lock = stdin.lock(); // We get `StdinLock` here.
-///         stdin_lock.read_to_string(&mut buffer)?;
-///     } // `StdinLock` is dropped here.
-///     Ok(())
-/// }
-/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct StdinLock<'a> {
-    inner: MutexGuard<'a, BufReader<StdinRaw>>,
+    inner: MutexGuard<'a, BufReader<Maybe<StdinRaw>>>,
 }
 
 /// Constructs a new handle to the standard input of the current process.
@@ -18294,6 +18168,8 @@ pub struct StdinLock<'a> {
 /// Each handle returned is a reference to a shared global buffer whose access
 /// is synchronized via a mutex. If you need more explicit control over
 /// locking, see the [`Stdin::lock`] method.
+///
+/// [`Stdin::lock`]: struct.Stdin.html#method.lock
 ///
 /// ### Note: Windows Portability Consideration
 /// When operating in a console, the Windows implementation of this stream does not support
@@ -18340,6 +18216,9 @@ impl Stdin {
     /// returned guard also implements the [`Read`] and [`BufRead`] traits for
     /// accessing the underlying data.
     ///
+    /// [`Read`]: trait.Read.html
+    /// [`BufRead`]: trait.BufRead.html
+    ///
     /// # Examples
     ///
     /// ```no_run
@@ -18358,10 +18237,12 @@ impl Stdin {
     pub fn lock(&self) -> StdinLock<'_> {
 }
 
-    /// Locks this handle and reads a line of input, appending it to the specified buffer.
+    /// Locks this handle and reads a line of input into the specified buffer.
     ///
     /// For detailed semantics of this method, see the documentation on
     /// [`BufRead::read_line`].
+    ///
+    /// [`BufRead::read_line`]: trait.BufRead.html#method.read_line
     ///
     /// # Examples
     ///
@@ -18402,9 +18283,6 @@ impl Read for Stdin {
     fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
 }
     #[inline]
-    fn is_read_vectored(&self) -> bool {
-}
-    #[inline]
     unsafe fn initializer(&self) -> Initializer {
 }
     fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
@@ -18424,20 +18302,7 @@ impl Read for StdinLock<'_> {
 }
 
     #[inline]
-    fn is_read_vectored(&self) -> bool {
-}
-
-    #[inline]
     unsafe fn initializer(&self) -> Initializer {
-}
-
-    fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
-}
-
-    fn read_to_string(&mut self, buf: &mut String) -> io::Result<usize> {
-}
-
-    fn read_exact(&mut self, buf: &mut [u8]) -> io::Result<()> {
 }
 }
 
@@ -18445,14 +18310,7 @@ impl Read for StdinLock<'_> {
 impl BufRead for StdinLock<'_> {
     fn fill_buf(&mut self) -> io::Result<&[u8]> {
 }
-
     fn consume(&mut self, n: usize) {
-}
-
-    fn read_until(&mut self, byte: u8, buf: &mut Vec<u8>) -> io::Result<usize> {
-}
-
-    fn read_line(&mut self, buf: &mut String) -> io::Result<usize> {
 }
 }
 
@@ -18475,14 +18333,14 @@ impl fmt::Debug for StdinLock<'_> {
 /// non-UTF-8 byte sequences. Attempting to write bytes that are not valid UTF-8 will return
 /// an error.
 ///
-/// [`lock`]: Stdout::lock
-/// [`io::stdout`]: stdout
+/// [`lock`]: #method.lock
+/// [`io::stdout`]: fn.stdout.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Stdout {
     // FIXME: this should be LineWriter or BufWriter depending on the state of
     //        stdout (tty or not). Note that if this is not line buffered it
     //        should also flush-on-panic or some form of flush-on-abort.
-    inner: Arc<ReentrantMutex<RefCell<LineWriter<StdoutRaw>>>>,
+    inner: Arc<ReentrantMutex<RefCell<LineWriter<Maybe<StdoutRaw>>>>>,
 }
 
 /// A locked reference to the `Stdout` handle.
@@ -18494,9 +18352,12 @@ pub struct Stdout {
 /// When operating in a console, the Windows implementation of this stream does not support
 /// non-UTF-8 byte sequences. Attempting to write bytes that are not valid UTF-8 will return
 /// an error.
+///
+/// [`Write`]: trait.Write.html
+/// [`Stdout::lock`]: struct.Stdout.html#method.lock
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct StdoutLock<'a> {
-    inner: ReentrantMutexGuard<'a, RefCell<LineWriter<StdoutRaw>>>,
+    inner: ReentrantMutexGuard<'a, RefCell<LineWriter<Maybe<StdoutRaw>>>>,
 }
 
 /// Constructs a new handle to the standard output of the current process.
@@ -18504,6 +18365,8 @@ pub struct StdoutLock<'a> {
 /// Each handle returned is a reference to a shared global buffer whose access
 /// is synchronized via a mutex. If you need more explicit control over
 /// locking, see the [`Stdout::lock`] method.
+///
+/// [`Stdout::lock`]: struct.Stdout.html#method.lock
 ///
 /// ### Note: Windows Portability Consideration
 /// When operating in a console, the Windows implementation of this stream does not support
@@ -18580,14 +18443,9 @@ impl Write for Stdout {
 }
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
 }
-    #[inline]
-    fn is_write_vectored(&self) -> bool {
-}
     fn flush(&mut self) -> io::Result<()> {
 }
     fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
-}
-    fn write_all_vectored(&mut self, bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
 }
     fn write_fmt(&mut self, args: fmt::Arguments<'_>) -> io::Result<()> {
 }
@@ -18598,14 +18456,7 @@ impl Write for StdoutLock<'_> {
 }
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
 }
-    #[inline]
-    fn is_write_vectored(&self) -> bool {
-}
     fn flush(&mut self) -> io::Result<()> {
-}
-    fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
-}
-    fn write_all_vectored(&mut self, bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
 }
 }
 
@@ -18619,7 +18470,7 @@ impl fmt::Debug for StdoutLock<'_> {
 ///
 /// For more information, see the [`io::stderr`] method.
 ///
-/// [`io::stderr`]: stderr
+/// [`io::stderr`]: fn.stderr.html
 ///
 /// ### Note: Windows Portability Consideration
 /// When operating in a console, the Windows implementation of this stream does not support
@@ -18627,7 +18478,7 @@ impl fmt::Debug for StdoutLock<'_> {
 /// an error.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Stderr {
-    inner: &'static ReentrantMutex<RefCell<StderrRaw>>,
+    inner: Arc<ReentrantMutex<RefCell<Maybe<StderrRaw>>>>,
 }
 
 /// A locked reference to the `Stderr` handle.
@@ -18635,13 +18486,15 @@ pub struct Stderr {
 /// This handle implements the `Write` trait and is constructed via
 /// the [`Stderr::lock`] method.
 ///
+/// [`Stderr::lock`]: struct.Stderr.html#method.lock
+///
 /// ### Note: Windows Portability Consideration
 /// When operating in a console, the Windows implementation of this stream does not support
 /// non-UTF-8 byte sequences. Attempting to write bytes that are not valid UTF-8 will return
 /// an error.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct StderrLock<'a> {
-    inner: ReentrantMutexGuard<'a, RefCell<StderrRaw>>,
+    inner: ReentrantMutexGuard<'a, RefCell<Maybe<StderrRaw>>>,
 }
 
 /// Constructs a new handle to the standard error of the current process.
@@ -18690,7 +18543,7 @@ impl Stderr {
     /// guard.
     ///
     /// The lock is released when the returned lock goes out of scope. The
-    /// returned guard also implements the [`Write`] trait for writing data.
+    /// returned guard also implements the `Write` trait for writing data.
     ///
     /// # Examples
     ///
@@ -18723,14 +18576,9 @@ impl Write for Stderr {
 }
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
 }
-    #[inline]
-    fn is_write_vectored(&self) -> bool {
-}
     fn flush(&mut self) -> io::Result<()> {
 }
     fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
-}
-    fn write_all_vectored(&mut self, bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
 }
     fn write_fmt(&mut self, args: fmt::Arguments<'_>) -> io::Result<()> {
 }
@@ -18741,14 +18589,7 @@ impl Write for StderrLock<'_> {
 }
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
 }
-    #[inline]
-    fn is_write_vectored(&self) -> bool {
-}
     fn flush(&mut self) -> io::Result<()> {
-}
-    fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
-}
-    fn write_all_vectored(&mut self, bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
 }
 }
 
@@ -18860,16 +18701,13 @@ use crate::mem::MaybeUninit;
 /// If you’re wanting to copy the contents of one file to another and you’re
 /// working with filesystem paths, see the [`fs::copy`] function.
 ///
-/// [`fs::copy`]: crate::fs::copy
+/// [`fs::copy`]: ../fs/fn.copy.html
 ///
 /// # Errors
 ///
-/// This function will return an error immediately if any call to [`read`] or
-/// [`write`] returns an error. All instances of [`ErrorKind::Interrupted`] are
+/// This function will return an error immediately if any call to `read` or
+/// `write` returns an error. All instances of `ErrorKind::Interrupted` are
 /// handled by this function and the underlying operation is retried.
-///
-/// [`read`]: Read::read
-/// [`write`]: Write::write
 ///
 /// # Examples
 ///
@@ -18896,8 +18734,10 @@ where
 
 /// A reader which is always at EOF.
 ///
-/// This struct is generally created by calling [`empty()`]. Please see
-/// the documentation of [`empty()`] for more details.
+/// This struct is generally created by calling [`empty`]. Please see
+/// the documentation of [`empty()`][`empty`] for more details.
+///
+/// [`empty`]: fn.empty.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Empty {
     _priv: (),
@@ -18906,6 +18746,8 @@ pub struct Empty {
 /// Constructs a new handle to an empty reader.
 ///
 /// All reads from the returned reader will return [`Ok`]`(0)`.
+///
+/// [`Ok`]: ../result/enum.Result.html#variant.Ok
 ///
 /// # Examples
 ///
@@ -18948,8 +18790,10 @@ impl fmt::Debug for Empty {
 
 /// A reader which yields one byte over and over and over and over and over and...
 ///
-/// This struct is generally created by calling [`repeat()`]. Please
-/// see the documentation of [`repeat()`] for more details.
+/// This struct is generally created by calling [`repeat`][repeat]. Please
+/// see the documentation of `repeat()` for more details.
+///
+/// [repeat]: fn.repeat.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Repeat {
     byte: u8,
@@ -18984,10 +18828,6 @@ impl Read for Repeat {
 }
 
     #[inline]
-    fn is_read_vectored(&self) -> bool {
-}
-
-    #[inline]
     unsafe fn initializer(&self) -> Initializer {
 }
 }
@@ -19000,8 +18840,10 @@ impl fmt::Debug for Repeat {
 
 /// A writer which will move data into the void.
 ///
-/// This struct is generally created by calling [`sink`]. Please
-/// see the documentation of [`sink()`] for more details.
+/// This struct is generally created by calling [`sink`][sink]. Please
+/// see the documentation of `sink()` for more details.
+///
+/// [sink]: fn.sink.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Sink {
     _priv: (),
@@ -19009,10 +18851,8 @@ pub struct Sink {
 
 /// Creates an instance of a writer which will successfully consume all data.
 ///
-/// All calls to [`write`] on the returned instance will return `Ok(buf.len())`
+/// All calls to `write` on the returned instance will return `Ok(buf.len())`
 /// and the contents of the buffer will not be inspected.
-///
-/// [`write`]: Write::write
 ///
 /// # Examples
 ///
@@ -19035,10 +18875,6 @@ impl Write for Sink {
 
     #[inline]
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-}
-
-    #[inline]
-    fn is_write_vectored(&self) -> bool {
 }
 
     #[inline]
@@ -19193,10 +19029,12 @@ where
 /// }
 /// ```
 ///
-/// [`read()`]: Read::read
-/// [`&str`]: prim@str
-/// [`std::io`]: self
-/// [`File`]: crate::fs::File
+/// [`read()`]: trait.Read.html#tymethod.read
+/// [`std::io`]: ../../std/io/index.html
+/// [`File`]: ../fs/struct.File.html
+/// [`BufRead`]: trait.BufRead.html
+/// [`BufReader`]: struct.BufReader.html
+/// [`&str`]: ../../std/primitive.str.html
 /// [slice]: ../../std/primitive.slice.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(spotlight)]
@@ -19205,7 +19043,7 @@ pub trait Read {
     /// how many bytes were read.
     ///
     /// This function does not provide any guarantees about whether it blocks
-    /// waiting for data, but if an object needs to block for a read and cannot,
+    /// waiting for data, but if an object needs to block for a read but cannot
     /// it will typically signal this via an [`Err`] return value.
     ///
     /// If the return value of this method is [`Ok(n)`], then it must be
@@ -19217,11 +19055,6 @@ pub trait Read {
     ///    be able to produce bytes. Note that this does not mean that the
     ///    reader will *always* no longer be able to produce bytes.
     /// 2. The buffer specified was 0 bytes in length.
-    ///
-    /// It is not an error if the returned value `n` is smaller than the buffer size,
-    /// even when the reader is not at the end of the stream yet.
-    /// This may happen for example because fewer bytes are actually available right now
-    /// (e. g. being close to end-of-file) or because read() was interrupted by a signal.
     ///
     /// No guarantees are provided about the contents of `buf` when this
     /// function is called, implementations cannot rely on any property of the
@@ -19235,7 +19068,7 @@ pub trait Read {
     /// before calling `read`. Calling `read` with an uninitialized `buf` (of the kind one
     /// obtains via [`MaybeUninit<T>`]) is not safe, and can lead to undefined behavior.
     ///
-    /// [`MaybeUninit<T>`]: crate::mem::MaybeUninit
+    /// [`MaybeUninit<T>`]: ../mem/union.MaybeUninit.html
     ///
     /// # Errors
     ///
@@ -19250,8 +19083,10 @@ pub trait Read {
     ///
     /// [`File`]s implement `Read`:
     ///
-    /// [`Ok(n)`]: Ok
-    /// [`File`]: crate::fs::File
+    /// [`Err`]: ../../std/result/enum.Result.html#variant.Err
+    /// [`Ok(n)`]: ../../std/result/enum.Result.html#variant.Ok
+    /// [`ErrorKind::Interrupted`]: ../../std/io/enum.ErrorKind.html#variant.Interrupted
+    /// [`File`]: ../fs/struct.File.html
     ///
     /// ```no_run
     /// use std::io;
@@ -19275,9 +19110,8 @@ pub trait Read {
     /// Like `read`, except that it reads into a slice of buffers.
     ///
     /// Data is copied to fill each buffer in order, with the final buffer
-    /// written to possibly being only partially filled. This method must
-    /// behave equivalently to a single call to `read` with concatenated
-    /// buffers.
+    /// written to possibly being only partially filled. This method must behave
+    /// as a single call to `read` with the buffers concatenated would.
     ///
     /// The default implementation calls `read` with either the first nonempty
     /// buffer provided, or an empty one if none exists.
@@ -19285,18 +19119,6 @@ pub trait Read {
     fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> Result<usize> {
         default_read_vectored(|b| self.read(b), bufs)
     }
-
-    /// Determines if this `Read`er has an efficient `read_vectored`
-    /// implementation.
-    ///
-    /// If a `Read`er does not override the default `read_vectored`
-    /// implementation, code using it may want to avoid the method all together
-    /// and coalesce writes into a single buffer for higher performance.
-    ///
-    /// The default implementation returns `false`.
-    #[unstable(feature = "can_vector", issue = "69941")]
-    fn is_read_vectored(&self) -> bool {
-}
 
     /// Determines if this `Read`er can work with buffers of uninitialized
     /// memory.
@@ -19317,6 +19139,9 @@ pub trait Read {
     /// This method is unsafe because a `Read`er could otherwise return a
     /// non-zeroing `Initializer` from another `Read` type without an `unsafe`
     /// block.
+    ///
+    /// [`Initializer::nop()`]: ../../std/io/struct.Initializer.html#method.nop
+    /// [`Initializer`]: ../../std/io/struct.Initializer.html
     #[unstable(feature = "read_initializer", issue = "42788")]
     #[inline]
     unsafe fn initializer(&self) -> Initializer {
@@ -19345,9 +19170,10 @@ pub trait Read {
     ///
     /// [`File`]s implement `Read`:
     ///
-    /// [`read()`]: Read::read
-    /// [`Ok(0)`]: Ok
-    /// [`File`]: crate::fs::File
+    /// [`read()`]: trait.Read.html#tymethod.read
+    /// [`Ok(0)`]: ../../std/result/enum.Result.html#variant.Ok
+    /// [`ErrorKind::Interrupted`]: ../../std/io/enum.ErrorKind.html#variant.Interrupted
+    /// [`File`]: ../fs/struct.File.html
     ///
     /// ```no_run
     /// use std::io;
@@ -19367,7 +19193,7 @@ pub trait Read {
     /// (See also the [`std::fs::read`] convenience function for reading from a
     /// file.)
     ///
-    /// [`std::fs::read`]: crate::fs::read
+    /// [`std::fs::read`]: ../fs/fn.read.html
     #[stable(feature = "rust1", since = "1.0.0")]
     fn read_to_end(&mut self, buf: &mut Vec<u8>) -> Result<usize> {
 }
@@ -19382,15 +19208,15 @@ pub trait Read {
     /// If the data in this stream is *not* valid UTF-8 then an error is
     /// returned and `buf` is unchanged.
     ///
-    /// See [`read_to_end`] for other error semantics.
+    /// See [`read_to_end`][readtoend] for other error semantics.
     ///
-    /// [`read_to_end`]: Read::read_to_end
+    /// [readtoend]: #method.read_to_end
     ///
     /// # Examples
     ///
-    /// [`File`]s implement `Read`:
+    /// [`File`][file]s implement `Read`:
     ///
-    /// [`File`]: crate::fs::File
+    /// [file]: ../fs/struct.File.html
     ///
     /// ```no_run
     /// use std::io;
@@ -19409,7 +19235,7 @@ pub trait Read {
     /// (See also the [`std::fs::read_to_string`] convenience function for
     /// reading from a file.)
     ///
-    /// [`std::fs::read_to_string`]: crate::fs::read_to_string
+    /// [`std::fs::read_to_string`]: ../fs/fn.read_to_string.html
     #[stable(feature = "rust1", since = "1.0.0")]
     fn read_to_string(&mut self, buf: &mut String) -> Result<usize> {
 }
@@ -19422,9 +19248,7 @@ pub trait Read {
     /// No guarantees are provided about the contents of `buf` when this
     /// function is called, implementations cannot rely on any property of the
     /// contents of `buf` being true. It is recommended that implementations
-    /// only write data to `buf` instead of reading its contents. The
-    /// documentation on [`read`] has a more detailed explanation on this
-    /// subject.
+    /// only write data to `buf` instead of reading its contents.
     ///
     /// # Errors
     ///
@@ -19447,8 +19271,9 @@ pub trait Read {
     ///
     /// [`File`]s implement `Read`:
     ///
-    /// [`read`]: Read::read
-    /// [`File`]: crate::fs::File
+    /// [`File`]: ../fs/struct.File.html
+    /// [`ErrorKind::Interrupted`]: ../../std/io/enum.ErrorKind.html#variant.Interrupted
+    /// [`ErrorKind::UnexpectedEof`]: ../../std/io/enum.ErrorKind.html#variant.UnexpectedEof
     ///
     /// ```no_run
     /// use std::io;
@@ -19475,9 +19300,9 @@ pub trait Read {
     ///
     /// # Examples
     ///
-    /// [`File`]s implement `Read`:
+    /// [`File`][file]s implement `Read`:
     ///
-    /// [`File`]: crate::fs::File
+    /// [file]: ../fs/struct.File.html
     ///
     /// ```no_run
     /// use std::io;
@@ -19518,11 +19343,16 @@ pub trait Read {
     ///
     /// # Examples
     ///
-    /// [`File`]s implement `Read`:
+    /// [`File`][file]s implement `Read`:
     ///
-    /// [`File`]: crate::fs::File
-    /// [`Result`]: crate::result::Result
-    /// [`io::Error`]: self::Error
+    /// [file]: ../fs/struct.File.html
+    /// [`Iterator`]: ../../std/iter/trait.Iterator.html
+    /// [`Result`]: ../../std/result/enum.Result.html
+    /// [`io::Error`]: ../../std/io/struct.Error.html
+    /// [`u8`]: ../../std/primitive.u8.html
+    /// [`Ok`]: ../../std/result/enum.Result.html#variant.Ok
+    /// [`Err`]: ../../std/result/enum.Result.html#variant.Err
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
     ///
     /// ```no_run
     /// use std::io;
@@ -19553,9 +19383,9 @@ pub trait Read {
     ///
     /// # Examples
     ///
-    /// [`File`]s implement `Read`:
+    /// [`File`][file]s implement `Read`:
     ///
-    /// [`File`]: crate::fs::File
+    /// [file]: ../fs/struct.File.html
     ///
     /// ```no_run
     /// use std::io;
@@ -19593,9 +19423,9 @@ pub trait Read {
     ///
     /// [`File`]s implement `Read`:
     ///
-    /// [`File`]: crate::fs::File
-    /// [`Ok(0)`]: Ok
-    /// [`read()`]: Read::read
+    /// [`File`]: ../fs/struct.File.html
+    /// [`Ok(0)`]: ../../std/result/enum.Result.html#variant.Ok
+    /// [`read()`]: trait.Read.html#tymethod.read
     ///
     /// ```no_run
     /// use std::io;
@@ -19629,12 +19459,6 @@ pub trait Read {
 #[stable(feature = "iovec", since = "1.36.0")]
 #[repr(transparent)]
 pub struct IoSliceMut<'a>(sys::io::IoSliceMut<'a>);
-
-#[stable(feature = "iovec-send-sync", since = "1.44.0")]
-unsafe impl<'a> Send for IoSliceMut<'a> {}
-
-#[stable(feature = "iovec-send-sync", since = "1.44.0")]
-unsafe impl<'a> Sync for IoSliceMut<'a> {}
 
 #[stable(feature = "iovec", since = "1.36.0")]
 impl<'a> fmt::Debug for IoSliceMut<'a> {
@@ -19713,15 +19537,8 @@ impl<'a> DerefMut for IoSliceMut<'a> {
 /// ABI compatible with the `iovec` type on Unix platforms and `WSABUF` on
 /// Windows.
 #[stable(feature = "iovec", since = "1.36.0")]
-#[derive(Copy, Clone)]
 #[repr(transparent)]
 pub struct IoSlice<'a>(sys::io::IoSlice<'a>);
-
-#[stable(feature = "iovec-send-sync", since = "1.44.0")]
-unsafe impl<'a> Send for IoSlice<'a> {}
-
-#[stable(feature = "iovec-send-sync", since = "1.44.0")]
-unsafe impl<'a> Sync for IoSlice<'a> {}
 
 #[stable(feature = "iovec", since = "1.36.0")]
 impl<'a> fmt::Debug for IoSlice<'a> {
@@ -19841,9 +19658,9 @@ impl Initializer {
 /// throughout [`std::io`] take and provide types which implement the `Write`
 /// trait.
 ///
-/// [`write`]: Write::write
-/// [`flush`]: Write::flush
-/// [`std::io`]: self
+/// [`write`]: #tymethod.write
+/// [`flush`]: #tymethod.flush
+/// [`std::io`]: index.html
 ///
 /// # Examples
 ///
@@ -19868,7 +19685,7 @@ impl Initializer {
 /// The trait also provides convenience methods like [`write_all`], which calls
 /// `write` in a loop until its entire input has been written.
 ///
-/// [`write_all`]: Write::write_all
+/// [`write_all`]: #method.write_all
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(spotlight)]
 pub trait Write {
@@ -19900,6 +19717,10 @@ pub trait Write {
     /// An error of the [`ErrorKind::Interrupted`] kind is non-fatal and the
     /// write operation should be retried if there is nothing else to do.
     ///
+    /// [`Err`]: ../../std/result/enum.Result.html#variant.Err
+    /// [`Ok(n)`]:  ../../std/result/enum.Result.html#variant.Ok
+    /// [`ErrorKind::Interrupted`]: ../../std/io/enum.ErrorKind.html#variant.Interrupted
+    ///
     /// # Examples
     ///
     /// ```no_run
@@ -19914,39 +19735,21 @@ pub trait Write {
     ///     Ok(())
     /// }
     /// ```
-    ///
-    /// [`Ok(n)`]: Ok
     #[stable(feature = "rust1", since = "1.0.0")]
     fn write(&mut self, buf: &[u8]) -> Result<usize>;
 
-    /// Like [`write`], except that it writes from a slice of buffers.
+    /// Like `write`, except that it writes from a slice of buffers.
     ///
     /// Data is copied from each buffer in order, with the final buffer
     /// read from possibly being only partially consumed. This method must
-    /// behave as a call to [`write`] with the buffers concatenated would.
+    /// behave as a call to `write` with the buffers concatenated would.
     ///
-    /// The default implementation calls [`write`] with either the first nonempty
+    /// The default implementation calls `write` with either the first nonempty
     /// buffer provided, or an empty one if none exists.
-    ///
-    /// [`write`]: Write::write
     #[stable(feature = "iovec", since = "1.36.0")]
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> Result<usize> {
         default_write_vectored(|b| self.write(b), bufs)
     }
-
-    /// Determines if this `Write`er has an efficient [`write_vectored`]
-    /// implementation.
-    ///
-    /// If a `Write`er does not override the default [`write_vectored`]
-    /// implementation, code using it may want to avoid the method all together
-    /// and coalesce writes into a single buffer for higher performance.
-    ///
-    /// The default implementation returns `false`.
-    ///
-    /// [`write_vectored`]: Write::write_vectored
-    #[unstable(feature = "can_vector", issue = "69941")]
-    fn is_write_vectored(&self) -> bool {
-}
 
     /// Flush this output stream, ensuring that all intermediately buffered
     /// contents reach their destination.
@@ -19983,14 +19786,13 @@ pub trait Write {
     /// not of [`ErrorKind::Interrupted`] kind generated from this method will be
     /// returned.
     ///
-    /// If the buffer contains no data, this will never call [`write`].
-    ///
     /// # Errors
     ///
     /// This function will return the first error of
     /// non-[`ErrorKind::Interrupted`] kind that [`write`] returns.
     ///
-    /// [`write`]: Write::write
+    /// [`ErrorKind::Interrupted`]: ../../std/io/enum.ErrorKind.html#variant.Interrupted
+    /// [`write`]: #tymethod.write
     ///
     /// # Examples
     ///
@@ -20009,71 +19811,23 @@ pub trait Write {
     fn write_all(&mut self, mut buf: &[u8]) -> Result<()> {
 }
 
-    /// Attempts to write multiple buffers into this writer.
-    ///
-    /// This method will continuously call [`write_vectored`] until there is no
-    /// more data to be written or an error of non-[`ErrorKind::Interrupted`]
-    /// kind is returned. This method will not return until all buffers have
-    /// been successfully written or such an error occurs. The first error that
-    /// is not of [`ErrorKind::Interrupted`] kind generated from this method
-    /// will be returned.
-    ///
-    /// If the buffer contains no data, this will never call [`write_vectored`].
-    ///
-    /// # Notes
-    ///
-    /// Unlike [`write_vectored`], this takes a *mutable* reference to
-    /// a slice of [`IoSlice`]s, not an immutable one. That's because we need to
-    /// modify the slice to keep track of the bytes already written.
-    ///
-    /// Once this function returns, the contents of `bufs` are unspecified, as
-    /// this depends on how many calls to [`write_vectored`] were necessary. It is
-    /// best to understand this function as taking ownership of `bufs` and to
-    /// not use `bufs` afterwards. The underlying buffers, to which the
-    /// [`IoSlice`]s point (but not the [`IoSlice`]s themselves), are unchanged and
-    /// can be reused.
-    ///
-    /// [`write_vectored`]: Write::write_vectored
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(write_all_vectored)]
-    /// # fn main() -> std::io::Result<()> {
-    ///
-    /// use std::io::{Write, IoSlice};
-    ///
-    /// let mut writer = Vec::new();
-    /// let bufs = &mut [
-    ///     IoSlice::new(&[1]),
-    ///     IoSlice::new(&[2, 3]),
-    ///     IoSlice::new(&[4, 5, 6]),
-    /// ];
-    ///
-    /// writer.write_all_vectored(bufs)?;
-    /// // Note: the contents of `bufs` is now undefined, see the Notes section.
-    ///
-    /// assert_eq!(writer, &[1, 2, 3, 4, 5, 6]);
-    /// # Ok(()) }
-    /// ```
-    #[unstable(feature = "write_all_vectored", issue = "70436")]
-    fn write_all_vectored(&mut self, mut bufs: &mut [IoSlice<'_>]) -> Result<()> {
-}
-
     /// Writes a formatted string into this writer, returning any error
     /// encountered.
     ///
     /// This method is primarily used to interface with the
-    /// [`format_args!()`] macro, but it is rare that this should
-    /// explicitly be called. The [`write!()`] macro should be favored to
+    /// [`format_args!`][formatargs] macro, but it is rare that this should
+    /// explicitly be called. The [`write!`][write] macro should be favored to
     /// invoke this method instead.
     ///
-    /// This function internally uses the [`write_all`] method on
+    /// [formatargs]: ../macro.format_args.html
+    /// [write]: ../macro.write.html
+    ///
+    /// This function internally uses the [`write_all`][writeall] method on
     /// this trait and hence will continuously write data so long as no errors
     /// are received. This also means that partial writes are not indicated in
     /// this signature.
     ///
-    /// [`write_all`]: Write::write_all
+    /// [writeall]: #method.write_all
     ///
     /// # Errors
     ///
@@ -20136,9 +19890,9 @@ pub trait Write {
 ///
 /// # Examples
 ///
-/// [`File`]s implement `Seek`:
+/// [`File`][file]s implement `Seek`:
 ///
-/// [`File`]: crate::fs::File
+/// [file]: ../fs/struct.File.html
 ///
 /// ```no_run
 /// use std::io;
@@ -20168,6 +19922,8 @@ pub trait Seek {
     /// # Errors
     ///
     /// Seeking to a negative offset is considered an error.
+    ///
+    /// [`SeekFrom::Start`]: enum.SeekFrom.html#variant.Start
     #[stable(feature = "rust1", since = "1.0.0")]
     fn seek(&mut self, pos: SeekFrom) -> Result<u64>;
 
@@ -20187,6 +19943,7 @@ pub trait Seek {
     /// Note that length of a stream can change over time (for example, when
     /// data is appended to a file). So calling this method multiple times does
     /// not necessarily return the same length each time.
+    ///
     ///
     /// # Example
     ///
@@ -20212,6 +19969,7 @@ pub trait Seek {
     /// Returns the current seek position from the start of the stream.
     ///
     /// This is equivalent to `self.seek(SeekFrom::Current(0))`.
+    ///
     ///
     /// # Example
     ///
@@ -20241,6 +19999,8 @@ pub trait Seek {
 /// Enumeration of possible methods to seek within an I/O object.
 ///
 /// It is used by the [`Seek`] trait.
+///
+/// [`Seek`]: trait.Seek.html
 #[derive(Copy, PartialEq, Eq, Clone, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum SeekFrom {
@@ -20295,9 +20055,11 @@ fn read_until<R: BufRead + ?Sized>(r: &mut R, delim: u8, buf: &mut Vec<u8>) -> R
 /// For example, [`File`] implements [`Read`], but not `BufRead`.
 /// [`BufReader`] to the rescue!
 ///
-/// [`File`]: crate::fs::File
-/// [`read_line`]: BufRead::read_line
-/// [`lines`]: BufRead::lines
+/// [`BufReader`]: struct.BufReader.html
+/// [`File`]: ../fs/struct.File.html
+/// [`read_line`]: #method.read_line
+/// [`lines`]: #method.lines
+/// [`Read`]: trait.Read.html
 ///
 /// ```no_run
 /// use std::io::{self, BufReader};
@@ -20315,6 +20077,7 @@ fn read_until<R: BufRead + ?Sized>(r: &mut R, delim: u8, buf: &mut Vec<u8>) -> R
 ///     Ok(())
 /// }
 /// ```
+///
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait BufRead: Read {
     /// Returns the contents of the internal buffer, filling it with more data
@@ -20327,7 +20090,7 @@ pub trait BufRead: Read {
     /// be called with the number of bytes that are consumed from this buffer to
     /// ensure that the bytes are never returned twice.
     ///
-    /// [`consume`]: BufRead::consume
+    /// [`consume`]: #tymethod.consume
     ///
     /// An empty buffer returned indicates that the stream has reached EOF.
     ///
@@ -20377,7 +20140,7 @@ pub trait BufRead: Read {
     /// Since `consume()` is meant to be used with [`fill_buf`],
     /// that method's example includes an example of `consume()`.
     ///
-    /// [`fill_buf`]: BufRead::fill_buf
+    /// [`fill_buf`]: #tymethod.fill_buf
     #[stable(feature = "rust1", since = "1.0.0")]
     fn consume(&mut self, amt: usize);
 
@@ -20389,10 +20152,6 @@ pub trait BufRead: Read {
     ///
     /// If successful, this function will return the total number of bytes read.
     ///
-    /// This function is blocking and should be used carefully: it is possible for
-    /// an attacker to continuously send bytes without ever sending the delimiter
-    /// or EOF.
-    ///
     /// # Errors
     ///
     /// This function will ignore all instances of [`ErrorKind::Interrupted`] and
@@ -20401,13 +20160,16 @@ pub trait BufRead: Read {
     /// If an I/O error is encountered then all bytes read so far will be
     /// present in `buf` and its length will have been adjusted appropriately.
     ///
-    /// [`fill_buf`]: BufRead::fill_buf
+    /// [`fill_buf`]: #tymethod.fill_buf
+    /// [`ErrorKind::Interrupted`]: enum.ErrorKind.html#variant.Interrupted
     ///
     /// # Examples
     ///
     /// [`std::io::Cursor`][`Cursor`] is a type that implements `BufRead`. In
     /// this example, we use [`Cursor`] to read all the bytes in a byte slice
     /// in hyphen delimited segments:
+    ///
+    /// [`Cursor`]: struct.Cursor.html
     ///
     /// ```
     /// use std::io::{self, BufRead};
@@ -20439,23 +20201,17 @@ pub trait BufRead: Read {
     fn read_until(&mut self, byte: u8, buf: &mut Vec<u8>) -> Result<usize> {
 }
 
-    /// Read all bytes until a newline (the `0xA` byte) is reached, and append
+    /// Read all bytes until a newline (the 0xA byte) is reached, and append
     /// them to the provided buffer.
     ///
     /// This function will read bytes from the underlying stream until the
-    /// newline delimiter (the `0xA` byte) or EOF is found. Once found, all bytes
+    /// newline delimiter (the 0xA byte) or EOF is found. Once found, all bytes
     /// up to, and including, the delimiter (if found) will be appended to
     /// `buf`.
     ///
     /// If successful, this function will return the total number of bytes read.
     ///
-    /// If this function returns [`Ok(0)`], the stream has reached EOF.
-    ///
-    /// This function is blocking and should be used carefully: it is possible for
-    /// an attacker to continuously send bytes without ever sending a newline
-    /// or EOF.
-    ///
-    /// [`Ok(0)`]: Ok
+    /// If this function returns `Ok(0)`, the stream has reached EOF.
     ///
     /// # Errors
     ///
@@ -20464,12 +20220,14 @@ pub trait BufRead: Read {
     /// error is encountered then `buf` may contain some bytes already read in
     /// the event that all data read so far was valid UTF-8.
     ///
-    /// [`read_until`]: BufRead::read_until
+    /// [`read_until`]: #method.read_until
     ///
     /// # Examples
     ///
     /// [`std::io::Cursor`][`Cursor`] is a type that implements `BufRead`. In
     /// this example, we use [`Cursor`] to read all the lines in a byte slice:
+    ///
+    /// [`Cursor`]: struct.Cursor.html
     ///
     /// ```
     /// use std::io::{self, BufRead};
@@ -20511,15 +20269,17 @@ pub trait BufRead: Read {
     /// This function will yield errors whenever [`read_until`] would have
     /// also yielded an error.
     ///
-    /// [`io::Result`]: self::Result
-    /// [`Vec<u8>`]: Vec
-    /// [`read_until`]: BufRead::read_until
+    /// [`io::Result`]: type.Result.html
+    /// [`Vec<u8>`]: ../vec/struct.Vec.html
+    /// [`read_until`]: #method.read_until
     ///
     /// # Examples
     ///
     /// [`std::io::Cursor`][`Cursor`] is a type that implements `BufRead`. In
     /// this example, we use [`Cursor`] to iterate over all hyphen delimited
     /// segments in a byte slice
+    ///
+    /// [`Cursor`]: struct.Cursor.html
     ///
     /// ```
     /// use std::io::{self, BufRead};
@@ -20543,15 +20303,18 @@ pub trait BufRead: Read {
     ///
     /// The iterator returned from this function will yield instances of
     /// [`io::Result`]`<`[`String`]`>`. Each string returned will *not* have a newline
-    /// byte (the `0xA` byte) or `CRLF` (`0xD`, `0xA` bytes) at the end.
+    /// byte (the 0xA byte) or CRLF (0xD, 0xA bytes) at the end.
     ///
-    /// [`io::Result`]: self::Result
+    /// [`io::Result`]: type.Result.html
+    /// [`String`]: ../string/struct.String.html
     ///
     /// # Examples
     ///
     /// [`std::io::Cursor`][`Cursor`] is a type that implements `BufRead`. In
     /// this example, we use [`Cursor`] to iterate over all the lines in a byte
     /// slice.
+    ///
+    /// [`Cursor`]: struct.Cursor.html
     ///
     /// ```
     /// use std::io::{self, BufRead};
@@ -20568,6 +20331,8 @@ pub trait BufRead: Read {
     /// # Errors
     ///
     /// Each line of the iterator has the same error semantics as [`BufRead::read_line`].
+    ///
+    /// [`BufRead::read_line`]: trait.BufRead.html#method.read_line
     #[stable(feature = "rust1", since = "1.0.0")]
     fn lines(self) -> Lines<Self>
     where
@@ -20581,7 +20346,7 @@ pub trait BufRead: Read {
 /// This struct is generally created by calling [`chain`] on a reader.
 /// Please see the documentation of [`chain`] for more details.
 ///
-/// [`chain`]: Read::chain
+/// [`chain`]: trait.Read.html#method.chain
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Chain<T, U> {
     first: T,
@@ -20693,7 +20458,7 @@ impl<T: BufRead, U: BufRead> BufRead for Chain<T, U> {
 /// This struct is generally created by calling [`take`] on a reader.
 /// Please see the documentation of [`take`] for more details.
 ///
-/// [`take`]: Read::take
+/// [`take`]: trait.Read.html#method.take
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug)]
 pub struct Take<T> {
@@ -20709,6 +20474,8 @@ impl<T> Take<T> {
     ///
     /// This instance may reach `EOF` after reading fewer bytes than indicated by
     /// this method if the underlying [`Read`] instance reaches EOF.
+    ///
+    /// [`Read`]: ../../std/io/trait.Read.html
     ///
     /// # Examples
     ///
@@ -20861,7 +20628,7 @@ impl<T: BufRead> BufRead for Take<T> {
 /// This struct is generally created by calling [`bytes`] on a reader.
 /// Please see the documentation of [`bytes`] for more details.
 ///
-/// [`bytes`]: Read::bytes
+/// [`bytes`]: trait.Read.html#method.bytes
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug)]
 pub struct Bytes<R> {
@@ -20882,7 +20649,7 @@ impl<R: Read> Iterator for Bytes<R> {
 /// This struct is generally created by calling [`split`] on a `BufRead`.
 /// Please see the documentation of [`split`] for more details.
 ///
-/// [`split`]: BufRead::split
+/// [`split`]: trait.BufRead.html#method.split
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug)]
 pub struct Split<B> {
@@ -20903,7 +20670,7 @@ impl<B: BufRead> Iterator for Split<B> {
 /// This struct is generally created by calling [`lines`] on a `BufRead`.
 /// Please see the documentation of [`lines`] for more details.
 ///
-/// [`lines`]: BufRead::lines
+/// [`lines`]: trait.BufRead.html#method.lines
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug)]
 pub struct Lines<B> {
@@ -20939,6 +20706,17 @@ pub mod net {
 //! * [`ToSocketAddrs`] is a trait that used for generic address resolution when interacting
 //!   with networking objects like [`TcpListener`], [`TcpStream`] or [`UdpSocket`]
 //! * Other types are return or parameter types for various methods in this module
+//!
+//! [`IpAddr`]: ../../std/net/enum.IpAddr.html
+//! [`Ipv4Addr`]: ../../std/net/struct.Ipv4Addr.html
+//! [`Ipv6Addr`]: ../../std/net/struct.Ipv6Addr.html
+//! [`SocketAddr`]: ../../std/net/enum.SocketAddr.html
+//! [`SocketAddrV4`]: ../../std/net/struct.SocketAddrV4.html
+//! [`SocketAddrV6`]: ../../std/net/struct.SocketAddrV6.html
+//! [`TcpListener`]: ../../std/net/struct.TcpListener.html
+//! [`TcpStream`]: ../../std/net/struct.TcpStream.html
+//! [`ToSocketAddrs`]: ../../std/net/trait.ToSocketAddrs.html
+//! [`UdpSocket`]: ../../std/net/struct.UdpSocket.html
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -20956,11 +20734,10 @@ pub use self::tcp::{Incoming, TcpListener, TcpStream};
 pub use self::udp::UdpSocket;
 
 mod addr {
-use crate::cmp::Ordering;
 use crate::convert::TryInto;
 use crate::fmt;
 use crate::hash;
-use crate::io::{self, Write};
+use crate::io;
 use crate::iter;
 use crate::mem;
 use crate::net::{htons, ntohs, IpAddr, Ipv4Addr, Ipv6Addr};
@@ -20980,7 +20757,9 @@ use crate::vec;
 /// The size of a `SocketAddr` instance may vary depending on the target operating
 /// system.
 ///
-/// [IP address]: IpAddr
+/// [IP address]: ../../std/net/enum.IpAddr.html
+/// [`SocketAddrV4`]: ../../std/net/struct.SocketAddrV4.html
+/// [`SocketAddrV6`]: ../../std/net/struct.SocketAddrV6.html
 ///
 /// # Examples
 ///
@@ -20993,7 +20772,7 @@ use crate::vec;
 /// assert_eq!(socket.port(), 8080);
 /// assert_eq!(socket.is_ipv4(), true);
 /// ```
-#[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum SocketAddr {
     /// An IPv4 socket address.
@@ -21006,7 +20785,7 @@ pub enum SocketAddr {
 
 /// An IPv4 socket address.
 ///
-/// IPv4 socket addresses consist of an [`IPv4` address] and a 16-bit port number, as
+/// IPv4 socket addresses consist of an [IPv4 address] and a 16-bit port number, as
 /// stated in [IETF RFC 793].
 ///
 /// See [`SocketAddr`] for a type encompassing both IPv4 and IPv6 socket addresses.
@@ -21015,7 +20794,8 @@ pub enum SocketAddr {
 /// system.
 ///
 /// [IETF RFC 793]: https://tools.ietf.org/html/rfc793
-/// [`IPv4` address]: Ipv4Addr
+/// [IPv4 address]: ../../std/net/struct.Ipv4Addr.html
+/// [`SocketAddr`]: ../../std/net/enum.SocketAddr.html
 ///
 /// # Examples
 ///
@@ -21036,7 +20816,7 @@ pub struct SocketAddrV4 {
 
 /// An IPv6 socket address.
 ///
-/// IPv6 socket addresses consist of an [`IPv6` address], a 16-bit port number, as well
+/// IPv6 socket addresses consist of an [Ipv6 address], a 16-bit port number, as well
 /// as fields containing the traffic class, the flow label, and a scope identifier
 /// (see [IETF RFC 2553, Section 3.3] for more details).
 ///
@@ -21046,7 +20826,8 @@ pub struct SocketAddrV4 {
 /// system.
 ///
 /// [IETF RFC 2553, Section 3.3]: https://tools.ietf.org/html/rfc2553#section-3.3
-/// [`IPv6` address]: Ipv6Addr
+/// [IPv6 address]: ../../std/net/struct.Ipv6Addr.html
+/// [`SocketAddr`]: ../../std/net/enum.SocketAddr.html
 ///
 /// # Examples
 ///
@@ -21068,7 +20849,7 @@ pub struct SocketAddrV6 {
 impl SocketAddr {
     /// Creates a new socket address from an [IP address] and a port number.
     ///
-    /// [IP address]: IpAddr
+    /// [IP address]: ../../std/net/enum.IpAddr.html
     ///
     /// # Examples
     ///
@@ -21142,12 +20923,12 @@ impl SocketAddr {
 }
 
     /// Returns [`true`] if the [IP address] in this `SocketAddr` is an
-    /// [`IPv4` address], and [`false`] otherwise.
+    /// [IPv4 address], and [`false`] otherwise.
     ///
-    /// [IP address]: IpAddr
-    /// [`IPv4` address]: IpAddr::V4
-    /// [`false`]: ../../std/primitive.bool.html
     /// [`true`]: ../../std/primitive.bool.html
+    /// [`false`]: ../../std/primitive.bool.html
+    /// [IP address]: ../../std/net/enum.IpAddr.html
+    /// [IPv4 address]: ../../std/net/enum.IpAddr.html#variant.V4
     ///
     /// # Examples
     ///
@@ -21163,12 +20944,12 @@ impl SocketAddr {
 }
 
     /// Returns [`true`] if the [IP address] in this `SocketAddr` is an
-    /// [`IPv6` address], and [`false`] otherwise.
+    /// [IPv6 address], and [`false`] otherwise.
     ///
-    /// [IP address]: IpAddr
-    /// [`IPv6` address]: IpAddr::V6
-    /// [`false`]: ../../std/primitive.bool.html
     /// [`true`]: ../../std/primitive.bool.html
+    /// [`false`]: ../../std/primitive.bool.html
+    /// [IP address]: ../../std/net/enum.IpAddr.html
+    /// [IPv6 address]: ../../std/net/enum.IpAddr.html#variant.V6
     ///
     /// # Examples
     ///
@@ -21185,9 +20966,9 @@ impl SocketAddr {
 }
 
 impl SocketAddrV4 {
-    /// Creates a new socket address from an [`IPv4` address] and a port number.
+    /// Creates a new socket address from an [IPv4 address] and a port number.
     ///
-    /// [`IPv4` address]: Ipv4Addr
+    /// [IPv4 address]: ../../std/net/struct.Ipv4Addr.html
     ///
     /// # Examples
     ///
@@ -21260,14 +21041,14 @@ impl SocketAddrV4 {
 }
 
 impl SocketAddrV6 {
-    /// Creates a new socket address from an [`IPv6` address], a 16-bit port number,
+    /// Creates a new socket address from an [IPv6 address], a 16-bit port number,
     /// and the `flowinfo` and `scope_id` fields.
     ///
     /// For more information on the meaning and layout of the `flowinfo` and `scope_id`
     /// parameters, see [IETF RFC 2553, Section 3.3].
     ///
     /// [IETF RFC 2553, Section 3.3]: https://tools.ietf.org/html/rfc2553#section-3.3
-    /// [`IPv6` address]: Ipv6Addr
+    /// [IPv6 address]: ../../std/net/struct.Ipv6Addr.html
     ///
     /// # Examples
     ///
@@ -21364,7 +21145,9 @@ impl SocketAddrV6 {
 
     /// Changes the flow information associated with this socket address.
     ///
-    /// See [`SocketAddrV6::flowinfo`]'s documentation for more details.
+    /// See the [`flowinfo`] method's documentation for more details.
+    ///
+    /// [`flowinfo`]: #method.flowinfo
     ///
     /// # Examples
     ///
@@ -21400,7 +21183,9 @@ impl SocketAddrV6 {
 
     /// Changes the scope ID associated with this socket address.
     ///
-    /// See [`SocketAddrV6::scope_id`]'s documentation for more details.
+    /// See the [`scope_id`] method's documentation for more details.
+    ///
+    /// [`scope_id`]: #method.scope_id
     ///
     /// # Examples
     ///
@@ -21429,6 +21214,9 @@ impl FromInner<c::sockaddr_in6> for SocketAddrV6 {
 #[stable(feature = "ip_from_ip", since = "1.16.0")]
 impl From<SocketAddrV4> for SocketAddr {
     /// Converts a [`SocketAddrV4`] into a [`SocketAddr::V4`].
+    ///
+    /// [`SocketAddrV4`]: ../../std/net/struct.SocketAddrV4.html
+    /// [`SocketAddr::V4`]: ../../std/net/enum.SocketAddr.html#variant.V4
     fn from(sock4: SocketAddrV4) -> SocketAddr {
 }
 }
@@ -21436,6 +21224,9 @@ impl From<SocketAddrV4> for SocketAddr {
 #[stable(feature = "ip_from_ip", since = "1.16.0")]
 impl From<SocketAddrV6> for SocketAddr {
     /// Converts a [`SocketAddrV6`] into a [`SocketAddr::V6`].
+    ///
+    /// [`SocketAddrV6`]: ../../std/net/struct.SocketAddrV6.html
+    /// [`SocketAddr::V6`]: ../../std/net/enum.SocketAddr.html#variant.V6
     fn from(sock6: SocketAddrV6) -> SocketAddr {
 }
 }
@@ -21448,6 +21239,13 @@ impl<I: Into<IpAddr>> From<(I, u16)> for SocketAddr {
     /// and creates a [`SocketAddr::V6`] for a [`IpAddr::V6`].
     ///
     /// `u16` is treated as port of the newly created [`SocketAddr`].
+    ///
+    /// [`IpAddr`]: ../../std/net/enum.IpAddr.html
+    /// [`IpAddr::V4`]: ../../std/net/enum.IpAddr.html#variant.V4
+    /// [`IpAddr::V6`]: ../../std/net/enum.IpAddr.html#variant.V6
+    /// [`SocketAddr`]: ../../std/net/enum.SocketAddr.html
+    /// [`SocketAddr::V4`]: ../../std/net/enum.SocketAddr.html#variant.V4
+    /// [`SocketAddr::V6`]: ../../std/net/enum.SocketAddr.html#variant.V6
     fn from(pieces: (I, u16)) -> SocketAddr {
 }
 }
@@ -21460,12 +21258,6 @@ impl<'a> IntoInner<(*const c::sockaddr, c::socklen_t)> for &'a SocketAddr {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for SocketAddr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-}
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl fmt::Debug for SocketAddr {
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
 }
 }
 
@@ -21519,30 +21311,6 @@ impl Eq for SocketAddrV4 {}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Eq for SocketAddrV6 {}
 
-#[stable(feature = "socketaddr_ordering", since = "1.45.0")]
-impl PartialOrd for SocketAddrV4 {
-    fn partial_cmp(&self, other: &SocketAddrV4) -> Option<Ordering> {
-}
-}
-
-#[stable(feature = "socketaddr_ordering", since = "1.45.0")]
-impl PartialOrd for SocketAddrV6 {
-    fn partial_cmp(&self, other: &SocketAddrV6) -> Option<Ordering> {
-}
-}
-
-#[stable(feature = "socketaddr_ordering", since = "1.45.0")]
-impl Ord for SocketAddrV4 {
-    fn cmp(&self, other: &SocketAddrV4) -> Ordering {
-}
-}
-
-#[stable(feature = "socketaddr_ordering", since = "1.45.0")]
-impl Ord for SocketAddrV6 {
-    fn cmp(&self, other: &SocketAddrV6) -> Ordering {
-}
-}
-
 #[stable(feature = "rust1", since = "1.0.0")]
 impl hash::Hash for SocketAddrV4 {
     fn hash<H: hash::Hasher>(&self, s: &mut H) {
@@ -21586,11 +21354,18 @@ impl hash::Hash for SocketAddrV6 {
 /// Addresses returned by the operating system that are not IP addresses are
 /// silently ignored.
 ///
-/// [`FromStr`]: crate::str::FromStr
-/// [`&str`]: str
-/// [`TcpStream`]: crate::net::TcpStream
-/// [`to_socket_addrs`]: ToSocketAddrs::to_socket_addrs
-/// [`UdpSocket`]: crate::net::UdpSocket
+/// [`FromStr`]: ../../std/str/trait.FromStr.html
+/// [`IpAddr`]: ../../std/net/enum.IpAddr.html
+/// [`Ipv4Addr`]: ../../std/net/struct.Ipv4Addr.html
+/// [`Ipv6Addr`]: ../../std/net/struct.Ipv6Addr.html
+/// [`SocketAddr`]: ../../std/net/enum.SocketAddr.html
+/// [`SocketAddrV4`]: ../../std/net/struct.SocketAddrV4.html
+/// [`SocketAddrV6`]: ../../std/net/struct.SocketAddrV6.html
+/// [`&str`]: ../../std/primitive.str.html
+/// [`TcpStream`]: ../../std/net/struct.TcpStream.html
+/// [`to_socket_addrs`]: #tymethod.to_socket_addrs
+/// [`UdpSocket`]: ../../std/net/struct.UdpSocket.html
+/// [`u16`]: ../../std/primitive.u16.html
 ///
 /// # Examples
 ///
@@ -21661,7 +21436,7 @@ impl hash::Hash for SocketAddrV6 {
 /// let stream = TcpStream::connect((Ipv4Addr::new(127, 0, 0, 1), 443));
 /// ```
 ///
-/// [`TcpStream::connect`]: crate::net::TcpStream::connect
+/// [`TcpStream::connect`]: ../../std/net/struct.TcpStream.html#method.connect
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait ToSocketAddrs {
     /// Returned iterator over socket addresses which this type may correspond
@@ -21732,13 +21507,6 @@ impl ToSocketAddrs for (&str, u16) {
 }
 }
 
-#[stable(feature = "string_u16_to_socket_addrs", since = "1.46.0")]
-impl ToSocketAddrs for (String, u16) {
-    type Iter = vec::IntoIter<SocketAddr>;
-    fn to_socket_addrs(&self) -> io::Result<vec::IntoIter<SocketAddr>> {
-}
-}
-
 // accepts strings like 'localhost:12345'
 #[stable(feature = "rust1", since = "1.0.0")]
 impl ToSocketAddrs for str {
@@ -21790,8 +21558,10 @@ mod tests {
     fn to_socket_addr_string() {
 }
 
+    // FIXME: figure out why this fails on openbsd and fix it
     #[test]
-    fn bind_udp_socket_bad() {
+    #[cfg(not(any(windows, target_os = "openbsd")))]
+    fn to_socket_addr_str_bad() {
 }
 
     #[test]
@@ -21817,18 +21587,6 @@ mod tests {
     #[test]
     fn is_v6() {
 }
-
-    #[test]
-    fn socket_v4_to_str() {
-}
-
-    #[test]
-    fn socket_v6_to_str() {
-}
-
-    #[test]
-    fn compare() {
-}
 }
 }
 mod ip {
@@ -21841,12 +21599,11 @@ mod ip {
 )]
 
 use crate::cmp::Ordering;
-use crate::fmt::{self, Write as FmtWrite};
+use crate::fmt;
 use crate::hash;
-use crate::io::Write as IoWrite;
-use crate::mem::transmute;
+use crate::io::Write;
 use crate::sys::net::netc as c;
-use crate::sys_common::{AsInner, FromInner, IntoInner};
+use crate::sys_common::{AsInner, FromInner};
 
 /// An IP address, either IPv4 or IPv6.
 ///
@@ -21855,6 +21612,9 @@ use crate::sys_common::{AsInner, FromInner, IntoInner};
 ///
 /// The size of an `IpAddr` instance may vary depending on the target operating
 /// system.
+///
+/// [`Ipv4Addr`]: ../../std/net/struct.Ipv4Addr.html
+/// [`Ipv6Addr`]: ../../std/net/struct.Ipv6Addr.html
 ///
 /// # Examples
 ///
@@ -21871,7 +21631,7 @@ use crate::sys_common::{AsInner, FromInner, IntoInner};
 /// assert_eq!(localhost_v4.is_ipv4(), true);
 /// ```
 #[stable(feature = "ip_addr", since = "1.7.0")]
-#[derive(Copy, Clone, Eq, PartialEq, Hash, PartialOrd, Ord)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Hash, PartialOrd, Ord)]
 pub enum IpAddr {
     /// An IPv4 address.
     #[stable(feature = "ip_addr", since = "1.7.0")]
@@ -21892,13 +21652,14 @@ pub enum IpAddr {
 /// system.
 ///
 /// [IETF RFC 791]: https://tools.ietf.org/html/rfc791
+/// [`IpAddr`]: ../../std/net/enum.IpAddr.html
 ///
 /// # Textual representation
 ///
 /// `Ipv4Addr` provides a [`FromStr`] implementation. The four octets are in decimal
 /// notation, divided by `.` (this is called "dot-decimal notation").
 ///
-/// [`FromStr`]: crate::str::FromStr
+/// [`FromStr`]: ../../std/str/trait.FromStr.html
 ///
 /// # Examples
 ///
@@ -21926,6 +21687,7 @@ pub struct Ipv4Addr {
 /// system.
 ///
 /// [IETF RFC 4291]: https://tools.ietf.org/html/rfc4291
+/// [`IpAddr`]: ../../std/net/enum.IpAddr.html
 ///
 /// # Textual representation
 ///
@@ -21934,7 +21696,7 @@ pub struct Ipv4Addr {
 /// notation, and segments are separated by `:`. For more information, see
 /// [IETF RFC 5952].
 ///
-/// [`FromStr`]: crate::str::FromStr
+/// [`FromStr`]: ../../std/str/trait.FromStr.html
 /// [IETF RFC 5952]: https://tools.ietf.org/html/rfc5952
 ///
 /// # Examples
@@ -21967,9 +21729,11 @@ pub enum Ipv6MulticastScope {
 impl IpAddr {
     /// Returns [`true`] for the special 'unspecified' address.
     ///
-    /// See the documentation for [`Ipv4Addr::is_unspecified()`] and
-    /// [`Ipv6Addr::is_unspecified()`] for more details.
+    /// See the documentation for [`Ipv4Addr::is_unspecified`][IPv4] and
+    /// [`Ipv6Addr::is_unspecified`][IPv6] for more details.
     ///
+    /// [IPv4]: ../../std/net/struct.Ipv4Addr.html#method.is_unspecified
+    /// [IPv6]: ../../std/net/struct.Ipv6Addr.html#method.is_unspecified
     /// [`true`]: ../../std/primitive.bool.html
     ///
     /// # Examples
@@ -21986,9 +21750,11 @@ impl IpAddr {
 
     /// Returns [`true`] if this is a loopback address.
     ///
-    /// See the documentation for [`Ipv4Addr::is_loopback()`] and
-    /// [`Ipv6Addr::is_loopback()`] for more details.
+    /// See the documentation for [`Ipv4Addr::is_loopback`][IPv4] and
+    /// [`Ipv6Addr::is_loopback`][IPv6] for more details.
     ///
+    /// [IPv4]: ../../std/net/struct.Ipv4Addr.html#method.is_loopback
+    /// [IPv6]: ../../std/net/struct.Ipv6Addr.html#method.is_loopback
     /// [`true`]: ../../std/primitive.bool.html
     ///
     /// # Examples
@@ -22005,9 +21771,11 @@ impl IpAddr {
 
     /// Returns [`true`] if the address appears to be globally routable.
     ///
-    /// See the documentation for [`Ipv4Addr::is_global()`] and
-    /// [`Ipv6Addr::is_global()`] for more details.
+    /// See the documentation for [`Ipv4Addr::is_global`][IPv4] and
+    /// [`Ipv6Addr::is_global`][IPv6] for more details.
     ///
+    /// [IPv4]: ../../std/net/struct.Ipv4Addr.html#method.is_global
+    /// [IPv6]: ../../std/net/struct.Ipv6Addr.html#method.is_global
     /// [`true`]: ../../std/primitive.bool.html
     ///
     /// # Examples
@@ -22025,9 +21793,11 @@ impl IpAddr {
 
     /// Returns [`true`] if this is a multicast address.
     ///
-    /// See the documentation for [`Ipv4Addr::is_multicast()`] and
-    /// [`Ipv6Addr::is_multicast()`] for more details.
+    /// See the documentation for [`Ipv4Addr::is_multicast`][IPv4] and
+    /// [`Ipv6Addr::is_multicast`][IPv6] for more details.
     ///
+    /// [IPv4]: ../../std/net/struct.Ipv4Addr.html#method.is_multicast
+    /// [IPv6]: ../../std/net/struct.Ipv6Addr.html#method.is_multicast
     /// [`true`]: ../../std/primitive.bool.html
     ///
     /// # Examples
@@ -22044,9 +21814,11 @@ impl IpAddr {
 
     /// Returns [`true`] if this address is in a range designated for documentation.
     ///
-    /// See the documentation for [`Ipv4Addr::is_documentation()`] and
-    /// [`Ipv6Addr::is_documentation()`] for more details.
+    /// See the documentation for [`Ipv4Addr::is_documentation`][IPv4] and
+    /// [`Ipv6Addr::is_documentation`][IPv6] for more details.
     ///
+    /// [IPv4]: ../../std/net/struct.Ipv4Addr.html#method.is_documentation
+    /// [IPv6]: ../../std/net/struct.Ipv6Addr.html#method.is_documentation
     /// [`true`]: ../../std/primitive.bool.html
     ///
     /// # Examples
@@ -22065,12 +21837,11 @@ impl IpAddr {
     pub fn is_documentation(&self) -> bool {
 }
 
-    /// Returns [`true`] if this address is an [`IPv4` address], and [`false`]
-    /// otherwise.
+    /// Returns [`true`] if this address is an [IPv4 address], and [`false`] otherwise.
     ///
     /// [`true`]: ../../std/primitive.bool.html
     /// [`false`]: ../../std/primitive.bool.html
-    /// [`IPv4` address]: IpAddr::V4
+    /// [IPv4 address]: #variant.V4
     ///
     /// # Examples
     ///
@@ -22084,12 +21855,11 @@ impl IpAddr {
     pub fn is_ipv4(&self) -> bool {
 }
 
-    /// Returns [`true`] if this address is an [`IPv6` address], and [`false`]
-    /// otherwise.
+    /// Returns [`true`] if this address is an [IPv6 address], and [`false`] otherwise.
     ///
     /// [`true`]: ../../std/primitive.bool.html
     /// [`false`]: ../../std/primitive.bool.html
-    /// [`IPv6` address]: IpAddr::V6
+    /// [IPv6 address]: #variant.V6
     ///
     /// # Examples
     ///
@@ -22179,8 +21949,8 @@ impl Ipv4Addr {
     /// This property is defined in _UNIX Network Programming, Second Edition_,
     /// W. Richard Stevens, p. 891; see also [ip7].
     ///
-    /// [`true`]: ../../std/primitive.bool.html
     /// [ip7]: http://man7.org/linux/man-pages/man7/ip.7.html
+    /// [`true`]: ../../std/primitive.bool.html
     ///
     /// # Examples
     ///
@@ -22199,8 +21969,8 @@ impl Ipv4Addr {
     ///
     /// This property is defined by [IETF RFC 1122].
     ///
-    /// [`true`]: ../../std/primitive.bool.html
     /// [IETF RFC 1122]: https://tools.ietf.org/html/rfc1122
+    /// [`true`]: ../../std/primitive.bool.html
     ///
     /// # Examples
     ///
@@ -22222,8 +21992,8 @@ impl Ipv4Addr {
     ///  - 172.16.0.0/12
     ///  - 192.168.0.0/16
     ///
-    /// [`true`]: ../../std/primitive.bool.html
     /// [IETF RFC 1918]: https://tools.ietf.org/html/rfc1918
+    /// [`true`]: ../../std/primitive.bool.html
     ///
     /// # Examples
     ///
@@ -22246,8 +22016,8 @@ impl Ipv4Addr {
     ///
     /// This property is defined by [IETF RFC 3927].
     ///
-    /// [`true`]: ../../std/primitive.bool.html
     /// [IETF RFC 3927]: https://tools.ietf.org/html/rfc3927
+    /// [`true`]: ../../std/primitive.bool.html
     ///
     /// # Examples
     ///
@@ -22265,25 +22035,24 @@ impl Ipv4Addr {
     /// Returns [`true`] if the address appears to be globally routable.
     /// See [iana-ipv4-special-registry][ipv4-sr].
     ///
-    /// The following return [`false`]:
+    /// The following return false:
     ///
-    /// - private addresses (see [`Ipv4Addr::is_private()`])
-    /// - the loopback address (see [`Ipv4Addr::is_loopback()`])
-    /// - the link-local address (see [`Ipv4Addr::is_link_local()`])
-    /// - the broadcast address (see [`Ipv4Addr::is_broadcast()`])
-    /// - addresses used for documentation (see [`Ipv4Addr::is_documentation()`])
-    /// - the unspecified address (see [`Ipv4Addr::is_unspecified()`]), and the whole
+    /// - private addresses (see [`is_private()`](#method.is_private))
+    /// - the loopback address (see [`is_loopback()`](#method.is_loopback))
+    /// - the link-local address (see [`is_link_local()`](#method.is_link_local))
+    /// - the broadcast address (see [`is_broadcast()`](#method.is_broadcast))
+    /// - addresses used for documentation (see [`is_documentation()`](#method.is_documentation))
+    /// - the unspecified address (see [`is_unspecified()`](#method.is_unspecified)), and the whole
     ///   0.0.0.0/8 block
     /// - addresses reserved for future protocols (see
-    /// [`Ipv4Addr::is_ietf_protocol_assignment()`], except
+    /// [`is_ietf_protocol_assignment()`](#method.is_ietf_protocol_assignment), except
     /// `192.0.0.9/32` and `192.0.0.10/32` which are globally routable
-    /// - addresses reserved for future use (see [`Ipv4Addr::is_reserved()`]
+    /// - addresses reserved for future use (see [`is_reserved()`](#method.is_reserved)
     /// - addresses reserved for networking devices benchmarking (see
-    /// [`Ipv4Addr::is_benchmarking()`])
+    /// [`is_benchmarking`](#method.is_benchmarking))
     ///
-    /// [`true`]: ../../std/primitive.bool.html
-    /// [`false`]: ../../std/primitive.bool.html
     /// [ipv4-sr]: https://www.iana.org/assignments/iana-ipv4-special-registry/iana-ipv4-special-registry.xhtml
+    /// [`true`]: ../../std/primitive.bool.html
     ///
     /// # Examples
     ///
@@ -22339,8 +22108,8 @@ impl Ipv4Addr {
     /// Returns [`true`] if this address is part of the Shared Address Space defined in
     /// [IETF RFC 6598] (`100.64.0.0/10`).
     ///
-    /// [`true`]: ../../std/primitive.bool.html
     /// [IETF RFC 6598]: https://tools.ietf.org/html/rfc6598
+    /// [`true`]: ../../std/primitive.bool.html
     ///
     /// # Examples
     ///
@@ -22364,11 +22133,11 @@ impl Ipv4Addr {
     /// - `192.0.0.9/32` is the "Port Control Protocol Anycast" (see [IETF RFC 7723])
     /// - `192.0.0.10/32` is used for NAT traversal (see [IETF RFC 8155])
     ///
-    /// [`true`]: ../../std/primitive.bool.html
     /// [IETF RFC 6890]: https://tools.ietf.org/html/rfc6890
     /// [IETF RFC 7600]: https://tools.ietf.org/html/rfc7600
     /// [IETF RFC 7723]: https://tools.ietf.org/html/rfc7723
     /// [IETF RFC 8155]: https://tools.ietf.org/html/rfc8155
+    /// [`true`]: ../../std/primitive.bool.html
     ///
     /// # Examples
     ///
@@ -22390,9 +22159,9 @@ impl Ipv4Addr {
     /// network devices benchmarking. This range is defined in [IETF RFC 2544] as `192.18.0.0`
     /// through `198.19.255.255` but [errata 423] corrects it to `198.18.0.0/15`.
     ///
-    /// [`true`]: ../../std/primitive.bool.html
     /// [IETF RFC 2544]: https://tools.ietf.org/html/rfc2544
     /// [errata 423]: https://www.rfc-editor.org/errata/eid423
+    /// [`true`]: ../../std/primitive.bool.html
     ///
     /// # Examples
     ///
@@ -22410,11 +22179,11 @@ impl Ipv4Addr {
 
     /// Returns [`true`] if this address is reserved by IANA for future use. [IETF RFC 1112]
     /// defines the block of reserved addresses as `240.0.0.0/4`. This range normally includes the
-    /// broadcast address `255.255.255.255`, but this implementation explicitly excludes it, since
+    /// broadcast address `255.255.255.255`, but this implementation explicitely excludes it, since
     /// it is obviously not reserved for future use.
     ///
-    /// [`true`]: ../../std/primitive.bool.html
     /// [IETF RFC 1112]: https://tools.ietf.org/html/rfc1112
+    /// [`true`]: ../../std/primitive.bool.html
     ///
     /// # Warning
     ///
@@ -22444,8 +22213,8 @@ impl Ipv4Addr {
     /// Multicast addresses have a most significant octet between 224 and 239,
     /// and is defined by [IETF RFC 5771].
     ///
-    /// [`true`]: ../../std/primitive.bool.html
     /// [IETF RFC 5771]: https://tools.ietf.org/html/rfc5771
+    /// [`true`]: ../../std/primitive.bool.html
     ///
     /// # Examples
     ///
@@ -22464,8 +22233,8 @@ impl Ipv4Addr {
     ///
     /// A broadcast address has all octets set to 255 as defined in [IETF RFC 919].
     ///
-    /// [`true`]: ../../std/primitive.bool.html
     /// [IETF RFC 919]: https://tools.ietf.org/html/rfc919
+    /// [`true`]: ../../std/primitive.bool.html
     ///
     /// # Examples
     ///
@@ -22487,8 +22256,8 @@ impl Ipv4Addr {
     /// - 198.51.100.0/24 (TEST-NET-2)
     /// - 203.0.113.0/24 (TEST-NET-3)
     ///
-    /// [`true`]: ../../std/primitive.bool.html
     /// [IETF RFC 5737]: https://tools.ietf.org/html/rfc5737
+    /// [`true`]: ../../std/primitive.bool.html
     ///
     /// # Examples
     ///
@@ -22504,11 +22273,11 @@ impl Ipv4Addr {
     pub fn is_documentation(&self) -> bool {
 }
 
-    /// Converts this address to an IPv4-compatible [`IPv6` address].
+    /// Converts this address to an IPv4-compatible [IPv6 address].
     ///
     /// a.b.c.d becomes ::a.b.c.d
     ///
-    /// [`IPv6` address]: Ipv6Addr
+    /// [IPv6 address]: ../../std/net/struct.Ipv6Addr.html
     ///
     /// # Examples
     ///
@@ -22524,11 +22293,11 @@ impl Ipv4Addr {
     pub fn to_ipv6_compatible(&self) -> Ipv6Addr {
 }
 
-    /// Converts this address to an IPv4-mapped [`IPv6` address].
+    /// Converts this address to an IPv4-mapped [IPv6 address].
     ///
     /// a.b.c.d becomes ::ffff:a.b.c.d
     ///
-    /// [`IPv6` address]: Ipv6Addr
+    /// [IPv6 address]: ../../std/net/struct.Ipv6Addr.html
     ///
     /// # Examples
     ///
@@ -22549,48 +22318,14 @@ impl fmt::Display for IpAddr {
 }
 }
 
-#[stable(feature = "ip_addr", since = "1.7.0")]
-impl fmt::Debug for IpAddr {
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-}
-}
-
 #[stable(feature = "ip_from_ip", since = "1.16.0")]
 impl From<Ipv4Addr> for IpAddr {
-    /// Copies this address to a new `IpAddr::V4`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::net::{IpAddr, Ipv4Addr};
-    ///
-    /// let addr = Ipv4Addr::new(127, 0, 0, 1);
-    ///
-    /// assert_eq!(
-    ///     IpAddr::V4(addr),
-    ///     IpAddr::from(addr)
-    /// )
-    /// ```
     fn from(ipv4: Ipv4Addr) -> IpAddr {
 }
 }
 
 #[stable(feature = "ip_from_ip", since = "1.16.0")]
 impl From<Ipv6Addr> for IpAddr {
-    /// Copies this address to a new `IpAddr::V6`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::net::{IpAddr, Ipv6Addr};
-    ///
-    /// let addr = Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff);
-    ///
-    /// assert_eq!(
-    ///     IpAddr::V6(addr),
-    ///     IpAddr::from(addr)
-    /// );
-    /// ```
     fn from(ipv6: Ipv6Addr) -> IpAddr {
 }
 }
@@ -22664,8 +22399,12 @@ impl Ord for Ipv4Addr {
 }
 }
 
-impl IntoInner<c::in_addr> for Ipv4Addr {
-    fn into_inner(self) -> c::in_addr {
+impl AsInner<c::in_addr> for Ipv4Addr {
+    fn as_inner(&self) -> &c::in_addr {
+}
+}
+impl FromInner<c::in_addr> for Ipv4Addr {
+    fn from_inner(addr: c::in_addr) -> Ipv4Addr {
 }
 }
 
@@ -22678,8 +22417,8 @@ impl From<Ipv4Addr> for u32 {
     /// ```
     /// use std::net::Ipv4Addr;
     ///
-    /// let addr = Ipv4Addr::new(0xca, 0xfe, 0xba, 0xbe);
-    /// assert_eq!(0xcafebabe, u32::from(addr));
+    /// let addr = Ipv4Addr::new(13, 12, 11, 10);
+    /// assert_eq!(0x0d0c0b0au32, u32::from(addr));
     /// ```
     fn from(ip: Ipv4Addr) -> u32 {
 }
@@ -22694,8 +22433,8 @@ impl From<u32> for Ipv4Addr {
     /// ```
     /// use std::net::Ipv4Addr;
     ///
-    /// let addr = Ipv4Addr::from(0xcafebabe);
-    /// assert_eq!(Ipv4Addr::new(0xca, 0xfe, 0xba, 0xbe), addr);
+    /// let addr = Ipv4Addr::from(0x0d0c0b0au32);
+    /// assert_eq!(Ipv4Addr::new(13, 12, 11, 10), addr);
     /// ```
     fn from(ip: u32) -> Ipv4Addr {
 }
@@ -22703,8 +22442,6 @@ impl From<u32> for Ipv4Addr {
 
 #[stable(feature = "from_slice_v4", since = "1.9.0")]
 impl From<[u8; 4]> for Ipv4Addr {
-    /// Creates an `Ipv4Addr` from a four element byte array.
-    ///
     /// # Examples
     ///
     /// ```
@@ -22747,7 +22484,6 @@ impl Ipv6Addr {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_ipv6", since = "1.32.0")]
-    #[allow_internal_unstable(const_fn_transmute)]
     pub const fn new(a: u16, b: u16, c: u16, d: u16, e: u16, f: u16, g: u16, h: u16) -> Ipv6Addr {
 }
 
@@ -22795,8 +22531,8 @@ impl Ipv6Addr {
     ///
     /// This property is defined in [IETF RFC 4291].
     ///
-    /// [`true`]: ../../std/primitive.bool.html
     /// [IETF RFC 4291]: https://tools.ietf.org/html/rfc4291
+    /// [`true`]: ../../std/primitive.bool.html
     ///
     /// # Examples
     ///
@@ -22814,8 +22550,8 @@ impl Ipv6Addr {
     ///
     /// This property is defined in [IETF RFC 4291].
     ///
-    /// [`true`]: ../../std/primitive.bool.html
     /// [IETF RFC 4291]: https://tools.ietf.org/html/rfc4291
+    /// [`true`]: ../../std/primitive.bool.html
     ///
     /// # Examples
     ///
@@ -22859,7 +22595,6 @@ impl Ipv6Addr {
     /// This property is defined in [IETF RFC 4193].
     ///
     /// [IETF RFC 4193]: https://tools.ietf.org/html/rfc4193
-    ///
     /// [`true`]: ../../std/primitive.bool.html
     ///
     /// # Examples
@@ -22890,9 +22625,7 @@ impl Ipv6Addr {
     ///
     /// This method validates the format defined in the RFC and won't recognize the following
     /// addresses such as `fe80:0:0:1::` or `fe81::` as unicast link-local addresses for example.
-    /// If you need a less strict validation use [`Ipv6Addr::is_unicast_link_local()`] instead.
-    ///
-    /// [`true`]: ../../std/primitive.bool.html
+    /// If you need a less strict validation use [`is_unicast_link_local()`] instead.
     ///
     /// # Examples
     ///
@@ -22919,13 +22652,15 @@ impl Ipv6Addr {
     /// # See also
     ///
     /// - [IETF RFC 4291 section 2.5.6]
-    /// - [RFC 4291 errata 4406] (which has been rejected but provides useful
-    ///   insight)
-    /// - [`Ipv6Addr::is_unicast_link_local()`]
+    /// - [RFC 4291 errata 4406]
+    /// - [`is_unicast_link_local()`]
     ///
     /// [IETF RFC 4291]: https://tools.ietf.org/html/rfc4291
     /// [IETF RFC 4291 section 2.5.6]: https://tools.ietf.org/html/rfc4291#section-2.5.6
+    /// [`true`]: ../../std/primitive.bool.html
     /// [RFC 4291 errata 4406]: https://www.rfc-editor.org/errata/eid4406
+    /// [`is_unicast_link_local()`]: ../../std/net/struct.Ipv6Addr.html#method.is_unicast_link_local
+    ///
     pub fn is_unicast_link_local_strict(&self) -> bool {
 }
 
@@ -22943,11 +22678,9 @@ impl Ipv6Addr {
     /// ```
     ///
     /// As a result, this method consider addresses such as `fe80:0:0:1::` or `fe81::` to be
-    /// unicast link-local addresses, whereas [`Ipv6Addr::is_unicast_link_local_strict()`] does not.
-    /// If you need a strict validation fully compliant with the RFC, use
-    /// [`Ipv6Addr::is_unicast_link_local_strict()`] instead.
-    ///
-    /// [`true`]: ../../std/primitive.bool.html
+    /// unicast link-local addresses, whereas [`is_unicast_link_local_strict()`] does not. If you
+    /// need a strict validation fully compliant with the RFC, use
+    /// [`is_unicast_link_local_strict()`].
     ///
     /// # Examples
     ///
@@ -22974,11 +22707,13 @@ impl Ipv6Addr {
     /// # See also
     ///
     /// - [IETF RFC 4291 section 2.4]
-    /// - [RFC 4291 errata 4406] (which has been rejected but provides useful
-    ///   insight)
+    /// - [RFC 4291 errata 4406]
     ///
     /// [IETF RFC 4291 section 2.4]: https://tools.ietf.org/html/rfc4291#section-2.4
+    /// [`true`]: ../../std/primitive.bool.html
     /// [RFC 4291 errata 4406]: https://www.rfc-editor.org/errata/eid4406
+    /// [`is_unicast_link_local_strict()`]: ../../std/net/struct.Ipv6Addr.html#method.is_unicast_link_local_strict
+    ///
     pub fn is_unicast_link_local(&self) -> bool {
 }
 
@@ -23025,8 +22760,8 @@ impl Ipv6Addr {
     ///
     /// This property is defined in [IETF RFC 3849].
     ///
-    /// [`true`]: ../../std/primitive.bool.html
     /// [IETF RFC 3849]: https://tools.ietf.org/html/rfc3849
+    /// [`true`]: ../../std/primitive.bool.html
     ///
     /// # Examples
     ///
@@ -23097,8 +22832,8 @@ impl Ipv6Addr {
     ///
     /// This property is defined by [IETF RFC 4291].
     ///
-    /// [`true`]: ../../std/primitive.bool.html
     /// [IETF RFC 4291]: https://tools.ietf.org/html/rfc4291
+    /// [`true`]: ../../std/primitive.bool.html
     ///
     /// # Examples
     ///
@@ -23112,36 +22847,13 @@ impl Ipv6Addr {
     pub fn is_multicast(&self) -> bool {
 }
 
-    /// Converts this address to an [`IPv4` address] if it's an "IPv4-mapped IPv6 address"
-    /// defined in [IETF RFC 4291 section 2.5.5.2], otherwise returns [`None`].
-    ///
-    /// `::ffff:a.b.c.d` becomes `a.b.c.d`.
-    /// All addresses *not* starting with `::ffff` will return `None`.
-    ///
-    /// [`IPv4` address]: Ipv4Addr
-    /// [IETF RFC 4291 section 2.5.5.2]: https://tools.ietf.org/html/rfc4291#section-2.5.5.2
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(ip)]
-    ///
-    /// use std::net::{Ipv4Addr, Ipv6Addr};
-    ///
-    /// assert_eq!(Ipv6Addr::new(0xff00, 0, 0, 0, 0, 0, 0, 0).to_ipv4_mapped(), None);
-    /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).to_ipv4_mapped(),
-    ///            Some(Ipv4Addr::new(192, 10, 2, 255)));
-    /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1).to_ipv4_mapped(), None);
-    /// ```
-    pub fn to_ipv4_mapped(&self) -> Option<Ipv4Addr> {
-}
-
-    /// Converts this address to an [`IPv4` address]. Returns [`None`] if this address is
+    /// Converts this address to an [IPv4 address]. Returns [`None`] if this address is
     /// neither IPv4-compatible or IPv4-mapped.
     ///
     /// ::a.b.c.d and ::ffff:a.b.c.d become a.b.c.d
     ///
-    /// [`IPv4` address]: Ipv4Addr
+    /// [IPv4 address]: ../../std/net/struct.Ipv4Addr.html
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
     ///
     /// # Examples
     ///
@@ -23172,11 +22884,9 @@ impl Ipv6Addr {
 }
 }
 
-/// Write an Ipv6Addr, conforming to the canonical style described by
-/// [RFC 5952](https://tools.ietf.org/html/rfc5952).
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for Ipv6Addr {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
 }
 }
 
@@ -23293,54 +23003,12 @@ impl From<u128> for Ipv6Addr {
 
 #[stable(feature = "ipv6_from_octets", since = "1.9.0")]
 impl From<[u8; 16]> for Ipv6Addr {
-    /// Creates an `Ipv6Addr` from a sixteen element byte array.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::net::Ipv6Addr;
-    ///
-    /// let addr = Ipv6Addr::from([
-    ///     25u8, 24u8, 23u8, 22u8, 21u8, 20u8, 19u8, 18u8,
-    ///     17u8, 16u8, 15u8, 14u8, 13u8, 12u8, 11u8, 10u8,
-    /// ]);
-    /// assert_eq!(
-    ///     Ipv6Addr::new(
-    ///         0x1918, 0x1716,
-    ///         0x1514, 0x1312,
-    ///         0x1110, 0x0f0e,
-    ///         0x0d0c, 0x0b0a
-    ///     ),
-    ///     addr
-    /// );
-    /// ```
     fn from(octets: [u8; 16]) -> Ipv6Addr {
 }
 }
 
 #[stable(feature = "ipv6_from_segments", since = "1.16.0")]
 impl From<[u16; 8]> for Ipv6Addr {
-    /// Creates an `Ipv6Addr` from an eight element 16-bit array.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::net::Ipv6Addr;
-    ///
-    /// let addr = Ipv6Addr::from([
-    ///     525u16, 524u16, 523u16, 522u16,
-    ///     521u16, 520u16, 519u16, 518u16,
-    /// ]);
-    /// assert_eq!(
-    ///     Ipv6Addr::new(
-    ///         0x20d, 0x20c,
-    ///         0x20b, 0x20a,
-    ///         0x209, 0x208,
-    ///         0x207, 0x206
-    ///     ),
-    ///     addr
-    /// );
-    /// ```
     fn from(segments: [u16; 8]) -> Ipv6Addr {
 }
 }
@@ -23435,10 +23103,6 @@ mod tests {
 }
 
     #[test]
-    fn ipv6_to_ipv4_mapped() {
-}
-
-    #[test]
     fn ipv6_to_ipv4() {
 }
 
@@ -23520,92 +23184,81 @@ use crate::str::FromStr;
 
 struct Parser<'a> {
     // parsing as ASCII, so can use byte array
-    state: &'a [u8],
+    s: &'a [u8],
+    pos: usize,
 }
 
 impl<'a> Parser<'a> {
-    fn new(input: &'a str) -> Parser<'a> {
+    fn new(s: &'a str) -> Parser<'a> {
 }
 
     fn is_eof(&self) -> bool {
 }
 
-    /// Run a parser, and restore the pre-parse state if it fails
-    fn read_atomically<T, F>(&mut self, inner: F) -> Option<T>
+    // Commit only if parser returns Some
+    fn read_atomically<T, F>(&mut self, cb: F) -> Option<T>
     where
         F: FnOnce(&mut Parser<'_>) -> Option<T>,
     {
 }
 
-    /// Run a parser, but fail if the entire input wasn't consumed.
-    /// Doesn't run atomically.
-    fn read_till_eof<T, F>(&mut self, inner: F) -> Option<T>
+    // Commit only if parser read till EOF
+    fn read_till_eof<T, F>(&mut self, cb: F) -> Option<T>
     where
         F: FnOnce(&mut Parser<'_>) -> Option<T>,
     {
 }
 
-    /// Same as read_till_eof, but returns a Result<AddrParseError> on failure
-    fn parse_with<T, F>(&mut self, inner: F) -> Result<T, AddrParseError>
+    // Apply 3 parsers sequentially
+    fn read_seq_3<A, B, C, PA, PB, PC>(&mut self, pa: PA, pb: PB, pc: PC) -> Option<(A, B, C)>
     where
-        F: FnOnce(&mut Parser<'_>) -> Option<T>,
+        PA: FnOnce(&mut Parser<'_>) -> Option<A>,
+        PB: FnOnce(&mut Parser<'_>) -> Option<B>,
+        PC: FnOnce(&mut Parser<'_>) -> Option<C>,
     {
 }
 
-    /// Read the next character from the input
+    // Read next char
     fn read_char(&mut self) -> Option<char> {
 }
 
-    /// Read the next character from the input if it matches the target
-    fn read_given_char(&mut self, target: char) -> Option<char> {
+    // Return char and advance iff next char is equal to requested
+    fn read_given_char(&mut self, c: char) -> Option<char> {
 }
 
-    /// Helper for reading separators in an indexed loop. Reads the separator
-    /// character iff index > 0, then runs the parser. When used in a loop,
-    /// the separator character will only be read on index > 0 (see
-    /// read_ipv4_addr for an example)
-    fn read_separator<T, F>(&mut self, sep: char, index: usize, inner: F) -> Option<T>
-    where
-        F: FnOnce(&mut Parser<'_>) -> Option<T>,
-    {
+    // Read digit
+    fn read_digit(&mut self, radix: u8) -> Option<u8> {
 }
 
-    // Read a single digit in the given radix. For instance, 0-9 in radix 10;
-    // 0-9A-F in radix 16.
-    fn read_digit(&mut self, radix: u32) -> Option<u32> {
+    fn read_number_impl(&mut self, radix: u8, max_digits: u32, upto: u32) -> Option<u32> {
 }
 
-    // Read a number off the front of the input in the given radix, stopping
-    // at the first non-digit character or eof. Fails if the number has more
-    // digits than max_digits, or the value is >= upto, or if there is no number.
-    fn read_number(&mut self, radix: u32, max_digits: u32, upto: u32) -> Option<u32> {
+    // Read number, failing if max_digits of number value exceeded
+    fn read_number(&mut self, radix: u8, max_digits: u32, upto: u32) -> Option<u32> {
 }
 
-    /// Read an IPv4 address
+    fn read_ipv4_addr_impl(&mut self) -> Option<Ipv4Addr> {
+}
+
+    // Read IPv4 address
     fn read_ipv4_addr(&mut self) -> Option<Ipv4Addr> {
 }
 
-    /// Read an IPV6 Address
+    fn read_ipv6_addr_impl(&mut self) -> Option<Ipv6Addr> {
+}
+
     fn read_ipv6_addr(&mut self) -> Option<Ipv6Addr> {
 }
 
-    /// Read an IP Address, either IPV4 or IPV6.
     fn read_ip_addr(&mut self) -> Option<IpAddr> {
 }
 
-    /// Read a : followed by a port in base 10
-    fn read_port(&mut self) -> Option<u16> {
-}
-
-    /// Read an IPV4 address with a port
     fn read_socket_addr_v4(&mut self) -> Option<SocketAddrV4> {
 }
 
-    /// Read an IPV6 address with a port
     fn read_socket_addr_v6(&mut self) -> Option<SocketAddrV6> {
 }
 
-    /// Read an IP address with a port
     fn read_socket_addr(&mut self) -> Option<SocketAddr> {
 }
 }
@@ -23676,6 +23329,14 @@ impl FromStr for SocketAddr {
 /// // No problem, the `panic!` message has disappeared.
 /// let _foo: SocketAddr = "127.0.0.1:8080".parse().expect("unreachable panic");
 /// ```
+///
+/// [`FromStr`]: ../../std/str/trait.FromStr.html
+/// [`IpAddr`]: ../../std/net/enum.IpAddr.html
+/// [`Ipv4Addr`]: ../../std/net/struct.Ipv4Addr.html
+/// [`Ipv6Addr`]: ../../std/net/struct.Ipv6Addr.html
+/// [`SocketAddr`]: ../../std/net/enum.SocketAddr.html
+/// [`SocketAddrV4`]: ../../std/net/struct.SocketAddrV4.html
+/// [`SocketAddrV6`]: ../../std/net/struct.SocketAddrV6.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AddrParseError(());
@@ -23693,13 +23354,8 @@ impl Error for AddrParseError {
     fn description(&self) -> &str {
 }
 }
-
-#[cfg(test)]
-mod tests {
-}
 }
 mod tcp {
-#![deny(unsafe_op_in_unsafe_fn)]
 use crate::io::prelude::*;
 
 use crate::fmt;
@@ -23721,12 +23377,13 @@ use crate::time::Duration;
 ///
 /// The Transmission Control Protocol is specified in [IETF RFC 793].
 ///
-/// [`accept`]: TcpListener::accept
-/// [`connect`]: TcpStream::connect
+/// [`accept`]: ../../std/net/struct.TcpListener.html#method.accept
+/// [`connect`]: #method.connect
 /// [IETF RFC 793]: https://tools.ietf.org/html/rfc793
-/// [reading]: Read
-/// [`shutdown`]: TcpStream::shutdown
-/// [writing]: Write
+/// [reading]: ../../std/io/trait.Read.html
+/// [`shutdown`]: #method.shutdown
+/// [`TcpListener`]: ../../std/net/struct.TcpListener.html
+/// [writing]: ../../std/io/trait.Write.html
 ///
 /// # Examples
 ///
@@ -23755,9 +23412,11 @@ pub struct TcpStream(net_imp::TcpStream);
 ///
 /// The Transmission Control Protocol is specified in [IETF RFC 793].
 ///
-/// [`accept`]: TcpListener::accept
-/// [`bind`]: TcpListener::bind
+/// [`accept`]: #method.accept
+/// [`bind`]: #method.bind
 /// [IETF RFC 793]: https://tools.ietf.org/html/rfc793
+/// [`Incoming`]: ../../std/net/struct.Incoming.html
+/// [`TcpListener::incoming`]: #method.incoming
 ///
 /// # Examples
 ///
@@ -23783,10 +23442,12 @@ pub struct TcpListener(net_imp::TcpListener);
 
 /// An iterator that infinitely [`accept`]s connections on a [`TcpListener`].
 ///
-/// This `struct` is created by the [`TcpListener::incoming`] method.
+/// This `struct` is created by the [`incoming`] method on [`TcpListener`].
 /// See its documentation for more.
 ///
-/// [`accept`]: TcpListener::accept
+/// [`accept`]: ../../std/net/struct.TcpListener.html#method.accept
+/// [`incoming`]: ../../std/net/struct.TcpListener.html#method.incoming
+/// [`TcpListener`]: ../../std/net/struct.TcpListener.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug)]
 pub struct Incoming<'a> {
@@ -23804,6 +23465,8 @@ impl TcpStream {
     /// each of the addresses until a connection is successful. If none of
     /// the addresses result in a successful connection, the error returned from
     /// the last connection attempt (the last address) is returned.
+    ///
+    /// [`ToSocketAddrs`]: ../../std/net/trait.ToSocketAddrs.html
     ///
     /// # Examples
     ///
@@ -23850,6 +23513,8 @@ impl TcpStream {
     /// single system call. It instead calls `connect` in nonblocking mode and
     /// then uses an OS-specific mechanism to await the completion of the
     /// connection request.
+    ///
+    /// [`SocketAddr`]: ../../std/net/enum.SocketAddr.html
     #[stable(feature = "tcpstream_connect_timeout", since = "1.21.0")]
     pub fn connect_timeout(addr: &SocketAddr, timeout: Duration) -> io::Result<TcpStream> {
 }
@@ -23891,6 +23556,8 @@ impl TcpStream {
     /// This function will cause all pending and future I/O on the specified
     /// portions to return immediately with an appropriate value (see the
     /// documentation of [`Shutdown`]).
+    ///
+    /// [`Shutdown`]: ../../std/net/enum.Shutdown.html
     ///
     /// # Platform-specific behavior
     ///
@@ -23944,9 +23611,12 @@ impl TcpStream {
     /// a result of setting this option. For example Unix typically returns an
     /// error of the kind [`WouldBlock`], but Windows may return [`TimedOut`].
     ///
-    /// [`read`]: Read::read
-    /// [`WouldBlock`]: io::ErrorKind::WouldBlock
-    /// [`TimedOut`]: io::ErrorKind::TimedOut
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
+    /// [`Err`]: ../../std/result/enum.Result.html#variant.Err
+    /// [`read`]: ../../std/io/trait.Read.html#tymethod.read
+    /// [`WouldBlock`]: ../../std/io/enum.ErrorKind.html#variant.WouldBlock
+    /// [`TimedOut`]: ../../std/io/enum.ErrorKind.html#variant.TimedOut
+    /// [`Duration`]: ../../std/time/struct.Duration.html
     ///
     /// # Examples
     ///
@@ -23987,9 +23657,12 @@ impl TcpStream {
     /// as a result of setting this option. For example Unix typically returns
     /// an error of the kind [`WouldBlock`], but Windows may return [`TimedOut`].
     ///
-    /// [`write`]: Write::write
-    /// [`WouldBlock`]: io::ErrorKind::WouldBlock
-    /// [`TimedOut`]: io::ErrorKind::TimedOut
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
+    /// [`Err`]: ../../std/result/enum.Result.html#variant.Err
+    /// [`write`]: ../../std/io/trait.Write.html#tymethod.write
+    /// [`Duration`]: ../../std/time/struct.Duration.html
+    /// [`WouldBlock`]: ../../std/io/enum.ErrorKind.html#variant.WouldBlock
+    /// [`TimedOut`]: ../../std/io/enum.ErrorKind.html#variant.TimedOut
     ///
     /// # Examples
     ///
@@ -24026,7 +23699,8 @@ impl TcpStream {
     ///
     /// Some platforms do not provide access to the current timeout.
     ///
-    /// [`read`]: Read::read
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
+    /// [`read`]: ../../std/io/trait.Read.html#tymethod.read
     ///
     /// # Examples
     ///
@@ -24050,7 +23724,8 @@ impl TcpStream {
     ///
     /// Some platforms do not provide access to the current timeout.
     ///
-    /// [`write`]: Write::write
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
+    /// [`write`]: ../../std/io/trait.Write.html#tymethod.write
     ///
     /// # Examples
     ///
@@ -24110,7 +23785,9 @@ impl TcpStream {
 
     /// Gets the value of the `TCP_NODELAY` option on this socket.
     ///
-    /// For more information about this option, see [`TcpStream::set_nodelay`].
+    /// For more information about this option, see [`set_nodelay`][link].
+    ///
+    /// [link]: #method.set_nodelay
     ///
     /// # Examples
     ///
@@ -24146,7 +23823,9 @@ impl TcpStream {
 
     /// Gets the value of the `IP_TTL` option for this socket.
     ///
-    /// For more information about this option, see [`TcpStream::set_ttl`].
+    /// For more information about this option, see [`set_ttl`][link].
+    ///
+    /// [link]: #method.set_ttl
     ///
     /// # Examples
     ///
@@ -24221,6 +23900,8 @@ impl TcpStream {
     /// };
     /// println!("bytes: {:?}", buf);
     /// ```
+    ///
+    /// [`io::ErrorKind::WouldBlock`]: ../io/enum.ErrorKind.html#variant.WouldBlock
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
 }
@@ -24235,10 +23916,6 @@ impl Read for TcpStream {
 }
 
     #[inline]
-    fn is_read_vectored(&self) -> bool {
-}
-
-    #[inline]
     unsafe fn initializer(&self) -> Initializer {
 }
 }
@@ -24248,10 +23925,6 @@ impl Write for TcpStream {
 }
 
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-}
-
-    #[inline]
-    fn is_write_vectored(&self) -> bool {
 }
 
     fn flush(&mut self) -> io::Result<()> {
@@ -24266,10 +23939,6 @@ impl Read for &TcpStream {
 }
 
     #[inline]
-    fn is_read_vectored(&self) -> bool {
-}
-
-    #[inline]
     unsafe fn initializer(&self) -> Initializer {
 }
 }
@@ -24279,10 +23948,6 @@ impl Write for &TcpStream {
 }
 
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-}
-
-    #[inline]
-    fn is_write_vectored(&self) -> bool {
 }
 
     fn flush(&mut self) -> io::Result<()> {
@@ -24318,7 +23983,7 @@ impl TcpListener {
     ///
     /// Binding with a port number of 0 will request that the OS assigns a port
     /// to this listener. The port allocated can be queried via the
-    /// [`TcpListener::local_addr`] method.
+    /// [`local_addr`] method.
     ///
     /// The address type can be any implementor of [`ToSocketAddrs`] trait. See
     /// its documentation for concrete examples.
@@ -24327,6 +23992,9 @@ impl TcpListener {
     /// each of the addresses until one succeeds and returns the listener. If
     /// none of the addresses succeed in creating a listener, the error returned
     /// from the last attempt (the last address) is returned.
+    ///
+    /// [`local_addr`]: #method.local_addr
+    /// [`ToSocketAddrs`]: ../../std/net/trait.ToSocketAddrs.html
     ///
     /// # Examples
     ///
@@ -24375,6 +24043,8 @@ impl TcpListener {
     /// object references. Both handles can be used to accept incoming
     /// connections and options set on one listener will affect the other.
     ///
+    /// [`TcpListener`]: ../../std/net/struct.TcpListener.html
+    ///
     /// # Examples
     ///
     /// ```no_run
@@ -24392,6 +24062,8 @@ impl TcpListener {
     /// This function will block the calling thread until a new TCP connection
     /// is established. When established, the corresponding [`TcpStream`] and the
     /// remote peer's address will be returned.
+    ///
+    /// [`TcpStream`]: ../../std/net/struct.TcpStream.html
     ///
     /// # Examples
     ///
@@ -24413,7 +24085,11 @@ impl TcpListener {
     ///
     /// The returned iterator will never return [`None`] and will also not yield
     /// the peer's [`SocketAddr`] structure. Iterating over it is equivalent to
-    /// calling [`TcpListener::accept`] in a loop.
+    /// calling [`accept`] in a loop.
+    ///
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
+    /// [`SocketAddr`]: ../../std/net/enum.SocketAddr.html
+    /// [`accept`]: #method.accept
     ///
     /// # Examples
     ///
@@ -24454,7 +24130,9 @@ impl TcpListener {
 
     /// Gets the value of the `IP_TTL` option for this socket.
     ///
-    /// For more information about this option, see [`TcpListener::set_ttl`].
+    /// For more information about this option, see [`set_ttl`][link].
+    ///
+    /// [link]: #method.set_ttl
     ///
     /// # Examples
     ///
@@ -24547,6 +24225,8 @@ impl TcpListener {
     ///     }
     /// }
     /// ```
+    ///
+    /// [`io::ErrorKind::WouldBlock`]: ../io/enum.ErrorKind.html#variant.WouldBlock
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
 }
@@ -24784,15 +24464,15 @@ use crate::time::Duration;
 /// an unordered, unreliable protocol; refer to [`TcpListener`] and [`TcpStream`] for TCP
 /// primitives.
 ///
-/// [`bind`]: UdpSocket::bind
-/// [`connect`]: UdpSocket::connect
+/// [`bind`]: #method.bind
+/// [`connect`]: #method.connect
 /// [IETF RFC 768]: https://tools.ietf.org/html/rfc768
-/// [`recv`]: UdpSocket::recv
-/// [received from]: UdpSocket::recv_from
-/// [`send`]: UdpSocket::send
-/// [sent to]: UdpSocket::send_to
-/// [`TcpListener`]: crate::net::TcpListener
-/// [`TcpStream`]: crate::net::TcpStream
+/// [`recv`]: #method.recv
+/// [received from]: #method.recv_from
+/// [`send`]: #method.send
+/// [sent to]: #method.send_to
+/// [`TcpListener`]: ../../std/net/struct.TcpListener.html
+/// [`TcpStream`]: ../../std/net/struct.TcpStream.html
 ///
 /// # Examples
 ///
@@ -24829,6 +24509,8 @@ impl UdpSocket {
     /// each of the addresses until one succeeds and returns the socket. If none
     /// of the addresses succeed in creating a socket, the error returned from
     /// the last attempt (the last address) is returned.
+    ///
+    /// [`ToSocketAddrs`]: ../../std/net/trait.ToSocketAddrs.html
     ///
     /// # Examples
     ///
@@ -24920,6 +24602,8 @@ impl UdpSocket {
     ///
     /// See issue #34202 for more details.
     ///
+    /// [`ToSocketAddrs`]: ../../std/net/trait.ToSocketAddrs.html
+    ///
     /// # Examples
     ///
     /// ```no_run
@@ -24947,7 +24631,7 @@ impl UdpSocket {
     ///
     /// If the socket isn't connected, it will return a [`NotConnected`] error.
     ///
-    /// [`NotConnected`]: io::ErrorKind::NotConnected
+    /// [`NotConnected`]: ../../std/io/enum.ErrorKind.html#variant.NotConnected
     ///
     /// ```no_run
     /// use std::net::UdpSocket;
@@ -25005,9 +24689,12 @@ impl UdpSocket {
     /// a result of setting this option. For example Unix typically returns an
     /// error of the kind [`WouldBlock`], but Windows may return [`TimedOut`].
     ///
-    /// [`read`]: io::Read::read
-    /// [`WouldBlock`]: io::ErrorKind::WouldBlock
-    /// [`TimedOut`]: io::ErrorKind::TimedOut
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
+    /// [`Err`]: ../../std/result/enum.Result.html#variant.Err
+    /// [`read`]: ../../std/io/trait.Read.html#tymethod.read
+    /// [`Duration`]: ../../std/time/struct.Duration.html
+    /// [`WouldBlock`]: ../../std/io/enum.ErrorKind.html#variant.WouldBlock
+    /// [`TimedOut`]: ../../std/io/enum.ErrorKind.html#variant.TimedOut
     ///
     /// # Examples
     ///
@@ -25047,9 +24734,12 @@ impl UdpSocket {
     /// as a result of setting this option. For example Unix typically returns
     /// an error of the kind [`WouldBlock`], but Windows may return [`TimedOut`].
     ///
-    /// [`write`]: io::Write::write
-    /// [`WouldBlock`]: io::ErrorKind::WouldBlock
-    /// [`TimedOut`]: io::ErrorKind::TimedOut
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
+    /// [`Err`]: ../../std/result/enum.Result.html#variant.Err
+    /// [`write`]: ../../std/io/trait.Write.html#tymethod.write
+    /// [`Duration`]: ../../std/time/struct.Duration.html
+    /// [`WouldBlock`]: ../../std/io/enum.ErrorKind.html#variant.WouldBlock
+    /// [`TimedOut`]: ../../std/io/enum.ErrorKind.html#variant.TimedOut
     ///
     /// # Examples
     ///
@@ -25081,7 +24771,8 @@ impl UdpSocket {
     ///
     /// If the timeout is [`None`], then [`read`] calls will block indefinitely.
     ///
-    /// [`read`]: io::Read::read
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
+    /// [`read`]: ../../std/io/trait.Read.html#tymethod.read
     ///
     /// # Examples
     ///
@@ -25100,7 +24791,8 @@ impl UdpSocket {
     ///
     /// If the timeout is [`None`], then [`write`] calls will block indefinitely.
     ///
-    /// [`write`]: io::Write::write
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
+    /// [`write`]: ../../std/io/trait.Write.html#tymethod.write
     ///
     /// # Examples
     ///
@@ -25134,7 +24826,10 @@ impl UdpSocket {
 
     /// Gets the value of the `SO_BROADCAST` option for this socket.
     ///
-    /// For more information about this option, see [`UdpSocket::set_broadcast`].
+    /// For more information about this option, see
+    /// [`set_broadcast`][link].
+    ///
+    /// [link]: #method.set_broadcast
     ///
     /// # Examples
     ///
@@ -25168,7 +24863,10 @@ impl UdpSocket {
 
     /// Gets the value of the `IP_MULTICAST_LOOP` option for this socket.
     ///
-    /// For more information about this option, see [`UdpSocket::set_multicast_loop_v4`].
+    /// For more information about this option, see
+    /// [`set_multicast_loop_v4`][link].
+    ///
+    /// [link]: #method.set_multicast_loop_v4
     ///
     /// # Examples
     ///
@@ -25205,7 +24903,10 @@ impl UdpSocket {
 
     /// Gets the value of the `IP_MULTICAST_TTL` option for this socket.
     ///
-    /// For more information about this option, see [`UdpSocket::set_multicast_ttl_v4`].
+    /// For more information about this option, see
+    /// [`set_multicast_ttl_v4`][link].
+    ///
+    /// [link]: #method.set_multicast_ttl_v4
     ///
     /// # Examples
     ///
@@ -25239,7 +24940,10 @@ impl UdpSocket {
 
     /// Gets the value of the `IPV6_MULTICAST_LOOP` option for this socket.
     ///
-    /// For more information about this option, see [`UdpSocket::set_multicast_loop_v6`].
+    /// For more information about this option, see
+    /// [`set_multicast_loop_v6`][link].
+    ///
+    /// [link]: #method.set_multicast_loop_v6
     ///
     /// # Examples
     ///
@@ -25273,7 +24977,9 @@ impl UdpSocket {
 
     /// Gets the value of the `IP_TTL` option for this socket.
     ///
-    /// For more information about this option, see [`UdpSocket::set_ttl`].
+    /// For more information about this option, see [`set_ttl`][link].
+    ///
+    /// [link]: #method.set_ttl
     ///
     /// # Examples
     ///
@@ -25310,14 +25016,20 @@ impl UdpSocket {
 
     /// Executes an operation of the `IP_DROP_MEMBERSHIP` type.
     ///
-    /// For more information about this option, see [`UdpSocket::join_multicast_v4`].
+    /// For more information about this option, see
+    /// [`join_multicast_v4`][link].
+    ///
+    /// [link]: #method.join_multicast_v4
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     pub fn leave_multicast_v4(&self, multiaddr: &Ipv4Addr, interface: &Ipv4Addr) -> io::Result<()> {
 }
 
     /// Executes an operation of the `IPV6_DROP_MEMBERSHIP` type.
     ///
-    /// For more information about this option, see [`UdpSocket::join_multicast_v6`].
+    /// For more information about this option, see
+    /// [`join_multicast_v6`][link].
+    ///
+    /// [link]: #method.join_multicast_v6
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     pub fn leave_multicast_v6(&self, multiaddr: &Ipv6Addr, interface: u32) -> io::Result<()> {
 }
@@ -25378,8 +25090,10 @@ impl UdpSocket {
 
     /// Sends data on the socket to the remote address to which it is connected.
     ///
-    /// [`UdpSocket::connect`] will connect this socket to a remote address. This
+    /// The [`connect`] method will connect this socket to a remote address. This
     /// method will fail if the socket is not connected.
+    ///
+    /// [`connect`]: #method.connect
     ///
     /// # Examples
     ///
@@ -25401,8 +25115,10 @@ impl UdpSocket {
     /// hold the message bytes. If a message is too long to fit in the supplied buffer,
     /// excess bytes may be discarded.
     ///
-    /// [`UdpSocket::connect`] will connect this socket to a remote address. This
+    /// The [`connect`] method will connect this socket to a remote address. This
     /// method will fail if the socket is not connected.
+    ///
+    /// [`connect`]: #method.connect
     ///
     /// # Examples
     ///
@@ -25435,8 +25151,10 @@ impl UdpSocket {
     /// Do not use this function to implement busy waiting, instead use `libc::poll` to
     /// synchronize IO events on one or more sockets.
     ///
-    /// [`UdpSocket::connect`] will connect this socket to a remote address. This
+    /// The [`connect`] method will connect this socket to a remote address. This
     /// method will fail if the socket is not connected.
+    ///
+    /// [`connect`]: #method.connect
     ///
     /// # Errors
     ///
@@ -25472,6 +25190,8 @@ impl UdpSocket {
     /// On Unix platforms, calling this method corresponds to calling `fcntl`
     /// `FIONBIO`. On Windows calling this method corresponds to calling
     /// `ioctlsocket` `FIONBIO`.
+    ///
+    /// [`io::ErrorKind::WouldBlock`]: ../io/enum.ErrorKind.html#variant.WouldBlock
     ///
     /// # Examples
     ///
@@ -25624,27 +25344,38 @@ mod tests {
 }
 }
 
-/// Possible values which can be passed to the [`TcpStream::shutdown`] method.
+/// Possible values which can be passed to the [`shutdown`] method of
+/// [`TcpStream`].
+///
+/// [`shutdown`]: struct.TcpStream.html#method.shutdown
+/// [`TcpStream`]: struct.TcpStream.html
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum Shutdown {
     /// The reading portion of the [`TcpStream`] should be shut down.
     ///
-    /// All currently blocked and future [reads] will return [`Ok`]`(0)`.
+    /// All currently blocked and future [reads] will return [`Ok(0)`].
     ///
-    /// [reads]: crate::io::Read
+    /// [`TcpStream`]: ../../std/net/struct.TcpStream.html
+    /// [reads]: ../../std/io/trait.Read.html
+    /// [`Ok(0)`]: ../../std/result/enum.Result.html#variant.Ok
     #[stable(feature = "rust1", since = "1.0.0")]
     Read,
     /// The writing portion of the [`TcpStream`] should be shut down.
     ///
     /// All currently blocked and future [writes] will return an error.
     ///
-    /// [writes]: crate::io::Write
+    /// [`TcpStream`]: ../../std/net/struct.TcpStream.html
+    /// [writes]: ../../std/io/trait.Write.html
     #[stable(feature = "rust1", since = "1.0.0")]
     Write,
     /// Both the reading and the writing portions of the [`TcpStream`] should be shut down.
     ///
     /// See [`Shutdown::Read`] and [`Shutdown::Write`] for more information.
+    ///
+    /// [`TcpStream`]: ../../std/net/struct.TcpStream.html
+    /// [`Shutdown::Read`]: #variant.Read
+    /// [`Shutdown::Write`]: #variant.Write
     #[stable(feature = "rust1", since = "1.0.0")]
     Both,
 }
@@ -25744,7 +25475,7 @@ cfg_if::cfg_if! {
         // If we're not documenting libstd then we just expose the main modules
         // as we otherwise would.
 
-        #[cfg(any(target_os = "redox", unix, target_os = "vxworks", target_os = "hermit"))]
+        #[cfg(any(target_os = "redox", unix, target_os = "vxworks"))]
         #[stable(feature = "rust1", since = "1.0.0")]
         pub use crate::sys::ext as unix;
 
@@ -25775,7 +25506,7 @@ use crate::os::android::raw;
 
 /// OS-specific extensions to [`fs::Metadata`].
 ///
-/// [`fs::Metadata`]: crate::fs::Metadata
+/// [`fs::Metadata`]: ../../../../std/fs/struct.Metadata.html
 #[stable(feature = "metadata_ext", since = "1.1.0")]
 pub trait MetadataExt {
     /// Gain a reference to the underlying `stat` structure which contains
@@ -26105,7 +25836,7 @@ use crate::os::dragonfly::raw;
 
 /// OS-specific extensions to [`fs::Metadata`].
 ///
-/// [`fs::Metadata`]: crate::fs::Metadata
+/// [`fs::Metadata`]: ../../../../std/fs/struct.Metadata.html
 #[stable(feature = "metadata_ext", since = "1.1.0")]
 pub trait MetadataExt {
     /// Gain a reference to the underlying `stat` structure which contains
@@ -26311,7 +26042,7 @@ use crate::os::emscripten::raw;
 
 /// OS-specific extensions to [`fs::Metadata`].
 ///
-/// [`fs::Metadata`]: crate::fs::Metadata
+/// [`fs::Metadata`]: ../../../../std/fs/struct.Metadata.html
 #[stable(feature = "metadata_ext", since = "1.1.0")]
 pub trait MetadataExt {
     /// Gain a reference to the underlying `stat` structure which contains
@@ -26557,7 +26288,7 @@ use crate::os::freebsd::raw;
 
 /// OS-specific extensions to [`fs::Metadata`].
 ///
-/// [`fs::Metadata`]: crate::fs::Metadata
+/// [`fs::Metadata`]: ../../../../std/fs/struct.Metadata.html
 #[stable(feature = "metadata_ext", since = "1.1.0")]
 pub trait MetadataExt {
     /// Gain a reference to the underlying `stat` structure which contains
@@ -26664,10 +26395,6 @@ impl MetadataExt for Metadata {
 }
     fn st_flags(&self) -> u32 {
 }
-    #[cfg(freebsd12)]
-    fn st_lspare(&self) -> u32 {
-}
-    #[cfg(not(freebsd12))]
     fn st_lspare(&self) -> u32 {
 }
 }
@@ -26775,7 +26502,7 @@ use crate::sys_common::AsInner;
 
 /// OS-specific extensions to [`fs::Metadata`].
 ///
-/// [`fs::Metadata`]: crate::fs::Metadata
+/// [`fs::Metadata`]: ../../../../std/fs/struct.Metadata.html
 #[stable(feature = "metadata_ext", since = "1.1.0")]
 pub trait MetadataExt {
     #[stable(feature = "metadata_ext2", since = "1.8.0")]
@@ -27161,7 +26888,7 @@ use crate::os::haiku::raw;
 
 /// OS-specific extensions to [`fs::Metadata`].
 ///
-/// [`fs::Metadata`]: crate::fs::Metadata
+/// [`fs::Metadata`]: ../../../../std/fs/struct.Metadata.html
 #[stable(feature = "metadata_ext", since = "1.1.0")]
 pub trait MetadataExt {
     /// Gain a reference to the underlying `stat` structure which contains
@@ -27335,190 +27062,6 @@ pub struct stat {
 }
 }
 }
-#[cfg(target_os = "illumos")]
-pub mod illumos {
-//! illumos-specific definitions
-
-#![stable(feature = "raw_ext", since = "1.1.0")]
-
-pub mod fs {
-#![stable(feature = "metadata_ext", since = "1.1.0")]
-
-use crate::fs::Metadata;
-use crate::sys_common::AsInner;
-
-#[allow(deprecated)]
-use crate::os::illumos::raw;
-
-/// OS-specific extensions to [`fs::Metadata`].
-///
-/// [`fs::Metadata`]: crate::fs::Metadata
-#[stable(feature = "metadata_ext", since = "1.1.0")]
-pub trait MetadataExt {
-    /// Gain a reference to the underlying `stat` structure which contains
-    /// the raw information returned by the OS.
-    ///
-    /// The contents of the returned `stat` are **not** consistent across
-    /// Unix platforms. The `os::unix::fs::MetadataExt` trait contains the
-    /// cross-Unix abstractions contained within the raw stat.
-    #[stable(feature = "metadata_ext", since = "1.1.0")]
-    #[rustc_deprecated(
-        since = "1.8.0",
-        reason = "deprecated in favor of the accessor methods of this trait"
-    )]
-    #[allow(deprecated)]
-    fn as_raw_stat(&self) -> &raw::stat;
-
-    #[stable(feature = "metadata_ext2", since = "1.8.0")]
-    fn st_dev(&self) -> u64;
-    #[stable(feature = "metadata_ext2", since = "1.8.0")]
-    fn st_ino(&self) -> u64;
-    #[stable(feature = "metadata_ext2", since = "1.8.0")]
-    fn st_mode(&self) -> u32;
-    #[stable(feature = "metadata_ext2", since = "1.8.0")]
-    fn st_nlink(&self) -> u64;
-    #[stable(feature = "metadata_ext2", since = "1.8.0")]
-    fn st_uid(&self) -> u32;
-    #[stable(feature = "metadata_ext2", since = "1.8.0")]
-    fn st_gid(&self) -> u32;
-    #[stable(feature = "metadata_ext2", since = "1.8.0")]
-    fn st_rdev(&self) -> u64;
-    #[stable(feature = "metadata_ext2", since = "1.8.0")]
-    fn st_size(&self) -> u64;
-    #[stable(feature = "metadata_ext2", since = "1.8.0")]
-    fn st_atime(&self) -> i64;
-    #[stable(feature = "metadata_ext2", since = "1.8.0")]
-    fn st_atime_nsec(&self) -> i64;
-    #[stable(feature = "metadata_ext2", since = "1.8.0")]
-    fn st_mtime(&self) -> i64;
-    #[stable(feature = "metadata_ext2", since = "1.8.0")]
-    fn st_mtime_nsec(&self) -> i64;
-    #[stable(feature = "metadata_ext2", since = "1.8.0")]
-    fn st_ctime(&self) -> i64;
-    #[stable(feature = "metadata_ext2", since = "1.8.0")]
-    fn st_ctime_nsec(&self) -> i64;
-    #[stable(feature = "metadata_ext2", since = "1.8.0")]
-    fn st_blksize(&self) -> u64;
-    #[stable(feature = "metadata_ext2", since = "1.8.0")]
-    fn st_blocks(&self) -> u64;
-}
-
-#[stable(feature = "metadata_ext", since = "1.1.0")]
-impl MetadataExt for Metadata {
-    #[allow(deprecated)]
-    fn as_raw_stat(&self) -> &raw::stat {
-}
-    fn st_dev(&self) -> u64 {
-}
-    fn st_ino(&self) -> u64 {
-}
-    fn st_mode(&self) -> u32 {
-}
-    fn st_nlink(&self) -> u64 {
-}
-    fn st_uid(&self) -> u32 {
-}
-    fn st_gid(&self) -> u32 {
-}
-    fn st_rdev(&self) -> u64 {
-}
-    fn st_size(&self) -> u64 {
-}
-    fn st_atime(&self) -> i64 {
-}
-    fn st_atime_nsec(&self) -> i64 {
-}
-    fn st_mtime(&self) -> i64 {
-}
-    fn st_mtime_nsec(&self) -> i64 {
-}
-    fn st_ctime(&self) -> i64 {
-}
-    fn st_ctime_nsec(&self) -> i64 {
-}
-    fn st_blksize(&self) -> u64 {
-}
-    fn st_blocks(&self) -> u64 {
-}
-}
-}
-pub mod raw {
-//! illumos-specific raw type definitions
-
-#![stable(feature = "raw_ext", since = "1.1.0")]
-#![rustc_deprecated(
-    since = "1.8.0",
-    reason = "these type aliases are no longer supported by the standard library, the `libc` \
-    crate on crates.io should be used instead for the correct definitions"
-)]
-#![allow(deprecated)]
-
-use crate::os::raw::c_long;
-use crate::os::unix::raw::{gid_t, uid_t};
-
-#[stable(feature = "raw_ext", since = "1.1.0")]
-pub type blkcnt_t = u64;
-#[stable(feature = "raw_ext", since = "1.1.0")]
-pub type blksize_t = u64;
-#[stable(feature = "raw_ext", since = "1.1.0")]
-pub type dev_t = u64;
-#[stable(feature = "raw_ext", since = "1.1.0")]
-pub type fflags_t = u32;
-#[stable(feature = "raw_ext", since = "1.1.0")]
-pub type ino_t = u64;
-#[stable(feature = "raw_ext", since = "1.1.0")]
-pub type mode_t = u32;
-#[stable(feature = "raw_ext", since = "1.1.0")]
-pub type nlink_t = u64;
-#[stable(feature = "raw_ext", since = "1.1.0")]
-pub type off_t = u64;
-#[stable(feature = "raw_ext", since = "1.1.0")]
-pub type time_t = i64;
-
-#[stable(feature = "pthread_t", since = "1.8.0")]
-pub type pthread_t = u32;
-
-#[repr(C)]
-#[derive(Clone)]
-#[stable(feature = "raw_ext", since = "1.1.0")]
-pub struct stat {
-    #[stable(feature = "raw_ext", since = "1.1.0")]
-    pub st_dev: dev_t,
-    #[stable(feature = "raw_ext", since = "1.1.0")]
-    pub st_ino: ino_t,
-    #[stable(feature = "raw_ext", since = "1.1.0")]
-    pub st_mode: mode_t,
-    #[stable(feature = "raw_ext", since = "1.1.0")]
-    pub st_nlink: nlink_t,
-    #[stable(feature = "raw_ext", since = "1.1.0")]
-    pub st_uid: uid_t,
-    #[stable(feature = "raw_ext", since = "1.1.0")]
-    pub st_gid: gid_t,
-    #[stable(feature = "raw_ext", since = "1.1.0")]
-    pub st_rdev: dev_t,
-    #[stable(feature = "raw_ext", since = "1.1.0")]
-    pub st_size: off_t,
-    #[stable(feature = "raw_ext", since = "1.1.0")]
-    pub st_atime: time_t,
-    #[stable(feature = "raw_ext", since = "1.1.0")]
-    pub st_atime_nsec: c_long,
-    #[stable(feature = "raw_ext", since = "1.1.0")]
-    pub st_mtime: time_t,
-    #[stable(feature = "raw_ext", since = "1.1.0")]
-    pub st_mtime_nsec: c_long,
-    #[stable(feature = "raw_ext", since = "1.1.0")]
-    pub st_ctime: time_t,
-    #[stable(feature = "raw_ext", since = "1.1.0")]
-    pub st_ctime_nsec: c_long,
-    #[stable(feature = "raw_ext", since = "1.1.0")]
-    pub st_blksize: blksize_t,
-    #[stable(feature = "raw_ext", since = "1.1.0")]
-    pub st_blocks: blkcnt_t,
-    #[stable(feature = "raw_ext", since = "1.1.0")]
-    pub __unused: [u8; 16],
-}
-}
-}
 #[cfg(target_os = "ios")]
 pub mod ios {
 //! iOS-specific definitions
@@ -27536,7 +27079,7 @@ use crate::os::ios::raw;
 
 /// OS-specific extensions to [`fs::Metadata`].
 ///
-/// [`fs::Metadata`]: crate::fs::Metadata
+/// [`fs::Metadata`]: ../../../../std/fs/struct.Metadata.html
 #[stable(feature = "metadata_ext", since = "1.1.0")]
 pub trait MetadataExt {
     /// Gain a reference to the underlying `stat` structure which contains
@@ -27750,7 +27293,7 @@ use crate::os::macos::raw;
 
 /// OS-specific extensions to [`fs::Metadata`].
 ///
-/// [`fs::Metadata`]: crate::fs::Metadata
+/// [`fs::Metadata`]: ../../../../std/fs/struct.Metadata.html
 #[stable(feature = "metadata_ext", since = "1.1.0")]
 pub trait MetadataExt {
     /// Gain a reference to the underlying `stat` structure which contains
@@ -27968,7 +27511,7 @@ use crate::os::netbsd::raw;
 
 /// OS-specific extensions to [`fs::Metadata`].
 ///
-/// [`fs::Metadata`]: crate::fs::Metadata
+/// [`fs::Metadata`]: ../../../../std/fs/struct.Metadata.html
 #[stable(feature = "metadata_ext", since = "1.1.0")]
 pub trait MetadataExt {
     /// Gain a reference to the underlying `stat` structure which contains
@@ -28178,7 +27721,7 @@ use crate::os::openbsd::raw;
 
 /// OS-specific extensions to [`fs::Metadata`].
 ///
-/// [`fs::Metadata`]: crate::fs::Metadata
+/// [`fs::Metadata`]: ../../../../std/fs/struct.Metadata.html
 #[stable(feature = "metadata_ext", since = "1.1.0")]
 pub trait MetadataExt {
     /// Gain a reference to the underlying `stat` structure which contains
@@ -28386,7 +27929,7 @@ use crate::os::redox::raw;
 
 /// OS-specific extensions to [`fs::Metadata`].
 ///
-/// [`fs::Metadata`]: crate::fs::Metadata
+/// [`fs::Metadata`]: ../../../../std/fs/struct.Metadata.html
 #[stable(feature = "metadata_ext", since = "1.1.0")]
 pub trait MetadataExt {
     /// Gain a reference to the underlying `stat` structure which contains
@@ -28396,7 +27939,7 @@ pub trait MetadataExt {
     /// Unix platforms. The `os::unix::fs::MetadataExt` trait contains the
     /// cross-Unix abstractions contained within the raw stat.
     ///
-    /// [`stat`]: crate::os::redox::raw::stat
+    /// [`stat`]: ../../../../std/os/redox/raw/struct.stat.html
     ///
     /// # Examples
     ///
@@ -28667,7 +28210,7 @@ pub trait MetadataExt {
     /// ```
     #[stable(feature = "metadata_ext2", since = "1.8.0")]
     fn st_ctime_nsec(&self) -> i64;
-    /// Returns the "preferred" block size for efficient filesystem I/O.
+    /// Returns the "preferred" blocksize for efficient filesystem I/O.
     ///
     /// # Examples
     ///
@@ -28841,7 +28384,7 @@ use crate::os::solaris::raw;
 
 /// OS-specific extensions to [`fs::Metadata`].
 ///
-/// [`fs::Metadata`]: crate::fs::Metadata
+/// [`fs::Metadata`]: ../../../../std/fs/struct.Metadata.html
 #[stable(feature = "metadata_ext", since = "1.1.0")]
 pub trait MetadataExt {
     /// Gain a reference to the underlying `stat` structure which contains
@@ -29024,7 +28567,7 @@ use crate::fs::Metadata;
 use crate::sys_common::AsInner;
 
 ///
-/// [`fs::Metadata`]: crate::fs::Metadata
+/// [`fs::Metadata`]: ../../../../std/fs/struct.Metadata.html
 #[stable(feature = "metadata_ext", since = "1.1.0")]
 pub trait MetadataExt {
     #[stable(feature = "metadata_ext2", since = "1.8.0")]
@@ -29296,6 +28839,10 @@ pub use core::panic::{Location, PanicInfo};
 /// purpose of this trait is to encode what types are safe to cross a [`catch_unwind`]
 /// boundary with no fear of unwind safety.
 ///
+/// [`Send`]: ../marker/trait.Send.html
+/// [`Sync`]: ../marker/trait.Sync.html
+/// [`catch_unwind`]: ./fn.catch_unwind.html
+///
 /// ## What is unwind safety?
 ///
 /// In Rust a function can "return" early if it either panics or calls a
@@ -29361,6 +28908,8 @@ pub use core::panic::{Location, PanicInfo};
 /// above, the lack of `unsafe` means it is mostly an advisory. The
 /// [`AssertUnwindSafe`] wrapper struct can be used to force this trait to be
 /// implemented for any closed over variables passed to `catch_unwind`.
+///
+/// [`AssertUnwindSafe`]: ./struct.AssertUnwindSafe.html
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 #[rustc_on_unimplemented(
     message = "the type `{Self}` may not be safely transferred across an unwind boundary",
@@ -29376,6 +28925,9 @@ pub auto trait UnwindSafe {}
 ///
 /// This is a "helper marker trait" used to provide impl blocks for the
 /// [`UnwindSafe`] trait, for more information see that documentation.
+///
+/// [`UnsafeCell`]: ../cell/struct.UnsafeCell.html
+/// [`UnwindSafe`]: ./trait.UnwindSafe.html
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 #[rustc_on_unimplemented(
     message = "the type `{Self}` may contain interior mutability and a reference may not be safely \
@@ -29395,6 +28947,7 @@ pub auto trait RefUnwindSafe {}
 /// account. This wrapper struct is useful for a quick and lightweight
 /// annotation that a variable is indeed unwind safe.
 ///
+/// [`catch_unwind`]: ./fn.catch_unwind.html
 /// # Examples
 ///
 /// One way to use `AssertUnwindSafe` is to assert that the entire closure
@@ -29602,6 +29155,8 @@ impl<F: Future> Future for AssertUnwindSafe<F> {
 /// can fail on a regular basis. Additionally, this function is not guaranteed
 /// to catch all panics, see the "Notes" section below.
 ///
+/// [`Result`]: ../result/enum.Result.html
+///
 /// The closure provided is required to adhere to the [`UnwindSafe`] trait to ensure
 /// that all captured variables are safe to cross this boundary. The purpose of
 /// this bound is to encode the concept of [exception safety][rfc] in the type
@@ -29609,6 +29164,9 @@ impl<F: Future> Future for AssertUnwindSafe<F> {
 /// bound as programs are naturally unwind safe without `unsafe` code. If it
 /// becomes a problem the [`AssertUnwindSafe`] wrapper struct can be used to quickly
 /// assert that the usage here is indeed unwind safe.
+///
+/// [`AssertUnwindSafe`]: ./struct.AssertUnwindSafe.html
+/// [`UnwindSafe`]: ./trait.UnwindSafe.html
 ///
 /// [rfc]: https://github.com/rust-lang/rfcs/blob/master/text/1236-stabilize-catch-panic.md
 ///
@@ -29642,6 +29200,8 @@ pub fn catch_unwind<F: FnOnce() -> R + UnwindSafe, R>(f: F) -> Result<R> {
 ///
 /// This is designed to be used in conjunction with [`catch_unwind`] to, for
 /// example, carry a panic across a layer of C code.
+///
+/// [`catch_unwind`]: ./fn.catch_unwind.html
 ///
 /// # Notes
 ///
@@ -29726,8 +29286,16 @@ pub mod path {
 //! let path: PathBuf = ["c:\\", "windows", "system32.dll"].iter().collect();
 //! ```
 //!
-//! [`components`]: Path::components
-//! [`push`]: PathBuf::push
+//! [`Component`]: ../../std/path/enum.Component.html
+//! [`components`]: ../../std/path/struct.Path.html#method.components
+//! [`PathBuf`]: ../../std/path/struct.PathBuf.html
+//! [`Path`]: ../../std/path/struct.Path.html
+//! [`push`]: ../../std/path/struct.PathBuf.html#method.push
+//! [`String`]: ../../std/string/struct.String.html
+//!
+//! [`str`]: ../../std/primitive.str.html
+//! [`OsString`]: ../../std/ffi/struct.OsString.html
+//! [`OsStr`]: ../../std/ffi/struct.OsStr.html
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -29819,10 +29387,10 @@ pub enum Prefix<'a> {
         #[stable(feature = "rust1", since = "1.0.0")] &'a OsStr,
     ),
 
-    /// Verbatim disk prefix, e.g., `\\?\C:`.
+    /// Verbatim disk prefix, e.g., `\\?\C:\`.
     ///
     /// Verbatim disk prefixes consist of `\\?\` immediately followed by the
-    /// drive letter and `:`.
+    /// drive letter and `:\`.
     #[stable(feature = "rust1", since = "1.0.0")]
     VerbatimDisk(#[stable(feature = "rust1", since = "1.0.0")] u8),
 
@@ -29998,9 +29566,12 @@ enum State {
 /// # }
 /// ```
 ///
-/// [`as_os_str`]: PrefixComponent::as_os_str
-/// [`kind`]: PrefixComponent::kind
-/// [`Prefix` variant]: Component::Prefix
+/// [`as_os_str`]: #method.as_os_str
+/// [`Component`]: enum.Component.html
+/// [`kind`]: #method.kind
+/// [`OsStr`]: ../../std/ffi/struct.OsStr.html
+/// [`Prefix` variant]: enum.Component.html#variant.Prefix
+/// [`Prefix`]: enum.Prefix.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Copy, Clone, Eq, Debug)]
 pub struct PrefixComponent<'a> {
@@ -30016,11 +29587,15 @@ impl<'a> PrefixComponent<'a> {
     ///
     /// See [`Prefix`]'s documentation for more information on the different
     /// kinds of prefixes.
+    ///
+    /// [`Prefix`]: enum.Prefix.html
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn kind(&self) -> Prefix<'a> {
 }
 
     /// Returns the raw [`OsStr`] slice for this prefix.
+    ///
+    /// [`OsStr`]: ../../std/ffi/struct.OsStr.html
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn as_os_str(&self) -> &'a OsStr {
 }
@@ -30072,6 +29647,10 @@ impl Hash for PrefixComponent<'_> {
 ///     Component::Normal("bar.txt".as_ref()),
 /// ]);
 /// ```
+///
+/// [`Components`]: struct.Components.html
+/// [`Path`]: struct.Path.html
+/// [`Path::components`]: struct.Path.html#method.components
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum Component<'a> {
@@ -30081,6 +29660,8 @@ pub enum Component<'a> {
     /// for more.
     ///
     /// Does not occur on Unix.
+    ///
+    /// [`Prefix`]: enum.Prefix.html
     #[stable(feature = "rust1", since = "1.0.0")]
     Prefix(#[stable(feature = "rust1", since = "1.0.0")] PrefixComponent<'a>),
 
@@ -30118,6 +29699,8 @@ impl<'a> Component<'a> {
     /// let components: Vec<_> = path.components().map(|comp| comp.as_os_str()).collect();
     /// assert_eq!(&components, &[".", "tmp", "foo", "bar.txt"]);
     /// ```
+    ///
+    /// [`OsStr`]: ../../std/ffi/struct.OsStr.html
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn as_os_str(self) -> &'a OsStr {
 }
@@ -30152,7 +29735,9 @@ impl AsRef<Path> for Component<'_> {
 /// }
 /// ```
 ///
-/// [`components`]: Path::components
+/// [`Component`]: enum.Component.html
+/// [`components`]: struct.Path.html#method.components
+/// [`Path`]: struct.Path.html
 #[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Components<'a> {
@@ -30178,7 +29763,10 @@ pub struct Components<'a> {
 /// This `struct` is created by the [`iter`] method on [`Path`].
 /// See its documentation for more.
 ///
-/// [`iter`]: Path::iter
+/// [`Component`]: enum.Component.html
+/// [`iter`]: struct.Path.html#method.iter
+/// [`OsStr`]: ../../std/ffi/struct.OsStr.html
+/// [`Path`]: struct.Path.html
 #[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Iter<'a> {
@@ -30389,7 +29977,8 @@ impl cmp::Ord for Components<'_> {
 /// }
 /// ```
 ///
-/// [`ancestors`]: Path::ancestors
+/// [`ancestors`]: struct.Path.html#method.ancestors
+/// [`Path`]: struct.Path.html
 #[derive(Copy, Clone, Debug)]
 #[stable(feature = "path_ancestors", since = "1.28.0")]
 pub struct Ancestors<'a> {
@@ -30417,8 +30006,11 @@ impl FusedIterator for Ancestors<'_> {}
 /// the path in place. It also implements [`Deref`] to [`Path`], meaning that
 /// all methods on [`Path`] slices are available on `PathBuf` values as well.
 ///
-/// [`push`]: PathBuf::push
-/// [`set_extension`]: PathBuf::set_extension
+/// [`String`]: ../string/struct.String.html
+/// [`Path`]: struct.Path.html
+/// [`push`]: struct.PathBuf.html#method.push
+/// [`set_extension`]: struct.PathBuf.html#method.set_extension
+/// [`Deref`]: ../ops/trait.Deref.html
 ///
 /// More details about the overall approach can be found in
 /// the [module documentation](index.html).
@@ -30494,6 +30086,7 @@ impl PathBuf {
     /// # Examples
     ///
     /// ```
+    /// #![feature(path_buf_capacity)]
     /// use std::path::PathBuf;
     ///
     /// let mut path = PathBuf::with_capacity(10);
@@ -30505,12 +30098,15 @@ impl PathBuf {
     /// assert_eq!(capacity, path.capacity());
     /// ```
     ///
-    /// [`with_capacity`]: OsString::with_capacity
-    #[stable(feature = "path_buf_capacity", since = "1.44.0")]
+    /// [`with_capacity`]: ../ffi/struct.OsString.html#method.with_capacity
+    /// [`OsString`]: ../ffi/struct.OsString.html
+    #[unstable(feature = "path_buf_capacity", issue = "58234")]
     pub fn with_capacity(capacity: usize) -> PathBuf {
 }
 
     /// Coerces to a [`Path`] slice.
+    ///
+    /// [`Path`]: struct.Path.html
     ///
     /// # Examples
     ///
@@ -30567,17 +30163,18 @@ impl PathBuf {
     /// Returns `false` and does nothing if [`self.parent`] is [`None`].
     /// Otherwise, returns `true`.
     ///
-    /// [`self.parent`]: Path::parent
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
+    /// [`self.parent`]: struct.PathBuf.html#method.parent
     ///
     /// # Examples
     ///
     /// ```
     /// use std::path::{Path, PathBuf};
     ///
-    /// let mut p = PathBuf::from("/spirited/away.rs");
+    /// let mut p = PathBuf::from("/test/test.rs");
     ///
     /// p.pop();
-    /// assert_eq!(Path::new("/spirited"), p);
+    /// assert_eq!(Path::new("/test"), p);
     /// p.pop();
     /// assert_eq!(Path::new("/"), p);
     /// ```
@@ -30594,8 +30191,9 @@ impl PathBuf {
     /// `file_name`. The new path will be a sibling of the original path.
     /// (That is, it will have the same parent.)
     ///
-    /// [`self.file_name`]: Path::file_name
-    /// [`pop`]: PathBuf::pop
+    /// [`self.file_name`]: struct.PathBuf.html#method.file_name
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
+    /// [`pop`]: struct.PathBuf.html#method.pop
     ///
     /// # Examples
     ///
@@ -30625,8 +30223,9 @@ impl PathBuf {
     /// If [`self.extension`] is [`None`], the extension is added; otherwise
     /// it is replaced.
     ///
-    /// [`self.file_name`]: Path::file_name
-    /// [`self.extension`]: Path::extension
+    /// [`self.file_name`]: struct.PathBuf.html#method.file_name
+    /// [`self.extension`]: struct.PathBuf.html#method.extension
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
     ///
     /// # Examples
     ///
@@ -30650,6 +30249,8 @@ impl PathBuf {
 
     /// Consumes the `PathBuf`, yielding its internal [`OsString`] storage.
     ///
+    /// [`OsString`]: ../ffi/struct.OsString.html
+    ///
     /// # Examples
     ///
     /// ```
@@ -30663,49 +30264,58 @@ impl PathBuf {
 }
 
     /// Converts this `PathBuf` into a [boxed][`Box`] [`Path`].
+    ///
+    /// [`Box`]: ../../std/boxed/struct.Box.html
+    /// [`Path`]: struct.Path.html
     #[stable(feature = "into_boxed_path", since = "1.20.0")]
     pub fn into_boxed_path(self) -> Box<Path> {
 }
 
     /// Invokes [`capacity`] on the underlying instance of [`OsString`].
     ///
-    /// [`capacity`]: OsString::capacity
-    #[stable(feature = "path_buf_capacity", since = "1.44.0")]
+    /// [`capacity`]: ../ffi/struct.OsString.html#method.capacity
+    /// [`OsString`]: ../ffi/struct.OsString.html
+    #[unstable(feature = "path_buf_capacity", issue = "58234")]
     pub fn capacity(&self) -> usize {
 }
 
     /// Invokes [`clear`] on the underlying instance of [`OsString`].
     ///
-    /// [`clear`]: OsString::clear
-    #[stable(feature = "path_buf_capacity", since = "1.44.0")]
+    /// [`clear`]: ../ffi/struct.OsString.html#method.clear
+    /// [`OsString`]: ../ffi/struct.OsString.html
+    #[unstable(feature = "path_buf_capacity", issue = "58234")]
     pub fn clear(&mut self) {
 }
 
     /// Invokes [`reserve`] on the underlying instance of [`OsString`].
     ///
-    /// [`reserve`]: OsString::reserve
-    #[stable(feature = "path_buf_capacity", since = "1.44.0")]
+    /// [`reserve`]: ../ffi/struct.OsString.html#method.reserve
+    /// [`OsString`]: ../ffi/struct.OsString.html
+    #[unstable(feature = "path_buf_capacity", issue = "58234")]
     pub fn reserve(&mut self, additional: usize) {
 }
 
     /// Invokes [`reserve_exact`] on the underlying instance of [`OsString`].
     ///
-    /// [`reserve_exact`]: OsString::reserve_exact
-    #[stable(feature = "path_buf_capacity", since = "1.44.0")]
+    /// [`reserve_exact`]: ../ffi/struct.OsString.html#method.reserve_exact
+    /// [`OsString`]: ../ffi/struct.OsString.html
+    #[unstable(feature = "path_buf_capacity", issue = "58234")]
     pub fn reserve_exact(&mut self, additional: usize) {
 }
 
     /// Invokes [`shrink_to_fit`] on the underlying instance of [`OsString`].
     ///
-    /// [`shrink_to_fit`]: OsString::shrink_to_fit
-    #[stable(feature = "path_buf_capacity", since = "1.44.0")]
+    /// [`shrink_to_fit`]: ../ffi/struct.OsString.html#method.shrink_to_fit
+    /// [`OsString`]: ../ffi/struct.OsString.html
+    #[unstable(feature = "path_buf_capacity", issue = "58234")]
     pub fn shrink_to_fit(&mut self) {
 }
 
     /// Invokes [`shrink_to`] on the underlying instance of [`OsString`].
     ///
-    /// [`shrink_to`]: OsString::shrink_to
-    #[unstable(feature = "shrink_to", issue = "56431")]
+    /// [`shrink_to`]: ../ffi/struct.OsString.html#method.shrink_to
+    /// [`OsString`]: ../ffi/struct.OsString.html
+    #[unstable(feature = "path_buf_capacity", issue = "58234")]
     pub fn shrink_to(&mut self, min_capacity: usize) {
 }
 }
@@ -30713,13 +30323,6 @@ impl PathBuf {
 #[stable(feature = "box_from_path", since = "1.17.0")]
 impl From<&Path> for Box<Path> {
     fn from(path: &Path) -> Box<Path> {
-}
-}
-
-#[stable(feature = "box_from_cow", since = "1.45.0")]
-impl From<Cow<'_, Path>> for Box<Path> {
-    #[inline]
-    fn from(cow: Cow<'_, Path>) -> Box<Path> {
 }
 }
 
@@ -30800,10 +30403,6 @@ impl<P: AsRef<Path>> iter::FromIterator<P> for PathBuf {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<P: AsRef<Path>> iter::Extend<P> for PathBuf {
     fn extend<I: IntoIterator<Item = P>>(&mut self, iter: I) {
-}
-
-    #[inline]
-    fn extend_one(&mut self, p: P) {
 }
 }
 
@@ -30946,6 +30545,10 @@ impl AsRef<OsStr> for PathBuf {
 /// pointer like `&` or [`Box`]. For an owned version of this type,
 /// see [`PathBuf`].
 ///
+/// [`str`]: ../primitive.str.html
+/// [`Box`]: ../boxed/struct.Box.html
+/// [`PathBuf`]: struct.PathBuf.html
+///
 /// More details about the overall approach can be found in
 /// the [module documentation](index.html).
 ///
@@ -30984,7 +30587,8 @@ pub struct Path {
 /// This `struct` is created by the [`strip_prefix`] method on [`Path`].
 /// See its documentation for more.
 ///
-/// [`strip_prefix`]: Path::strip_prefix
+/// [`strip_prefix`]: struct.Path.html#method.strip_prefix
+/// [`Path`]: struct.Path.html
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[stable(since = "1.7.0", feature = "strip_prefix")]
 pub struct StripPrefixError(());
@@ -31026,6 +30630,8 @@ impl Path {
 
     /// Yields the underlying [`OsStr`] slice.
     ///
+    /// [`OsStr`]: ../ffi/struct.OsStr.html
+    ///
     /// # Examples
     ///
     /// ```
@@ -31044,7 +30650,7 @@ impl Path {
     /// Note that validation is performed because non-UTF-8 strings are
     /// perfectly valid for some OS.
     ///
-    /// [`&str`]: str
+    /// [`&str`]: ../primitive.str.html
     ///
     /// # Examples
     ///
@@ -31063,8 +30669,8 @@ impl Path {
     /// Any non-Unicode sequences are replaced with
     /// [`U+FFFD REPLACEMENT CHARACTER`][U+FFFD].
     ///
-    /// [`Cow<str>`]: Cow
-    /// [U+FFFD]: super::char::REPLACEMENT_CHARACTER
+    /// [`Cow<str>`]: ../borrow/enum.Cow.html
+    /// [U+FFFD]: ../char/constant.REPLACEMENT_CHARACTER.html
     ///
     /// # Examples
     ///
@@ -31084,6 +30690,8 @@ impl Path {
 }
 
     /// Converts a `Path` to an owned [`PathBuf`].
+    ///
+    /// [`PathBuf`]: struct.PathBuf.html
     ///
     /// # Examples
     ///
@@ -31115,7 +30723,7 @@ impl Path {
     /// assert!(!Path::new("foo.txt").is_absolute());
     /// ```
     ///
-    /// [`has_root`]: Path::has_root
+    /// [`has_root`]: #method.has_root
     #[stable(feature = "rust1", since = "1.0.0")]
     #[allow(deprecated)]
     pub fn is_absolute(&self) -> bool {
@@ -31133,7 +30741,7 @@ impl Path {
     /// assert!(Path::new("foo.txt").is_relative());
     /// ```
     ///
-    /// [`is_absolute`]: Path::is_absolute
+    /// [`is_absolute`]: #method.is_absolute
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn is_relative(&self) -> bool {
 }
@@ -31164,6 +30772,8 @@ impl Path {
     /// Returns the `Path` without its final component, if there is one.
     ///
     /// Returns [`None`] if the path terminates in a root or prefix.
+    ///
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
     ///
     /// # Examples
     ///
@@ -31200,16 +30810,10 @@ impl Path {
     /// assert_eq!(ancestors.next(), Some(Path::new("/foo")));
     /// assert_eq!(ancestors.next(), Some(Path::new("/")));
     /// assert_eq!(ancestors.next(), None);
-    ///
-    /// let mut ancestors = Path::new("../foo/bar").ancestors();
-    /// assert_eq!(ancestors.next(), Some(Path::new("../foo/bar")));
-    /// assert_eq!(ancestors.next(), Some(Path::new("../foo")));
-    /// assert_eq!(ancestors.next(), Some(Path::new("..")));
-    /// assert_eq!(ancestors.next(), Some(Path::new("")));
-    /// assert_eq!(ancestors.next(), None);
     /// ```
     ///
-    /// [`parent`]: Path::parent
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
+    /// [`parent`]: struct.Path.html#method.parent
     #[stable(feature = "path_ancestors", since = "1.28.0")]
     pub fn ancestors(&self) -> Ancestors<'_> {
 }
@@ -31220,6 +30824,8 @@ impl Path {
     /// is the directory name.
     ///
     /// Returns [`None`] if the path terminates in `..`.
+    ///
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
     ///
     /// # Examples
     ///
@@ -31245,7 +30851,8 @@ impl Path {
     /// If `base` is not a prefix of `self` (i.e., [`starts_with`]
     /// returns `false`), returns [`Err`].
     ///
-    /// [`starts_with`]: Path::starts_with
+    /// [`starts_with`]: #method.starts_with
+    /// [`Err`]: ../../std/result/enum.Result.html#variant.Err
     ///
     /// # Examples
     ///
@@ -31259,9 +30866,8 @@ impl Path {
     /// assert_eq!(path.strip_prefix("/test/"), Ok(Path::new("haha/foo.txt")));
     /// assert_eq!(path.strip_prefix("/test/haha/foo.txt"), Ok(Path::new("")));
     /// assert_eq!(path.strip_prefix("/test/haha/foo.txt/"), Ok(Path::new("")));
-    ///
-    /// assert!(path.strip_prefix("test").is_err());
-    /// assert!(path.strip_prefix("/haha").is_err());
+    /// assert_eq!(path.strip_prefix("test").is_ok(), false);
+    /// assert_eq!(path.strip_prefix("/haha").is_ok(), false);
     ///
     /// let prefix = PathBuf::from("/test/");
     /// assert_eq!(path.strip_prefix(prefix), Ok(Path::new("haha/foo.txt")));
@@ -31290,13 +30896,9 @@ impl Path {
     /// assert!(path.starts_with("/etc"));
     /// assert!(path.starts_with("/etc/"));
     /// assert!(path.starts_with("/etc/passwd"));
-    /// assert!(path.starts_with("/etc/passwd/")); // extra slash is okay
-    /// assert!(path.starts_with("/etc/passwd///")); // multiple extra slashes are okay
+    /// assert!(path.starts_with("/etc/passwd/"));
     ///
     /// assert!(!path.starts_with("/e"));
-    /// assert!(!path.starts_with("/etc/passwd.txt"));
-    ///
-    /// assert!(!Path::new("/etc/foo.rs").starts_with("/etc/foo"));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn starts_with<P: AsRef<Path>>(&self, base: P) -> bool {
@@ -31314,14 +30916,9 @@ impl Path {
     /// ```
     /// use std::path::Path;
     ///
-    /// let path = Path::new("/etc/resolv.conf");
+    /// let path = Path::new("/etc/passwd");
     ///
-    /// assert!(path.ends_with("resolv.conf"));
-    /// assert!(path.ends_with("etc/resolv.conf"));
-    /// assert!(path.ends_with("/etc/resolv.conf"));
-    ///
-    /// assert!(!path.ends_with("/resolv.conf"));
-    /// assert!(!path.ends_with("conf")); // use .extension() instead
+    /// assert!(path.ends_with("passwd"));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn ends_with<P: AsRef<Path>>(&self, child: P) -> bool {
@@ -31332,7 +30929,7 @@ impl Path {
 
     /// Extracts the stem (non-extension) portion of [`self.file_name`].
     ///
-    /// [`self.file_name`]: Path::file_name
+    /// [`self.file_name`]: struct.Path.html#method.file_name
     ///
     /// The stem is:
     ///
@@ -31341,13 +30938,16 @@ impl Path {
     /// * The entire file name if the file name begins with `.` and has no other `.`s within;
     /// * Otherwise, the portion of the file name before the final `.`
     ///
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
+    ///
     /// # Examples
     ///
     /// ```
     /// use std::path::Path;
     ///
-    /// assert_eq!("foo", Path::new("foo.rs").file_stem().unwrap());
-    /// assert_eq!("foo.tar", Path::new("foo.tar.gz").file_stem().unwrap());
+    /// let path = Path::new("foo.rs");
+    ///
+    /// assert_eq!("foo", path.file_stem().unwrap());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn file_stem(&self) -> Option<&OsStr> {
@@ -31362,15 +30962,17 @@ impl Path {
     /// * [`None`], if the file name begins with `.` and has no other `.`s within;
     /// * Otherwise, the portion of the file name after the final `.`
     ///
-    /// [`self.file_name`]: Path::file_name
+    /// [`self.file_name`]: struct.Path.html#method.file_name
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
     ///
     /// # Examples
     ///
     /// ```
     /// use std::path::Path;
     ///
-    /// assert_eq!("rs", Path::new("foo.rs").extension().unwrap());
-    /// assert_eq!("gz", Path::new("foo.tar.gz").extension().unwrap());
+    /// let path = Path::new("foo.rs");
+    ///
+    /// assert_eq!("rs", path.extension().unwrap());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn extension(&self) -> Option<&OsStr> {
@@ -31379,6 +30981,9 @@ impl Path {
     /// Creates an owned [`PathBuf`] with `path` adjoined to `self`.
     ///
     /// See [`PathBuf::push`] for more details on what it means to adjoin a path.
+    ///
+    /// [`PathBuf`]: struct.PathBuf.html
+    /// [`PathBuf::push`]: struct.PathBuf.html#method.push
     ///
     /// # Examples
     ///
@@ -31398,6 +31003,9 @@ impl Path {
     /// Creates an owned [`PathBuf`] like `self` but with the given file name.
     ///
     /// See [`PathBuf::set_file_name`] for more details.
+    ///
+    /// [`PathBuf`]: struct.PathBuf.html
+    /// [`PathBuf::set_file_name`]: struct.PathBuf.html#method.set_file_name
     ///
     /// # Examples
     ///
@@ -31421,6 +31029,9 @@ impl Path {
     ///
     /// See [`PathBuf::set_extension`] for more details.
     ///
+    /// [`PathBuf`]: struct.PathBuf.html
+    /// [`PathBuf::set_extension`]: struct.PathBuf.html#method.set_extension
+    ///
     /// # Examples
     ///
     /// ```
@@ -31428,11 +31039,6 @@ impl Path {
     ///
     /// let path = Path::new("foo.rs");
     /// assert_eq!(path.with_extension("txt"), PathBuf::from("foo.txt"));
-    ///
-    /// let path = Path::new("foo.tar.gz");
-    /// assert_eq!(path.with_extension(""), PathBuf::from("foo.tar"));
-    /// assert_eq!(path.with_extension("xz"), PathBuf::from("foo.tar.xz"));
-    /// assert_eq!(path.with_extension("").with_extension("txt"), PathBuf::from("foo.txt"));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn with_extension<S: AsRef<OsStr>>(&self, extension: S) -> PathBuf {
@@ -31473,7 +31079,8 @@ impl Path {
     /// assert_eq!(components.next(), None)
     /// ```
     ///
-    /// [`CurDir`]: Component::CurDir
+    /// [`Component`]: enum.Component.html
+    /// [`CurDir`]: enum.Component.html#variant.CurDir
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn components(&self) -> Components<'_> {
 }
@@ -31484,7 +31091,8 @@ impl Path {
     /// For more information about the particulars of how the path is separated
     /// into components, see [`components`].
     ///
-    /// [`components`]: Path::components
+    /// [`components`]: #method.components
+    /// [`OsStr`]: ../ffi/struct.OsStr.html
     ///
     /// # Examples
     ///
@@ -31505,7 +31113,7 @@ impl Path {
     /// Returns an object that implements [`Display`] for safely printing paths
     /// that may contain non-Unicode data.
     ///
-    /// [`Display`]: fmt::Display
+    /// [`Display`]: ../fmt/trait.Display.html
     ///
     /// # Examples
     ///
@@ -31527,6 +31135,8 @@ impl Path {
     ///
     /// This is an alias to [`fs::metadata`].
     ///
+    /// [`fs::metadata`]: ../fs/fn.metadata.html
+    ///
     /// # Examples
     ///
     /// ```no_run
@@ -31543,6 +31153,8 @@ impl Path {
     /// Queries the metadata about a file without following symlinks.
     ///
     /// This is an alias to [`fs::symlink_metadata`].
+    ///
+    /// [`fs::symlink_metadata`]: ../fs/fn.symlink_metadata.html
     ///
     /// # Examples
     ///
@@ -31562,6 +31174,8 @@ impl Path {
     ///
     /// This is an alias to [`fs::canonicalize`].
     ///
+    /// [`fs::canonicalize`]: ../fs/fn.canonicalize.html
+    ///
     /// # Examples
     ///
     /// ```no_run
@@ -31578,6 +31192,8 @@ impl Path {
     ///
     /// This is an alias to [`fs::read_link`].
     ///
+    /// [`fs::read_link`]: ../fs/fn.read_link.html
+    ///
     /// # Examples
     ///
     /// ```no_run
@@ -31592,10 +31208,14 @@ impl Path {
 
     /// Returns an iterator over the entries within a directory.
     ///
-    /// The iterator will yield instances of [`io::Result`]`<`[`fs::DirEntry`]`>`. New
+    /// The iterator will yield instances of [`io::Result`]`<`[`DirEntry`]`>`. New
     /// errors may be encountered after an iterator is initially constructed.
     ///
     /// This is an alias to [`fs::read_dir`].
+    ///
+    /// [`io::Result`]: ../io/type.Result.html
+    /// [`DirEntry`]: ../fs/struct.DirEntry.html
+    /// [`fs::read_dir`]: ../fs/fn.read_dir.html
     ///
     /// # Examples
     ///
@@ -31625,13 +31245,15 @@ impl Path {
     ///
     /// ```no_run
     /// use std::path::Path;
-    /// assert!(!Path::new("does_not_exist.txt").exists());
+    /// assert_eq!(Path::new("does_not_exist.txt").exists(), false);
     /// ```
     ///
     /// # See Also
     ///
     /// This is a convenience function that coerces errors to false. If you want to
-    /// check errors, call [`fs::metadata`].
+    /// check errors, call [fs::metadata].
+    ///
+    /// [fs::metadata]: ../../std/fs/fn.metadata.html
     #[stable(feature = "path_ext", since = "1.5.0")]
     pub fn exists(&self) -> bool {
 }
@@ -31655,14 +31277,11 @@ impl Path {
     /// # See Also
     ///
     /// This is a convenience function that coerces errors to false. If you want to
-    /// check errors, call [`fs::metadata`] and handle its [`Result`]. Then call
-    /// [`fs::Metadata::is_file`] if it was [`Ok`].
+    /// check errors, call [fs::metadata] and handle its Result. Then call
+    /// [fs::Metadata::is_file] if it was Ok.
     ///
-    /// When the goal is simply to read from (or write to) the source, the most
-    /// reliable way to test the source can be read (or written to) is to open
-    /// it. Only using `is_file` can break workflows like `diff <( prog_a )` on
-    /// a Unix-like system for example. See [`fs::File::open`] or
-    /// [`fs::OpenOptions::open`] for more information.
+    /// [fs::metadata]: ../../std/fs/fn.metadata.html
+    /// [fs::Metadata::is_file]: ../../std/fs/struct.Metadata.html#method.is_file
     #[stable(feature = "path_ext", since = "1.5.0")]
     pub fn is_file(&self) -> bool {
 }
@@ -31686,14 +31305,20 @@ impl Path {
     /// # See Also
     ///
     /// This is a convenience function that coerces errors to false. If you want to
-    /// check errors, call [`fs::metadata`] and handle its [`Result`]. Then call
-    /// [`fs::Metadata::is_dir`] if it was [`Ok`].
+    /// check errors, call [fs::metadata] and handle its Result. Then call
+    /// [fs::Metadata::is_dir] if it was Ok.
+    ///
+    /// [fs::metadata]: ../../std/fs/fn.metadata.html
+    /// [fs::Metadata::is_dir]: ../../std/fs/struct.Metadata.html#method.is_dir
     #[stable(feature = "path_ext", since = "1.5.0")]
     pub fn is_dir(&self) -> bool {
 }
 
     /// Converts a [`Box<Path>`][`Box`] into a [`PathBuf`] without copying or
     /// allocating.
+    ///
+    /// [`Box`]: ../../std/boxed/struct.Box.html
+    /// [`PathBuf`]: struct.PathBuf.html
     #[stable(feature = "into_boxed_path", since = "1.20.0")]
     pub fn into_path_buf(self: Box<Path>) -> PathBuf {
 }
@@ -31727,8 +31352,10 @@ impl fmt::Debug for Path {
 /// println!("{}", path.display());
 /// ```
 ///
-/// [`Display`]: fmt::Display
-/// [`format!`]: crate::format
+/// [`Display`]: ../../std/fmt/trait.Display.html
+/// [`format!`]: ../../std/macro.format.html
+/// [`Path`]: struct.Path.html
+/// [`Path::display`]: struct.Path.html#method.display
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Display<'a> {
     path: &'a Path,
@@ -32023,15 +31650,25 @@ pub mod process {
 //! assert_eq!(b"test", output.stdout.as_slice());
 //! ```
 //!
-//! [`spawn`]: Command::spawn
-//! [`output`]: Command::output
+//! [`abort`]: fn.abort.html
+//! [`exit`]: fn.exit.html
 //!
-//! [`stdout`]: Command::stdout
-//! [`stdin`]: Command::stdin
-//! [`stderr`]: Command::stderr
+//! [`Command`]: struct.Command.html
+//! [`spawn`]: struct.Command.html#method.spawn
+//! [`output`]: struct.Command.html#method.output
 //!
-//! [`Write`]: io::Write
-//! [`Read`]: io::Read
+//! [`Child`]: struct.Child.html
+//! [`ChildStdin`]: struct.ChildStdin.html
+//! [`ChildStdout`]: struct.ChildStdout.html
+//! [`ChildStderr`]: struct.ChildStderr.html
+//! [`Stdio`]: struct.Stdio.html
+//!
+//! [`stdout`]: struct.Command.html#method.stdout
+//! [`stdin`]: struct.Command.html#method.stdin
+//! [`stderr`]: struct.Command.html#method.stderr
+//!
+//! [`Write`]: ../io/trait.Write.html
+//! [`Read`]: ../io/trait.Read.html
 
 #![stable(feature = "process", since = "1.0.0")]
 
@@ -32059,13 +31696,13 @@ use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
 /// run, even after the `Child` handle to the child process has gone out of
 /// scope.
 ///
-/// Calling [`wait`] (or other functions that wrap around it) will make
+/// Calling [`wait`](#method.wait) (or other functions that wrap around it) will make
 /// the parent process wait until the child has actually exited before
 /// continuing.
 ///
 /// # Warning
 ///
-/// On some systems, calling [`wait`] or similar is necessary for the OS to
+/// On some system, calling [`wait`] or similar is necessary for the OS to
 /// release resources. A process that terminated but has not been waited on is
 /// still around as a "zombie". Leaving too many zombies around may exhaust
 /// global resources (for example process IDs).
@@ -32091,44 +31728,25 @@ use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
 /// assert!(ecode.success());
 /// ```
 ///
-/// [`wait`]: Child::wait
+/// [`Command`]: struct.Command.html
+/// [`Drop`]: ../../core/ops/trait.Drop.html
+/// [`wait`]: #method.wait
 #[stable(feature = "process", since = "1.0.0")]
 pub struct Child {
     handle: imp::Process,
 
     /// The handle for writing to the child's standard input (stdin), if it has
-    /// been captured. To avoid partially moving
-    /// the `child` and thus blocking yourself from calling
-    /// functions on `child` while using `stdin`,
-    /// you might find it helpful:
-    ///
-    /// ```compile_fail,E0425
-    /// let stdin = child.stdin.take().unwrap();
-    /// ```
+    /// been captured.
     #[stable(feature = "process", since = "1.0.0")]
     pub stdin: Option<ChildStdin>,
 
     /// The handle for reading from the child's standard output (stdout), if it
-    /// has been captured. You might find it helpful to do
-    ///
-    /// ```compile_fail,E0425
-    /// let stdout = child.stdout.take().unwrap();
-    /// ```
-    ///
-    /// to avoid partially moving the `child` and thus blocking yourself from calling
-    /// functions on `child` while using `stdout`.
+    /// has been captured.
     #[stable(feature = "process", since = "1.0.0")]
     pub stdout: Option<ChildStdout>,
 
     /// The handle for reading from the child's standard error (stderr), if it
-    /// has been captured. You might find it helpful to do
-    ///
-    /// ```compile_fail,E0425
-    /// let stderr = child.stderr.take().unwrap();
-    /// ```
-    ///
-    /// to avoid partially moving the `child` and thus blocking yourself from calling
-    /// functions on `child` while using `stderr`.
+    /// has been captured.
     #[stable(feature = "process", since = "1.0.0")]
     pub stderr: Option<ChildStderr>,
 }
@@ -32162,8 +31780,9 @@ impl fmt::Debug for Child {
 /// file handle will be closed. If the child process was blocked on input prior
 /// to being dropped, it will become unblocked after dropping.
 ///
-/// [`stdin`]: Child::stdin
-/// [dropped]: Drop
+/// [`Child`]: struct.Child.html
+/// [`stdin`]: struct.Child.html#structfield.stdin
+/// [dropped]: ../ops/trait.Drop.html
 #[stable(feature = "process", since = "1.0.0")]
 pub struct ChildStdin {
     inner: AnonPipe,
@@ -32175,9 +31794,6 @@ impl Write for ChildStdin {
 }
 
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-}
-
-    fn is_write_vectored(&self) -> bool {
 }
 
     fn flush(&mut self) -> io::Result<()> {
@@ -32212,8 +31828,9 @@ impl fmt::Debug for ChildStdin {
 /// When an instance of `ChildStdout` is [dropped], the `ChildStdout`'s
 /// underlying file handle will be closed.
 ///
-/// [`stdout`]: Child::stdout
-/// [dropped]: Drop
+/// [`Child`]: struct.Child.html
+/// [`stdout`]: struct.Child.html#structfield.stdout
+/// [dropped]: ../ops/trait.Drop.html
 #[stable(feature = "process", since = "1.0.0")]
 pub struct ChildStdout {
     inner: AnonPipe,
@@ -32225,10 +31842,6 @@ impl Read for ChildStdout {
 }
 
     fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
-}
-
-    #[inline]
-    fn is_read_vectored(&self) -> bool {
 }
 
     #[inline]
@@ -32264,8 +31877,9 @@ impl fmt::Debug for ChildStdout {
 /// When an instance of `ChildStderr` is [dropped], the `ChildStderr`'s
 /// underlying file handle will be closed.
 ///
-/// [`stderr`]: Child::stderr
-/// [dropped]: Drop
+/// [`Child`]: struct.Child.html
+/// [`stderr`]: struct.Child.html#structfield.stderr
+/// [dropped]: ../ops/trait.Drop.html
 #[stable(feature = "process", since = "1.0.0")]
 pub struct ChildStderr {
     inner: AnonPipe,
@@ -32277,10 +31891,6 @@ impl Read for ChildStderr {
 }
 
     fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
-}
-
-    #[inline]
-    fn is_read_vectored(&self) -> bool {
 }
 
     #[inline]
@@ -32429,7 +32039,7 @@ impl Command {
     ///
     /// To pass multiple arguments see [`args`].
     ///
-    /// [`args`]: Command::args
+    /// [`args`]: #method.args
     ///
     /// # Examples
     ///
@@ -32452,7 +32062,7 @@ impl Command {
     ///
     /// To pass a single argument see [`arg`].
     ///
-    /// [`arg`]: Command::arg
+    /// [`arg`]: #method.arg
     ///
     /// # Examples
     ///
@@ -32591,7 +32201,7 @@ impl Command {
     ///         .expect("ls command failed to start");
     /// ```
     ///
-    /// [`canonicalize`]: crate::fs::canonicalize
+    /// [`canonicalize`]: ../fs/fn.canonicalize.html
     #[stable(feature = "process", since = "1.0.0")]
     pub fn current_dir<P: AsRef<Path>>(&mut self, dir: P) -> &mut Command {
 }
@@ -32601,8 +32211,8 @@ impl Command {
     /// Defaults to [`inherit`] when used with `spawn` or `status`, and
     /// defaults to [`piped`] when used with `output`.
     ///
-    /// [`inherit`]: Stdio::inherit
-    /// [`piped`]: Stdio::piped
+    /// [`inherit`]: struct.Stdio.html#method.inherit
+    /// [`piped`]: struct.Stdio.html#method.piped
     ///
     /// # Examples
     ///
@@ -32625,8 +32235,8 @@ impl Command {
     /// Defaults to [`inherit`] when used with `spawn` or `status`, and
     /// defaults to [`piped`] when used with `output`.
     ///
-    /// [`inherit`]: Stdio::inherit
-    /// [`piped`]: Stdio::piped
+    /// [`inherit`]: struct.Stdio.html#method.inherit
+    /// [`piped`]: struct.Stdio.html#method.piped
     ///
     /// # Examples
     ///
@@ -32649,8 +32259,8 @@ impl Command {
     /// Defaults to [`inherit`] when used with `spawn` or `status`, and
     /// defaults to [`piped`] when used with `output`.
     ///
-    /// [`inherit`]: Stdio::inherit
-    /// [`piped`]: Stdio::piped
+    /// [`inherit`]: struct.Stdio.html#method.inherit
+    /// [`piped`]: struct.Stdio.html#method.piped
     ///
     /// # Examples
     ///
@@ -32764,8 +32374,10 @@ impl AsInnerMut<imp::Command> for Command {
 /// [`Command`], or the [`wait_with_output`] method of a [`Child`]
 /// process.
 ///
-/// [`output`]: Command::output
-/// [`wait_with_output`]: Child::wait_with_output
+/// [`Command`]: struct.Command.html
+/// [`Child`]: struct.Child.html
+/// [`output`]: struct.Command.html#method.output
+/// [`wait_with_output`]: struct.Child.html#method.wait_with_output
 #[derive(PartialEq, Eq, Clone)]
 #[stable(feature = "process", since = "1.0.0")]
 pub struct Output {
@@ -32791,9 +32403,10 @@ impl fmt::Debug for Output {
 /// Describes what to do with a standard I/O stream for a child process when
 /// passed to the [`stdin`], [`stdout`], and [`stderr`] methods of [`Command`].
 ///
-/// [`stdin`]: Command::stdin
-/// [`stdout`]: Command::stdout
-/// [`stderr`]: Command::stderr
+/// [`stdin`]: struct.Command.html#method.stdin
+/// [`stdout`]: struct.Command.html#method.stdout
+/// [`stderr`]: struct.Command.html#method.stderr
+/// [`Command`]: struct.Command.html
 #[stable(feature = "process", since = "1.0.0")]
 pub struct Stdio(imp::Stdio);
 
@@ -33048,8 +32661,10 @@ impl From<fs::File> for Stdio {
 /// status is exposed through the [`status`] method, or the [`wait`] method
 /// of a [`Child`] process.
 ///
-/// [`status`]: Command::status
-/// [`wait`]: Child::wait
+/// [`Command`]: struct.Command.html
+/// [`Child`]: struct.Child.html
+/// [`status`]: struct.Command.html#method.status
+/// [`wait`]: struct.Child.html#method.wait
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
 #[stable(feature = "process", since = "1.0.0")]
 pub struct ExitStatus(imp::ExitStatus);
@@ -33129,8 +32744,8 @@ impl fmt::Display for ExitStatus {
 /// For the platform's canonical successful and unsuccessful codes, see
 /// the [`SUCCESS`] and [`FAILURE`] associated items.
 ///
-/// [`SUCCESS`]: ExitCode::SUCCESS
-/// [`FAILURE`]: ExitCode::FAILURE
+/// [`SUCCESS`]: #associatedconstant.SUCCESS
+/// [`FAILURE`]: #associatedconstant.FAILURE
 ///
 /// **Warning**: While various forms of this were discussed in [RFC #1937],
 /// it was ultimately cut from that RFC, and thus this type is more subject
@@ -33184,9 +32799,9 @@ impl Child {
     /// }
     /// ```
     ///
-    /// [`ErrorKind`]: io::ErrorKind
-    /// [`InvalidInput`]: io::ErrorKind::InvalidInput
-    /// [`Other`]: io::ErrorKind::Other
+    /// [`ErrorKind`]: ../io/enum.ErrorKind.html
+    /// [`InvalidInput`]: ../io/enum.ErrorKind.html#variant.InvalidInput
+    /// [`Other`]: ../io/enum.ErrorKind.html#variant.Other
     #[stable(feature = "process", since = "1.0.0")]
     pub fn kill(&mut self) -> io::Result<()> {
 }
@@ -33423,7 +33038,8 @@ pub fn exit(code: i32) -> ! {
 /// }
 /// ```
 ///
-/// [panic hook]: crate::panic::set_hook
+/// [`panic!`]: ../../std/macro.panic.html
+/// [panic hook]: ../../std/panic/fn.set_hook.html
 #[stable(feature = "process_abort", since = "1.17.0")]
 pub fn abort() -> ! {
 }
@@ -33643,7 +33259,7 @@ mod tests {
 }
 
     #[test]
-    fn test_command_implements_send_sync() {
+    fn test_command_implements_send() {
 }
 }
 }
@@ -33821,6 +33437,8 @@ pub use self::rwlock::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 pub use crate::sys_common::poison::{LockResult, PoisonError, TryLockError, TryLockResult};
 
 pub mod mpsc {
+// ignore-tidy-filelength
+
 //! Multi-producer, single-consumer FIFO queue communication primitives.
 //!
 //! This module provides message-based communication over channels, concretely
@@ -33848,7 +33466,12 @@ pub mod mpsc {
 //!    that a bound of 0 is allowed, causing the channel to become a "rendezvous"
 //!    channel where each sender atomically hands off a message to a receiver.
 //!
-//! [`send`]: Sender::send
+//! [`Sender`]: ../../../std/sync/mpsc/struct.Sender.html
+//! [`SyncSender`]: ../../../std/sync/mpsc/struct.SyncSender.html
+//! [`Receiver`]: ../../../std/sync/mpsc/struct.Receiver.html
+//! [`send`]: ../../../std/sync/mpsc/struct.Sender.html#method.send
+//! [`channel`]: ../../../std/sync/mpsc/fn.channel.html
+//! [`sync_channel`]: ../../../std/sync/mpsc/fn.sync_channel.html
 //!
 //! ## Disconnection
 //!
@@ -33862,7 +33485,9 @@ pub mod mpsc {
 //! will continue to [`unwrap`] the results returned from this module,
 //! instigating a propagation of failure among threads if one unexpectedly dies.
 //!
-//! [`unwrap`]: Result::unwrap
+//! [`Result`]: ../../../std/result/enum.Result.html
+//! [`Err`]: ../../../std/result/enum.Result.html#variant.Err
+//! [`unwrap`]: ../../../std/result/enum.Result.html#method.unwrap
 //!
 //! # Examples
 //!
@@ -34385,6 +34010,7 @@ use self::StartResult::*;
 
 use core::cmp;
 use core::intrinsics::abort;
+use core::isize;
 
 use crate::cell::UnsafeCell;
 use crate::ptr;
@@ -34554,7 +34180,7 @@ struct Consumer<T, Addition> {
     tail: UnsafeCell<*mut Node<T>>, // where to pop from
     tail_prev: AtomicPtr<Node<T>>,  // where to pop from
     cache_bound: usize,             // maximum cache size
-    cached_nodes: AtomicUsize,      // number of nodes marked as cacheable
+    cached_nodes: AtomicUsize,      // number of nodes marked as cachable
     addition: Addition,
 }
 
@@ -34685,6 +34311,7 @@ use self::Message::*;
 pub use self::UpgradeResult::*;
 
 use core::cmp;
+use core::isize;
 
 use crate::cell::UnsafeCell;
 use crate::ptr;
@@ -34819,6 +34446,7 @@ use self::Blocker::*;
 pub use self::Failure::*;
 
 use core::intrinsics::abort;
+use core::isize;
 use core::mem;
 use core::ptr;
 
@@ -35030,7 +34658,9 @@ impl<T> CacheAligned<T> {
 ///
 /// Messages sent to the channel can be retrieved using [`recv`].
 ///
-/// [`recv`]: Receiver::recv
+/// [`channel`]: fn.channel.html
+/// [`sync_channel`]: fn.sync_channel.html
+/// [`recv`]: struct.Receiver.html#method.recv
 ///
 /// # Examples
 ///
@@ -35070,8 +34700,10 @@ impl<T> !Sync for Receiver<T> {}
 /// waiting for a new message, and [`None`] will be returned
 /// when the corresponding channel has hung up.
 ///
-/// [`iter`]: Receiver::iter
-/// [`next`]: Iterator::next
+/// [`iter`]: struct.Receiver.html#method.iter
+/// [`Receiver`]: struct.Receiver.html
+/// [`next`]: ../../../std/iter/trait.Iterator.html#tymethod.next
+/// [`None`]: ../../../std/option/enum.Option.html#variant.None
 ///
 /// # Examples
 ///
@@ -35106,7 +34738,9 @@ pub struct Iter<'a, T: 'a> {
 /// This iterator will never block the caller in order to wait for data to
 /// become available. Instead, it will return [`None`].
 ///
-/// [`try_iter`]: Receiver::try_iter
+/// [`Receiver`]: struct.Receiver.html
+/// [`try_iter`]: struct.Receiver.html#method.try_iter
+/// [`None`]: ../../../std/option/enum.Option.html#variant.None
 ///
 /// # Examples
 ///
@@ -35147,7 +34781,9 @@ pub struct TryIter<'a, T: 'a> {
 /// is called, waiting for a new message, and [`None`] will be
 /// returned if the corresponding channel has hung up.
 ///
-/// [`next`]: Iterator::next
+/// [`Receiver`]: struct.Receiver.html
+/// [`next`]: ../../../std/iter/trait.Iterator.html#tymethod.next
+/// [`None`]: ../../../std/option/enum.Option.html#variant.None
 ///
 /// # Examples
 ///
@@ -35178,7 +34814,8 @@ pub struct IntoIter<T> {
 ///
 /// Messages can be sent through this channel with [`send`].
 ///
-/// [`send`]: Sender::send
+/// [`channel`]: fn.channel.html
+/// [`send`]: struct.Sender.html#method.send
 ///
 /// # Examples
 ///
@@ -35223,8 +34860,9 @@ impl<T> !Sync for Sender<T> {}
 ///
 /// [`send`] will block if there is no space in the internal buffer.
 ///
-/// [`send`]: SyncSender::send
-/// [`try_send`]: SyncSender::try_send
+/// [`sync_channel`]: fn.sync_channel.html
+/// [`send`]: struct.SyncSender.html#method.send
+/// [`try_send`]: struct.SyncSender.html#method.try_send
 ///
 /// # Examples
 ///
@@ -35278,8 +34916,8 @@ unsafe impl<T: Send> Send for SyncSender<T> {}
 /// disconnected, implying that the data could never be received. The error
 /// contains the data being sent as a payload so it can be recovered.
 ///
-/// [`Sender::send`]: Sender::send
-/// [`SyncSender::send`]: SyncSender::send
+/// [`Sender::send`]: struct.Sender.html#method.send
+/// [`SyncSender::send`]: struct.SyncSender.html#method.send
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(PartialEq, Eq, Clone, Copy)]
 pub struct SendError<T>(#[stable(feature = "rust1", since = "1.0.0")] pub T);
@@ -35290,7 +34928,10 @@ pub struct SendError<T>(#[stable(feature = "rust1", since = "1.0.0")] pub T);
 /// [`channel`] (or [`sync_channel`]) is disconnected, implying that no further
 /// messages will ever be received.
 ///
-/// [`recv`]: Receiver::recv
+/// [`recv`]: struct.Receiver.html#method.recv
+/// [`Receiver`]: struct.Receiver.html
+/// [`channel`]: fn.channel.html
+/// [`sync_channel`]: fn.sync_channel.html
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RecvError;
@@ -35299,7 +34940,9 @@ pub struct RecvError;
 /// not return data when called. This can occur with both a [`channel`] and
 /// a [`sync_channel`].
 ///
-/// [`try_recv`]: Receiver::try_recv
+/// [`try_recv`]: struct.Receiver.html#method.try_recv
+/// [`channel`]: fn.channel.html
+/// [`sync_channel`]: fn.sync_channel.html
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum TryRecvError {
@@ -35318,7 +34961,9 @@ pub enum TryRecvError {
 /// unable to return data when called. This can occur with both a [`channel`] and
 /// a [`sync_channel`].
 ///
-/// [`recv_timeout`]: Receiver::recv_timeout
+/// [`recv_timeout`]: struct.Receiver.html#method.recv_timeout
+/// [`channel`]: fn.channel.html
+/// [`sync_channel`]: fn.sync_channel.html
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
 #[stable(feature = "mpsc_recv_timeout", since = "1.12.0")]
 pub enum RecvTimeoutError {
@@ -35335,7 +34980,7 @@ pub enum RecvTimeoutError {
 /// This enumeration is the list of the possible error outcomes for the
 /// [`try_send`] method.
 ///
-/// [`try_send`]: SyncSender::try_send
+/// [`try_send`]: struct.SyncSender.html#method.try_send
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(PartialEq, Eq, Clone, Copy)]
 pub enum TrySendError<T> {
@@ -35345,11 +34990,16 @@ pub enum TrySendError<T> {
     /// If this is a buffered channel, then the buffer is full at this time. If
     /// this is not a buffered channel, then there is no [`Receiver`] available to
     /// acquire the data.
+    ///
+    /// [`sync_channel`]: fn.sync_channel.html
+    /// [`Receiver`]: struct.Receiver.html
     #[stable(feature = "rust1", since = "1.0.0")]
     Full(#[stable(feature = "rust1", since = "1.0.0")] T),
 
     /// This [`sync_channel`]'s receiving half has disconnected, so the data could not be
     /// sent. The data is returned back to the callee in this case.
+    ///
+    /// [`sync_channel`]: fn.sync_channel.html
     #[stable(feature = "rust1", since = "1.0.0")]
     Disconnected(#[stable(feature = "rust1", since = "1.0.0")] T),
 }
@@ -35394,8 +35044,13 @@ impl<T> UnsafeFlavor<T> for Receiver<T> {
 /// [`Sender`] is disconnected while trying to [`recv`], the [`recv`] method will
 /// return a [`RecvError`].
 ///
-/// [`send`]: Sender::send
-/// [`recv`]: Receiver::recv
+/// [`send`]: struct.Sender.html#method.send
+/// [`recv`]: struct.Receiver.html#method.recv
+/// [`Sender`]: struct.Sender.html
+/// [`Receiver`]: struct.Receiver.html
+/// [`sync_channel`]: fn.sync_channel.html
+/// [`SendError`]: struct.SendError.html
+/// [`RecvError`]: struct.RecvError.html
 ///
 /// # Examples
 ///
@@ -35440,8 +35095,13 @@ pub fn channel<T>() -> (Sender<T>, Receiver<T>) {
 /// [`SendError`]. Similarly, If the [`SyncSender`] is disconnected while trying
 /// to [`recv`], the [`recv`] method will return a [`RecvError`].
 ///
-/// [`send`]: SyncSender::send
-/// [`recv`]: Receiver::recv
+/// [`channel`]: fn.channel.html
+/// [`send`]: struct.SyncSender.html#method.send
+/// [`recv`]: struct.Receiver.html#method.recv
+/// [`SyncSender`]: struct.SyncSender.html
+/// [`Receiver`]: struct.Receiver.html
+/// [`SendError`]: struct.SendError.html
+/// [`RecvError`]: struct.RecvError.html
 ///
 /// # Examples
 ///
@@ -35484,6 +35144,9 @@ impl<T> Sender<T> {
     /// received, but a return value of [`Ok`] does *not* mean that the data
     /// will be received. It is possible for the corresponding receiver to
     /// hang up immediately after this function returns [`Ok`].
+    ///
+    /// [`Err`]: ../../../std/result/enum.Result.html#variant.Err
+    /// [`Ok`]: ../../../std/result/enum.Result.html#variant.Ok
     ///
     /// This method will never block the current thread.
     ///
@@ -35548,6 +35211,9 @@ impl<T> SyncSender<T> {
     /// [`Receiver`] has disconnected and is no longer able to receive
     /// information.
     ///
+    /// [`Err`]: ../../../std/result/enum.Result.html#variant.Err
+    /// [`Receiver`]: ../../../std/sync/mpsc/struct.Receiver.html
+    ///
     /// # Examples
     ///
     /// ```rust
@@ -35582,7 +35248,7 @@ impl<T> SyncSender<T> {
     /// See [`send`] for notes about guarantees of whether the
     /// receiver has received the data or not if this function is successful.
     ///
-    /// [`send`]: Self::send
+    /// [`send`]: ../../../std/sync/mpsc/struct.SyncSender.html#method.send
     ///
     /// # Examples
     ///
@@ -35664,7 +35330,7 @@ impl<T> Receiver<T> {
     /// Compared with [`recv`], this function has two failure cases instead of one
     /// (one for disconnection, one for an empty buffer).
     ///
-    /// [`recv`]: Self::recv
+    /// [`recv`]: struct.Receiver.html#method.recv
     ///
     /// # Examples
     ///
@@ -35692,6 +35358,10 @@ impl<T> Receiver<T> {
     /// indicate that no more messages can ever be received on this channel.
     /// However, since channels are buffered, messages sent before the disconnect
     /// will still be properly received.
+    ///
+    /// [`Sender`]: struct.Sender.html
+    /// [`SyncSender`]: struct.SyncSender.html
+    /// [`Err`]: ../../../std/result/enum.Result.html#variant.Err
     ///
     /// # Examples
     ///
@@ -35749,6 +35419,10 @@ impl<T> Receiver<T> {
     /// indicate that no more messages can ever be received on this channel.
     /// However, since channels are buffered, messages sent before the disconnect
     /// will still be properly received.
+    ///
+    /// [`Sender`]: struct.Sender.html
+    /// [`SyncSender`]: struct.SyncSender.html
+    /// [`Err`]: ../../../std/result/enum.Result.html#variant.Err
     ///
     /// # Known Issues
     ///
@@ -35836,6 +35510,10 @@ impl<T> Receiver<T> {
     /// However, since channels are buffered, messages sent before the disconnect
     /// will still be properly received.
     ///
+    /// [`Sender`]: struct.Sender.html
+    /// [`SyncSender`]: struct.SyncSender.html
+    /// [`Err`]: ../../../std/result/enum.Result.html#variant.Err
+    ///
     /// # Examples
     ///
     /// Successfully receiving value before reaching deadline:
@@ -35885,6 +35563,9 @@ impl<T> Receiver<T> {
     /// Returns an iterator that will block waiting for messages, but never
     /// [`panic!`]. It will return [`None`] when the channel has hung up.
     ///
+    /// [`panic!`]: ../../../std/macro.panic.html
+    /// [`None`]: ../../../std/option/enum.Option.html#variant.None
+    ///
     /// # Examples
     ///
     /// ```rust
@@ -35913,6 +35594,8 @@ impl<T> Receiver<T> {
     /// It will return `None` if there are no more pending values or if the
     /// channel has hung up. The iterator will never [`panic!`] or block the
     /// user by waiting for values.
+    ///
+    /// [`panic!`]: ../../../std/macro.panic.html
     ///
     /// # Examples
     ///
@@ -36257,22 +35940,27 @@ mod tests {
 }
 
     #[test]
+    #[cfg_attr(target_env = "sgx", ignore)] // FIXME: https://github.com/fortanix/rust-sgx/issues/31
     fn oneshot_single_thread_recv_timeout() {
 }
 
     #[test]
+    #[cfg_attr(target_env = "sgx", ignore)] // FIXME: https://github.com/fortanix/rust-sgx/issues/31
     fn stress_recv_timeout_two_threads() {
 }
 
     #[test]
+    #[cfg_attr(target_env = "sgx", ignore)] // FIXME: https://github.com/fortanix/rust-sgx/issues/31
     fn recv_timeout_upgrade() {
 }
 
     #[test]
+    #[cfg_attr(target_env = "sgx", ignore)] // FIXME: https://github.com/fortanix/rust-sgx/issues/31
     fn stress_recv_timeout_shared() {
 }
 
     #[test]
+    #[cfg_attr(target_env = "sgx", ignore)] // FIXME: https://github.com/fortanix/rust-sgx/issues/31
     fn very_long_recv_timeout_wont_panic() {
 }
 
@@ -36281,6 +35969,7 @@ mod tests {
 }
 
     #[test]
+    #[cfg_attr(target_env = "sgx", ignore)] // FIXME: https://github.com/fortanix/rust-sgx/issues/31
     fn shared_recv_timeout() {
 }
 
@@ -36346,6 +36035,7 @@ mod sync_tests {
 }
 
     #[test]
+    #[cfg_attr(target_env = "sgx", ignore)] // FIXME: https://github.com/fortanix/rust-sgx/issues/31
     fn recv_timeout() {
 }
 
@@ -36386,10 +36076,12 @@ mod sync_tests {
 }
 
     #[test]
+    #[cfg_attr(target_env = "sgx", ignore)] // FIXME: https://github.com/fortanix/rust-sgx/issues/31
     fn stress_recv_timeout_two_threads() {
 }
 
     #[test]
+    #[cfg_attr(target_env = "sgx", ignore)] // FIXME: https://github.com/fortanix/rust-sgx/issues/31
     fn stress_recv_timeout_shared() {
 }
 
@@ -36713,7 +36405,7 @@ use crate::time::{Duration, Instant};
 ///
 /// It is returned by the [`wait_timeout`] method.
 ///
-/// [`wait_timeout`]: Condvar::wait_timeout
+/// [`wait_timeout`]: struct.Condvar.html#method.wait_timeout
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 #[stable(feature = "wait_timeout", since = "1.5.0")]
 pub struct WaitTimeoutResult(bool);
@@ -36857,10 +36549,11 @@ impl Condvar {
     /// mutex to ensure defined behavior across platforms. If this functionality
     /// is not desired, then unsafe primitives in `sys` are provided.
     ///
-    /// [`notify_one`]: Self::notify_one
-    /// [`notify_all`]: Self::notify_all
-    /// [poisoning]: super::Mutex#poisoning
-    /// [`Mutex`]: super::Mutex
+    /// [`notify_one`]: #method.notify_one
+    /// [`notify_all`]: #method.notify_all
+    /// [poisoning]: ../sync/struct.Mutex.html#poisoning
+    /// [`Mutex`]: ../sync/struct.Mutex.html
+    /// [`panic!`]: ../../std/macro.panic.html
     ///
     /// # Examples
     ///
@@ -36906,10 +36599,10 @@ impl Condvar {
     /// poisoned when this thread re-acquires the lock. For more information,
     /// see information about [poisoning] on the [`Mutex`] type.
     ///
-    /// [`notify_one`]: Self::notify_one
-    /// [`notify_all`]: Self::notify_all
-    /// [poisoning]: super::Mutex#poisoning
-    /// [`Mutex`]: super::Mutex
+    /// [`notify_one`]: #method.notify_one
+    /// [`notify_all`]: #method.notify_all
+    /// [poisoning]: ../sync/struct.Mutex.html#poisoning
+    /// [`Mutex`]: ../sync/struct.Mutex.html
     ///
     /// # Examples
     ///
@@ -36964,7 +36657,7 @@ impl Condvar {
     /// Like [`wait`], the lock specified will be re-acquired when this function
     /// returns, regardless of whether the timeout elapsed or not.
     ///
-    /// [`wait`]: Self::wait
+    /// [`wait`]: #method.wait
     ///
     /// # Examples
     ///
@@ -37032,8 +36725,9 @@ impl Condvar {
     /// Like [`wait`], the lock specified will be re-acquired when this function
     /// returns, regardless of whether the timeout elapsed or not.
     ///
-    /// [`wait`]: Self::wait
-    /// [`wait_timeout_while`]: Self::wait_timeout_while
+    /// [`wait`]: #method.wait
+    /// [`wait_timeout_while`]: #method.wait_timeout_while
+    /// [`WaitTimeoutResult`]: struct.WaitTimeoutResult.html
     ///
     /// # Examples
     ///
@@ -37094,8 +36788,9 @@ impl Condvar {
     /// Like [`wait_while`], the lock specified will be re-acquired when this
     /// function returns, regardless of whether the timeout elapsed or not.
     ///
-    /// [`wait_while`]: Self::wait_while
-    /// [`wait_timeout`]: Self::wait_timeout
+    /// [`wait_while`]: #method.wait_while
+    /// [`wait_timeout`]: #method.wait_timeout
+    /// [`WaitTimeoutResult`]: struct.WaitTimeoutResult.html
     ///
     /// # Examples
     ///
@@ -37147,9 +36842,9 @@ impl Condvar {
     ///
     /// To wake up all threads, see [`notify_all`].
     ///
-    /// [`wait`]: Self::wait
-    /// [`wait_timeout`]: Self::wait_timeout
-    /// [`notify_all`]: Self::notify_all
+    /// [`wait`]: #method.wait
+    /// [`wait_timeout`]: #method.wait_timeout
+    /// [`notify_all`]: #method.notify_all
     ///
     /// # Examples
     ///
@@ -37188,7 +36883,7 @@ impl Condvar {
     ///
     /// To wake up only one thread, see [`notify_one`].
     ///
-    /// [`notify_one`]: Self::notify_one
+    /// [`notify_one`]: #method.notify_one
     ///
     /// # Examples
     ///
@@ -37282,12 +36977,13 @@ use crate::sys_common::poison::{self, LockResult, TryLockError, TryLockResult};
 /// the guard that would have otherwise been returned on a successful lock. This
 /// allows access to the data, despite the lock being poisoned.
 ///
-/// [`new`]: Self::new
-/// [`lock`]: Self::lock
-/// [`try_lock`]: Self::try_lock
-/// [`unwrap()`]: Result::unwrap
-/// [`PoisonError`]: super::PoisonError
-/// [`into_inner`]: super::PoisonError::into_inner
+/// [`new`]: #method.new
+/// [`lock`]: #method.lock
+/// [`try_lock`]: #method.try_lock
+/// [`Result`]: ../../std/result/enum.Result.html
+/// [`unwrap()`]: ../../std/result/enum.Result.html#method.unwrap
+/// [`PoisonError`]: ../../std/sync/struct.PoisonError.html
+/// [`into_inner`]: ../../std/sync/struct.PoisonError.html#method.into_inner
 ///
 /// # Examples
 ///
@@ -37355,62 +37051,7 @@ use crate::sys_common::poison::{self, LockResult, TryLockError, TryLockResult};
 ///
 /// *guard += 1;
 /// ```
-///
-/// It is sometimes necessary to manually drop the mutex guard to unlock it
-/// sooner than the end of the enclosing scope.
-///
-/// ```
-/// use std::sync::{Arc, Mutex};
-/// use std::thread;
-///
-/// const N: usize = 3;
-///
-/// let data_mutex = Arc::new(Mutex::new(vec![1, 2, 3, 4]));
-/// let res_mutex = Arc::new(Mutex::new(0));
-///
-/// let mut threads = Vec::with_capacity(N);
-/// (0..N).for_each(|_| {
-///     let data_mutex_clone = Arc::clone(&data_mutex);
-///     let res_mutex_clone = Arc::clone(&res_mutex);
-///
-///     threads.push(thread::spawn(move || {
-///         let mut data = data_mutex_clone.lock().unwrap();
-///         // This is the result of some important and long-ish work.
-///         let result = data.iter().fold(0, |acc, x| acc + x * 2);
-///         data.push(result);
-///         drop(data);
-///         *res_mutex_clone.lock().unwrap() += result;
-///     }));
-/// });
-///
-/// let mut data = data_mutex.lock().unwrap();
-/// // This is the result of some important and long-ish work.
-/// let result = data.iter().fold(0, |acc, x| acc + x * 2);
-/// data.push(result);
-/// // We drop the `data` explicitly because it's not necessary anymore and the
-/// // thread still has work to do. This allow other threads to start working on
-/// // the data immediately, without waiting for the rest of the unrelated work
-/// // to be done here.
-/// //
-/// // It's even more important here than in the threads because we `.join` the
-/// // threads after that. If we had not dropped the mutex guard, a thread could
-/// // be waiting forever for it, causing a deadlock.
-/// drop(data);
-/// // Here the mutex guard is not assigned to a variable and so, even if the
-/// // scope does not end after this line, the mutex is still released: there is
-/// // no deadlock.
-/// *res_mutex.lock().unwrap() += result;
-///
-/// threads.into_iter().for_each(|thread| {
-///     thread
-///         .join()
-///         .expect("The thread creating or execution failed !")
-/// });
-///
-/// assert_eq!(*res_mutex.lock().unwrap(), 800);
-/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "mutex_type")]
 pub struct Mutex<T: ?Sized> {
     // Note that this mutex is in a *box*, not inlined into the struct itself.
     // Once a native mutex has been used once, its address can never change (it
@@ -37438,8 +37079,11 @@ unsafe impl<T: ?Sized + Send> Sync for Mutex<T> {}
 /// This structure is created by the [`lock`] and [`try_lock`] methods on
 /// [`Mutex`].
 ///
-/// [`lock`]: Mutex::lock
-/// [`try_lock`]: Mutex::try_lock
+/// [`Deref`]: ../../std/ops/trait.Deref.html
+/// [`DerefMut`]: ../../std/ops/trait.DerefMut.html
+/// [`lock`]: struct.Mutex.html#method.lock
+/// [`try_lock`]: struct.Mutex.html#method.try_lock
+/// [`Mutex`]: struct.Mutex.html
 #[must_use = "if unused the Mutex will immediately unlock"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct MutexGuard<'a, T: ?Sized + 'a> {
@@ -37520,6 +37164,8 @@ impl<T: ?Sized> Mutex<T> {
     /// If another user of this mutex panicked while holding the mutex, then
     /// this call will return failure if the mutex would otherwise be
     /// acquired.
+    ///
+    /// [`Err`]: ../../std/result/enum.Result.html#variant.Err
     ///
     /// # Examples
     ///
@@ -37626,6 +37272,8 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for Mutex<T> {
 impl<T> From<T> for Mutex<T> {
     /// Creates a new mutex in an unlocked state ready for use.
     /// This is equivalent to [`Mutex::new`].
+    ///
+    /// [`Mutex::new`]: ../../std/sync/struct.Mutex.html#method.new
     fn from(t: T) -> Self {
 }
 }
@@ -37840,7 +37488,7 @@ mod once {
 //   see the changes to drop the `Waiter` struct correctly.
 // * There is one place where the two atomics `Once.state_and_queue` and
 //   `Waiter.signaled` come together, and might be reordered by the compiler or
-//   processor. Because both use Acquire ordering such a reordering is not
+//   processor. Because both use Aquire ordering such a reordering is not
 //   allowed, so no need for SeqCst.
 
 use crate::cell::Cell;
@@ -37891,7 +37539,6 @@ unsafe impl Send for Once {}
 #[derive(Debug)]
 pub struct OnceState {
     poisoned: bool,
-    set_state_on_drop_to: Cell<usize>,
 }
 
 /// Initialization value for static [`Once`] values.
@@ -38024,7 +37671,7 @@ impl Once {
     /// result in an immediate panic. If `f` panics, the `Once` will remain
     /// in a poison state. If `f` does _not_ panic, the `Once` will no
     /// longer be in a poison state and all future calls to `call_once` or
-    /// `call_once_force` will be no-ops.
+    /// `call_one_force` will be no-ops.
     ///
     /// The closure `f` is yielded a [`OnceState`] structure which can be used
     /// to query the poison status of the `Once`.
@@ -38076,14 +37723,14 @@ impl Once {
     ///   * `call_once` was called, but has not yet completed,
     ///   * the `Once` instance is poisoned
     ///
-    /// This function returning `false` does not mean that `Once` has not been
-    /// executed. For example, it may have been executed in the time between
-    /// when `is_completed` starts executing and when it returns, in which case
-    /// the `false` return value would be stale (but still permissible).
+    /// It is also possible that immediately after `is_completed`
+    /// returns false, some other thread finishes executing
+    /// `call_once`.
     ///
     /// # Examples
     ///
     /// ```
+    /// #![feature(once_is_completed)]
     /// use std::sync::Once;
     ///
     /// static INIT: Once = Once::new();
@@ -38096,6 +37743,7 @@ impl Once {
     /// ```
     ///
     /// ```
+    /// #![feature(once_is_completed)]
     /// use std::sync::Once;
     /// use std::thread;
     ///
@@ -38108,7 +37756,7 @@ impl Once {
     /// assert!(handle.join().is_err());
     /// assert_eq!(INIT.is_completed(), false);
     /// ```
-    #[stable(feature = "once_is_completed", since = "1.43.0")]
+    #[unstable(feature = "once_is_completed", issue = "54890")]
     #[inline]
     pub fn is_completed(&self) -> bool {
 }
@@ -38125,7 +37773,7 @@ impl Once {
     // currently no way to take an `FnOnce` and call it via virtual dispatch
     // without some allocation overhead.
     #[cold]
-    fn call_inner(&self, ignore_poisoning: bool, init: &mut dyn FnMut(&OnceState)) {
+    fn call_inner(&self, ignore_poisoning: bool, init: &mut dyn FnMut(bool)) {
 }
 }
 
@@ -38187,13 +37835,6 @@ impl OnceState {
     /// });
     #[unstable(feature = "once_poison", issue = "33577")]
     pub fn poisoned(&self) -> bool {
-}
-
-    /// Poison the associated [`Once`] without explicitly panicking.
-    ///
-    /// [`Once`]: struct.Once.html
-    // NOTE: This is currently only exposed for the `lazy` module
-    pub(crate) fn poison(&self) {
 }
 }
 
@@ -38282,7 +37923,11 @@ use crate::sys_common::rwlock as sys;
 /// } // write lock is dropped here
 /// ```
 ///
-/// [`Mutex`]: super::Mutex
+/// [`Deref`]: ../../std/ops/trait.Deref.html
+/// [`DerefMut`]: ../../std/ops/trait.DerefMut.html
+/// [`Send`]: ../../std/marker/trait.Send.html
+/// [`Sync`]: ../../std/marker/trait.Sync.html
+/// [`Mutex`]: struct.Mutex.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RwLock<T: ?Sized> {
     inner: Box<sys::RWLock>,
@@ -38301,8 +37946,9 @@ unsafe impl<T: ?Sized + Send + Sync> Sync for RwLock<T> {}
 /// This structure is created by the [`read`] and [`try_read`] methods on
 /// [`RwLock`].
 ///
-/// [`read`]: RwLock::read
-/// [`try_read`]: RwLock::try_read
+/// [`read`]: struct.RwLock.html#method.read
+/// [`try_read`]: struct.RwLock.html#method.try_read
+/// [`RwLock`]: struct.RwLock.html
 #[must_use = "if unused the RwLock will immediately unlock"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RwLockReadGuard<'a, T: ?Sized + 'a> {
@@ -38321,8 +37967,9 @@ unsafe impl<T: ?Sized + Sync> Sync for RwLockReadGuard<'_, T> {}
 /// This structure is created by the [`write`] and [`try_write`] methods
 /// on [`RwLock`].
 ///
-/// [`write`]: RwLock::write
-/// [`try_write`]: RwLock::try_write
+/// [`write`]: struct.RwLock.html#method.write
+/// [`try_write`]: struct.RwLock.html#method.try_write
+/// [`RwLock`]: struct.RwLock.html
 #[must_use = "if unused the RwLock will immediately unlock"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RwLockWriteGuard<'a, T: ?Sized + 'a> {
@@ -38605,6 +38252,8 @@ impl<T: Default> Default for RwLock<T> {
 impl<T> From<T> for RwLock<T> {
     /// Creates a new instance of an `RwLock<T>` which is unlocked.
     /// This is equivalent to [`RwLock::new`].
+    ///
+    /// [`RwLock::new`]: ../../std/sync/struct.RwLock.html#method.new
     fn from(t: T) -> Self {
 }
 }
@@ -38812,21 +38461,6 @@ pub use core::time::Duration;
 /// }
 /// ```
 ///
-/// # OS-specific behaviors
-///
-/// An `Instant` is a wrapper around system-specific types and it may behave
-/// differently depending on the underlying operating system. For example,
-/// the following snippet is fine on Linux but panics on macOS:
-///
-/// ```no_run
-/// use std::time::{Instant, Duration};
-///
-/// let now = Instant::now();
-/// let max_nanoseconds = u64::MAX / 1_000_000_000;
-/// let duration = Duration::new(max_nanoseconds, 0);
-/// println!("{:?}", now + duration);
-/// ```
-///
 /// # Underlying System calls
 /// Currently, the following system calls are being used to get the current time using `now()`:
 ///
@@ -38843,12 +38477,13 @@ pub use core::time::Duration;
 /// [QueryPerformanceCounter]: https://docs.microsoft.com/en-us/windows/win32/api/profileapi/nf-profileapi-queryperformancecounter
 /// [`insecure_time` usercall]: https://edp.fortanix.com/docs/api/fortanix_sgx_abi/struct.Usercalls.html#method.insecure_time
 /// [timekeeping in SGX]: https://edp.fortanix.com/docs/concepts/rust-std/#codestdtimecode
-/// [__wasi_clock_time_get (Monotonic Clock)]: https://github.com/WebAssembly/WASI/blob/master/phases/snapshot/docs.md#clock_time_get
+/// [__wasi_clock_time_get (Monotonic Clock)]: https://github.com/CraneStation/wasmtime/blob/master/docs/WASI-api.md#clock_time_get
 /// [clock_gettime (Monotonic Clock)]: https://linux.die.net/man/3/clock_gettime
 /// [mach_absolute_time]: https://developer.apple.com/library/archive/documentation/Darwin/Conceptual/KernelProgramming/services/services.html
 /// [clock_time_get (Monotonic Clock)]: https://nuxi.nl/cloudabi/#clock_time_get
 ///
 /// **Disclaimer:** These system calls might change over time.
+///
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[stable(feature = "time2", since = "1.8.0")]
 pub struct Instant(time::Instant);
@@ -38875,6 +38510,11 @@ pub struct Instant(time::Instant);
 ///
 /// The size of a `SystemTime` struct may vary depending on the target operating
 /// system.
+///
+/// [`Instant`]: ../../std/time/struct.Instant.html
+/// [`Result`]: ../../std/result/enum.Result.html
+/// [`Duration`]: ../../std/time/struct.Duration.html
+/// [`UNIX_EPOCH`]: ../../std/time/constant.UNIX_EPOCH.html
 ///
 /// Example:
 ///
@@ -38918,10 +38558,11 @@ pub struct Instant(time::Instant);
 /// [timekeeping in SGX]: https://edp.fortanix.com/docs/concepts/rust-std/#codestdtimecode
 /// [gettimeofday]: http://man7.org/linux/man-pages/man2/gettimeofday.2.html
 /// [clock_gettime (Realtime Clock)]: https://linux.die.net/man/3/clock_gettime
-/// [__wasi_clock_time_get (Realtime Clock)]: https://github.com/WebAssembly/WASI/blob/master/phases/snapshot/docs.md#clock_time_get
+/// [__wasi_clock_time_get (Realtime Clock)]: https://github.com/CraneStation/wasmtime/blob/master/docs/WASI-api.md#clock_time_get
 /// [GetSystemTimeAsFileTime]: https://docs.microsoft.com/en-us/windows/win32/api/sysinfoapi/nf-sysinfoapi-getsystemtimeasfiletime
 ///
 /// **Disclaimer:** These system calls might change over time.
+///
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[stable(feature = "time2", since = "1.8.0")]
 pub struct SystemTime(time::SystemTime);
@@ -39003,7 +38644,7 @@ impl Instant {
 }
 
     /// Returns the amount of time elapsed from another instant to this one,
-    /// or zero duration if that instant is later than this one.
+    /// or zero duration if that instant is earlier than this one.
     ///
     /// # Examples
     ///
@@ -39066,7 +38707,9 @@ impl Add<Duration> for Instant {
     /// # Panics
     ///
     /// This function may panic if the resulting point in time cannot be represented by the
-    /// underlying data structure. See [`Instant::checked_add`] for a version without panic.
+    /// underlying data structure. See [`checked_add`] for a version without panic.
+    ///
+    /// [`checked_add`]: ../../std/time/struct.Instant.html#method.checked_add
     fn add(self, other: Duration) -> Instant {
 }
 }
@@ -39154,6 +38797,11 @@ impl SystemTime {
     /// Returns an [`Err`] if `earlier` is later than `self`, and the error
     /// contains how far from `self` the time is.
     ///
+    /// [`Ok`]: ../../std/result/enum.Result.html#variant.Ok
+    /// [`Duration`]: ../../std/time/struct.Duration.html
+    /// [`Err`]: ../../std/result/enum.Result.html#variant.Err
+    /// [`Instant`]: ../../std/time/struct.Instant.html
+    ///
     /// # Examples
     ///
     /// ```
@@ -39181,6 +38829,11 @@ impl SystemTime {
     ///
     /// Returns an [`Err`] if `self` is later than the current system time, and
     /// the error contains how far from the current system time `self` is.
+    ///
+    /// [`Ok`]: ../../std/result/enum.Result.html#variant.Ok
+    /// [`Duration`]: ../../std/time/struct.Duration.html
+    /// [`Err`]: ../../std/result/enum.Result.html#variant.Err
+    /// [`Instant`]: ../../std/time/struct.Instant.html
     ///
     /// # Examples
     ///
@@ -39219,7 +38872,9 @@ impl Add<Duration> for SystemTime {
     /// # Panics
     ///
     /// This function may panic if the resulting point in time cannot be represented by the
-    /// underlying data structure. See [`SystemTime::checked_add`] for a version without panic.
+    /// underlying data structure. See [`checked_add`] for a version without panic.
+    ///
+    /// [`checked_add`]: ../../std/time/struct.SystemTime.html#method.checked_add
     fn add(self, dur: Duration) -> SystemTime {
 }
 }
@@ -39259,6 +38914,8 @@ impl fmt::Debug for SystemTime {
 /// measurement lies, and using `UNIX_EPOCH + duration` can be used to create a
 /// [`SystemTime`] instance to represent another fixed point in time.
 ///
+/// [`SystemTime`]: ../../std/time/struct.SystemTime.html
+///
 /// # Examples
 ///
 /// ```no_run
@@ -39276,9 +38933,13 @@ impl SystemTimeError {
     /// Returns the positive duration which represents how far forward the
     /// second system time was from the first.
     ///
-    /// A `SystemTimeError` is returned from the [`SystemTime::duration_since`]
-    /// and [`SystemTime::elapsed`] methods whenever the second system time
-    /// represents a point later in time than the `self` of the method call.
+    /// A `SystemTimeError` is returned from the [`duration_since`] and [`elapsed`]
+    /// methods of [`SystemTime`] whenever the second system time represents a point later
+    /// in time than the `self` of the method call.
+    ///
+    /// [`duration_since`]: ../../std/time/struct.SystemTime.html#method.duration_since
+    /// [`elapsed`]: ../../std/time/struct.SystemTime.html#method.elapsed
+    /// [`SystemTime`]: ../../std/time/struct.SystemTime.html
     ///
     /// # Examples
     ///
@@ -39322,445 +38983,81 @@ mod tests {
 }
 }
 
-#[unstable(feature = "once_cell", issue = "74465")]
-pub mod lazy {
-//! Lazy values and one-time initialization of static data.
-
-use crate::{
-    cell::{Cell, UnsafeCell},
-    fmt,
-    mem::{self, MaybeUninit},
-    ops::{Deref, Drop},
-    panic::{RefUnwindSafe, UnwindSafe},
-    sync::Once,
-};
-
-#[doc(inline)]
-#[unstable(feature = "once_cell", issue = "74465")]
-pub use core::lazy::*;
-
-/// A synchronization primitive which can be written to only once.
-///
-/// This type is a thread-safe `OnceCell`.
-///
-/// # Examples
-///
-/// ```
-/// #![feature(once_cell)]
-///
-/// use std::lazy::SyncOnceCell;
-///
-/// static CELL: SyncOnceCell<String> = SyncOnceCell::new();
-/// assert!(CELL.get().is_none());
-///
-/// std::thread::spawn(|| {
-///     let value: &String = CELL.get_or_init(|| {
-///         "Hello, World!".to_string()
-///     });
-///     assert_eq!(value, "Hello, World!");
-/// }).join().unwrap();
-///
-/// let value: Option<&String> = CELL.get();
-/// assert!(value.is_some());
-/// assert_eq!(value.unwrap().as_str(), "Hello, World!");
-/// ```
-#[unstable(feature = "once_cell", issue = "74465")]
-pub struct SyncOnceCell<T> {
-    once: Once,
-    // Whether or not the value is initialized is tracked by `state_and_queue`.
-    value: UnsafeCell<MaybeUninit<T>>,
-}
-
-// Why do we need `T: Send`?
-// Thread A creates a `SyncOnceCell` and shares it with
-// scoped thread B, which fills the cell, which is
-// then destroyed by A. That is, destructor observes
-// a sent value.
-#[unstable(feature = "once_cell", issue = "74465")]
-unsafe impl<T: Sync + Send> Sync for SyncOnceCell<T> {}
-#[unstable(feature = "once_cell", issue = "74465")]
-unsafe impl<T: Send> Send for SyncOnceCell<T> {}
-
-#[unstable(feature = "once_cell", issue = "74465")]
-impl<T: RefUnwindSafe + UnwindSafe> RefUnwindSafe for SyncOnceCell<T> {}
-#[unstable(feature = "once_cell", issue = "74465")]
-impl<T: UnwindSafe> UnwindSafe for SyncOnceCell<T> {}
-
-#[unstable(feature = "once_cell", issue = "74465")]
-impl<T> Default for SyncOnceCell<T> {
-    fn default() -> SyncOnceCell<T> {
-}
-}
-
-#[unstable(feature = "once_cell", issue = "74465")]
-impl<T: fmt::Debug> fmt::Debug for SyncOnceCell<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-}
-}
-
-#[unstable(feature = "once_cell", issue = "74465")]
-impl<T: Clone> Clone for SyncOnceCell<T> {
-    fn clone(&self) -> SyncOnceCell<T> {
-}
-}
-
-#[unstable(feature = "once_cell", issue = "74465")]
-impl<T> From<T> for SyncOnceCell<T> {
-    fn from(value: T) -> Self {
-}
-}
-
-#[unstable(feature = "once_cell", issue = "74465")]
-impl<T: PartialEq> PartialEq for SyncOnceCell<T> {
-    fn eq(&self, other: &SyncOnceCell<T>) -> bool {
-}
-}
-
-#[unstable(feature = "once_cell", issue = "74465")]
-impl<T: Eq> Eq for SyncOnceCell<T> {}
-
-impl<T> SyncOnceCell<T> {
-    /// Creates a new empty cell.
-    #[unstable(feature = "once_cell", issue = "74465")]
-    pub const fn new() -> SyncOnceCell<T> {
-}
-
-    /// Gets the reference to the underlying value.
-    ///
-    /// Returns `None` if the cell is empty, or being initialized. This
-    /// method never blocks.
-    #[unstable(feature = "once_cell", issue = "74465")]
-    pub fn get(&self) -> Option<&T> {
-}
-
-    /// Gets the mutable reference to the underlying value.
-    ///
-    /// Returns `None` if the cell is empty. This method never blocks.
-    #[unstable(feature = "once_cell", issue = "74465")]
-    pub fn get_mut(&mut self) -> Option<&mut T> {
-}
-
-    /// Sets the contents of this cell to `value`.
-    ///
-    /// Returns `Ok(())` if the cell's value was updated.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(once_cell)]
-    ///
-    /// use std::lazy::SyncOnceCell;
-    ///
-    /// static CELL: SyncOnceCell<i32> = SyncOnceCell::new();
-    ///
-    /// fn main() {
-    ///     assert!(CELL.get().is_none());
-    ///
-    ///     std::thread::spawn(|| {
-    ///         assert_eq!(CELL.set(92), Ok(()));
-    ///     }).join().unwrap();
-    ///
-    ///     assert_eq!(CELL.set(62), Err(62));
-    ///     assert_eq!(CELL.get(), Some(&92));
-    /// }
-    /// ```
-    #[unstable(feature = "once_cell", issue = "74465")]
-    pub fn set(&self, value: T) -> Result<(), T> {
-}
-
-    /// Gets the contents of the cell, initializing it with `f` if the cell
-    /// was empty.
-    ///
-    /// Many threads may call `get_or_init` concurrently with different
-    /// initializing functions, but it is guaranteed that only one function
-    /// will be executed.
-    ///
-    /// # Panics
-    ///
-    /// If `f` panics, the panic is propagated to the caller, and the cell
-    /// remains uninitialized.
-    ///
-    /// It is an error to reentrantly initialize the cell from `f`. The
-    /// exact outcome is unspecified. Current implementation deadlocks, but
-    /// this may be changed to a panic in the future.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(once_cell)]
-    ///
-    /// use std::lazy::SyncOnceCell;
-    ///
-    /// let cell = SyncOnceCell::new();
-    /// let value = cell.get_or_init(|| 92);
-    /// assert_eq!(value, &92);
-    /// let value = cell.get_or_init(|| unreachable!());
-    /// assert_eq!(value, &92);
-    /// ```
-    #[unstable(feature = "once_cell", issue = "74465")]
-    pub fn get_or_init<F>(&self, f: F) -> &T
-    where
-        F: FnOnce() -> T,
-    {
-}
-
-    /// Gets the contents of the cell, initializing it with `f` if
-    /// the cell was empty. If the cell was empty and `f` failed, an
-    /// error is returned.
-    ///
-    /// # Panics
-    ///
-    /// If `f` panics, the panic is propagated to the caller, and
-    /// the cell remains uninitialized.
-    ///
-    /// It is an error to reentrantly initialize the cell from `f`.
-    /// The exact outcome is unspecified. Current implementation
-    /// deadlocks, but this may be changed to a panic in the future.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(once_cell)]
-    ///
-    /// use std::lazy::SyncOnceCell;
-    ///
-    /// let cell = SyncOnceCell::new();
-    /// assert_eq!(cell.get_or_try_init(|| Err(())), Err(()));
-    /// assert!(cell.get().is_none());
-    /// let value = cell.get_or_try_init(|| -> Result<i32, ()> {
-    ///     Ok(92)
-    /// });
-    /// assert_eq!(value, Ok(&92));
-    /// assert_eq!(cell.get(), Some(&92))
-    /// ```
-    #[unstable(feature = "once_cell", issue = "74465")]
-    pub fn get_or_try_init<F, E>(&self, f: F) -> Result<&T, E>
-    where
-        F: FnOnce() -> Result<T, E>,
-    {
-}
-
-    /// Consumes the `SyncOnceCell`, returning the wrapped value. Returns
-    /// `None` if the cell was empty.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(once_cell)]
-    ///
-    /// use std::lazy::SyncOnceCell;
-    ///
-    /// let cell: SyncOnceCell<String> = SyncOnceCell::new();
-    /// assert_eq!(cell.into_inner(), None);
-    ///
-    /// let cell = SyncOnceCell::new();
-    /// cell.set("hello".to_string()).unwrap();
-    /// assert_eq!(cell.into_inner(), Some("hello".to_string()));
-    /// ```
-    #[unstable(feature = "once_cell", issue = "74465")]
-    pub fn into_inner(mut self) -> Option<T> {
-}
-
-    /// Takes the value out of this `SyncOnceCell`, moving it back to an uninitialized state.
-    ///
-    /// Has no effect and returns `None` if the `SyncOnceCell` hasn't been initialized.
-    ///
-    /// Safety is guaranteed by requiring a mutable reference.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(once_cell)]
-    ///
-    /// use std::lazy::SyncOnceCell;
-    ///
-    /// let mut cell: SyncOnceCell<String> = SyncOnceCell::new();
-    /// assert_eq!(cell.take(), None);
-    ///
-    /// let mut cell = SyncOnceCell::new();
-    /// cell.set("hello".to_string()).unwrap();
-    /// assert_eq!(cell.take(), Some("hello".to_string()));
-    /// assert_eq!(cell.get(), None);
-    /// ```
-    #[unstable(feature = "once_cell", issue = "74465")]
-    pub fn take(&mut self) -> Option<T> {
-}
-
-    /// Takes the wrapped value out of a `SyncOnceCell`.
-    /// Afterwards the cell is no longer initialized.
-    ///
-    /// Safety: The cell must now be free'd WITHOUT dropping. No other usages of the cell
-    /// are valid. Only used by `into_inner` and `drop`.
-    unsafe fn take_inner(&mut self) -> Option<T> {
-}
-
-    #[inline]
-    fn is_initialized(&self) -> bool {
-}
-
-    #[cold]
-    fn initialize<F, E>(&self, f: F) -> Result<(), E>
-    where
-        F: FnOnce() -> Result<T, E>,
-    {
-}
-
-    /// Safety: The value must be initialized
-    unsafe fn get_unchecked(&self) -> &T {
-}
-
-    /// Safety: The value must be initialized
-    unsafe fn get_unchecked_mut(&mut self) -> &mut T {
-}
-}
-
-unsafe impl<#[may_dangle] T> Drop for SyncOnceCell<T> {
-    fn drop(&mut self) {
-}
-}
-
-/// A value which is initialized on the first access.
-///
-/// This type is a thread-safe `Lazy`, and can be used in statics.
-///
-/// # Examples
-///
-/// ```
-/// #![feature(once_cell)]
-///
-/// use std::collections::HashMap;
-///
-/// use std::lazy::SyncLazy;
-///
-/// static HASHMAP: SyncLazy<HashMap<i32, String>> = SyncLazy::new(|| {
-///     println!("initializing");
-///     let mut m = HashMap::new();
-///     m.insert(13, "Spica".to_string());
-///     m.insert(74, "Hoyten".to_string());
-///     m
-/// });
-///
-/// fn main() {
-///     println!("ready");
-///     std::thread::spawn(|| {
-///         println!("{:?}", HASHMAP.get(&13));
-///     }).join().unwrap();
-///     println!("{:?}", HASHMAP.get(&74));
-///
-///     // Prints:
-///     //   ready
-///     //   initializing
-///     //   Some("Spica")
-///     //   Some("Hoyten")
-/// }
-/// ```
-#[unstable(feature = "once_cell", issue = "74465")]
-pub struct SyncLazy<T, F = fn() -> T> {
-    cell: SyncOnceCell<T>,
-    init: Cell<Option<F>>,
-}
-
-#[unstable(feature = "once_cell", issue = "74465")]
-impl<T: fmt::Debug, F> fmt::Debug for SyncLazy<T, F> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-}
-}
-
-// We never create a `&F` from a `&SyncLazy<T, F>` so it is fine
-// to not impl `Sync` for `F`
-// we do create a `&mut Option<F>` in `force`, but this is
-// properly synchronized, so it only happens once
-// so it also does not contribute to this impl.
-#[unstable(feature = "once_cell", issue = "74465")]
-unsafe impl<T, F: Send> Sync for SyncLazy<T, F> where SyncOnceCell<T>: Sync {}
-// auto-derived `Send` impl is OK.
-
-#[unstable(feature = "once_cell", issue = "74465")]
-impl<T, F: UnwindSafe> RefUnwindSafe for SyncLazy<T, F> where SyncOnceCell<T>: RefUnwindSafe {}
-#[unstable(feature = "once_cell", issue = "74465")]
-impl<T, F: UnwindSafe> UnwindSafe for SyncLazy<T, F> where SyncOnceCell<T>: UnwindSafe {}
-
-impl<T, F> SyncLazy<T, F> {
-    /// Creates a new lazy value with the given initializing
-    /// function.
-    #[unstable(feature = "once_cell", issue = "74465")]
-    pub const fn new(f: F) -> SyncLazy<T, F> {
-}
-}
-
-impl<T, F: FnOnce() -> T> SyncLazy<T, F> {
-    /// Forces the evaluation of this lazy value and
-    /// returns a reference to result. This is equivalent
-    /// to the `Deref` impl, but is explicit.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(once_cell)]
-    ///
-    /// use std::lazy::SyncLazy;
-    ///
-    /// let lazy = SyncLazy::new(|| 92);
-    ///
-    /// assert_eq!(SyncLazy::force(&lazy), &92);
-    /// assert_eq!(&*lazy, &92);
-    /// ```
-    #[unstable(feature = "once_cell", issue = "74465")]
-    pub fn force(this: &SyncLazy<T, F>) -> &T {
-}
-}
-
-#[unstable(feature = "once_cell", issue = "74465")]
-impl<T, F: FnOnce() -> T> Deref for SyncLazy<T, F> {
-    type Target = T;
-    fn deref(&self) -> &T {
-}
-}
-
-#[unstable(feature = "once_cell", issue = "74465")]
-impl<T: Default> Default for SyncLazy<T> {
-    /// Creates a new lazy value using `Default` as the initializing function.
-    fn default() -> SyncLazy<T> {
-}
-}
-
-#[cfg(test)]
-mod tests {
-}
-}
-
 #[stable(feature = "futures_api", since = "1.36.0")]
 pub mod task {
     //! Types and Traits for working with asynchronous tasks.
-
     #[doc(inline)]
     #[stable(feature = "futures_api", since = "1.36.0")]
     pub use core::task::*;
-
-    #[doc(inline)]
-    #[unstable(feature = "wake_trait", issue = "69912")]
-    pub use alloc::task::*;
 }
 
 #[stable(feature = "futures_api", since = "1.36.0")]
 pub mod future {
 //! Asynchronous values.
 
+use core::cell::Cell;
+use core::marker::Unpin;
+use core::ops::{Drop, Generator, GeneratorState};
+use core::option::Option;
+use core::pin::Pin;
+use core::ptr::NonNull;
+use core::task::{Context, Poll};
+
 #[doc(inline)]
 #[stable(feature = "futures_api", since = "1.36.0")]
-pub use core::future::Future;
+pub use core::future::*;
 
-#[doc(inline)]
+/// Wrap a generator in a future.
+///
+/// This function returns a `GenFuture` underneath, but hides it in `impl Trait` to give
+/// better error messages (`impl Future` rather than `GenFuture<[closure.....]>`).
+#[doc(hidden)]
 #[unstable(feature = "gen_future", issue = "50547")]
-pub use core::future::{from_generator, get_context, ResumeTy};
+pub fn from_generator<T: Generator<Yield = ()>>(x: T) -> impl Future<Output = T::Return> {
+}
 
-#[doc(inline)]
-#[unstable(feature = "future_readiness_fns", issue = "70921")]
-pub use core::future::{pending, ready, Pending, Ready};
+/// A wrapper around generators used to implement `Future` for `async`/`await` code.
+#[doc(hidden)]
+#[unstable(feature = "gen_future", issue = "50547")]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+struct GenFuture<T: Generator<Yield = ()>>(T);
 
-#[doc(inline)]
-#[unstable(feature = "into_future", issue = "67644")]
-pub use core::future::IntoFuture;
+// We rely on the fact that async/await futures are immovable in order to create
+// self-referential borrows in the underlying generator.
+impl<T: Generator<Yield = ()>> !Unpin for GenFuture<T> {}
+
+#[doc(hidden)]
+#[unstable(feature = "gen_future", issue = "50547")]
+impl<T: Generator<Yield = ()>> Future for GenFuture<T> {
+    type Output = T::Return;
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+}
+}
+
+thread_local! {
+    static TLS_CX: Cell<Option<NonNull<Context<'static>>>> = Cell::new(None);
+}
+
+struct SetOnDrop(Option<NonNull<Context<'static>>>);
+
+impl Drop for SetOnDrop {
+    fn drop(&mut self) {
+}
+}
+
+// Safety: the returned guard must drop before `cx` is dropped and before
+// any previous guard is dropped.
+unsafe fn set_task_context(cx: &mut Context<'_>) -> SetOnDrop {
+}
+
+#[doc(hidden)]
+#[unstable(feature = "gen_future", issue = "50547")]
+/// Polls a future in the current thread-local task waker.
+pub fn poll_with_tls_context<F>(f: Pin<&mut F>) -> Poll<F::Output>
+where
+    F: Future,
+{
+}
 }
 
 // Platform-abstraction modules
@@ -39887,7 +39184,6 @@ pub fn push(f: Box<dyn FnOnce()>) -> bool {
 }
 }
 pub mod backtrace {
-use crate::backtrace_rs::{self, BacktraceFmt, BytesOrWideString, PrintFmt};
 use crate::borrow::Cow;
 /// Common code for printing the backtrace in the same way across the different
 /// supported platforms.
@@ -39898,6 +39194,8 @@ use crate::io::prelude::*;
 use crate::path::{self, Path, PathBuf};
 use crate::sync::atomic::{self, Ordering};
 use crate::sys::mutex::Mutex;
+
+use backtrace_rs::{BacktraceFmt, BytesOrWideString, PrintFmt};
 
 /// Max number of frames to print.
 const MAX_NB_FRAMES: usize = 100;
@@ -39922,16 +39220,8 @@ unsafe fn _print_fmt(fmt: &mut fmt::Formatter<'_>, print_fmt: PrintFmt) -> fmt::
 pub fn __rust_begin_short_backtrace<F, T>(f: F) -> T
 where
     F: FnOnce() -> T,
-{
-}
-
-/// Fixed frame used to clean the backtrace with `RUST_BACKTRACE=1`. Note that
-/// this is only inline(never) when backtraces in libstd are enabled, otherwise
-/// it's fine to optimize away.
-#[cfg_attr(feature = "backtrace", inline(never))]
-pub fn __rust_end_short_backtrace<F, T>(f: F) -> T
-where
-    F: FnOnce() -> T,
+    F: Send,
+    T: Send,
 {
 }
 
@@ -40081,7 +39371,6 @@ impl Mutex {
     /// Also, until `init` is called, behavior is undefined if this
     /// mutex is ever used reentrantly, i.e., `raw_lock` or `try_lock`
     /// are called by the thread currently holding the lock.
-    #[rustc_const_stable(feature = "const_sys_mutex_new", since = "1.0.0")]
     pub const fn new() -> Mutex {
 }
 
@@ -40152,9 +39441,13 @@ impl Drop for MutexGuard<'_> {
 }
 }
 }
-// `doc` is required because `sys/mod.rs` imports `unix/ext/mod.rs` on Windows
-// when generating documentation.
-#[cfg(any(doc, not(windows)))]
+#[cfg(any(doc, // see `mod os`, docs are generated for multiple platforms
+          unix,
+          target_os = "redox",
+          target_os = "cloudabi",
+          target_os = "hermit",
+          target_arch = "wasm32",
+          all(target_vendor = "fortanix", target_env = "sgx")))]
 pub mod os_str_bytes {
 //! The underlying OsString/OsStr implementation on Unix and many other
 //! systems: just a `Vec<u8>`/`[u8]`.
@@ -40252,10 +39545,6 @@ impl Buf {
     pub fn as_slice(&self) -> &Slice {
 }
 
-    #[inline]
-    pub fn as_mut_slice(&mut self) -> &mut Slice {
-}
-
     pub fn into_string(self) -> Result<String, Buf> {
 }
 
@@ -40297,9 +39586,6 @@ impl Slice {
     pub fn to_owned(&self) -> Buf {
 }
 
-    pub fn clone_into(&self, buf: &mut Buf) {
-}
-
     #[inline]
     pub fn into_box(&self) -> Box<Slice> {
 }
@@ -40313,30 +39599,6 @@ impl Slice {
 
     #[inline]
     pub fn into_rc(&self) -> Rc<Slice> {
-}
-
-    #[inline]
-    pub fn make_ascii_lowercase(&mut self) {
-}
-
-    #[inline]
-    pub fn make_ascii_uppercase(&mut self) {
-}
-
-    #[inline]
-    pub fn to_ascii_lowercase(&self) -> Buf {
-}
-
-    #[inline]
-    pub fn to_ascii_uppercase(&self) -> Buf {
-}
-
-    #[inline]
-    pub fn is_ascii(&self) -> bool {
-}
-
-    #[inline]
-    pub fn eq_ignore_ascii_case(&self, other: &Self) -> bool {
 }
 }
 
@@ -40696,6 +39958,7 @@ use crate::marker;
 use crate::ops::Deref;
 use crate::panic::{RefUnwindSafe, UnwindSafe};
 use crate::sys::mutex as sys;
+use crate::sys_common::poison::{self, LockResult, TryLockError, TryLockResult};
 
 /// A re-entrant mutual exclusion
 ///
@@ -40703,7 +39966,8 @@ use crate::sys::mutex as sys;
 /// available. The thread which has already locked the mutex can lock it
 /// multiple times without blocking, preventing a common source of deadlocks.
 pub struct ReentrantMutex<T> {
-    inner: sys::ReentrantMutex,
+    inner: Box<sys::ReentrantMutex>,
+    poison: poison::Flag,
     data: T,
 }
 
@@ -40730,28 +39994,14 @@ pub struct ReentrantMutexGuard<'a, T: 'a> {
     // funny underscores due to how Deref currently works (it disregards field
     // privacy).
     __lock: &'a ReentrantMutex<T>,
+    __poison: poison::Guard,
 }
 
 impl<T> !marker::Send for ReentrantMutexGuard<'_, T> {}
 
 impl<T> ReentrantMutex<T> {
     /// Creates a new reentrant mutex in an unlocked state.
-    ///
-    /// # Unsafety
-    ///
-    /// This function is unsafe because it is required that `init` is called
-    /// once this mutex is in its final resting place, and only then are the
-    /// lock/unlock methods safe.
-    pub const unsafe fn new(t: T) -> ReentrantMutex<T> {
-}
-
-    /// Initializes this mutex so it's ready for use.
-    ///
-    /// # Unsafety
-    ///
-    /// Unsafe to call more than once, and must be called after this will no
-    /// longer move in memory.
-    pub unsafe fn init(&self) {
+    pub fn new(t: T) -> ReentrantMutex<T> {
 }
 
     /// Acquires a mutex, blocking the current thread until it is able to do so.
@@ -40766,7 +40016,7 @@ impl<T> ReentrantMutex<T> {
     /// If another user of this mutex panicked while holding the mutex, then
     /// this call will return failure if the mutex would otherwise be
     /// acquired.
-    pub fn lock(&self) -> ReentrantMutexGuard<'_, T> {
+    pub fn lock(&self) -> LockResult<ReentrantMutexGuard<'_, T>> {
 }
 
     /// Attempts to acquire this lock.
@@ -40781,7 +40031,7 @@ impl<T> ReentrantMutex<T> {
     /// If another user of this mutex panicked while holding the mutex, then
     /// this call will return failure if the mutex would otherwise be
     /// acquired.
-    pub fn try_lock(&self) -> Option<ReentrantMutexGuard<'_, T>> {
+    pub fn try_lock(&self) -> TryLockResult<ReentrantMutexGuard<'_, T>> {
 }
 }
 
@@ -40796,7 +40046,7 @@ impl<T: fmt::Debug + 'static> fmt::Debug for ReentrantMutex<T> {
 }
 
 impl<'mutex, T> ReentrantMutexGuard<'mutex, T> {
-    fn new(lock: &'mutex ReentrantMutex<T>) -> ReentrantMutexGuard<'mutex, T> {
+    fn new(lock: &'mutex ReentrantMutex<T>) -> LockResult<ReentrantMutexGuard<'mutex, T>> {
 }
 }
 
@@ -40837,6 +40087,10 @@ mod tests {
         fn drop(&mut self) {
 }
     }
+
+    #[test]
+    fn poison_works() {
+}
 }
 }
 pub mod rwlock {
@@ -40924,7 +40178,12 @@ impl RWLock {
 pub mod thread {
 use crate::env;
 use crate::sync::atomic::{self, Ordering};
+use crate::sys::stack_overflow;
 use crate::sys::thread as imp;
+
+#[allow(dead_code)]
+pub unsafe fn start_thread(main: *mut u8) {
+}
 
 pub fn min_stack() -> usize {
 }
@@ -40963,36 +40222,14 @@ pub fn set(stack_guard: Option<Guard>, thread: Thread) {
 pub fn reset_guard(stack_guard: Option<Guard>) {
 }
 }
-pub mod thread_local_dtor {
-//! Thread-local destructor
-//!
-//! Besides thread-local "keys" (pointer-sized non-adressable thread-local store
-//! with an associated destructor), many platforms also provide thread-local
-//! destructors that are not associated with any particular data. These are
-//! often more efficient.
-//!
-//! This module provides a fallback implementation for that interface, based
-//! on the less efficient thread-local "keys". Each platform provides
-//! a `thread_local_dtor` module which will either re-export the fallback,
-//! or implement something more efficient.
-
-#![unstable(feature = "thread_local_internals", issue = "none")]
-#![allow(dead_code)] // sys isn't exported yet
-
-use crate::ptr;
-use crate::sys_common::thread_local_key::StaticKey;
-
-pub unsafe fn register_dtor_fallback(t: *mut u8, dtor: unsafe extern "C" fn(*mut u8)) {
-}
-}
-pub mod thread_local_key {
+pub mod thread_local {
 //! OS-based thread local storage
 //!
 //! This module provides an implementation of OS-based thread local storage,
 //! using the native OS-provided facilities (think `TlsAlloc` or
 //! `pthread_setspecific`). The interface of this differs from the other types
 //! of thread-local-storage provided in this crate in that OS-based TLS can only
-//! get/set pointer-sized data, possibly with an associated destructor.
+//! get/set pointers,
 //!
 //! This module also provides two flavors of TLS. One is intended for static
 //! initialization, and does not contain a `Drop` implementation to deallocate
@@ -41002,7 +40239,7 @@ pub mod thread_local_key {
 //! # Usage
 //!
 //! This module should likely not be used directly unless other primitives are
-//! being built on. Types such as `thread_local::spawn::Key` are likely much
+//! being built on. types such as `thread_local::spawn::Key` are likely much
 //! more useful in practice than this OS-based version which likely requires
 //! unsafe code to interoperate with.
 //!
@@ -41036,8 +40273,9 @@ pub mod thread_local_key {
 #![unstable(feature = "thread_local_internals", issue = "none")]
 #![allow(dead_code)] // sys isn't exported yet
 
+use crate::ptr;
 use crate::sync::atomic::{self, AtomicUsize, Ordering};
-use crate::sys::thread_local_key as imp;
+use crate::sys::thread_local as imp;
 use crate::sys_common::mutex::Mutex;
 
 /// A type for TLS keys that are statically allocated.
@@ -41159,6 +40397,9 @@ impl Key {
 impl Drop for Key {
     fn drop(&mut self) {
 }
+}
+
+pub unsafe fn register_dtor_fallback(t: *mut u8, dtor: unsafe extern "C" fn(*mut u8)) {
 }
 
 #[cfg(test)]
@@ -41477,14 +40718,6 @@ impl FromIterator<CodePoint> for Wtf8Buf {
 impl Extend<CodePoint> for Wtf8Buf {
     fn extend<T: IntoIterator<Item = CodePoint>>(&mut self, iter: T) {
 }
-
-    #[inline]
-    fn extend_one(&mut self, code_point: CodePoint) {
-}
-
-    #[inline]
-    fn extend_reserve(&mut self, additional: usize) {
-}
 }
 
 /// A borrowed slice of well-formed WTF-8 data.
@@ -41602,9 +40835,6 @@ impl Wtf8 {
     fn initial_trail_surrogate(&self) -> Option<u16> {
 }
 
-    pub fn clone_into(&self, buf: &mut Wtf8Buf) {
-}
-
     /// Boxes this `Wtf8`.
     #[inline]
     pub fn into_box(&self) -> Box<Wtf8> {
@@ -41620,30 +40850,6 @@ impl Wtf8 {
 
     #[inline]
     pub fn into_rc(&self) -> Rc<Wtf8> {
-}
-
-    #[inline]
-    pub fn make_ascii_lowercase(&mut self) {
-}
-
-    #[inline]
-    pub fn make_ascii_uppercase(&mut self) {
-}
-
-    #[inline]
-    pub fn to_ascii_lowercase(&self) -> Wtf8Buf {
-}
-
-    #[inline]
-    pub fn to_ascii_uppercase(&self) -> Wtf8Buf {
-}
-
-    #[inline]
-    pub fn is_ascii(&self) -> bool {
-}
-
-    #[inline]
-    pub fn eq_ignore_ascii_case(&self, other: &Self) -> bool {
 }
 }
 
@@ -41780,6 +40986,11 @@ impl Hash for Wtf8 {
 }
 }
 
+impl Wtf8 {
+    pub fn make_ascii_uppercase(&mut self) {
+}
+}
+
 #[cfg(test)]
 mod tests {
 }
@@ -41789,7 +41000,6 @@ cfg_if::cfg_if! {
     if #[cfg(any(target_os = "cloudabi",
                  target_os = "l4re",
                  target_os = "hermit",
-                 feature = "restricted-std",
                  all(target_arch = "wasm32", not(target_os = "emscripten")),
                  all(target_vendor = "fortanix", target_env = "sgx")))] {
         pub use crate::sys::net;
@@ -41904,8 +41114,7 @@ cfg_if::cfg_if! {
         mod sgx;
         pub use self::sgx::*;
     } else {
-        mod unsupported;
-        pub use self::unsupported::*;
+        compile_error!("libstd doesn't compile for this platform yet");
     }
 }
 
@@ -41978,6 +41187,8 @@ pub mod alloc {
 //! like `cdylib`s and `staticlib`s are guaranteed to use the [`System`] by
 //! default.
 //!
+//! [`System`]: struct.System.html
+//!
 //! # The `#[global_allocator]` attribute
 //!
 //! This attribute allows configuring the choice of global allocator.
@@ -42012,6 +41223,8 @@ pub mod alloc {
 //! The attribute is used on a `static` item whose type implements the
 //! [`GlobalAlloc`] trait. This type can be provided by an external library:
 //!
+//! [`GlobalAlloc`]: ../../core/alloc/trait.GlobalAlloc.html
+//!
 //! ```rust,ignore (demonstrates crates.io usage)
 //! extern crate jemallocator;
 //!
@@ -42026,10 +41239,8 @@ pub mod alloc {
 //! The `#[global_allocator]` can only be used once in a crate
 //! or its recursive dependencies.
 
-#![deny(unsafe_op_in_unsafe_fn)]
 #![stable(feature = "alloc_module", since = "1.28.0")]
 
-use core::intrinsics;
 use core::ptr::NonNull;
 use core::sync::atomic::{AtomicPtr, Ordering};
 use core::{mem, ptr};
@@ -42102,33 +41313,15 @@ pub use alloc_crate::alloc::*;
 #[derive(Debug, Default, Copy, Clone)]
 pub struct System;
 
-impl System {
-    #[inline]
-    fn alloc_impl(&mut self, layout: Layout, zeroed: bool) -> Result<NonNull<[u8]>, AllocErr> {
-}
-
-    // Safety: Same as `AllocRef::grow`
-    #[inline]
-    unsafe fn grow_impl(
-        &mut self,
-        ptr: NonNull<u8>,
-        layout: Layout,
-        new_size: usize,
-        zeroed: bool,
-    ) -> Result<NonNull<[u8]>, AllocErr> {
-}
-}
-
-// The AllocRef impl checks the layout size to be non-zero and forwards to the GlobalAlloc impl,
-// which is in `std::sys::*::alloc`.
+// The Alloc impl just forwards to the GlobalAlloc impl, which is in `std::sys::*::alloc`.
 #[unstable(feature = "allocator_api", issue = "32838")]
-unsafe impl AllocRef for System {
+unsafe impl Alloc for System {
     #[inline]
-    fn alloc(&mut self, layout: Layout) -> Result<NonNull<[u8]>, AllocErr> {
+    unsafe fn alloc(&mut self, layout: Layout) -> Result<NonNull<u8>, AllocErr> {
 }
 
     #[inline]
-    fn alloc_zeroed(&mut self, layout: Layout) -> Result<NonNull<[u8]>, AllocErr> {
+    unsafe fn alloc_zeroed(&mut self, layout: Layout) -> Result<NonNull<u8>, AllocErr> {
 }
 
     #[inline]
@@ -42136,30 +41329,12 @@ unsafe impl AllocRef for System {
 }
 
     #[inline]
-    unsafe fn grow(
+    unsafe fn realloc(
         &mut self,
         ptr: NonNull<u8>,
         layout: Layout,
         new_size: usize,
-    ) -> Result<NonNull<[u8]>, AllocErr> {
-}
-
-    #[inline]
-    unsafe fn grow_zeroed(
-        &mut self,
-        ptr: NonNull<u8>,
-        layout: Layout,
-        new_size: usize,
-    ) -> Result<NonNull<[u8]>, AllocErr> {
-}
-
-    #[inline]
-    unsafe fn shrink(
-        &mut self,
-        ptr: NonNull<u8>,
-        layout: Layout,
-        new_size: usize,
-    ) -> Result<NonNull<[u8]>, AllocErr> {
+    ) -> Result<NonNull<u8>, AllocErr> {
 }
 }
 
@@ -42176,6 +41351,9 @@ static HOOK: AtomicPtr<()> = AtomicPtr::new(ptr::null_mut());
 /// about the allocation that failed.
 ///
 /// The allocation error hook is a global resource.
+///
+/// [`set_alloc_error_hook`]: fn.set_alloc_error_hook.html
+/// [`take_alloc_error_hook`]: fn.take_alloc_error_hook.html
 #[unstable(feature = "alloc_error_hook", issue = "51245")]
 pub fn set_alloc_error_hook(hook: fn(Layout)) {
 }
@@ -42185,6 +41363,8 @@ pub fn set_alloc_error_hook(hook: fn(Layout)) {
 /// *See also the function [`set_alloc_error_hook`].*
 ///
 /// If no custom hook is registered, the default hook will be returned.
+///
+/// [`set_alloc_error_hook`]: fn.set_alloc_error_hook.html
 #[unstable(feature = "alloc_error_hook", issue = "51245")]
 pub fn take_alloc_error_hook() -> fn(Layout) {
 }
@@ -42206,10 +41386,10 @@ pub fn rust_oom(layout: Layout) -> ! {
 pub mod __default_lib_allocator {
     use super::{GlobalAlloc, Layout, System};
     // These magic symbol names are used as a fallback for implementing the
-    // `__rust_alloc` etc symbols (see `src/liballoc/alloc.rs`) when there is
+    // `__rust_alloc` etc symbols (see `src/liballoc/alloc.rs) when there is
     // no `#[global_allocator]` attribute.
 
-    // for symbol names src/librustc_ast/expand/allocator.rs
+    // for symbol names src/librustc/middle/allocator.rs
     // for signatures src/librustc_allocator/lib.rs
 
     // linkage directives are provided as part of the current compiler allocator
@@ -42299,8 +41479,6 @@ mod panicking {
 //! * Executing a panic up to doing the actual implementation
 //! * Shims around "try"
 
-#![deny(unsafe_op_in_unsafe_fn)]
-
 use core::panic::{BoxMeUp, Location, PanicInfo};
 
 use crate::any::Any;
@@ -42308,6 +41486,7 @@ use crate::fmt;
 use crate::intrinsics;
 use crate::mem::{self, ManuallyDrop};
 use crate::process;
+use crate::raw;
 use crate::sync::atomic::{AtomicBool, Ordering};
 use crate::sys::stdio::panic_output;
 use crate::sys_common::backtrace::{self, RustBacktrace};
@@ -42334,7 +41513,12 @@ use realstd::io::set_panic;
 // hook up these functions, but it is not this day!
 #[allow(improper_ctypes)]
 extern "C" {
-    fn __rust_panic_cleanup(payload: *mut u8) -> *mut (dyn Any + Send + 'static);
+    fn __rust_maybe_catch_panic(
+        f: fn(*mut u8),
+        data: *mut u8,
+        data_ptr: *mut usize,
+        vtable_ptr: *mut usize,
+    ) -> u32;
 
     /// `payload` is actually a `*mut &mut dyn BoxMeUp` but that would cause FFI warnings.
     /// It cannot be `Box<dyn BoxMeUp>` because the other end of this call does not depend
@@ -42441,7 +41625,8 @@ fn default_hook(info: &PanicInfo<'_>) {
                 if FIRST_PANIC.swap(false, Ordering::SeqCst) {
                     let _ = writeln!(
                         err,
-                        "note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace"
+                        "note: run with `RUST_BACKTRACE=1` \
+                                           environment variable to display a backtrace"
                     );
                 }
             }
@@ -42461,50 +41646,17 @@ fn default_hook(info: &PanicInfo<'_>) {
 #[cfg(not(test))]
 #[doc(hidden)]
 #[unstable(feature = "update_panic_count", issue = "none")]
-pub mod panic_count {
-    use crate::cell::Cell;
-    use crate::sync::atomic::{AtomicUsize, Ordering};
-
-    // Panic count for the current thread.
-    thread_local! { static LOCAL_PANIC_COUNT: Cell<usize> = Cell::new(0) }
-
-    // Sum of panic counts from all threads. The purpose of this is to have
-    // a fast path in `is_zero` (which is used by `panicking`). In any particular
-    // thread, if that thread currently views `GLOBAL_PANIC_COUNT` as being zero,
-    // then `LOCAL_PANIC_COUNT` in that thread is zero. This invariant holds before
-    // and after increase and decrease, but not necessarily during their execution.
-    static GLOBAL_PANIC_COUNT: AtomicUsize = AtomicUsize::new(0);
-
-    pub fn increase() -> usize {
-}
-
-    pub fn decrease() -> usize {
-}
-
-    pub fn get() -> usize {
-}
-
-    #[inline]
-    pub fn is_zero() -> bool {
-}
-
-    // Slow path is in a separate function to reduce the amount of code
-    // inlined from `is_zero`.
-    #[inline(never)]
-    #[cold]
-    fn is_zero_slow_path() -> bool {
-}
+pub fn update_panic_count(amt: isize) -> usize {
 }
 
 #[cfg(test)]
-pub use realstd::rt::panic_count;
+pub use realstd::rt::update_panic_count;
 
 /// Invoke a closure, capturing the cause of an unwinding panic if one occurs.
 pub unsafe fn r#try<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any + Send>> {
 }
 
 /// Determines whether the current thread is unwinding because of panic.
-#[inline]
 pub fn panicking() -> bool {
 }
 
@@ -42541,7 +41693,7 @@ pub fn begin_panic_handler(info: &PanicInfo<'_>) -> ! {
 #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
 #[cold]
 #[track_caller]
-pub fn begin_panic<M: Any + Send>(msg: M) -> ! {
+pub fn begin_panic<M: Any + Send>(msg: M, #[cfg(bootstrap)] _: &(&str, u32, u32)) -> ! {
 }
 
 /// Central point for dispatching panics.
@@ -42589,7 +41741,7 @@ pub mod rt {
 #![doc(hidden)]
 
 // Re-export some of our utilities which are expected by other crates.
-pub use crate::panicking::{begin_panic, begin_panic_fmt, panic_count};
+pub use crate::panicking::{begin_panic, begin_panic_fmt, update_panic_count};
 
 // To reduce the generated code of the new `lang_start`, this function is doing
 // the real work.
@@ -42611,2015 +41763,13 @@ fn lang_start<T: crate::process::Termination + 'static>(
 }
 }
 
-#[path = "../../backtrace/src/lib.rs"]
-#[allow(dead_code, unused_attributes)]
-mod backtrace_rs {
-//! A library for acquiring a backtrace at runtime
-//!
-//! This library is meant to supplement the `RUST_BACKTRACE=1` support of the
-//! standard library by allowing an acquisition of a backtrace at runtime
-//! programmatically. The backtraces generated by this library do not need to be
-//! parsed, for example, and expose the functionality of multiple backend
-//! implementations.
-//!
-//! # Usage
-//!
-//! First, add this to your Cargo.toml
-//!
-//! ```toml
-//! [dependencies]
-//! backtrace = "0.3"
-//! ```
-//!
-//! Next:
-//!
-//! ```
-//! fn main() {
-//! # // Unsafe here so test passes on no_std.
-//! # #[cfg(feature = "std")] {
-//!     backtrace::trace(|frame| {
-//!         let ip = frame.ip();
-//!         let symbol_address = frame.symbol_address();
-//!
-//!         // Resolve this instruction pointer to a symbol name
-//!         backtrace::resolve_frame(frame, |symbol| {
-//!             if let Some(name) = symbol.name() {
-//!                 // ...
-//!             }
-//!             if let Some(filename) = symbol.filename() {
-//!                 // ...
-//!             }
-//!         });
-//!
-//!         true // keep going to the next frame
-//!     });
-//! }
-//! # }
-//! ```
-
-#![doc(html_root_url = "https://docs.rs/backtrace")]
-#![deny(missing_docs)]
-#![no_std]
-#![cfg_attr(
-    all(feature = "std", target_env = "sgx", target_vendor = "fortanix"),
-    feature(sgx_platform)
-)]
-#![warn(rust_2018_idioms)]
-// When we're building as part of libstd, silence all warnings since they're
-// irrelevant as this crate is developed out-of-tree.
-#![cfg_attr(backtrace_in_libstd, allow(warnings))]
-
-#[cfg(feature = "std")]
-#[macro_use]
-extern crate std;
-
-// This is only used for gimli right now, so silence warnings elsewhere.
-#[cfg_attr(not(target_os = "linux"), allow(unused_extern_crates))]
-extern crate alloc;
-
-pub use self::backtrace::{trace_unsynchronized, Frame};
-mod backtrace {
-use core::ffi::c_void;
-use core::fmt;
-
-/// Inspects the current call-stack, passing all active frames into the closure
-/// provided to calculate a stack trace.
-///
-/// This function is the workhorse of this library in calculating the stack
-/// traces for a program. The given closure `cb` is yielded instances of a
-/// `Frame` which represent information about that call frame on the stack. The
-/// closure is yielded frames in a top-down fashion (most recently called
-/// functions first).
-///
-/// The closure's return value is an indication of whether the backtrace should
-/// continue. A return value of `false` will terminate the backtrace and return
-/// immediately.
-///
-/// Once a `Frame` is acquired you will likely want to call `backtrace::resolve`
-/// to convert the `ip` (instruction pointer) or symbol address to a `Symbol`
-/// through which the name and/or filename/line number can be learned.
-///
-/// Note that this is a relatively low-level function and if you'd like to, for
-/// example, capture a backtrace to be inspected later, then the `Backtrace`
-/// type may be more appropriate.
-///
-/// # Required features
-///
-/// This function requires the `std` feature of the `backtrace` crate to be
-/// enabled, and the `std` feature is enabled by default.
-///
-/// # Panics
-///
-/// This function strives to never panic, but if the `cb` provided panics then
-/// some platforms will force a double panic to abort the process. Some
-/// platforms use a C library which internally uses callbacks which cannot be
-/// unwound through, so panicking from `cb` may trigger a process abort.
-///
-/// # Example
-///
-/// ```
-/// extern crate backtrace;
-///
-/// fn main() {
-///     backtrace::trace(|frame| {
-///         // ...
-///
-///         true // continue the backtrace
-///     });
-/// }
-/// ```
-#[cfg(feature = "std")]
-pub fn trace<F: FnMut(&Frame) -> bool>(cb: F) {
-}
-
-/// Same as `trace`, only unsafe as it's unsynchronized.
-///
-/// This function does not have synchronization guarentees but is available
-/// when the `std` feature of this crate isn't compiled in. See the `trace`
-/// function for more documentation and examples.
-///
-/// # Panics
-///
-/// See information on `trace` for caveats on `cb` panicking.
-pub unsafe fn trace_unsynchronized<F: FnMut(&Frame) -> bool>(mut cb: F) {
-}
-
-/// A trait representing one frame of a backtrace, yielded to the `trace`
-/// function of this crate.
-///
-/// The tracing function's closure will be yielded frames, and the frame is
-/// virtually dispatched as the underlying implementation is not always known
-/// until runtime.
-#[derive(Clone)]
-pub struct Frame {
-    pub(crate) inner: FrameImp,
-}
-
-impl Frame {
-    /// Returns the current instruction pointer of this frame.
-    ///
-    /// This is normally the next instruction to execute in the frame, but not
-    /// all implementations list this with 100% accuracy (but it's generally
-    /// pretty close).
-    ///
-    /// It is recommended to pass this value to `backtrace::resolve` to turn it
-    /// into a symbol name.
-    pub fn ip(&self) -> *mut c_void {
-}
-
-    /// Returns the current stack pointer of this frame.
-    ///
-    /// In the case that a backend cannot recover the stack pointer for this
-    /// frame, a null pointer is returned.
-    pub fn sp(&self) -> *mut c_void {
-}
-
-    /// Returns the starting symbol address of the frame of this function.
-    ///
-    /// This will attempt to rewind the instruction pointer returned by `ip` to
-    /// the start of the function, returning that value. In some cases, however,
-    /// backends will just return `ip` from this function.
-    ///
-    /// The returned value can sometimes be used if `backtrace::resolve` failed
-    /// on the `ip` given above.
-    pub fn symbol_address(&self) -> *mut c_void {
-}
-}
-
-impl fmt::Debug for Frame {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-}
-}
-
-cfg_if::cfg_if! {
-    if #[cfg(miri)] {
-        mod noop;
-        use self::noop::trace as trace_imp;
-        pub(crate) use self::noop::Frame as FrameImp;
-    } else if #[cfg(
-        any(
-            all(
-                unix,
-                not(target_os = "emscripten"),
-                not(all(target_os = "ios", target_arch = "arm")),
-            ),
-            all(
-                target_env = "sgx",
-                target_vendor = "fortanix",
-            ),
-        )
-    )] {
-        mod libunwind;
-        use self::libunwind::trace as trace_imp;
-        pub(crate) use self::libunwind::Frame as FrameImp;
-    } else if #[cfg(all(windows, not(target_vendor = "uwp")))] {
-        mod dbghelp;
-        use self::dbghelp::trace as trace_imp;
-        pub(crate) use self::dbghelp::Frame as FrameImp;
-    } else {
-        mod noop;
-        use self::noop::trace as trace_imp;
-        pub(crate) use self::noop::Frame as FrameImp;
-    }
-}
-}
-
-pub use self::symbolize::resolve_frame_unsynchronized;
-pub use self::symbolize::{resolve_unsynchronized, Symbol, SymbolName};
-mod symbolize {
-use core::{fmt, str};
-
-cfg_if::cfg_if! {
-    if #[cfg(feature = "std")] {
-        use std::path::Path;
-        use std::prelude::v1::*;
-    }
-}
-
-use super::backtrace::Frame;
-use super::types::BytesOrWideString;
-use core::ffi::c_void;
-use rustc_demangle::{try_demangle, Demangle};
-
-/// Resolve an address to a symbol, passing the symbol to the specified
-/// closure.
-///
-/// This function will look up the given address in areas such as the local
-/// symbol table, dynamic symbol table, or DWARF debug info (depending on the
-/// activated implementation) to find symbols to yield.
-///
-/// The closure may not be called if resolution could not be performed, and it
-/// also may be called more than once in the case of inlined functions.
-///
-/// Symbols yielded represent the execution at the specified `addr`, returning
-/// file/line pairs for that address (if available).
-///
-/// Note that if you have a `Frame` then it's recommended to use the
-/// `resolve_frame` function instead of this one.
-///
-/// # Required features
-///
-/// This function requires the `std` feature of the `backtrace` crate to be
-/// enabled, and the `std` feature is enabled by default.
-///
-/// # Panics
-///
-/// This function strives to never panic, but if the `cb` provided panics then
-/// some platforms will force a double panic to abort the process. Some
-/// platforms use a C library which internally uses callbacks which cannot be
-/// unwound through, so panicking from `cb` may trigger a process abort.
-///
-/// # Example
-///
-/// ```
-/// extern crate backtrace;
-///
-/// fn main() {
-///     backtrace::trace(|frame| {
-///         let ip = frame.ip();
-///
-///         backtrace::resolve(ip, |symbol| {
-///             // ...
-///         });
-///
-///         false // only look at the top frame
-///     });
-/// }
-/// ```
-#[cfg(feature = "std")]
-pub fn resolve<F: FnMut(&Symbol)>(addr: *mut c_void, cb: F) {
-}
-
-/// Resolve a previously capture frame to a symbol, passing the symbol to the
-/// specified closure.
-///
-/// This functin performs the same function as `resolve` except that it takes a
-/// `Frame` as an argument instead of an address. This can allow some platform
-/// implementations of backtracing to provide more accurate symbol information
-/// or information about inline frames for example. It's recommended to use this
-/// if you can.
-///
-/// # Required features
-///
-/// This function requires the `std` feature of the `backtrace` crate to be
-/// enabled, and the `std` feature is enabled by default.
-///
-/// # Panics
-///
-/// This function strives to never panic, but if the `cb` provided panics then
-/// some platforms will force a double panic to abort the process. Some
-/// platforms use a C library which internally uses callbacks which cannot be
-/// unwound through, so panicking from `cb` may trigger a process abort.
-///
-/// # Example
-///
-/// ```
-/// extern crate backtrace;
-///
-/// fn main() {
-///     backtrace::trace(|frame| {
-///         backtrace::resolve_frame(frame, |symbol| {
-///             // ...
-///         });
-///
-///         false // only look at the top frame
-///     });
-/// }
-/// ```
-#[cfg(feature = "std")]
-pub fn resolve_frame<F: FnMut(&Symbol)>(frame: &Frame, cb: F) {
-}
-
-pub enum ResolveWhat<'a> {
-    Address(*mut c_void),
-    Frame(&'a Frame),
-}
-
-impl<'a> ResolveWhat<'a> {
-    #[allow(dead_code)]
-    fn address_or_ip(&self) -> *mut c_void {
-}
-}
-
-// IP values from stack frames are typically (always?) the instruction
-// *after* the call that's the actual stack trace. Symbolizing this on
-// causes the filename/line number to be one ahead and perhaps into
-// the void if it's near the end of the function.
-//
-// This appears to basically always be the case on all platforms, so we always
-// subtract one from a resolved ip to resolve it to the previous call
-// instruction instead of the instruction being returned to.
-//
-// Ideally we would not do this. Ideally we would require callers of the
-// `resolve` APIs here to manually do the -1 and account that they want location
-// information for the *previous* instruction, not the current. Ideally we'd
-// also expose on `Frame` if we are indeed the address of the next instruction
-// or the current.
-//
-// For now though this is a pretty niche concern so we just internally always
-// subtract one. Consumers should keep working and getting pretty good results,
-// so we should be good enough.
-fn adjust_ip(a: *mut c_void) -> *mut c_void {
-}
-
-/// Same as `resolve`, only unsafe as it's unsynchronized.
-///
-/// This function does not have synchronization guarentees but is available when
-/// the `std` feature of this crate isn't compiled in. See the `resolve`
-/// function for more documentation and examples.
-///
-/// # Panics
-///
-/// See information on `resolve` for caveats on `cb` panicking.
-pub unsafe fn resolve_unsynchronized<F>(addr: *mut c_void, mut cb: F)
-where
-    F: FnMut(&Symbol),
-{
-}
-
-/// Same as `resolve_frame`, only unsafe as it's unsynchronized.
-///
-/// This function does not have synchronization guarentees but is available
-/// when the `std` feature of this crate isn't compiled in. See the
-/// `resolve_frame` function for more documentation and examples.
-///
-/// # Panics
-///
-/// See information on `resolve_frame` for caveats on `cb` panicking.
-pub unsafe fn resolve_frame_unsynchronized<F>(frame: &Frame, mut cb: F)
-where
-    F: FnMut(&Symbol),
-{
-}
-
-/// A trait representing the resolution of a symbol in a file.
-///
-/// This trait is yielded as a trait object to the closure given to the
-/// `backtrace::resolve` function, and it is virtually dispatched as it's
-/// unknown which implementation is behind it.
-///
-/// A symbol can give contextual information about a function, for example the
-/// name, filename, line number, precise address, etc. Not all information is
-/// always available in a symbol, however, so all methods return an `Option`.
-pub struct Symbol {
-    // TODO: this lifetime bound needs to be persisted eventually to `Symbol`,
-    // but that's currently a breaking change. For now this is safe since
-    // `Symbol` is only ever handed out by reference and can't be cloned.
-    inner: SymbolImp<'static>,
-}
-
-impl Symbol {
-    /// Returns the name of this function.
-    ///
-    /// The returned structure can be used to query various properties about the
-    /// symbol name:
-    ///
-    /// * The `Display` implementation will print out the demangled symbol.
-    /// * The raw `str` value of the symbol can be accessed (if it's valid
-    ///   utf-8).
-    /// * The raw bytes for the symbol name can be accessed.
-    pub fn name(&self) -> Option<SymbolName<'_>> {
-}
-
-    /// Returns the starting address of this function.
-    pub fn addr(&self) -> Option<*mut c_void> {
-}
-
-    /// Returns the raw filename as a slice. This is mainly useful for `no_std`
-    /// environments.
-    pub fn filename_raw(&self) -> Option<BytesOrWideString<'_>> {
-}
-
-    /// Returns the line number for where this symbol is currently executing.
-    ///
-    /// This return value is typically `Some` if `filename` returns `Some`, and
-    /// is consequently subject to similar caveats.
-    pub fn lineno(&self) -> Option<u32> {
-}
-
-    /// Returns the file name where this function was defined.
-    ///
-    /// This is currently only available when libbacktrace is being used (e.g.
-    /// unix platforms other than OSX) and when a binary is compiled with
-    /// debuginfo. If neither of these conditions is met then this will likely
-    /// return `None`.
-    ///
-    /// # Required features
-    ///
-    /// This function requires the `std` feature of the `backtrace` crate to be
-    /// enabled, and the `std` feature is enabled by default.
-    #[cfg(feature = "std")]
-    #[allow(unreachable_code)]
-    pub fn filename(&self) -> Option<&Path> {
-}
-}
-
-impl fmt::Debug for Symbol {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-}
-}
-
-cfg_if::cfg_if! {
-    if #[cfg(feature = "cpp_demangle")] {
-        // Maybe a parsed C++ symbol, if parsing the mangled symbol as Rust
-        // failed.
-        struct OptionCppSymbol<'a>(Option<::cpp_demangle::BorrowedSymbol<'a>>);
-
-        impl<'a> OptionCppSymbol<'a> {
-            fn parse(input: &'a [u8]) -> OptionCppSymbol<'a> {
-}
-
-            fn none() -> OptionCppSymbol<'a> {
-}
-        }
-    } else {
-        use core::marker::PhantomData;
-
-        // Make sure to keep this zero-sized, so that the `cpp_demangle` feature
-        // has no cost when disabled.
-        struct OptionCppSymbol<'a>(PhantomData<&'a ()>);
-
-        impl<'a> OptionCppSymbol<'a> {
-            fn parse(_: &'a [u8]) -> OptionCppSymbol<'a> {
-}
-
-            fn none() -> OptionCppSymbol<'a> {
-}
-        }
-    }
-}
-
-/// A wrapper around a symbol name to provide ergonomic accessors to the
-/// demangled name, the raw bytes, the raw string, etc.
-// Allow dead code for when the `cpp_demangle` feature is not enabled.
-#[allow(dead_code)]
-pub struct SymbolName<'a> {
-    bytes: &'a [u8],
-    demangled: Option<Demangle<'a>>,
-    cpp_demangled: OptionCppSymbol<'a>,
-}
-
-impl<'a> SymbolName<'a> {
-    /// Creates a new symbol name from the raw underlying bytes.
-    pub fn new(bytes: &'a [u8]) -> SymbolName<'a> {
-}
-
-    /// Returns the raw (mangled) symbol name as a `str` if the symbol is valid utf-8.
-    ///
-    /// Use the `Display` implementation if you want the demangled version.
-    pub fn as_str(&self) -> Option<&'a str> {
-}
-
-    /// Returns the raw symbol name as a list of bytes
-    pub fn as_bytes(&self) -> &'a [u8] {
-}
-}
-
-fn format_symbol_name(
-    fmt: fn(&str, &mut fmt::Formatter<'_>) -> fmt::Result,
-    mut bytes: &[u8],
-    f: &mut fmt::Formatter<'_>,
-) -> fmt::Result {
-}
-
-cfg_if::cfg_if! {
-    if #[cfg(feature = "cpp_demangle")] {
-        impl<'a> fmt::Display for SymbolName<'a> {
-            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-}
-        }
-    } else {
-        impl<'a> fmt::Display for SymbolName<'a> {
-            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-}
-        }
-    }
-}
-
-cfg_if::cfg_if! {
-    if #[cfg(all(feature = "std", feature = "cpp_demangle"))] {
-        impl<'a> fmt::Debug for SymbolName<'a> {
-            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-}
-        }
-    } else {
-        impl<'a> fmt::Debug for SymbolName<'a> {
-            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-}
-        }
-    }
-}
-
-/// Attempt to reclaim that cached memory used to symbolicate addresses.
-///
-/// This method will attempt to release any global data structures that have
-/// otherwise been cached globally or in the thread which typically represent
-/// parsed DWARF information or similar.
-///
-/// # Caveats
-///
-/// While this function is always available it doesn't actually do anything on
-/// most implementations. Libraries like dbghelp or libbacktrace do not provide
-/// facilities to deallocate state and manage the allocated memory. For now the
-/// `gimli-symbolize` feature of this crate is the only feature where this
-/// function has any effect.
-#[cfg(feature = "std")]
-pub fn clear_symbol_cache() {
-}
-
-cfg_if::cfg_if! {
-    if #[cfg(miri)] {
-        mod noop;
-        use self::noop::resolve as resolve_imp;
-        use self::noop::Symbol as SymbolImp;
-        #[allow(unused)]
-        unsafe fn clear_symbol_cache_imp() {}} else if #[cfg(all(windows, target_env = "msvc", not(target_vendor = "uwp")))] {
-        mod dbghelp;
-        use self::dbghelp::resolve as resolve_imp;
-        use self::dbghelp::Symbol as SymbolImp;
-        unsafe fn clear_symbol_cache_imp() {}} else if #[cfg(all(
-        feature = "libbacktrace",
-        any(unix, all(windows, not(target_vendor = "uwp"), target_env = "gnu")),
-        not(target_os = "fuchsia"),
-        not(target_os = "emscripten"),
-        not(target_env = "uclibc"),
-    ))] {
-        mod libbacktrace;
-        use self::libbacktrace::resolve as resolve_imp;
-        use self::libbacktrace::Symbol as SymbolImp;
-        unsafe fn clear_symbol_cache_imp() {}} else if #[cfg(all(
-        feature = "gimli-symbolize",
-        any(unix, windows),
-        not(target_vendor = "uwp"),
-        not(target_os = "emscripten"),
-    ))] {
-        mod gimli;
-        use self::gimli::resolve as resolve_imp;
-        use self::gimli::Symbol as SymbolImp;
-        use self::gimli::clear_symbol_cache as clear_symbol_cache_imp;
-    } else {
-        mod noop;
-        use self::noop::resolve as resolve_imp;
-        use self::noop::Symbol as SymbolImp;
-        #[allow(unused)]
-        unsafe fn clear_symbol_cache_imp() {}}
-}
-}
-
-pub use self::types::BytesOrWideString;
-mod types {
-//! Platform dependent types.
-
-cfg_if::cfg_if! {
-    if #[cfg(feature = "std")] {
-        use std::borrow::Cow;
-        use std::fmt;
-        use std::path::PathBuf;
-        use std::prelude::v1::*;
-        use std::str;
-    }
-}
-
-/// A platform independent representation of a string. When working with `std`
-/// enabled it is recommended to the convenience methods for providing
-/// conversions to `std` types.
-#[derive(Debug)]
-pub enum BytesOrWideString<'a> {
-    /// A slice, typically provided on Unix platforms.
-    Bytes(&'a [u8]),
-    /// Wide strings typically from Windows.
-    Wide(&'a [u16]),
-}
-
-#[cfg(feature = "std")]
-impl<'a> BytesOrWideString<'a> {
-    /// Lossy converts to a `Cow<str>`, will allocate if `Bytes` is not valid
-    /// UTF-8 or if `BytesOrWideString` is `Wide`.
-    ///
-    /// # Required features
-    ///
-    /// This function requires the `std` feature of the `backtrace` crate to be
-    /// enabled, and the `std` feature is enabled by default.
-    pub fn to_str_lossy(&self) -> Cow<'a, str> {
-}
-
-    /// Provides a `Path` representation of `BytesOrWideString`.
-    ///
-    /// # Required features
-    ///
-    /// This function requires the `std` feature of the `backtrace` crate to be
-    /// enabled, and the `std` feature is enabled by default.
-    pub fn into_path_buf(self) -> PathBuf {
-}
-}
-
-#[cfg(feature = "std")]
-impl<'a> fmt::Display for BytesOrWideString<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-}
-}
-}
-
-#[cfg(feature = "std")]
-pub use self::symbolize::clear_symbol_cache;
-
-mod print {
-#[cfg(feature = "std")]
-use super::{BacktraceFrame, BacktraceSymbol};
-use super::{BytesOrWideString, Frame, SymbolName};
-use core::ffi::c_void;
-use core::fmt;
-
-const HEX_WIDTH: usize = 2 + 2 * core::mem::size_of::<usize>();
-
-#[cfg(target_os = "fuchsia")]
-mod fuchsia {
-use core::fmt::{self, Write};
-use core::mem::{size_of, transmute};
-use core::slice::from_raw_parts;
-use libc::c_char;
-
-extern "C" {
-    // dl_iterate_phdr takes a callback that will receive a dl_phdr_info pointer
-    // for every DSO that has been linked into the process. dl_iterate_phdr also
-    // ensures that the dynamic linker is locked from start to finish of the
-    // iteration. If the callback returns a non-zero value the iteration is
-    // terminated early. 'data' will be passed as the third argument to the
-    // callback on each call. 'size' gives the size of the dl_phdr_info.
-    #[allow(improper_ctypes)]
-    fn dl_iterate_phdr(
-        f: extern "C" fn(info: &dl_phdr_info, size: usize, data: &mut DsoPrinter<'_, '_>) -> i32,
-        data: &mut DsoPrinter<'_, '_>,
-    ) -> i32;
-}
-
-// We need to parse out the build ID and some basic program header data
-// which means that we need a bit of stuff from the ELF spec as well.
-
-const PT_LOAD: u32 = 1;
-const PT_NOTE: u32 = 4;
-
-// Now we have to replicate, bit for bit, the structure of the dl_phdr_info
-// type used by fuchsia's current dynamic linker. Chromium also has this ABI
-// boundary as well as crashpad. Eventully we'd like to move these cases to
-// use elf-search but we'd need to provide that in the SDK and that has not
-// yet been done. Thus we (and they) are stuck having to use this method
-// which incurs a tight coupling with the fuchsia libc.
-
-#[allow(non_camel_case_types)]
-#[repr(C)]
-struct dl_phdr_info {
-    addr: *const u8,
-    name: *const c_char,
-    phdr: *const Elf_Phdr,
-    phnum: u16,
-    adds: u64,
-    subs: u64,
-    tls_modid: usize,
-    tls_data: *const u8,
-}
-
-impl dl_phdr_info {
-    fn program_headers(&self) -> PhdrIter<'_> {
-}
-    // We have no way of knowing of checking if e_phoff and e_phnum are valid.
-    // libc should ensure this for us however so it's safe to form a slice here.
-    fn phdr_slice(&self) -> &[Elf_Phdr] {
-}
-}
-
-struct PhdrIter<'a> {
-    phdrs: &'a [Elf_Phdr],
-    base: *const u8,
-}
-
-impl<'a> Iterator for PhdrIter<'a> {
-    type Item = Phdr<'a>;
-    fn next(&mut self) -> Option<Self::Item> {
-}
-}
-
-// Elf_Phdr represents a 64-bit ELF program header in the endianness of the target
-// architecture.
-#[allow(non_camel_case_types)]
-#[derive(Clone, Debug)]
-#[repr(C)]
-struct Elf_Phdr {
-    p_type: u32,
-    p_flags: u32,
-    p_offset: u64,
-    p_vaddr: u64,
-    p_paddr: u64,
-    p_filesz: u64,
-    p_memsz: u64,
-    p_align: u64,
-}
-
-// Phdr represents a valid ELF program header and its contents.
-struct Phdr<'a> {
-    phdr: &'a Elf_Phdr,
-    base: *const u8,
-}
-
-impl<'a> Phdr<'a> {
-    // We have no way of checking if p_addr or p_memsz are valid. Fuchsia's libc
-    // parses the notes first however so by virtue of being here these headers
-    // must be valid. NoteIter does not require the underlying data to be valid
-    // but it does require the bounds to be valid. We trust that libc has ensured
-    // that this is the case for us here.
-    fn notes(&self) -> NoteIter<'a> {
-}
-}
-
-// The note type for build IDs.
-const NT_GNU_BUILD_ID: u32 = 3;
-
-// Elf_Nhdr represents an ELF note header in the endianness of the target.
-#[allow(non_camel_case_types)]
-#[repr(C)]
-struct Elf_Nhdr {
-    n_namesz: u32,
-    n_descsz: u32,
-    n_type: u32,
-}
-
-// Note represents an ELF note (header + contents). The name is left as a u8
-// slice because it is not always null terminated and rust makes it easy enough
-// to check that the bytes match eitherway.
-struct Note<'a> {
-    name: &'a [u8],
-    desc: &'a [u8],
-    tipe: u32,
-}
-
-// NoteIter lets you safely iterate over a note segment. It terminates as soon
-// as an error occurs or there are no more notes. If you iterate over invalid
-// data it will function as though no notes were found.
-struct NoteIter<'a> {
-    base: &'a [u8],
-    error: bool,
-}
-
-impl<'a> NoteIter<'a> {
-    // It is an invariant of function that the pointer and size given denote a
-    // valid range of bytes that can all be read. The contents of these bytes
-    // can be anything but the range must be valid for this to be safe.
-    unsafe fn new(base: *const u8, size: usize) -> Self {
-}
-}
-
-// align_to aligns 'x' to 'to'-byte alignment assuming 'to' is a power of 2.
-// This follows a standard pattern in C/C++ ELF parsing code where
-// (x + to - 1) & -to is used. Rust does not let you negate usize so I use
-// 2's-complement conversion to recreate that.
-fn align_to(x: usize, to: usize) -> usize {
-}
-
-// take_bytes_align4 consumes num bytes from the slice (if present) and
-// additionally ensures that the final slice is properlly aligned. If an
-// either the number of bytes requested is too large or the slice can't be
-// realigned afterwards due to not enough remaining bytes existing, None is
-// returned and the slice is not modified.
-fn take_bytes_align4<'a>(num: usize, bytes: &mut &'a [u8]) -> Option<&'a [u8]> {
-}
-
-// This function has no real invariants the caller must uphold other than
-// perhaps that 'bytes' should be aligned for performance (and on some
-// architectures correctness). The values in the Elf_Nhdr fields might
-// be nonsense but this function ensures no such thing.
-fn take_nhdr<'a>(bytes: &mut &'a [u8]) -> Option<&'a Elf_Nhdr> {
-}
-
-impl<'a> Iterator for NoteIter<'a> {
-    type Item = Note<'a>;
-    fn next(&mut self) -> Option<Self::Item> {
-}
-}
-
-struct Perm(u32);
-
-/// Indicates that a segment is executable.
-const PERM_X: u32 = 0b00000001;
-/// Indicates that a segment is writable.
-const PERM_W: u32 = 0b00000010;
-/// Indicates that a segment is readable.
-const PERM_R: u32 = 0b00000100;
-
-impl core::fmt::Display for Perm {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-}
-}
-
-/// Represents an ELF segment at runtime.
-struct Segment {
-    /// Gives the runtime virtual address of this segment's contents.
-    addr: usize,
-    /// Gives the memory size of this segment's contents.
-    size: usize,
-    /// Gives the module virtual address of this segment with the ELF file.
-    mod_rel_addr: usize,
-    /// Gives the permissions found in the ELF file. These permissions are not
-    /// necessarily the permissions present at runtime however.
-    flags: Perm,
-}
-
-/// Lets one iterate over Segments from a DSO.
-struct SegmentIter<'a> {
-    phdrs: &'a [Elf_Phdr],
-    base: usize,
-}
-
-impl Iterator for SegmentIter<'_> {
-    type Item = Segment;
-
-    fn next(&mut self) -> Option<Self::Item> {
-}
-}
-
-/// Represents an ELF DSO (Dynamic Shared Object). This type references
-/// the data stored in the actual DSO rather than making its own copy.
-struct Dso<'a> {
-    /// The dynamic linker always gives us a name, even if the name is empty.
-    /// In the case of the main executable this name will be empty. In the case
-    /// of a shared object it will be the soname (see DT_SONAME).
-    name: &'a str,
-    /// On Fuchsia virtually all binaries have build IDs but this is not a strict
-    /// requierment. There's no way to match up DSO information with a real ELF
-    /// file afterwards if there is no build_id so we require that every DSO
-    /// have one here. DSO's without a build_id are ignored.
-    build_id: &'a [u8],
-
-    base: usize,
-    phdrs: &'a [Elf_Phdr],
-}
-
-impl Dso<'_> {
-    /// Returns an iterator over Segments in this DSO.
-    fn segments(&self) -> SegmentIter<'_> {
-}
-}
-
-struct HexSlice<'a> {
-    bytes: &'a [u8],
-}
-
-impl fmt::Display for HexSlice<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-}
-}
-
-fn get_build_id<'a>(info: &'a dl_phdr_info) -> Option<&'a [u8]> {
-}
-
-/// These errors encode issues that arise while parsing information about
-/// each DSO.
-enum Error {
-    /// NameError means that an error occurred while converting a C style string
-    /// into a rust string.
-    NameError(core::str::Utf8Error),
-    /// BuildIDError means that we didn't find a build ID. This could either be
-    /// because the DSO had no build ID or because the segment containing the
-    /// build ID was malformed.
-    BuildIDError,
-}
-
-/// Calls either 'dso' or 'error' for each DSO linked into the process by the
-/// dynamic linker.
-///
-/// # Arguments
-///
-/// * `visitor` - A DsoPrinter that will have one of eats methods called foreach DSO.
-fn for_each_dso(mut visitor: &mut DsoPrinter<'_, '_>) {
-}
-
-struct DsoPrinter<'a, 'b> {
-    writer: &'a mut core::fmt::Formatter<'b>,
-    module_count: usize,
-    error: core::fmt::Result,
-}
-
-impl DsoPrinter<'_, '_> {
-    fn dso(&mut self, dso: Dso<'_>) -> bool {
-}
-    fn error(&mut self, _error: Error) -> bool {
-}
-}
-
-/// This function prints the Fuchsia symbolizer markup for all information contained in a DSO.
-pub fn print_dso_context(out: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-}
-}
-
-/// A formatter for backtraces.
-///
-/// This type can be used to print a backtrace regardless of where the backtrace
-/// itself comes from. If you have a `Backtrace` type then its `Debug`
-/// implementation already uses this printing format.
-pub struct BacktraceFmt<'a, 'b> {
-    fmt: &'a mut fmt::Formatter<'b>,
-    frame_index: usize,
-    format: PrintFmt,
-    print_path:
-        &'a mut (dyn FnMut(&mut fmt::Formatter<'_>, BytesOrWideString<'_>) -> fmt::Result + 'b),
-}
-
-/// The styles of printing that we can print
-#[derive(Copy, Clone, Eq, PartialEq)]
-pub enum PrintFmt {
-    /// Prints a terser backtrace which ideally only contains relevant information
-    Short,
-    /// Prints a backtrace that contains all possible information
-    Full,
-    #[doc(hidden)]
-    __Nonexhaustive,
-}
-
-impl<'a, 'b> BacktraceFmt<'a, 'b> {
-    /// Create a new `BacktraceFmt` which will write output to the provided
-    /// `fmt`.
-    ///
-    /// The `format` argument will control the style in which the backtrace is
-    /// printed, and the `print_path` argument will be used to print the
-    /// `BytesOrWideString` instances of filenames. This type itself doesn't do
-    /// any printing of filenames, but this callback is required to do so.
-    pub fn new(
-        fmt: &'a mut fmt::Formatter<'b>,
-        format: PrintFmt,
-        print_path: &'a mut (dyn FnMut(&mut fmt::Formatter<'_>, BytesOrWideString<'_>) -> fmt::Result
-                     + 'b),
-    ) -> Self {
-}
-
-    /// Prints a preamble for the backtrace about to be printed.
-    ///
-    /// This is required on some platforms for backtraces to be fully
-    /// sumbolicated later, and otherwise this should just be the first method
-    /// you call after creating a `BacktraceFmt`.
-    pub fn add_context(&mut self) -> fmt::Result {
-}
-
-    /// Adds a frame to the backtrace output.
-    ///
-    /// This commit returns an RAII instance of a `BacktraceFrameFmt` which can be used
-    /// to actually print a frame, and on destruction it will increment the
-    /// frame counter.
-    pub fn frame(&mut self) -> BacktraceFrameFmt<'_, 'a, 'b> {
-}
-
-    /// Completes the backtrace output.
-    ///
-    /// This is currently a no-op but is added for future compatibility with
-    /// backtrace formats.
-    pub fn finish(&mut self) -> fmt::Result {
-}
-}
-
-/// A formatter for just one frame of a backtrace.
-///
-/// This type is created by the `BacktraceFmt::frame` function.
-pub struct BacktraceFrameFmt<'fmt, 'a, 'b> {
-    fmt: &'fmt mut BacktraceFmt<'a, 'b>,
-    symbol_index: usize,
-}
-
-impl BacktraceFrameFmt<'_, '_, '_> {
-    /// Prints a `BacktraceFrame` with this frame formatter.
-    ///
-    /// This will recusrively print all `BacktraceSymbol` instances within the
-    /// `BacktraceFrame`.
-    ///
-    /// # Required features
-    ///
-    /// This function requires the `std` feature of the `backtrace` crate to be
-    /// enabled, and the `std` feature is enabled by default.
-    #[cfg(feature = "std")]
-    pub fn backtrace_frame(&mut self, frame: &BacktraceFrame) -> fmt::Result {
-}
-
-    /// Prints a `BacktraceSymbol` within a `BacktraceFrame`.
-    ///
-    /// # Required features
-    ///
-    /// This function requires the `std` feature of the `backtrace` crate to be
-    /// enabled, and the `std` feature is enabled by default.
-    #[cfg(feature = "std")]
-    pub fn backtrace_symbol(
-        &mut self,
-        frame: &BacktraceFrame,
-        symbol: &BacktraceSymbol,
-    ) -> fmt::Result {
-}
-
-    /// Prints a raw traced `Frame` and `Symbol`, typically from within the raw
-    /// callbacks of this crate.
-    pub fn symbol(&mut self, frame: &Frame, symbol: &super::Symbol) -> fmt::Result {
-}
-
-    /// Adds a raw frame to the backtrace output.
-    ///
-    /// This method, unlike the previous, takes the raw arguments in case
-    /// they're being source from different locations. Note that this may be
-    /// called multiple times for one frame.
-    pub fn print_raw(
-        &mut self,
-        frame_ip: *mut c_void,
-        symbol_name: Option<SymbolName<'_>>,
-        filename: Option<BytesOrWideString<'_>>,
-        lineno: Option<u32>,
-    ) -> fmt::Result {
-}
-
-    #[allow(unused_mut)]
-    fn print_raw_generic(
-        &mut self,
-        mut frame_ip: *mut c_void,
-        symbol_name: Option<SymbolName<'_>>,
-        filename: Option<BytesOrWideString<'_>>,
-        lineno: Option<u32>,
-    ) -> fmt::Result {
-}
-
-    fn print_fileline(&mut self, file: BytesOrWideString<'_>, line: u32) -> fmt::Result {
-}
-
-    fn print_raw_fuchsia(&mut self, frame_ip: *mut c_void) -> fmt::Result {
-}
-}
-
-impl Drop for BacktraceFrameFmt<'_, '_, '_> {
-    fn drop(&mut self) {
-}
-}
-}
-pub use print::{BacktraceFmt, BacktraceFrameFmt, PrintFmt};
-
-cfg_if::cfg_if! {
-    if #[cfg(feature = "std")] {
-        pub use self::backtrace::trace;
-        pub use self::symbolize::{resolve, resolve_frame};
-        pub use self::capture::{Backtrace, BacktraceFrame, BacktraceSymbol};
-        mod capture;
-    }
-}
-
-#[allow(dead_code)]
-struct Bomb {
-    enabled: bool,
-}
-
-#[allow(dead_code)]
-impl Drop for Bomb {
-    fn drop(&mut self) {
-}
-}
-
-#[allow(dead_code)]
-#[cfg(feature = "std")]
-mod lock {
-    use std::boxed::Box;
-    use std::cell::Cell;
-    use std::sync::{Mutex, MutexGuard, Once};
-
-    pub struct LockGuard(Option<MutexGuard<'static, ()>>);
-
-    static mut LOCK: *mut Mutex<()> = 0 as *mut _;
-    static INIT: Once = Once::new();
-    thread_local!(static LOCK_HELD: Cell<bool> = Cell::new(false));
-
-    impl Drop for LockGuard {
-        fn drop(&mut self) {
-}
-    }
-
-    pub fn lock() -> LockGuard {
-}
-}
-
-#[cfg(all(windows, not(target_vendor = "uwp")))]
-mod dbghelp {
-//! A module to assist in managing dbghelp bindings on Windows
-//!
-//! Backtraces on Windows (at least for MSVC) are largely powered through
-//! `dbghelp.dll` and the various functions that it contains. These functions
-//! are currently loaded *dynamically* rather than linking to `dbghelp.dll`
-//! statically. This is currently done by the standard library (and is in theory
-//! required there), but is an effort to help reduce the static dll dependencies
-//! of a library since backtraces are typically pretty optional. That being
-//! said, `dbghelp.dll` almost always successfully loads on Windows.
-//!
-//! Note though that since we're loading all this support dynamically we can't
-//! actually use the raw definitions in `winapi`, but rather we need to define
-//! the function pointer types ourselves and use that. We don't really want to
-//! be in the business of duplicating winapi, so we have a Cargo feature
-//! `verify-winapi` which asserts that all bindings match those in winapi and
-//! this feature is enabled on CI.
-//!
-//! Finally, you'll note here that the dll for `dbghelp.dll` is never unloaded,
-//! and that's currently intentional. The thinking is that we can globally cache
-//! it and use it between calls to the API, avoiding expensive loads/unloads. If
-//! this is a problem for leak detectors or something like that we can cross the
-//! bridge when we get there.
-
-#![allow(non_snake_case)]
-
-use super::windows::*;
-use core::mem;
-use core::ptr;
-
-// Work around `SymGetOptions` and `SymSetOptions` not being present in winapi
-// itself. Otherwise this is only used when we're double-checking types against
-// winapi.
-#[cfg(feature = "verify-winapi")]
-mod dbghelp {
-    use crate::windows::*;
-    pub use winapi::um::dbghelp::{
-        StackWalk64, SymCleanup, SymFromAddrW, SymFunctionTableAccess64, SymGetLineFromAddrW64,
-        SymGetModuleBase64, SymInitializeW,
-    };
-
-    extern "system" {
-        // Not defined in winapi yet
-        pub fn SymGetOptions() -> u32;
-        pub fn SymSetOptions(_: u32);
-
-        // This is defined in winapi, but it's incorrect (FIXME winapi-rs#768)
-        pub fn StackWalkEx(
-            MachineType: DWORD,
-            hProcess: HANDLE,
-            hThread: HANDLE,
-            StackFrame: LPSTACKFRAME_EX,
-            ContextRecord: PVOID,
-            ReadMemoryRoutine: PREAD_PROCESS_MEMORY_ROUTINE64,
-            FunctionTableAccessRoutine: PFUNCTION_TABLE_ACCESS_ROUTINE64,
-            GetModuleBaseRoutine: PGET_MODULE_BASE_ROUTINE64,
-            TranslateAddress: PTRANSLATE_ADDRESS_ROUTINE64,
-            Flags: DWORD,
-        ) -> BOOL;
-
-        // Not defined in winapi yet
-        pub fn SymFromInlineContextW(
-            hProcess: HANDLE,
-            Address: DWORD64,
-            InlineContext: ULONG,
-            Displacement: PDWORD64,
-            Symbol: PSYMBOL_INFOW,
-        ) -> BOOL;
-        pub fn SymGetLineFromInlineContextW(
-            hProcess: HANDLE,
-            dwAddr: DWORD64,
-            InlineContext: ULONG,
-            qwModuleBaseAddress: DWORD64,
-            pdwDisplacement: PDWORD,
-            Line: PIMAGEHLP_LINEW64,
-        ) -> BOOL;
-    }
-
-    pub fn assert_equal_types<T>(a: T, _b: T) -> T {
-        a
-    }
-}
-
-// This macro is used to define a `Dbghelp` structure which internally contains
-// all the function pointers that we might load.
-macro_rules! dbghelp {
-    (extern "system" {
-        $(fn $name:ident($($arg:ident: $argty:ty),*) -> $ret: ty;)*
-    }) => (
-        pub struct Dbghelp {
-            /// The loaded DLL for `dbghelp.dll`
-            dll: HMODULE,
-
-            // Each function pointer for each function we might use
-            $($name: usize,)*
-        }
-
-        static mut DBGHELP: Dbghelp = Dbghelp {
-            // Initially we haven't loaded the DLL
-            dll: 0 as *mut _,
-            // Initiall all functions are set to zero to say they need to be
-            // dynamically loaded.
-            $($name: 0,)*
-        };
-
-        // Convenience typedef for each function type.
-        $(pub type $name = unsafe extern "system" fn($($argty),*) -> $ret;)*
-
-        impl Dbghelp {
-            /// Attempts to open `dbghelp.dll`. Returns success if it works or
-            /// error if `LoadLibraryW` fails.
-            ///
-            /// Panics if library is already loaded.
-            fn ensure_open(&mut self) -> Result<(), ()> {
-}
-
-            // Function for each method we'd like to use. When called it will
-            // either read the cached function pointer or load it and return the
-            // loaded value. Loads are asserted to succeed.
-            $(pub fn $name(&mut self) -> Option<$name> {
-})*
-
-            fn symbol(&self, symbol: &[u8]) -> Option<usize> {
-}
-        }
-
-        // Convenience proxy to use the cleanup locks to reference dbghelp
-        // functions.
-        #[allow(dead_code)]
-        impl Init {
-            $(pub fn $name(&self) -> $name {
-})*
-
-            pub fn dbghelp(&self) -> *mut Dbghelp {
-}
-        }
-    )
-
-}
-
-const SYMOPT_DEFERRED_LOADS: DWORD = 0x00000004;
-
-dbghelp! {
-    extern "system" {
-        fn SymGetOptions() -> DWORD;
-        fn SymSetOptions(options: DWORD) -> ();
-        fn SymInitializeW(
-            handle: HANDLE,
-            path: PCWSTR,
-            invade: BOOL
-        ) -> BOOL;
-        fn SymCleanup(handle: HANDLE) -> BOOL;
-        fn StackWalk64(
-            MachineType: DWORD,
-            hProcess: HANDLE,
-            hThread: HANDLE,
-            StackFrame: LPSTACKFRAME64,
-            ContextRecord: PVOID,
-            ReadMemoryRoutine: PREAD_PROCESS_MEMORY_ROUTINE64,
-            FunctionTableAccessRoutine: PFUNCTION_TABLE_ACCESS_ROUTINE64,
-            GetModuleBaseRoutine: PGET_MODULE_BASE_ROUTINE64,
-            TranslateAddress: PTRANSLATE_ADDRESS_ROUTINE64
-        ) -> BOOL;
-        fn SymFunctionTableAccess64(
-            hProcess: HANDLE,
-            AddrBase: DWORD64
-        ) -> PVOID;
-        fn SymGetModuleBase64(
-            hProcess: HANDLE,
-            AddrBase: DWORD64
-        ) -> DWORD64;
-        fn SymFromAddrW(
-            hProcess: HANDLE,
-            Address: DWORD64,
-            Displacement: PDWORD64,
-            Symbol: PSYMBOL_INFOW
-        ) -> BOOL;
-        fn SymGetLineFromAddrW64(
-            hProcess: HANDLE,
-            dwAddr: DWORD64,
-            pdwDisplacement: PDWORD,
-            Line: PIMAGEHLP_LINEW64
-        ) -> BOOL;
-        fn StackWalkEx(
-            MachineType: DWORD,
-            hProcess: HANDLE,
-            hThread: HANDLE,
-            StackFrame: LPSTACKFRAME_EX,
-            ContextRecord: PVOID,
-            ReadMemoryRoutine: PREAD_PROCESS_MEMORY_ROUTINE64,
-            FunctionTableAccessRoutine: PFUNCTION_TABLE_ACCESS_ROUTINE64,
-            GetModuleBaseRoutine: PGET_MODULE_BASE_ROUTINE64,
-            TranslateAddress: PTRANSLATE_ADDRESS_ROUTINE64,
-            Flags: DWORD
-        ) -> BOOL;
-        fn SymFromInlineContextW(
-            hProcess: HANDLE,
-            Address: DWORD64,
-            InlineContext: ULONG,
-            Displacement: PDWORD64,
-            Symbol: PSYMBOL_INFOW
-        ) -> BOOL;
-        fn SymGetLineFromInlineContextW(
-            hProcess: HANDLE,
-            dwAddr: DWORD64,
-            InlineContext: ULONG,
-            qwModuleBaseAddress: DWORD64,
-            pdwDisplacement: PDWORD,
-            Line: PIMAGEHLP_LINEW64
-        ) -> BOOL;
-    }
-}
-
-pub struct Init {
-    lock: HANDLE,
-}
-
-/// Initialize all support necessary to access `dbghelp` API functions from this
-/// crate.
-///
-/// Note that this function is **safe**, it internally has its own
-/// synchronization. Also note that it is safe to call this function multiple
-/// times recursively.
-pub fn init() -> Result<Init, ()> {
-}
-
-impl Drop for Init {
-    fn drop(&mut self) {
-}
-}
-}
-#[cfg(windows)]
-mod windows {
-﻿//! A module to define the FFI definitions we use on Windows for `dbghelp.dll`
-//!
-//! This module uses a custom macro, `ffi!`, to wrap all definitions to
-//! automatically generate tests to assert that our definitions here are the
-//! same as `winapi`.
-//!
-//! This module largely exists to integrate into libstd itself where winapi is
-//! not currently available.
-
-#![allow(bad_style, dead_code)]
-
-cfg_if::cfg_if! {
-    if #[cfg(feature = "verify-winapi")] {
-        pub use self::winapi::c_void;
-        pub use self::winapi::HINSTANCE;
-        pub use self::winapi::FARPROC;
-        pub use self::winapi::LPSECURITY_ATTRIBUTES;
-        #[cfg(target_pointer_width = "64")]
-        pub use self::winapi::PUNWIND_HISTORY_TABLE;
-        #[cfg(target_pointer_width = "64")]
-        pub use self::winapi::PRUNTIME_FUNCTION;
-
-        mod winapi {
-            pub use winapi::ctypes::*;
-            pub use winapi::shared::basetsd::*;
-            pub use winapi::shared::minwindef::*;
-            pub use winapi::um::dbghelp::*;
-            pub use winapi::um::fileapi::*;
-            pub use winapi::um::handleapi::*;
-            pub use winapi::um::libloaderapi::*;
-            pub use winapi::um::memoryapi::*;
-            pub use winapi::um::minwinbase::*;
-            pub use winapi::um::processthreadsapi::*;
-            pub use winapi::um::synchapi::*;
-            pub use winapi::um::tlhelp32::*;
-            pub use winapi::um::winbase::*;
-            pub use winapi::um::winnt::*;
-        }
-    } else {
-        pub use core::ffi::c_void;
-        pub type HINSTANCE = *mut c_void;
-        pub type FARPROC = *mut c_void;
-        pub type LPSECURITY_ATTRIBUTES = *mut c_void;
-        #[cfg(target_pointer_width = "64")]
-        pub type PRUNTIME_FUNCTION = *mut c_void;
-        #[cfg(target_pointer_width = "64")]
-        pub type PUNWIND_HISTORY_TABLE = *mut c_void;
-    }
-}
-
-macro_rules! ffi {
-	() => ();
-
-    (#[repr($($r:tt)*)] pub struct $name:ident { $(pub $field:ident: $ty:ty,)* } $($rest:tt)*) => (
-        #[repr($($r)*)]
-        #[cfg(not(feature = "verify-winapi"))]
-        #[derive(Copy, Clone)]
-        pub struct $name {
-            $(pub $field: $ty,)*
-        }
-
-        #[cfg(feature = "verify-winapi")]
-        pub use self::winapi::$name;
-
-        #[test]
-        #[cfg(feature = "verify-winapi")]
-        fn $name() {
-}
-
-        ffi!($($rest)*);
-    );
-
-    // Handling verification against unions in winapi requires some special care
-    (@test_fields $a:ident $b:ident FltSave $ty:ty) => (
-        // Skip this field on x86_64 `CONTEXT` since it's a union and a bit funny
-    );
-    (@test_fields $a:ident $b:ident D $ty:ty) => ({
-        let a = &$a.D;
-        let b = $b.D();
-        assert_same(a, b);
-        assert_eq!(a as *const $ty, b as *const $ty, "misplaced field D");
-    });
-    (@test_fields $a:ident $b:ident s $ty:ty) => ({
-        let a = &$a.s;
-        let b = $b.s();
-        assert_same(a, b);
-        assert_eq!(a as *const $ty, b as *const $ty, "misplaced field s");
-    });
-
-    // Otherwise test all fields normally.
-    (@test_fields $a:ident $b:ident $field:ident $ty:ty) => ({
-        let a = &$a.$field;
-        let b = &$b.$field;
-        assert_same(a, b);
-        assert_eq!(a as *const $ty, b as *const $ty,
-                   concat!("misplaced field ", stringify!($field)));
-    });
-
-    (pub type $name:ident = $ty:ty; $($rest:tt)*) => (
-        pub type $name = $ty;
-
-        #[cfg(feature = "verify-winapi")]
-        #[allow(dead_code)]
-        const $name: () = {
-            fn _foo() {
-}
-        };
-
-        ffi!($($rest)*);
-    );
-
-    (pub const $name:ident: $ty:ty = $val:expr; $($rest:tt)*) => (
-        pub const $name: $ty = $val;
-
-        #[cfg(feature = "verify-winapi")]
-        #[allow(unused_imports)]
-        mod $name {
-            use super::*;
-            #[test]
-            fn assert_valid() {
-}
-        }
-
-
-        ffi!($($rest)*);
-    );
-
-    (extern "system" { $(pub fn $name:ident($($args:tt)*) -> $ret:ty;)* } $($rest:tt)*) => (
-        extern "system" {
-}
-
-        $(
-            #[cfg(feature = "verify-winapi")]
-            mod $name {
-}
-        )*
-
-        ffi!($($rest)*);
-    );
-
-    (impl $name:ident { $($i:tt)* } $($rest:tt)*) => (
-        #[cfg(not(feature = "verify-winapi"))]
-        impl $name {
-            $($i)*
-        }
-
-        ffi!($($rest)*);
-    );
-}
-
-ffi! {
-    #[repr(C)]
-    pub struct STACKFRAME64 {
-        pub AddrPC: ADDRESS64,
-        pub AddrReturn: ADDRESS64,
-        pub AddrFrame: ADDRESS64,
-        pub AddrStack: ADDRESS64,
-        pub AddrBStore: ADDRESS64,
-        pub FuncTableEntry: PVOID,
-        pub Params: [DWORD64; 4],
-        pub Far: BOOL,
-        pub Virtual: BOOL,
-        pub Reserved: [DWORD64; 3],
-        pub KdHelp: KDHELP64,
-    }
-
-    pub type LPSTACKFRAME64 = *mut STACKFRAME64;
-
-    #[repr(C)]
-    pub struct STACKFRAME_EX {
-        pub AddrPC: ADDRESS64,
-        pub AddrReturn: ADDRESS64,
-        pub AddrFrame: ADDRESS64,
-        pub AddrStack: ADDRESS64,
-        pub AddrBStore: ADDRESS64,
-        pub FuncTableEntry: PVOID,
-        pub Params: [DWORD64; 4],
-        pub Far: BOOL,
-        pub Virtual: BOOL,
-        pub Reserved: [DWORD64; 3],
-        pub KdHelp: KDHELP64,
-        pub StackFrameSize: DWORD,
-        pub InlineFrameContext: DWORD,
-    }
-
-    pub type LPSTACKFRAME_EX = *mut STACKFRAME_EX;
-
-    #[repr(C)]
-    pub struct IMAGEHLP_LINEW64 {
-        pub SizeOfStruct: DWORD,
-        pub Key: PVOID,
-        pub LineNumber: DWORD,
-        pub FileName: PWSTR,
-        pub Address: DWORD64,
-    }
-
-    pub type PIMAGEHLP_LINEW64 = *mut IMAGEHLP_LINEW64;
-
-    #[repr(C)]
-    pub struct SYMBOL_INFOW {
-        pub SizeOfStruct: ULONG,
-        pub TypeIndex: ULONG,
-        pub Reserved: [ULONG64; 2],
-        pub Index: ULONG,
-        pub Size: ULONG,
-        pub ModBase: ULONG64,
-        pub Flags: ULONG,
-        pub Value: ULONG64,
-        pub Address: ULONG64,
-        pub Register: ULONG,
-        pub Scope: ULONG,
-        pub Tag: ULONG,
-        pub NameLen: ULONG,
-        pub MaxNameLen: ULONG,
-        pub Name: [WCHAR; 1],
-    }
-
-    pub type PSYMBOL_INFOW = *mut SYMBOL_INFOW;
-
-    pub type PTRANSLATE_ADDRESS_ROUTINE64 = Option<
-        unsafe extern "system" fn(hProcess: HANDLE, hThread: HANDLE, lpaddr: LPADDRESS64) -> DWORD64,
-    >;
-    pub type PGET_MODULE_BASE_ROUTINE64 =
-        Option<unsafe extern "system" fn(hProcess: HANDLE, Address: DWORD64) -> DWORD64>;
-    pub type PFUNCTION_TABLE_ACCESS_ROUTINE64 =
-        Option<unsafe extern "system" fn(ahProcess: HANDLE, AddrBase: DWORD64) -> PVOID>;
-    pub type PREAD_PROCESS_MEMORY_ROUTINE64 = Option<
-        unsafe extern "system" fn(
-            hProcess: HANDLE,
-            qwBaseAddress: DWORD64,
-            lpBuffer: PVOID,
-            nSize: DWORD,
-            lpNumberOfBytesRead: LPDWORD,
-        ) -> BOOL,
-    >;
-
-    #[repr(C)]
-    pub struct ADDRESS64 {
-        pub Offset: DWORD64,
-        pub Segment: WORD,
-        pub Mode: ADDRESS_MODE,
-    }
-
-    pub type LPADDRESS64 = *mut ADDRESS64;
-
-    pub type ADDRESS_MODE = u32;
-
-    #[repr(C)]
-    pub struct KDHELP64 {
-        pub Thread: DWORD64,
-        pub ThCallbackStack: DWORD,
-        pub ThCallbackBStore: DWORD,
-        pub NextCallback: DWORD,
-        pub FramePointer: DWORD,
-        pub KiCallUserMode: DWORD64,
-        pub KeUserCallbackDispatcher: DWORD64,
-        pub SystemRangeStart: DWORD64,
-        pub KiUserExceptionDispatcher: DWORD64,
-        pub StackBase: DWORD64,
-        pub StackLimit: DWORD64,
-        pub BuildVersion: DWORD,
-        pub Reserved0: DWORD,
-        pub Reserved1: [DWORD64; 4],
-    }
-
-    #[repr(C)]
-    pub struct MODULEENTRY32W {
-        pub dwSize: DWORD,
-        pub th32ModuleID: DWORD,
-        pub th32ProcessID: DWORD,
-        pub GlblcntUsage: DWORD,
-        pub ProccntUsage: DWORD,
-        pub modBaseAddr: *mut u8,
-        pub modBaseSize: DWORD,
-        pub hModule: HMODULE,
-        pub szModule: [WCHAR; MAX_MODULE_NAME32 + 1],
-        pub szExePath: [WCHAR; MAX_PATH],
-    }
-
-    pub const MAX_SYM_NAME: usize = 2000;
-    pub const AddrModeFlat: ADDRESS_MODE = 3;
-    pub const TRUE: BOOL = 1;
-    pub const FALSE: BOOL = 0;
-    pub const PROCESS_QUERY_INFORMATION: DWORD = 0x400;
-    pub const IMAGE_FILE_MACHINE_ARM64: u16 = 43620;
-    pub const IMAGE_FILE_MACHINE_AMD64: u16 = 34404;
-    pub const IMAGE_FILE_MACHINE_I386: u16 = 332;
-    pub const IMAGE_FILE_MACHINE_ARMNT: u16 = 452;
-    pub const FILE_SHARE_READ: DWORD = 0x1;
-    pub const FILE_SHARE_WRITE: DWORD = 0x2;
-    pub const OPEN_EXISTING: DWORD = 0x3;
-    pub const GENERIC_READ: DWORD = 0x80000000;
-    pub const INFINITE: DWORD = !0;
-    pub const PAGE_READONLY: DWORD = 2;
-    pub const FILE_MAP_READ: DWORD = 4;
-    pub const TH32CS_SNAPMODULE: DWORD = 0x00000008;
-    pub const INVALID_HANDLE_VALUE: HANDLE = -1isize as HANDLE;
-    pub const MAX_MODULE_NAME32: usize = 255;
-    pub const MAX_PATH: usize = 260;
-
-    pub type DWORD = u32;
-    pub type PDWORD = *mut u32;
-    pub type BOOL = i32;
-    pub type DWORD64 = u64;
-    pub type PDWORD64 = *mut u64;
-    pub type HANDLE = *mut c_void;
-    pub type PVOID = HANDLE;
-    pub type PCWSTR = *const u16;
-    pub type LPSTR = *mut i8;
-    pub type LPCSTR = *const i8;
-    pub type PWSTR = *mut u16;
-    pub type WORD = u16;
-    pub type ULONG = u32;
-    pub type ULONG64 = u64;
-    pub type WCHAR = u16;
-    pub type PCONTEXT = *mut CONTEXT;
-    pub type LPDWORD = *mut DWORD;
-    pub type DWORDLONG = u64;
-    pub type HMODULE = HINSTANCE;
-    pub type SIZE_T = usize;
-    pub type LPVOID = *mut c_void;
-    pub type LPCVOID = *const c_void;
-    pub type LPMODULEENTRY32W = *mut MODULEENTRY32W;
-
-    extern "system" {
-        pub fn GetCurrentProcess() -> HANDLE;
-        pub fn GetCurrentThread() -> HANDLE;
-        pub fn RtlCaptureContext(ContextRecord: PCONTEXT) -> ();
-        pub fn LoadLibraryA(a: *const i8) -> HMODULE;
-        pub fn GetProcAddress(h: HMODULE, name: *const i8) -> FARPROC;
-        pub fn GetModuleHandleA(name: *const i8) -> HMODULE;
-        pub fn OpenProcess(
-            dwDesiredAccess: DWORD,
-            bInheitHandle: BOOL,
-            dwProcessId: DWORD,
-        ) -> HANDLE;
-        pub fn GetCurrentProcessId() -> DWORD;
-        pub fn CloseHandle(h: HANDLE) -> BOOL;
-        pub fn CreateFileA(
-            lpFileName: LPCSTR,
-            dwDesiredAccess: DWORD,
-            dwShareMode: DWORD,
-            lpSecurityAttributes: LPSECURITY_ATTRIBUTES,
-            dwCreationDisposition: DWORD,
-            dwFlagsAndAttributes: DWORD,
-            hTemplateFile: HANDLE,
-        ) -> HANDLE;
-        pub fn CreateMutexA(
-            attrs: LPSECURITY_ATTRIBUTES,
-            initial: BOOL,
-            name: LPCSTR,
-        ) -> HANDLE;
-        pub fn ReleaseMutex(hMutex: HANDLE) -> BOOL;
-        pub fn WaitForSingleObjectEx(
-            hHandle: HANDLE,
-            dwMilliseconds: DWORD,
-            bAlertable: BOOL,
-        ) -> DWORD;
-        pub fn CreateFileMappingA(
-            hFile: HANDLE,
-            lpFileMappingAttributes: LPSECURITY_ATTRIBUTES,
-            flProtect: DWORD,
-            dwMaximumSizeHigh: DWORD,
-            dwMaximumSizeLow: DWORD,
-            lpName: LPCSTR,
-        ) -> HANDLE;
-        pub fn MapViewOfFile(
-            hFileMappingObject: HANDLE,
-            dwDesiredAccess: DWORD,
-            dwFileOffsetHigh: DWORD,
-            dwFileOffsetLow: DWORD,
-            dwNumberOfBytesToMap: SIZE_T,
-        ) -> LPVOID;
-        pub fn UnmapViewOfFile(lpBaseAddress: LPCVOID) -> BOOL;
-        pub fn CreateToolhelp32Snapshot(
-            dwFlags: DWORD,
-            th32ProcessID: DWORD,
-        ) -> HANDLE;
-        pub fn Module32FirstW(
-            hSnapshot: HANDLE,
-            lpme: LPMODULEENTRY32W,
-        ) -> BOOL;
-        pub fn Module32NextW(
-            hSnapshot: HANDLE,
-            lpme: LPMODULEENTRY32W,
-        ) -> BOOL;
-    }
-}
-
-#[cfg(target_pointer_width = "64")]
-ffi! {
-    extern "system" {
-        pub fn RtlLookupFunctionEntry(
-            ControlPc: DWORD64,
-            ImageBase: PDWORD64,
-            HistoryTable: PUNWIND_HISTORY_TABLE,
-        ) -> PRUNTIME_FUNCTION;
-    }
-}
-
-#[cfg(target_arch = "aarch64")]
-ffi! {
-    #[repr(C, align(16))]
-    pub struct CONTEXT {
-        pub ContextFlags: DWORD,
-        pub Cpsr: DWORD,
-        pub u: CONTEXT_u,
-        pub Sp: u64,
-        pub Pc: u64,
-        pub V: [ARM64_NT_NEON128; 32],
-        pub Fpcr: DWORD,
-        pub Fpsr: DWORD,
-        pub Bcr: [DWORD; ARM64_MAX_BREAKPOINTS],
-        pub Bvr: [DWORD64; ARM64_MAX_BREAKPOINTS],
-        pub Wcr: [DWORD; ARM64_MAX_WATCHPOINTS],
-        pub Wvr: [DWORD64; ARM64_MAX_WATCHPOINTS],
-    }
-
-    #[repr(C)]
-    pub struct CONTEXT_u {
-        pub s: CONTEXT_u_s,
-    }
-
-    impl CONTEXT_u {
-        pub unsafe fn s(&self) -> &CONTEXT_u_s {
-}
-    }
-
-    #[repr(C)]
-    pub struct CONTEXT_u_s {
-        pub X0: u64,
-        pub X1: u64,
-        pub X2: u64,
-        pub X3: u64,
-        pub X4: u64,
-        pub X5: u64,
-        pub X6: u64,
-        pub X7: u64,
-        pub X8: u64,
-        pub X9: u64,
-        pub X10: u64,
-        pub X11: u64,
-        pub X12: u64,
-        pub X13: u64,
-        pub X14: u64,
-        pub X15: u64,
-        pub X16: u64,
-        pub X17: u64,
-        pub X18: u64,
-        pub X19: u64,
-        pub X20: u64,
-        pub X21: u64,
-        pub X22: u64,
-        pub X23: u64,
-        pub X24: u64,
-        pub X25: u64,
-        pub X26: u64,
-        pub X27: u64,
-        pub X28: u64,
-        pub Fp: u64,
-        pub Lr: u64,
-    }
-
-    pub const ARM64_MAX_BREAKPOINTS: usize = 8;
-    pub const ARM64_MAX_WATCHPOINTS: usize = 2;
-
-    #[repr(C)]
-    pub struct ARM64_NT_NEON128 {
-        pub D: [f64; 2],
-    }
-}
-
-#[cfg(target_arch = "x86")]
-ffi! {
-    #[repr(C)]
-    pub struct CONTEXT {
-        pub ContextFlags: DWORD,
-        pub Dr0: DWORD,
-        pub Dr1: DWORD,
-        pub Dr2: DWORD,
-        pub Dr3: DWORD,
-        pub Dr6: DWORD,
-        pub Dr7: DWORD,
-        pub FloatSave: FLOATING_SAVE_AREA,
-        pub SegGs: DWORD,
-        pub SegFs: DWORD,
-        pub SegEs: DWORD,
-        pub SegDs: DWORD,
-        pub Edi: DWORD,
-        pub Esi: DWORD,
-        pub Ebx: DWORD,
-        pub Edx: DWORD,
-        pub Ecx: DWORD,
-        pub Eax: DWORD,
-        pub Ebp: DWORD,
-        pub Eip: DWORD,
-        pub SegCs: DWORD,
-        pub EFlags: DWORD,
-        pub Esp: DWORD,
-        pub SegSs: DWORD,
-        pub ExtendedRegisters: [u8; 512],
-    }
-
-    #[repr(C)]
-    pub struct FLOATING_SAVE_AREA {
-        pub ControlWord: DWORD,
-        pub StatusWord: DWORD,
-        pub TagWord: DWORD,
-        pub ErrorOffset: DWORD,
-        pub ErrorSelector: DWORD,
-        pub DataOffset: DWORD,
-        pub DataSelector: DWORD,
-        pub RegisterArea: [u8; 80],
-        pub Spare0: DWORD,
-    }
-}
-
-#[cfg(target_arch = "x86_64")]
-ffi! {
-    #[repr(C, align(8))]
-    pub struct CONTEXT {
-        pub P1Home: DWORDLONG,
-        pub P2Home: DWORDLONG,
-        pub P3Home: DWORDLONG,
-        pub P4Home: DWORDLONG,
-        pub P5Home: DWORDLONG,
-        pub P6Home: DWORDLONG,
-
-        pub ContextFlags: DWORD,
-        pub MxCsr: DWORD,
-
-        pub SegCs: WORD,
-        pub SegDs: WORD,
-        pub SegEs: WORD,
-        pub SegFs: WORD,
-        pub SegGs: WORD,
-        pub SegSs: WORD,
-        pub EFlags: DWORD,
-
-        pub Dr0: DWORDLONG,
-        pub Dr1: DWORDLONG,
-        pub Dr2: DWORDLONG,
-        pub Dr3: DWORDLONG,
-        pub Dr6: DWORDLONG,
-        pub Dr7: DWORDLONG,
-
-        pub Rax: DWORDLONG,
-        pub Rcx: DWORDLONG,
-        pub Rdx: DWORDLONG,
-        pub Rbx: DWORDLONG,
-        pub Rsp: DWORDLONG,
-        pub Rbp: DWORDLONG,
-        pub Rsi: DWORDLONG,
-        pub Rdi: DWORDLONG,
-        pub R8:  DWORDLONG,
-        pub R9:  DWORDLONG,
-        pub R10: DWORDLONG,
-        pub R11: DWORDLONG,
-        pub R12: DWORDLONG,
-        pub R13: DWORDLONG,
-        pub R14: DWORDLONG,
-        pub R15: DWORDLONG,
-
-        pub Rip: DWORDLONG,
-
-        pub FltSave: FLOATING_SAVE_AREA,
-
-        pub VectorRegister: [M128A; 26],
-        pub VectorControl: DWORDLONG,
-
-        pub DebugControl: DWORDLONG,
-        pub LastBranchToRip: DWORDLONG,
-        pub LastBranchFromRip: DWORDLONG,
-        pub LastExceptionToRip: DWORDLONG,
-        pub LastExceptionFromRip: DWORDLONG,
-    }
-
-    #[repr(C)]
-    pub struct M128A {
-        pub Low: u64,
-        pub High: i64,
-    }
-}
-
-#[repr(C)]
-#[cfg(target_arch = "x86_64")]
-#[derive(Copy, Clone)]
-pub struct FLOATING_SAVE_AREA {
-    _Dummy: [u8; 512],
-}
-
-#[cfg(target_arch = "arm")]
-ffi! {
-    // #[repr(C)]
-    // pub struct NEON128 {
-    //     pub Low: ULONG64,
-    //     pub High: LONG64,
-    // }
-
-    // pub type PNEON128 = *mut NEON128;
-
-    #[repr(C)]
-    pub struct CONTEXT_u {
-        // pub Q: [NEON128; 16],
-        pub D: [ULONG64; 32],
-        // pub S: [DWORD; 32],
-    }
-
-    pub const ARM_MAX_BREAKPOINTS: usize = 8;
-    pub const ARM_MAX_WATCHPOINTS: usize = 1;
-
-    #[repr(C)]
-    pub struct CONTEXT {
-        pub ContextFlags: DWORD,
-        pub R0: DWORD,
-        pub R1: DWORD,
-        pub R2: DWORD,
-        pub R3: DWORD,
-        pub R4: DWORD,
-        pub R5: DWORD,
-        pub R6: DWORD,
-        pub R7: DWORD,
-        pub R8: DWORD,
-        pub R9: DWORD,
-        pub R10: DWORD,
-        pub R11: DWORD,
-        pub R12: DWORD,
-        pub Sp: DWORD,
-        pub Lr: DWORD,
-        pub Pc: DWORD,
-        pub Cpsr: DWORD,
-        pub Fpsrc: DWORD,
-        pub Padding: DWORD,
-        pub u: CONTEXT_u,
-        pub Bvr: [DWORD; ARM_MAX_BREAKPOINTS],
-        pub Bcr: [DWORD; ARM_MAX_BREAKPOINTS],
-        pub Wvr: [DWORD; ARM_MAX_WATCHPOINTS],
-        pub Wcr: [DWORD; ARM_MAX_WATCHPOINTS],
-        pub Padding2: [DWORD; 2],
-    }
-} // IFDEF(arm)
-}
-}
-
 // Pull in the `std_detect` crate directly into libstd. The contents of
 // `std_detect` are in a different repository: rust-lang/stdarch.
 //
 // `std_detect` depends on libstd, but the contents of this module are
 // set up in such a way that directly pulling it here works such that the
 // crate uses the this crate as its libstd.
-#[path = "../../stdarch/crates/std_detect/src/mod.rs"]
+#[path = "../stdarch/crates/std_detect/src/mod.rs"]
 #[allow(missing_debug_implementations, missing_docs, dead_code)]
 #[unstable(feature = "stdsimd", issue = "48556")]
 #[cfg(not(test))]
@@ -45155,21 +42305,49 @@ pub use std_detect::detect;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(deprecated, deprecated_in_future)]
 pub use core::{
-    assert_eq, assert_ne, debug_assert, debug_assert_eq, debug_assert_ne, matches, r#try, todo,
-    unimplemented, unreachable, write, writeln,
+    // Stable
+    assert_eq,
+    assert_ne,
+    debug_assert,
+    debug_assert_eq,
+    debug_assert_ne,
+    // Unstable
+    matches,
+    r#try,
+    todo,
+    unimplemented,
+    unreachable,
+    write,
+    writeln,
 };
 
 // Re-export built-in macros defined through libcore.
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
-#[allow(deprecated)]
 pub use core::{
-    asm, assert, cfg, column, compile_error, concat, concat_idents, env, file, format_args,
-    format_args_nl, global_asm, include, include_bytes, include_str, line, llvm_asm, log_syntax,
-    module_path, option_env, stringify, trace_macros,
+    // Unstable
+    asm,
+    // Stable
+    assert,
+    cfg,
+    column,
+    compile_error,
+    concat,
+    concat_idents,
+    env,
+    file,
+    format_args,
+    format_args_nl,
+    global_asm,
+    include,
+    include_bytes,
+    include_str,
+    line,
+    log_syntax,
+    module_path,
+    option_env,
+    stringify,
+    trace_macros,
 };
-
-#[stable(feature = "core_primitive", since = "1.43.0")]
-pub use core::primitive;
 
 // Include a number of private modules that exist solely to provide
 // the rustdoc documentation for primitive types. Using `include!`
@@ -45180,9 +42358,3 @@ include!("primitive_docs.rs");
 // the rustdoc documentation for the existing keywords. Using `include!`
 // because rustdoc only looks for these modules at the crate level.
 include!("keyword_docs.rs");
-
-// This is required to avoid an unstable error when `restricted-std` is not
-// enabled. The use of #![feature(restricted_std)] in rustc-std-workspace-std
-// is unconditional, so the unstable feature needs to be defined somewhere.
-#[cfg_attr(not(feature = "restricted-std"), unstable(feature = "restricted_std", issue = "none"))]
-mod __restricted_std_workaround {}
