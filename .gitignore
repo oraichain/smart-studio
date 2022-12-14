@@ -13,3 +13,4 @@ target
 
 # rust analyzer
 change.json
+rust_library

@@ -265,16 +265,21 @@ fn put_module_in_string(
 }
 
 fn main() {
-    let toolchain = std::env::var("TOOLCHAIN").unwrap_or("+nightly-2021-11-02".to_string());
-    let rustc_result = Command::new("rustc")
-        .args(&[&toolchain, "--print", "sysroot"])
-        .output()
-        .expect("Failed to execute rustc")
-        .stdout;
-    let sysroot_path = &format!(
-        "{}/lib/rustlib/src/rust/library",
-        std::str::from_utf8(&rustc_result).expect("rustc output wasn't utf8").trim()
-    );
+    let sysroot_path = &match std::env::var("RUST_PATH") {
+        Ok(p) => p,
+        Err(_) => {
+            let toolchain = std::env::var("TOOLCHAIN").unwrap_or("+nightly-2021-11-02".to_string());
+            let rustc_result = Command::new("rustc")
+                .args(&[&toolchain, "--print", "sysroot"])
+                .output()
+                .expect("Failed to execute rustc")
+                .stdout;
+            format!(
+                "{}/lib/rustlib/src/rust/library",
+                std::str::from_utf8(&rustc_result).expect("rustc output wasn't utf8").trim()
+            )
+        }
+    };
     let cosmwasm_path = &format!("{}/packages", std::env::var("COSMWASM_PATH").unwrap());
     let output_type = std::env::var("OUTPUT_TYPE").unwrap_or("json".to_string());
 
