@@ -1,0 +1,15 @@
+{
+  "name": "ra-wasm",
+  "collaborators": [
+    "rust-analyzer developers"
+  ],
+  "version": "0.1.0",
+  "files": [
+    "ra_wasm_bg.wasm",
+    "ra_wasm.js",
+    "ra_wasm.d.ts"
+  ],
+  "module": "ra_wasm.js",
+  "types": "ra_wasm.d.ts",
+  "sideEffects": false
+}
