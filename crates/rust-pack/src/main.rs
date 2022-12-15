@@ -306,17 +306,16 @@ fn main() {
                 .required(true)
                 .index(1),
         )
-        .arg(Arg::from_usage("--rustsrc=[RUST_PATH] 'Rust source code folder'"))
-        .arg(Arg::from_usage("--toolchain=[TOOLCHAIN] 'rustup toolchain'"))
+        .arg(Arg::from_usage("--toolchain=[TOOLCHAIN|RUST_PATH] 'rustup toolchain'"))
         .arg(Arg::from_usage("--output=[rust|json] 'pack type'"))
         .get_matches();
 
-    let sysroot_path = &match matches.value_of("rustsrc") {
-        Some(p) => p.to_string(),
-        None => {
-            let toolchain = matches.value_of("toolchain").unwrap_or("+stable");
+    let toolchain = matches.value_of("toolchain").unwrap_or("+stable");
+    let sysroot_path = &match toolchain.starts_with("+") {
+        false => toolchain.trim_end_matches("/").to_string(),
+        true => {
             let rustc_result = Command::new("rustc")
-                .args(&[&toolchain, "--print", "sysroot"])
+                .args(&[toolchain, "--print", "sysroot"])
                 .output()
                 .expect("Failed to execute rustc")
                 .stdout;
@@ -326,7 +325,8 @@ fn main() {
             )
         }
     };
-    let cosmwasm_path = &format!("{}/packages", matches.value_of("COSMWASM_PATH").unwrap());
+    let cosmwasm_path =
+        &format!("{}/packages", matches.value_of("COSMWASM_PATH").unwrap().trim_end_matches("/"));
     let output_type = matches.value_of("output").unwrap_or_default();
 
     // rust library

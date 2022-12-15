@@ -14,7 +14,7 @@ rustup toolchain add 1.51.0 --profile minimal && rustup +1.51.0 component add ru
 
 # or using source code, should be version >= 1.47.0, minimum support is 1.42.0
 svn export https://github.com/rust-lang/rust/tags/1.47.0/library rust_library/1.47.0
-cargo run -p rust-pack --release -- ../cosmwasm --rustsrc rust_library/1.47.0 --output rust
+cargo run -p rust-pack --release -- ../cosmwasm --toolchain rust_library/1.47.0 --output rust
 
 # to build client
 # rebuild template
