@@ -19,4 +19,5 @@ ide_db = { version = "0.0.81", package = "ra_ap_ide_db" }
 
 serde_json = { version = "1.0.82", features = ["preserve_order"] }
 change_json = { path = "../change_json" }
+clap = "2.33.3"
 

@@ -1,5 +1,6 @@
 #![allow(unused)]
 use change_json::ChangeJson;
+use clap::{App, Arg};
 use core::panic;
 use regex::{Regex, RegexBuilder};
 use rust_pack::extractor;
@@ -294,10 +295,26 @@ fn put_module_in_string(
 }
 
 fn main() {
-    let sysroot_path = &match std::env::var("RUST_PATH") {
-        Ok(p) => p,
-        Err(_) => {
-            let toolchain = std::env::var("TOOLCHAIN").unwrap_or("+nightly-2021-11-02".to_string());
+    let matches = App::new("Rust library packing")
+        .version("0.1.0")
+        .long_about("Run a rust-pack toolchain (cargo run -p rust-pack --release -- cosmwasm).")
+        .author("Thanh Tu <tu@orai.io>")
+        .arg(
+            Arg::with_name("COSMWASM_PATH")
+                .help("cosmwasm path to read and pack")
+                .default_value("../cosmwasm")
+                .required(true)
+                .index(1),
+        )
+        .arg(Arg::from_usage("--rustsrc=[RUST_PATH] 'Rust source code folder'"))
+        .arg(Arg::from_usage("--toolchain=[TOOLCHAIN] 'rustup toolchain'"))
+        .arg(Arg::from_usage("--output=[rust|json] 'pack type'"))
+        .get_matches();
+
+    let sysroot_path = &match matches.value_of("rustsrc") {
+        Some(p) => p.to_string(),
+        None => {
+            let toolchain = matches.value_of("toolchain").unwrap_or("+stable");
             let rustc_result = Command::new("rustc")
                 .args(&[&toolchain, "--print", "sysroot"])
                 .output()
@@ -309,8 +326,8 @@ fn main() {
             )
         }
     };
-    let cosmwasm_path = &format!("{}/packages", std::env::var("COSMWASM_PATH").unwrap());
-    let output_type = std::env::var("OUTPUT_TYPE").unwrap_or("json".to_string());
+    let cosmwasm_path = &format!("{}/packages", matches.value_of("COSMWASM_PATH").unwrap());
+    let output_type = matches.value_of("output").unwrap_or_default();
 
     // rust library
     let lib_rust_paths = [
@@ -344,16 +361,26 @@ fn main() {
             output = remove_test_mod(&output);
             output = remove_function_body(&output);
 
-            if output_type.eq("json") {
+            // fix reference for libcore
+            if name.eq("libcore") {
+                output = output.replace(
+                    "[the reference]: ../../../",
+                    "[the reference]: https://doc.rust-lang.org/nightly/",
+                );
+            }
+
+            if output_type.is_empty() || output_type.eq("json") {
                 // write change json
-                crate_map.insert(name, output);
-            } else {
-                fs::write(format!("src/rust/{}.rs", name), output.clone()).unwrap();
+                crate_map.insert(name.clone(), output.clone());
+            }
+
+            if output_type.is_empty() || output_type.eq("rust") {
+                fs::write(format!("src/rust/{}.rs", name), output).unwrap();
             }
         }
     }
 
-    if output_type.eq("json") {
+    if output_type.is_empty() || output_type.eq("json") {
         let change = extractor::load_change_from_files(
             crate_map.get("libstd").unwrap().clone(),
             crate_map.get("libcore").unwrap().clone(),
