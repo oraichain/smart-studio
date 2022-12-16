@@ -67,7 +67,7 @@
     "jszip": "^3.10.1",
     "jwt-decode": "^3.1.2",
     "minimatch": "^3.0.4",
-    "monaco-editor": "^0.20.0",
+    "monaco-editor": "0.20.0",
     "mousetrap": "^1.6.2",
     "pako": "^1.0.7",
     "raven-js": "^3.27.0",

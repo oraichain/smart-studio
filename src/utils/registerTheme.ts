@@ -25,14 +25,8 @@ export default function registerTheme() {
   monaco.editor.defineTheme('fiddle-theme', {
     base: 'vs-dark',
     inherit: true,
-    colors: {
-      'editorInlayHint.foreground': '#A0A0A0F0',
-      'editorInlayHint.background': '#11223300'
-    },
+    colors: {},
     rules: [
-      { token: 'keyword.control', foreground: 'C586C0' },
-      { token: 'variable', foreground: '9CDCFE' },
-      { token: 'support.function', foreground: 'DCDCAA' },
       { token: 'custom-info', foreground: 'd4d4d4' },
       { token: 'custom-warn', foreground: 'ff9900' },
       { token: 'custom-error', background: '00ff00', foreground: 'ff0000', fontStyle: 'bold' }

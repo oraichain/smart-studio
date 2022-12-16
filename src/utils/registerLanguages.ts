@@ -20,21 +20,20 @@
  */
 
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
+// import { language, conf } from 'monaco-editor/esm/vs/basic-languages/rust/rust';
+// import { language, conf } from './rust-grammar';
 import { Service } from '../service';
 import { Language } from '../compilerServices/types';
-import { language, conf } from './rust-grammar';
 
-export default async function registerLanguages() {
+export default function registerLanguages() {
   // Log
-  monaco.languages.onLanguage(Language.Log, () => {
-    monaco.languages.setMonarchTokensProvider(Language.Log, {
-      tokenizer: {
-        root: [[/error[:[].*/, 'custom-error'], [/warn[:[].*/, 'custom-warn'], [/notice[:[].*/, 'custom-notice'], [/info[:[].*/, 'custom-info']]
-      }
-    });
-  });
   monaco.languages.register({
     id: Language.Log
+  });
+  monaco.languages.setMonarchTokensProvider(Language.Log, {
+    tokenizer: {
+      root: [[/error[:[].*/, 'custom-error'], [/warn[:[].*/, 'custom-warn'], [/notice[:[].*/, 'custom-notice'], [/info[:[].*/, 'custom-info']]
+    }
   });
 
   // rust languages
@@ -42,8 +41,8 @@ export default async function registerLanguages() {
     id: Language.Rust
   });
 
-  monaco.languages.setMonarchTokensProvider(Language.Rust, language);
-  monaco.languages.setLanguageConfiguration(Language.Rust, conf);
+  // monaco.languages.setMonarchTokensProvider(Language.Rust, language);
+  // monaco.languages.setLanguageConfiguration(Language.Rust, conf);
 
   monaco.languages.registerHoverProvider(Language.Rust, {
     provideHover(model, pos) {
