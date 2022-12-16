@@ -1,7 +1,7 @@
 declare global {
   interface Window {
     MonacoEnvironment: {
-      getWorkerUrl(): string;
+      getWorkerUrl(workerId: string, label: string): string;
     };
   }
 
@@ -13,4 +13,4 @@ declare global {
   }
 }
 
-export {};
+export { };

@@ -35,7 +35,7 @@ export interface TabsState {
 export class Tabs extends Component<TabsProps, TabsState> {
   static defaultProps: TabsProps = {
     // tslint:disable-next-line
-    onDoubleClick: () => {}
+    onDoubleClick: () => { }
   };
 
   container: HTMLDivElement;
@@ -85,9 +85,9 @@ export interface TabProps {
 export class Tab extends PureComponent<TabProps, {}> {
   static defaultProps: TabProps = {
     // tslint:disable-next-line
-    onClick: () => {},
+    onClick: () => { },
     // tslint:disable-next-line
-    onDoubleClick: () => {}
+    onDoubleClick: () => { }
   };
 
   onMouseHandle = (e: MouseEvent<HTMLElement>, handler: Function) => {

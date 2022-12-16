@@ -1,7 +1,7 @@
 import * as monaco from 'monaco-editor';
 import { File, FileType, languageForFileType } from '../models';
 import { WorldState } from '../../crates/ra-wasm/pkg';
-import { createRA } from './creat-ra';
+import { createRA } from './create-ra';
 
 window.MonacoEnvironment = {
   getWorkerUrl: (moduleId, label) => {
@@ -13,23 +13,22 @@ window.MonacoEnvironment = {
 };
 
 export class LanguageUpdater {
-  private states: Map<monaco.Uri, WorldState> = new Map();
+  static contractFiles: string[] = ['lib.rs', 'msg.rs', 'state.rs', 'error.rs', 'contract.rs'];
+  private state: WorldState;
+  private fileIdMap: Map<monaco.Uri, number> = new Map();
   private languageId: string;
   constructor(fileType: FileType) {
     this.languageId = languageForFileType(fileType);
   }
 
-  private async addModel(model: monaco.editor.ITextModel) {
-    let uri = model.uri;
-    if (this.states.has(uri)) return;
-
-    const state = (await createRA()) as WorldState;
-
+  async initialize() {
+    if (this.state) return;
+    this.state = (await createRA()) as WorldState;
     if (process.env.NODE_ENV === 'production') {
       const data = await fetch('/change.json');
       const textData = await data.text();
       const encoder = new TextEncoder();
-      await state.load(encoder.encode(textData), model.getValue());
+      await this.state.load(encoder.encode(textData));
     } else {
       // fallback loading from source code
       const rustFiles = await Promise.all([
@@ -41,45 +40,54 @@ export class LanguageUpdater {
         import('../rust/cosmwasm-schema.rs'),
         import('../rust/cosmwasm-std.rs'),
         import('../rust/cosmwasm-crypto.rs'),
-        import('../rust/cosmwasm-storage.rs')
+        import('../rust/cosmwasm-storage.rs'),
+        import('../rust/thiserror-1.0.23.rs'),
+        import('../rust/thiserror-impl-1.0.23.rs'),
+        import('../rust/proc-macro2-1.0.6.rs')
       ]);
 
       // @ts-ignore
-      await state.init(model.getValue(), ...rustFiles.map((m) => m.default));
+      await this.state.init(...rustFiles.map((m) => m.default));
     }
+  }
 
+  private async addModel(model: monaco.editor.ITextModel) {
     const update = async () => {
-      const res = await state.update(model.getValue());
-      monaco.editor.setModelMarkers(model, this.languageId, res.diagnostics);
+      const fileInd = this.fileIdMap.get(model.uri);
+      if (fileInd > -1) {
+        const res = await this.state.update(fileInd, model.getValue());
+        monaco.editor.setModelMarkers(model, this.languageId, res.diagnostics);
+      }
     };
 
-    const start = Date.now();
+    // const start = Date.now();
     await update();
-    console.log('Took', Date.now() - start, 'ms');
+    // console.log('Took', Date.now() - start, 'ms');
     model.onDidChangeContent(update);
-
-    this.states.set(uri, state);
   }
 
   addFile(file: File) {
-    const { buffer, type } = file;
+    const { buffer, type, name } = file;
     const languageId = languageForFileType(type);
     if (languageId === this.languageId) {
+      // update all source code for rust
+      const fileInd = LanguageUpdater.contractFiles.indexOf(name);
+      this.fileIdMap.set(buffer.uri, fileInd);
       return this.addModel(buffer);
     }
   }
 
   async provideHover(model: monaco.editor.ITextModel, pos: monaco.Position) {
-    const state = this.states.get(model.uri);
-    if (!state) return;
-    const hoverData = await state.hover(pos.lineNumber, pos.column);
+    const fileInd = this.fileIdMap.get(model.uri);
+    if (fileInd === -1) return;
+    const hoverData = await this.state.hover(fileInd, pos.lineNumber, pos.column);
     return hoverData;
   }
 
   async provideCodeLenses(model: monaco.editor.ITextModel) {
-    const state = this.states.get(model.uri);
-    if (!state) return;
-    const codeLenses = await state.code_lenses();
+    const fileInd = this.fileIdMap.get(model.uri);
+    if (fileInd === -1) return;
+    const codeLenses = await this.state.code_lenses(fileInd);
     const lenses = codeLenses.map(({ range, command }: any) => {
       const position = {
         column: range.startColumn,
@@ -104,25 +112,25 @@ export class LanguageUpdater {
   }
 
   async provideReferences(model: monaco.editor.ITextModel, pos: monaco.Position, { includeDeclaration }: any) {
-    const state = this.states.get(model.uri);
-    if (!state) return;
-    const references = await state.references(pos.lineNumber, pos.column, includeDeclaration);
+    const fileInd = this.fileIdMap.get(model.uri);
+    if (fileInd === -1) return;
+    const references = await this.state.references(fileInd, pos.lineNumber, pos.column, includeDeclaration);
     if (references) {
       return references.map(({ range }: any) => ({ uri: model.uri, range }));
     }
   }
 
   async provideDocumentHighlights(model: monaco.editor.ITextModel, pos: monaco.Position) {
-    const state = this.states.get(model.uri);
-    if (!state) return;
-    const references = state.references(pos.lineNumber, pos.column, true);
+    const fileInd = this.fileIdMap.get(model.uri);
+    if (fileInd === -1) return;
+    const references = this.state.references(fileInd, pos.lineNumber, pos.column, true);
     return references;
   }
 
   async provideRenameEdits(model: monaco.editor.ITextModel, pos: monaco.Position, newName: string) {
-    const state = this.states.get(model.uri);
-    if (!state) return;
-    const edits = await state.rename(pos.lineNumber, pos.column, newName);
+    const fileInd = this.fileIdMap.get(model.uri);
+    if (fileInd === -1) return;
+    const edits = await this.state.rename(fileInd, pos.lineNumber, pos.column, newName);
     if (edits) {
       return {
         edits: edits.map((edit: any) => ({
@@ -134,24 +142,24 @@ export class LanguageUpdater {
   }
 
   async resolveRenameLocation(model: monaco.editor.ITextModel, pos: monaco.Position) {
-    const state = this.states.get(model.uri);
-    if (!state) return;
-    return await state.prepare_rename(pos.lineNumber, pos.column);
+    const fileInd = this.fileIdMap.get(model.uri);
+    if (fileInd === -1) return;
+    return await this.state.prepare_rename(fileInd, pos.lineNumber, pos.column);
   }
 
   async provideCompletionItems(model: monaco.editor.ITextModel, pos: monaco.Position) {
-    const state = this.states.get(model.uri);
-    if (!state) return;
-    const suggestions = await state.completions(pos.lineNumber, pos.column);
+    const fileInd = this.fileIdMap.get(model.uri);
+    if (fileInd === -1) return;
+    const suggestions = await this.state.completions(fileInd, pos.lineNumber, pos.column);
     if (suggestions) {
       return { suggestions };
     }
   }
 
   async provideInlayHints(model: monaco.editor.ITextModel, range: monaco.Range, token: monaco.CancellationToken) {
-    const state = this.states.get(model.uri);
-    if (!state) return;
-    const inlayHints = await state.inlay_hints();
+    const fileInd = this.fileIdMap.get(model.uri);
+    if (fileInd === -1) return;
+    const inlayHints = await this.state.inlay_hints(fileInd);
     if (!inlayHints) return;
 
     return {
@@ -171,9 +179,9 @@ export class LanguageUpdater {
   }
 
   async provideSignatureHelp(model: monaco.editor.ITextModel, pos: monaco.Position) {
-    const state = this.states.get(model.uri);
-    if (!state) return;
-    const value = await state.signature_help(pos.lineNumber, pos.column);
+    const fileInd = this.fileIdMap.get(model.uri);
+    if (fileInd === -1) return;
+    const value = await this.state.signature_help(fileInd, pos.lineNumber, pos.column);
     if (value) {
       return {
         value,
@@ -183,47 +191,47 @@ export class LanguageUpdater {
   }
 
   async provideDefinition(model: monaco.editor.ITextModel, pos: monaco.Position) {
-    const state = this.states.get(model.uri);
-    if (!state) return;
-    const list = await state.definition(pos.lineNumber, pos.column);
+    const fileInd = this.fileIdMap.get(model.uri);
+    if (fileInd === -1) return;
+    const list = await this.state.definition(fileInd, pos.lineNumber, pos.column);
     if (list) {
       return list.map((def: any) => ({ ...def, uri: model.uri }));
     }
   }
 
   async provideTypeDefinition(model: monaco.editor.ITextModel, pos: monaco.Position) {
-    const state = this.states.get(model.uri);
-    if (!state) return;
-    const list = await state.type_definition(pos.lineNumber, pos.column);
+    const fileInd = this.fileIdMap.get(model.uri);
+    if (fileInd === -1) return;
+    const list = await this.state.type_definition(fileInd, pos.lineNumber, pos.column);
     if (list) {
       return list.map((def: any) => ({ ...def, uri: model.uri }));
     }
   }
 
   async provideImplementation(model: monaco.editor.ITextModel, pos: monaco.Position) {
-    const state = this.states.get(model.uri);
-    if (!state) return;
-    const list = await state.goto_implementation(pos.lineNumber, pos.column);
+    const fileInd = this.fileIdMap.get(model.uri);
+    if (fileInd === -1) return;
+    const list = await this.state.goto_implementation(fileInd, pos.lineNumber, pos.column);
     if (list) {
       return list.map((def: any) => ({ ...def, uri: model.uri }));
     }
   }
 
   async provideDocumentSymbols(model: monaco.editor.ITextModel) {
-    const state = this.states.get(model.uri);
-    if (!state) return;
-    return await state.document_symbols();
+    const fileInd = this.fileIdMap.get(model.uri);
+    if (fileInd === -1) return;
+    return await this.state.document_symbols(fileInd);
   }
 
   async provideOnTypeFormattingEdits(model: monaco.editor.ITextModel, pos: monaco.Position, ch: string) {
-    const state = this.states.get(model.uri);
-    if (!state) return;
-    return await state.type_formatting(pos.lineNumber, pos.column, ch);
+    const fileInd = this.fileIdMap.get(model.uri);
+    if (fileInd === -1) return;
+    return await this.state.type_formatting(fileInd, pos.lineNumber, pos.column, ch);
   }
 
   async provideFoldingRanges(model: monaco.editor.ITextModel) {
-    const state = this.states.get(model.uri);
-    if (!state) return;
-    return await state.folding_ranges();
+    const fileInd = this.fileIdMap.get(model.uri);
+    if (fileInd === -1) return;
+    return await this.state.folding_ranges(fileInd);
   }
 }

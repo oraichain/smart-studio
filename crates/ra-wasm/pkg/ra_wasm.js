@@ -238,17 +238,13 @@ export class WorldState {
     }
     /**
     * @param {Uint8Array} json
-    * @param {string} code
     */
-    load(json, code) {
+    load(json) {
         const ptr0 = passArray8ToWasm0(json, wasm.__wbindgen_malloc);
         const len0 = WASM_VECTOR_LEN;
-        const ptr1 = passStringToWasm0(code, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-        const len1 = WASM_VECTOR_LEN;
-        wasm.worldstate_load(this.ptr, ptr0, len0, ptr1, len1);
+        wasm.worldstate_load(this.ptr, ptr0, len0);
     }
     /**
-    * @param {string} code
     * @param {string} rust_std
     * @param {string} rust_core
     * @param {string} rust_alloc
@@ -258,161 +254,183 @@ export class WorldState {
     * @param {string} rust_cosmwasm_std
     * @param {string} rust_cosmwasm_crypto
     * @param {string} rust_cosmwasm_storage
+    * @param {string} rust_thiserror
+    * @param {string} rust_thiserror_impl
+    * @param {string} rust_proc_macro2
     */
-    init(code, rust_std, rust_core, rust_alloc, rust_cosmwasm_derive, rust_cosmwasm_schema_derive, rust_cosmwasm_schema, rust_cosmwasm_std, rust_cosmwasm_crypto, rust_cosmwasm_storage) {
-        const ptr0 = passStringToWasm0(code, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    init(rust_std, rust_core, rust_alloc, rust_cosmwasm_derive, rust_cosmwasm_schema_derive, rust_cosmwasm_schema, rust_cosmwasm_std, rust_cosmwasm_crypto, rust_cosmwasm_storage, rust_thiserror, rust_thiserror_impl, rust_proc_macro2) {
+        const ptr0 = passStringToWasm0(rust_std, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len0 = WASM_VECTOR_LEN;
-        const ptr1 = passStringToWasm0(rust_std, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const ptr1 = passStringToWasm0(rust_core, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len1 = WASM_VECTOR_LEN;
-        const ptr2 = passStringToWasm0(rust_core, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const ptr2 = passStringToWasm0(rust_alloc, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len2 = WASM_VECTOR_LEN;
-        const ptr3 = passStringToWasm0(rust_alloc, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const ptr3 = passStringToWasm0(rust_cosmwasm_derive, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len3 = WASM_VECTOR_LEN;
-        const ptr4 = passStringToWasm0(rust_cosmwasm_derive, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const ptr4 = passStringToWasm0(rust_cosmwasm_schema_derive, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len4 = WASM_VECTOR_LEN;
-        const ptr5 = passStringToWasm0(rust_cosmwasm_schema_derive, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const ptr5 = passStringToWasm0(rust_cosmwasm_schema, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len5 = WASM_VECTOR_LEN;
-        const ptr6 = passStringToWasm0(rust_cosmwasm_schema, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const ptr6 = passStringToWasm0(rust_cosmwasm_std, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len6 = WASM_VECTOR_LEN;
-        const ptr7 = passStringToWasm0(rust_cosmwasm_std, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const ptr7 = passStringToWasm0(rust_cosmwasm_crypto, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len7 = WASM_VECTOR_LEN;
-        const ptr8 = passStringToWasm0(rust_cosmwasm_crypto, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const ptr8 = passStringToWasm0(rust_cosmwasm_storage, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len8 = WASM_VECTOR_LEN;
-        const ptr9 = passStringToWasm0(rust_cosmwasm_storage, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const ptr9 = passStringToWasm0(rust_thiserror, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len9 = WASM_VECTOR_LEN;
-        wasm.worldstate_init(this.ptr, ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3, ptr4, len4, ptr5, len5, ptr6, len6, ptr7, len7, ptr8, len8, ptr9, len9);
+        const ptr10 = passStringToWasm0(rust_thiserror_impl, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len10 = WASM_VECTOR_LEN;
+        const ptr11 = passStringToWasm0(rust_proc_macro2, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len11 = WASM_VECTOR_LEN;
+        wasm.worldstate_init(this.ptr, ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3, ptr4, len4, ptr5, len5, ptr6, len6, ptr7, len7, ptr8, len8, ptr9, len9, ptr10, len10, ptr11, len11);
     }
     /**
+    * @param {number} file_ind
     * @param {string} code
     * @returns {any}
     */
-    update(code) {
+    update(file_ind, code) {
         const ptr0 = passStringToWasm0(code, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len0 = WASM_VECTOR_LEN;
-        const ret = wasm.worldstate_update(this.ptr, ptr0, len0);
+        const ret = wasm.worldstate_update(this.ptr, file_ind, ptr0, len0);
         return takeObject(ret);
     }
     /**
+    * @param {number} file_ind
     * @returns {any}
     */
-    inlay_hints() {
-        const ret = wasm.worldstate_inlay_hints(this.ptr);
+    inlay_hints(file_ind) {
+        const ret = wasm.worldstate_inlay_hints(this.ptr, file_ind);
         return takeObject(ret);
     }
     /**
+    * @param {number} file_ind
     * @param {number} line_number
     * @param {number} column
     * @returns {any}
     */
-    completions(line_number, column) {
-        const ret = wasm.worldstate_completions(this.ptr, line_number, column);
+    completions(file_ind, line_number, column) {
+        const ret = wasm.worldstate_completions(this.ptr, file_ind, line_number, column);
         return takeObject(ret);
     }
     /**
+    * @param {number} file_ind
     * @param {number} line_number
     * @param {number} column
     * @returns {any}
     */
-    hover(line_number, column) {
-        const ret = wasm.worldstate_hover(this.ptr, line_number, column);
+    hover(file_ind, line_number, column) {
+        const ret = wasm.worldstate_hover(this.ptr, file_ind, line_number, column);
         return takeObject(ret);
     }
     /**
+    * @param {number} file_ind
     * @returns {any}
     */
-    code_lenses() {
-        const ret = wasm.worldstate_code_lenses(this.ptr);
+    code_lenses(file_ind) {
+        const ret = wasm.worldstate_code_lenses(this.ptr, file_ind);
         return takeObject(ret);
     }
     /**
+    * @param {number} file_ind
     * @param {number} line_number
     * @param {number} column
     * @param {boolean} include_declaration
     * @returns {any}
     */
-    references(line_number, column, include_declaration) {
-        const ret = wasm.worldstate_references(this.ptr, line_number, column, include_declaration);
+    references(file_ind, line_number, column, include_declaration) {
+        const ret = wasm.worldstate_references(this.ptr, file_ind, line_number, column, include_declaration);
         return takeObject(ret);
     }
     /**
+    * @param {number} file_ind
     * @param {number} line_number
     * @param {number} column
     * @returns {any}
     */
-    prepare_rename(line_number, column) {
-        const ret = wasm.worldstate_prepare_rename(this.ptr, line_number, column);
+    prepare_rename(file_ind, line_number, column) {
+        const ret = wasm.worldstate_prepare_rename(this.ptr, file_ind, line_number, column);
         return takeObject(ret);
     }
     /**
+    * @param {number} file_ind
     * @param {number} line_number
     * @param {number} column
     * @param {string} new_name
     * @returns {any}
     */
-    rename(line_number, column, new_name) {
+    rename(file_ind, line_number, column, new_name) {
         const ptr0 = passStringToWasm0(new_name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len0 = WASM_VECTOR_LEN;
-        const ret = wasm.worldstate_rename(this.ptr, line_number, column, ptr0, len0);
+        const ret = wasm.worldstate_rename(this.ptr, file_ind, line_number, column, ptr0, len0);
         return takeObject(ret);
     }
     /**
+    * @param {number} file_ind
     * @param {number} line_number
     * @param {number} column
     * @returns {any}
     */
-    signature_help(line_number, column) {
-        const ret = wasm.worldstate_signature_help(this.ptr, line_number, column);
+    signature_help(file_ind, line_number, column) {
+        const ret = wasm.worldstate_signature_help(this.ptr, file_ind, line_number, column);
         return takeObject(ret);
     }
     /**
+    * @param {number} file_ind
     * @param {number} line_number
     * @param {number} column
     * @returns {any}
     */
-    definition(line_number, column) {
-        const ret = wasm.worldstate_definition(this.ptr, line_number, column);
+    definition(file_ind, line_number, column) {
+        const ret = wasm.worldstate_definition(this.ptr, file_ind, line_number, column);
         return takeObject(ret);
     }
     /**
+    * @param {number} file_ind
     * @param {number} line_number
     * @param {number} column
     * @returns {any}
     */
-    type_definition(line_number, column) {
-        const ret = wasm.worldstate_type_definition(this.ptr, line_number, column);
+    type_definition(file_ind, line_number, column) {
+        const ret = wasm.worldstate_type_definition(this.ptr, file_ind, line_number, column);
         return takeObject(ret);
     }
     /**
+    * @param {number} file_ind
     * @returns {any}
     */
-    document_symbols() {
-        const ret = wasm.worldstate_document_symbols(this.ptr);
+    document_symbols(file_ind) {
+        const ret = wasm.worldstate_document_symbols(this.ptr, file_ind);
         return takeObject(ret);
     }
     /**
+    * @param {number} file_ind
     * @param {number} line_number
     * @param {number} column
     * @param {string} ch
     * @returns {any}
     */
-    type_formatting(line_number, column, ch) {
-        const ret = wasm.worldstate_type_formatting(this.ptr, line_number, column, ch.codePointAt(0));
+    type_formatting(file_ind, line_number, column, ch) {
+        const ret = wasm.worldstate_type_formatting(this.ptr, file_ind, line_number, column, ch.codePointAt(0));
         return takeObject(ret);
     }
     /**
+    * @param {number} file_ind
     * @returns {any}
     */
-    folding_ranges() {
-        const ret = wasm.worldstate_folding_ranges(this.ptr);
+    folding_ranges(file_ind) {
+        const ret = wasm.worldstate_folding_ranges(this.ptr, file_ind);
         return takeObject(ret);
     }
     /**
+    * @param {number} file_ind
     * @param {number} line_number
     * @param {number} column
     * @returns {any}
     */
-    goto_implementation(line_number, column) {
-        const ret = wasm.worldstate_goto_implementation(this.ptr, line_number, column);
+    goto_implementation(file_ind, line_number, column) {
+        const ret = wasm.worldstate_goto_implementation(this.ptr, file_ind, line_number, column);
         return takeObject(ret);
     }
 }

@@ -28,6 +28,7 @@ import { Service, ILoadFiddleResponse } from '../service';
 import Group from '../utils/group';
 import { rewriteHTML, RewriteSourcesContext } from '../utils/rewriteSources';
 import { RunTaskExternals } from '../utils/taskRunner';
+import { LanguageUpdater } from '../utils/languageUpdater';
 
 export enum AppActionType {
   ADD_FILE_TO = 'ADD_FILE_TO',
@@ -213,7 +214,7 @@ export async function openProjectFiles(template: Template) {
   openProject(newProject);
 }
 
-export function openProject(newProject: Project, defaultPath: string = 'src/lib.rs') {
+export function openProject(newProject: Project, defaultPath: string = 'src/contract.rs') {
   loadProject(newProject);
   let openedFile = newProject.getFile(defaultPath);
   if (openedFile) {
@@ -306,6 +307,12 @@ export async function runTask(name: string, optional: boolean = false, externals
     case 'schema':
       fiddle = await Service.buildSchema(project.name);
       logLn(fiddle.message);
+
+      // load schema file to show
+      if (fiddle.success) {
+        await Service.loadFilesIntoProject(fiddle.files, project);
+      }
+
       break;
     case 'test':
       const testMessage = await Service.testProject(project.name);
