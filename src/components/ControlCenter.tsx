@@ -50,7 +50,6 @@ export class ControlCenter extends React.Component<
   }
 > {
   outputView: View;
-  refs: { container: HTMLDivElement };
   outputViewEditor: EditorView;
   updateOutputViewTimeout: any;
 

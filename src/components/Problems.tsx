@@ -28,128 +28,53 @@ import { MonacoUtils } from '../monaco-utils';
 import { openFile } from '../actions/AppActions';
 import { ViewType } from './editor/View';
 
-export interface ProblemsProps { }
+export interface ProblemsProps {}
 
 export class Problems extends React.Component<ProblemsProps, {}> {
-    tree: ITree;
-    container: HTMLDivElement;
+  tree: ITree;
+  container: HTMLDivElement;
 
-    constructor(props: ProblemsProps) {
-        super(props);
-        // tslint:disable-next-line
-    }
+  constructor(props: ProblemsProps) {
+    super(props);
+    // tslint:disable-next-line
+  }
 
-    componentDidMount() {
-        this.ensureTree();
-        this.tree.model.setInput(appStore.getProject().getModel());
-        this.tree.model.onDidSelect((e: any) => {
-            if (e.selection.length) {
-                this.onSelectProblem(e.selection[0]);
-            }
-        });
-        appStore.onDidChangeProblems.register(() => {
-            this.tree.model.refresh();
-        });
-        appStore.onLoadProject.register(() => {
-            this.tree.model.setInput(appStore.getProject().getModel());
-        });
+  componentDidMount() {
+    this.ensureTree();
+    this.tree.model.setInput(appStore.getProject().getModel());
+    this.tree.model.onDidSelect((e: any) => {
+      if (e.selection.length) {
+        this.onSelectProblem(e.selection[0]);
+      }
+    });
+    appStore.onDidChangeProblems.register(() => {
+      this.tree.model.refresh();
+    });
+    appStore.onLoadProject.register(() => {
+      this.tree.model.setInput(appStore.getProject().getModel());
+    });
+  }
+  componentWillReceiveProps(props: ProblemsProps) {
+    this.tree.model.refresh();
+  }
+  private setContainer(container: HTMLDivElement) {
+    if (container == null) {
+      return;
     }
-    componentWillReceiveProps(props: ProblemsProps) {
-        this.tree.model.refresh();
+    this.container = container;
+  }
+  private ensureTree() {
+    if (this.container.lastChild) {
+      this.container.removeChild(this.container.lastChild);
     }
-    private setContainer(container: HTMLDivElement) {
-        if (container == null) {
-            return;
-        }
-        this.container = container;
+  }
+  onSelectProblem(problem: File | Problem) {
+    if (problem instanceof File) {
+      return;
     }
-    private ensureTree() {
-        if (this.container.lastChild) {
-            this.container.removeChild(this.container.lastChild);
-        }
-        this.tree = new MonacoUtils.Tree(this.container, {
-            dataSource: {
-                /**
-                 * Returns the unique identifier of the given element.
-                 * No more than one element may use a given identifier.
-                 */
-                getId: function (tree: ITree, element: File): string {
-                    return element.key;
-                },
-
-                /**
-                 * Returns a boolean value indicating whether the element has children.
-                 */
-                hasChildren: function (tree: ITree, element: File | Problem): boolean {
-                    if (element instanceof Directory && element.children.length) {
-                        return true;
-                    } else if (element instanceof File) {
-                        return element.problems.length > 0;
-                    }
-                    return false;
-                },
-
-                /**
-                 * Returns the element's children as an array in a promise.
-                 */
-                getChildren: function (tree: ITree, element: File | Problem): Promise<File[] | Problem[]> {
-                    if (element instanceof Directory && element.children.length) {
-                        const children: File[] = [];
-                        element.forEachFile(
-                            (file: File) => {
-                                if (file.problems.length) {
-                                    children.push(file);
-                                }
-                            },
-                            false,
-                            true
-                        );
-                        return Promise.resolve(children);
-                    } else if (element instanceof File) {
-                        return Promise.resolve(element.problems);
-                    }
-                    return Promise.resolve(null);
-                },
-
-                /**
-                 * Returns the element's parent in a promise.
-                 */
-                getParent: function (tree: ITree, element: File | Problem): Promise<File | Project> {
-                    if (element instanceof File) {
-                        return Promise.resolve(element.getProject());
-                    }
-                    return Promise.resolve(element.file);
-                }
-            },
-            renderer: {
-                getHeight: function (tree: ITree, element: File): number {
-                    return 24;
-                },
-                getTemplateId(tree: ITree, element: File | Problem): string {
-                    if (element instanceof File) {
-                        return 'file';
-                    }
-                    return 'problem';
-                },
-                renderTemplate: function (tree: ITree, templateId: string, container: any): any {
-                    return templateId === 'problem' ? new ProblemTemplate(container) : new FileTemplate(container);
-                },
-                renderElement: function (tree: ITree, element: File | Problem, templateId: string, templateData: any): void {
-                    templateData.set(element);
-                },
-                disposeTemplate: function (tree: ITree, templateId: string, templateData: any): void {
-                    templateData.dispose();
-                }
-            }
-        });
-    }
-    onSelectProblem(problem: File | Problem) {
-        if (problem instanceof File) {
-            return;
-        }
-        openFile(problem.file, ViewType.Editor, true);
-    }
-    render() {
-        return <div className="fill" ref={(ref) => this.setContainer(ref)} />;
-    }
+    openFile(problem.file, ViewType.Editor, true);
+  }
+  render() {
+    return <div className="fill" ref={(ref) => this.setContainer(ref)} />;
+  }
 }

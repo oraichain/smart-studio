@@ -132,9 +132,10 @@ export class LanguageUpdater {
     const edits: monaco.languages.TextEdit[] = await this.state.rename(fileInd, pos.lineNumber, pos.column, newName);
     if (edits) {
       return {
-        edits: edits.map((edit) => ({
-          resource: model.uri,
-          edit
+        edits: edits.map((textEdit) => ({
+          textEdit,
+          versionId: 0,
+          resource: model.uri
         }))
       };
     }
@@ -157,7 +158,7 @@ export class LanguageUpdater {
     }
   }
 
-  async provideInlayHints(model: monaco.editor.ITextModel, range: monaco.Range, token: monaco.CancellationToken) {
+  async provideInlayHints(model: monaco.editor.ITextModel): Promise<monaco.languages.InlayHintList> {
     const fileInd = this.fileIdMap.get(model.uri);
     if (fileInd === -1) return;
     const inlayHints = await this.state.inlay_hints(fileInd);

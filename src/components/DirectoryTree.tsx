@@ -98,55 +98,6 @@ export class DirectoryTree extends React.Component<
     if (this.container.lastChild) {
       this.container.removeChild(this.container.lastChild);
     }
-
-    this.tree = new MonacoUtils.Tree(this.container, {
-      dataSource: {
-        /**
-         * Returns the unique identifier of the given element.
-         * No more than one element may use a given identifier.
-         */
-        getId: function(tree: ITree, element: File): string {
-          return element.key;
-        },
-
-        /**
-         * Returns a boolean value indicating whether the element has children.
-         */
-        hasChildren: function(tree: ITree, element: File): boolean {
-          return element instanceof Directory;
-        },
-
-        /**
-         * Returns the element's children as an array in a promise.
-         */
-        getChildren: function(tree: ITree, element: Directory): Promise<File[]> {
-          return Promise.resolve(element.children);
-        },
-
-        /**
-         * Returns the element's parent in a promise.
-         */
-        getParent: function(tree: ITree, element: File): Promise<Directory> {
-          return Promise.resolve(element.parent);
-        }
-      },
-      renderer: {
-        getHeight: function(tree: ITree, element: File): number {
-          return 24;
-        },
-        renderTemplate: function(tree: ITree, templateId: string, container: any): any {
-          return new FileTemplate(container);
-        },
-        renderElement: function(tree: ITree, element: File, templateId: string, templateData: any): void {
-          (templateData as FileTemplate).set(element);
-        },
-        disposeTemplate: function(tree: ITree, templateId: string, templateData: any): void {
-          (templateData as FileTemplate).dispose();
-        }
-      },
-      controller: new MonacoController((file: File, event: ContextMenuEvent) => this.getActions(file, event)),
-      dnd: new DragAndDrop(this)
-    });
   }
   getActions(file: File, event: ContextMenuEvent) {
     const actions: any[] = [];

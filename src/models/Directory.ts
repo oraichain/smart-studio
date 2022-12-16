@@ -26,7 +26,6 @@ import { EventDispatcher } from './EventDispatcher';
 import { FileType } from './types';
 
 export class Directory extends File {
-  name: string;
   children: File[] = [];
   isOpen: boolean = true;
   readonly onDidChangeChildren = new EventDispatcher('Directory Changed ');

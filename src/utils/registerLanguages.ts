@@ -20,8 +20,7 @@
  */
 
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
-// import { language, conf } from 'monaco-editor/esm/vs/basic-languages/rust/rust';
-// import { language, conf } from './rust-grammar';
+import { language, conf } from './rust-grammar';
 import { Service } from '../service';
 import { Language } from '../compilerServices/types';
 
@@ -41,8 +40,8 @@ export default function registerLanguages() {
     id: Language.Rust
   });
 
-  // monaco.languages.setMonarchTokensProvider(Language.Rust, language);
-  // monaco.languages.setLanguageConfiguration(Language.Rust, conf);
+  monaco.languages.setMonarchTokensProvider(Language.Rust, language);
+  monaco.languages.setLanguageConfiguration(Language.Rust, conf);
 
   monaco.languages.registerHoverProvider(Language.Rust, {
     provideHover(model, pos) {
@@ -78,11 +77,12 @@ export default function registerLanguages() {
       return Service.LanguageUpdater.provideCompletionItems(model, pos);
     }
   });
-  // monaco.languages.registerInlayHintsProvider(Language.Rust, {
-  //   provideInlayHints(model, range, token) {
-  //     return Service.LanguageUpdater.provideInlayHints(model, range, token);
-  //   }
-  // });
+
+  monaco.languages.registerInlayHintsProvider(Language.Rust, {
+    provideInlayHints(model: any) {
+      return Service.LanguageUpdater.provideInlayHints(model);
+    }
+  });
 
   monaco.languages.registerSignatureHelpProvider(Language.Rust, {
     signatureHelpTriggerCharacters: ['(', ','],

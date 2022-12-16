@@ -23,9 +23,9 @@ import React from 'react';
 import { hot } from 'react-hot-loader/root';
 
 import { Workspace } from './Workspace';
-import { ViewTabs, View, EditorPanes } from './editor';
+import { EditorPanes } from './editor';
 import { Toolbar } from './Toolbar';
-import { ViewType, defaultViewTypeForFileType } from './editor/View';
+import { defaultViewTypeForFileType } from './editor/View';
 import { schema, build, test, run, runTask, openFiles, pushStatus, popStatus, openProject, closeTabs, deleteFile } from '../actions/AppActions';
 
 import appStore from '../stores/AppStore';
@@ -34,7 +34,7 @@ import { Project, File, FileType, Directory, ModelRef } from '../models';
 import { Service, getCurrentUser } from '../service';
 import { Split, SplitOrientation, SplitInfo } from './Split';
 
-import { layout, assert, resetDOMSelection } from '../util';
+import { layout, resetDOMSelection } from '../util';
 
 import Mousetrap from 'mousetrap';
 import { GoDelete, GoDesktopDownload, GoBeaker, OraiLogo, GoQuestion, GoVerified, GoCheck, GoBeakerGear, GoKebabHorizontal } from './shared/Icons';
@@ -524,7 +524,7 @@ export class App extends React.Component<AppProps, AppState> {
           min: 128
         }}
         splits={this.state.editorSplits}
-        onChange={(splits) => {
+        onChange={(splits: any) => {
           this.setState({ editorSplits: splits });
           layout();
         }}
@@ -535,7 +535,7 @@ export class App extends React.Component<AppProps, AppState> {
 
     return (
       <div className="fill">
-        <ToastContainer ref={(ref) => (this.toastContainer = ref)} />
+        <ToastContainer ref={(ref: any) => (this.toastContainer = ref)} />
 
         <GithubConnectDialog isOpen={this.state.isShowConnectDialog} onClose={() => this.setState({ isShowConnectDialog: false })} />
 
@@ -741,6 +741,7 @@ export class App extends React.Component<AppProps, AppState> {
                 this.deployContract(file);
               }}
             />
+
             <div className="fill">
               <div style={{ height: minToolbarHeight }}>
                 <Toolbar>{this.makeToolbarButtons()}</Toolbar>

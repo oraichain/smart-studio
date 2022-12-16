@@ -25,66 +25,72 @@ import { DirectoryTree } from './DirectoryTree';
 import { Project, File, Directory, ModelRef } from '../models';
 import { SplitOrientation, SplitInfo, Split } from './Split';
 import appStore from '../stores/AppStore';
+import TreeNode from './TreeNode';
 
 export interface WorkspaceProps {
-    /**
-     * Active file.
-     */
-    file: ModelRef<File>;
-    project: ModelRef<Project>;
-    onEditFile?: (file: File) => void;
-    onDeleteFile?: (file: File) => void;
-    onMoveFile?: (file: File, directory: Directory) => void;
-    onRenameFile?: (file: File) => void;
-    onNewFile?: (directory: Directory) => void;
-    onNewDirectory?: (directory: Directory) => void;
-    onClickFile: (file: File) => void;
-    onDoubleClickFile?: (file: File) => void;
-    onUploadFile?: (directory: Directory) => void;
-    onDeployContract: (file: File) => void;
-    onChangeProject: () => void;
+  /**
+   * Active file.
+   */
+  file: ModelRef<File>;
+  project: ModelRef<Project>;
+  onEditFile?: (file: File) => void;
+  onDeleteFile?: (file: File) => void;
+  onMoveFile?: (file: File, directory: Directory) => void;
+  onRenameFile?: (file: File) => void;
+  onNewFile?: (directory: Directory) => void;
+  onNewDirectory?: (directory: Directory) => void;
+  onClickFile: (file: File) => void;
+  onDoubleClickFile?: (file: File) => void;
+  onUploadFile?: (directory: Directory) => void;
+  onDeployContract: (file: File) => void;
+  onChangeProject: () => void;
 }
 
 export interface WorkSpaceState {
-    splits: SplitInfo[];
+  splits: SplitInfo[];
 }
 
 export class Workspace extends React.Component<WorkspaceProps, WorkSpaceState> {
-    directoryTree: DirectoryTree;
-    constructor(props: any) {
-        super(props);
-        this.state = {
-            splits: []
-        };
-    }
-    componentDidMount() {
-        appStore.onDidChangeDirty.register(this.refreshTree);
-        appStore.onDidChangeChildren.register(this.refreshTree);
-    }
-    componentWillUnmount() {
-        appStore.onDidChangeDirty.unregister(this.refreshTree);
-        appStore.onDidChangeChildren.unregister(this.refreshTree);
-    }
-    refreshTree = () => {
-        this.directoryTree.tree.model.refresh();
+  directoryTree: DirectoryTree;
+  constructor(props: any) {
+    super(props);
+    this.state = {
+      splits: []
     };
-    render() {
-        const project = this.props.project;
+  }
+  componentDidMount() {
+    appStore.onDidChangeDirty.register(this.refreshTree);
+    appStore.onDidChangeChildren.register(this.refreshTree);
+  }
+  componentWillUnmount() {
+    appStore.onDidChangeDirty.unregister(this.refreshTree);
+    appStore.onDidChangeChildren.unregister(this.refreshTree);
+  }
+  refreshTree = () => {
+    // this.directoryTree.tree.model.refresh();
+  };
+  render() {
+    const project = this.props.project;
 
-        return (
-            <div className="workspaceContainer">
-                <Header />
-                <div style={{ height: 'calc(100% - 41px)' }}>
-                    <Split
-                        name="Workspace"
-                        orientation={SplitOrientation.Horizontal}
-                        splits={this.state.splits}
-                        onChange={(splits) => {
-                            this.setState({ splits: splits });
-                        }}
-                    >
-                        <div className="workspaceProjectName" onClick={this.props.onChangeProject}>{project.obj.name}</div>
-                        <DirectoryTree
+    return (
+      <div className="workspaceContainer">
+        <Header />
+        <div style={{ height: 'calc(100% - 41px)' }}>
+          <Split
+            name="Workspace"
+            orientation={SplitOrientation.Horizontal}
+            splits={this.state.splits}
+            onChange={(splits) => {
+              this.setState({ splits: splits });
+            }}
+          >
+            <div className="workspaceProjectName" onClick={this.props.onChangeProject}>
+              {project.obj.name}
+            </div>
+
+            <TreeNode data={project.getModel()} onClick={this.props.onClickFile} />
+
+            {/* <DirectoryTree
                             ref={(ref) => (this.directoryTree = ref)}
                             directory={project}
                             value={this.props.file}
@@ -97,10 +103,10 @@ export class Workspace extends React.Component<WorkspaceProps, WorkSpaceState> {
                             onClickFile={this.props.onClickFile}
                             onDoubleClickFile={this.props.onDoubleClickFile}
                             onDeployContract={this.props.onDeployContract}
-                        />
-                    </Split>
-                </div>
-            </div>
-        );
-    }
+                        /> */}
+          </Split>
+        </div>
+      </div>
+    );
+  }
 }

@@ -21,13 +21,12 @@
 import { Action } from 'monaco-editor/esm/vs/base/common/actions';
 import { ContextSubMenu } from 'monaco-editor/esm/vs/base/browser/contextmenu';
 import { ContextMenuService } from 'monaco-editor/esm/vs/platform/contextview/browser/contextMenuService';
-import { DynamicStandaloneServices } from 'monaco-editor/esm/vs/editor/standalone/browser/standaloneServices';
+import { StandaloneServices } from 'monaco-editor/esm/vs/editor/standalone/browser/standaloneServices';
 import { IContextViewService } from 'monaco-editor/esm/vs/platform/contextview/browser/contextView';
 import { ITelemetryService } from 'monaco-editor/esm/vs/platform/telemetry/common/telemetry.js';
 import { IThemeService } from 'monaco-editor/esm/vs/platform/theme/common/themeService.js';
 import { IKeybindingService } from 'monaco-editor/esm/vs/platform/keybinding/common/keybinding.js';
 import { INotificationService } from 'monaco-editor/esm/vs/platform/notification/common/notification.js';
-import { Tree } from 'monaco-editor/esm/vs/base/parts/tree/browser/treeImpl';
 
 import { ITree } from './monaco-extra';
 import registerTheme from './utils/registerTheme';
@@ -35,7 +34,6 @@ import registerLanguages from './utils/registerLanguages';
 // Utils provided by monaco editor, but exposed only via AMD require().
 // See index.tsx for initialization.
 export class MonacoUtils {
-  static Tree = Tree;
   static ContextSubMenu = ContextSubMenu;
   static Action = Action;
   static ContextMenuserviceInstance: any;
@@ -47,14 +45,13 @@ export class MonacoUtils {
     registerLanguages();
 
     // define services
-    const services = new DynamicStandaloneServices(document.documentElement, {});
-    const telemetryService = services.get(ITelemetryService);
-    const notificationService = services.get(INotificationService);
-    const contextViewService = services.get(IContextViewService);
-    const keybindingService = services.get(IKeybindingService);
+    const telemetryService = StandaloneServices.get(ITelemetryService);
+    const notificationService = StandaloneServices.get(INotificationService);
+    const contextViewService = StandaloneServices.get(IContextViewService);
+    const keybindingService = StandaloneServices.get(IKeybindingService);
 
     // set fiddle-theme
-    const themeService = services.get(IThemeService);
+    const themeService = StandaloneServices.get(IThemeService);
     themeService.setTheme('fiddle-theme');
 
     // create static ContextMenuserviceInstance
