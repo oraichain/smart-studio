@@ -22,11 +22,11 @@
 import React from 'react';
 import { hot } from 'react-hot-loader/root';
 
-// import { Workspace } from './Workspace';
-import { EditorPanes } from './editor';
+import { Workspace } from './Workspace';
+import { ViewTabs, View, EditorPanes } from './editor';
 import { Toolbar } from './Toolbar';
-import { defaultViewTypeForFileType } from './editor/View';
-import { schema, build, test, run, runTask, openFiles, pushStatus, popStatus, openProject } from '../actions/AppActions';
+import { ViewType, defaultViewTypeForFileType } from './editor/View';
+import { schema, build, test, run, runTask, openFiles, pushStatus, popStatus, openProject, closeTabs, deleteFile } from '../actions/AppActions';
 
 import appStore from '../stores/AppStore';
 import { addFileTo, initStore, updateFileNameAndDescription, openFile, saveProject, logLn } from '../actions/AppActions';
@@ -366,18 +366,18 @@ export class App extends React.Component<AppProps, AppState> {
         icon={<OraiLogo />}
         title="View Project Workspace"
         onClick={() => {
-          // const workspaceSplits = this.state.workspaceSplits;
-          // const first = workspaceSplits[0];
-          // const second = workspaceSplits[1];
-          // if (this.workspaceSplit) {
-          //   Object.assign(first, this.workspaceSplit);
-          //   this.workspaceSplit = null;
-          //   delete second.value;
-          // } else {
-          //   this.workspaceSplit = Object.assign({}, first);
-          //   first.max = first.min = 0;
-          // }
-          // this.setState({ workspaceSplits });
+          const workspaceSplits = this.state.workspaceSplits;
+          const first = workspaceSplits[0];
+          const second = workspaceSplits[1];
+          if (this.workspaceSplit) {
+            Object.assign(first, this.workspaceSplit);
+            this.workspaceSplit = null;
+            delete second.value;
+          } else {
+            this.workspaceSplit = Object.assign({}, first);
+            first.max = first.min = 0;
+          }
+          this.setState({ workspaceSplits });
         }}
       />
     ];
@@ -685,7 +685,7 @@ export class App extends React.Component<AppProps, AppState> {
               layout();
             }}
           >
-            {/* <Workspace
+            <Workspace
               project={this.state.project}
               file={this.state.file}
               onChangeProject={() => {
@@ -739,7 +739,7 @@ export class App extends React.Component<AppProps, AppState> {
               onDeployContract={(file: File) => {
                 this.deployContract(file);
               }}
-            /> */}
+            />
             <div className="fill">
               <div style={{ height: minToolbarHeight }}>
                 <Toolbar>{this.makeToolbarButtons()}</Toolbar>

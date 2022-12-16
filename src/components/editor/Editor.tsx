@@ -101,10 +101,10 @@ export class Monaco extends React.Component<MonacoProps, {}> {
     this.editor.addAction({
       id: 'save',
       label: 'Save',
-      keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS],
+      keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.KEY_S],
       precondition: null,
       keybindingContext: null,
-      run: function() {
+      run: function () {
         const view = self.props.view;
         if (view && !view.file.isBufferReadOnly) {
           view.file.save(self.status);
@@ -114,8 +114,8 @@ export class Monaco extends React.Component<MonacoProps, {}> {
     });
 
     this.editor.addCommand(
-      monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyB,
-      function() {
+      monaco.KeyMod.CtrlCmd | monaco.KeyCode.KEY_B,
+      function () {
         build();
       },
       null
@@ -123,7 +123,7 @@ export class Monaco extends React.Component<MonacoProps, {}> {
 
     this.editor.addCommand(
       monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter,
-      function() {
+      function () {
         run();
       },
       null
@@ -131,7 +131,7 @@ export class Monaco extends React.Component<MonacoProps, {}> {
 
     this.editor.addCommand(
       monaco.KeyMod.CtrlCmd | monaco.KeyMod.Alt | monaco.KeyCode.Enter,
-      function() {
+      function () {
         build().then(run);
       },
       null

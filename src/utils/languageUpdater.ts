@@ -4,11 +4,11 @@ import { WorldState } from '../../crates/ra-wasm/pkg';
 import { createRA } from './creat-ra';
 
 window.MonacoEnvironment = {
-  getWorkerUrl: (moduleId, label) => {
-    if (label === 'json') {
-      return './json.worker.bundle.js';
-    }
-    return './editor.worker.bundle.js';
+  getWorkerUrl: () => {
+    // if (label === 'json') {
+    return './json.worker.bundle.js';
+    // }
+    // return './editor.worker.bundle.js';
   }
 };
 
@@ -100,7 +100,7 @@ export class LanguageUpdater {
       };
     });
 
-    return { lenses, dispose() {} };
+    return { lenses, dispose() { } };
   }
 
   async provideReferences(model: monaco.editor.ITextModel, pos: monaco.Position, { includeDeclaration }: any) {
@@ -166,7 +166,7 @@ export class LanguageUpdater {
           }
         };
       }),
-      dispose() {}
+      dispose() { }
     };
   }
 
@@ -177,7 +177,7 @@ export class LanguageUpdater {
     if (value) {
       return {
         value,
-        dispose() {}
+        dispose() { }
       };
     }
   }

@@ -43,10 +43,10 @@ export const EditorPanes = ({ groups, active }: EditorPanesProps) => {
               focusTabGroup(group);
               openView(view, false);
             }}
-            // onClose={(view: View) => {
-            //   focusTabGroup(group);
-            //   closeView(view);
-            // }}
+            onClose={(view: View) => {
+              focusTabGroup(group);
+              closeView(view);
+            }}
           />
         );
       })}
