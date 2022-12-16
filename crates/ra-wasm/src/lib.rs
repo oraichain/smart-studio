@@ -34,7 +34,6 @@ pub fn start() {
 #[wasm_bindgen]
 pub struct WorldState {
     host: AnalysisHost,
-    file_id: FileId,
 }
 
 pub fn create_source_root(name: &str, f: FileId) -> SourceRoot {
@@ -53,13 +52,12 @@ impl WorldState {
 impl WorldState {
     #[wasm_bindgen(constructor)]
     pub fn new() -> Self {
-        Self { host: AnalysisHost::default(), file_id: FileId(0) }
+        Self { host: AnalysisHost::default() }
     }
 
-    pub fn load(&mut self, json: Vec<u8>, code: String) {
+    pub fn load(&mut self, json: Vec<u8>) {
         let json = String::from_utf8_lossy(&json);
-        let mut change = rust_pack::extractor::load_change_from_json(&json);
-        change.change_file(self.file_id, Some(Arc::new(code)));
+        let change = rust_pack::extractor::load_change_from_json(&json);
 
         // apply change
         self.host.apply_change(change);
@@ -67,7 +65,6 @@ impl WorldState {
 
     pub fn init(
         &mut self,
-        code: String,
         rust_std: String,
         rust_core: String,
         rust_alloc: String,
@@ -78,7 +75,7 @@ impl WorldState {
         rust_cosmwasm_crypto: String,
         rust_cosmwasm_storage: String,
     ) {
-        let mut change = rust_pack::extractor::load_change_from_files(
+        let change = rust_pack::extractor::load_change_from_files(
             rust_std,
             rust_core,
             rust_alloc,
@@ -90,24 +87,22 @@ impl WorldState {
             rust_cosmwasm_storage,
         );
 
-        change.change_file(self.file_id, Some(Arc::new(code)));
-
         // apply change
         self.host.apply_change(change);
     }
 
-    pub fn update(&mut self, code: String) -> JsValue {
+    pub fn update(&mut self, file_ind: u32, code: String) -> JsValue {
         log::warn!("update");
-
+        let file_id = FileId(file_ind);
         let mut change = Change::new();
-        change.change_file(self.file_id, Some(Arc::new(code)));
+        change.change_file(file_id, Some(Arc::new(code)));
         self.host.apply_change(change);
 
-        let line_index = self.analysis().file_line_index(self.file_id).unwrap();
+        let line_index = self.analysis().file_line_index(file_id).unwrap();
 
         let highlights: Vec<_> = self
             .analysis()
-            .highlight(self.file_id)
+            .highlight(file_id)
             .unwrap()
             .into_iter()
             .map(|hl| Highlight {
@@ -120,7 +115,7 @@ impl WorldState {
 
         let diagnostics: Vec<_> = self
             .analysis()
-            .diagnostics(&config, ide::AssistResolveStrategy::All, self.file_id)
+            .diagnostics(&config, ide::AssistResolveStrategy::All, file_id)
             .unwrap()
             .into_iter()
             .map(|d| {
@@ -140,8 +135,9 @@ impl WorldState {
         serde_wasm_bindgen::to_value(&UpdateResult { diagnostics, highlights }).unwrap()
     }
 
-    pub fn inlay_hints(&self) -> JsValue {
-        let line_index = self.analysis().file_line_index(self.file_id).unwrap();
+    pub fn inlay_hints(&self, file_ind: u32) -> JsValue {
+        let file_id = FileId(file_ind);
+        let line_index = self.analysis().file_line_index(file_id).unwrap();
         let results: Vec<_> = self
             .analysis()
             .inlay_hints(
@@ -151,7 +147,7 @@ impl WorldState {
                     chaining_hints: true,
                     max_length: Some(25),
                 },
-                self.file_id,
+                file_id,
             )
             .unwrap()
             .into_iter()
@@ -167,7 +163,8 @@ impl WorldState {
         serde_wasm_bindgen::to_value(&results).unwrap()
     }
 
-    pub fn completions(&self, line_number: u32, column: u32) -> JsValue {
+    pub fn completions(&self, file_ind: u32, line_number: u32, column: u32) -> JsValue {
+        let file_id = FileId(file_ind);
         const COMPLETION_CONFIG: CompletionConfig = CompletionConfig {
             enable_postfix_completions: true,
             enable_imports_on_the_fly: true,
@@ -186,9 +183,9 @@ impl WorldState {
         };
 
         log::warn!("completions");
-        let line_index = self.analysis().file_line_index(self.file_id).unwrap();
+        let line_index = self.analysis().file_line_index(file_id).unwrap();
 
-        let pos = file_position(line_number, column, &line_index, self.file_id);
+        let pos = file_position(line_number, column, &line_index, file_id);
         let res = match self.analysis().completions(&COMPLETION_CONFIG, pos).unwrap() {
             Some(items) => items,
             None => return JsValue::NULL,
@@ -199,12 +196,13 @@ impl WorldState {
         serde_wasm_bindgen::to_value(&items).unwrap()
     }
 
-    pub fn hover(&self, line_number: u32, column: u32) -> JsValue {
+    pub fn hover(&self, file_ind: u32, line_number: u32, column: u32) -> JsValue {
         log::warn!("hover");
-        let line_index = self.analysis().file_line_index(self.file_id).unwrap();
+        let file_id = FileId(file_ind);
+        let line_index = self.analysis().file_line_index(file_id).unwrap();
 
         let FilePosition { file_id, offset } =
-            file_position(line_number, column, &line_index, self.file_id);
+            file_position(line_number, column, &line_index, file_id);
         let range = FileRange {
             file_id,
             range: TextRange::new(TextSize::from(offset), TextSize::from(offset)),
@@ -234,13 +232,14 @@ impl WorldState {
         serde_wasm_bindgen::to_value(&hover).unwrap()
     }
 
-    pub fn code_lenses(&self) -> JsValue {
+    pub fn code_lenses(&self, file_ind: u32) -> JsValue {
         log::warn!("code_lenses");
-        let line_index = self.analysis().file_line_index(self.file_id).unwrap();
+        let file_id = FileId(file_ind);
+        let line_index = self.analysis().file_line_index(file_id).unwrap();
 
         let results: Vec<_> = self
             .analysis()
-            .file_structure(self.file_id)
+            .file_structure(file_id)
             .unwrap()
             .into_iter()
             .filter(|it| match it.kind {
@@ -253,8 +252,7 @@ impl WorldState {
                 ide::StructureNodeKind::Region => true,
             })
             .filter_map(|it| {
-                let position =
-                    FilePosition { file_id: self.file_id, offset: it.node_range.start() };
+                let position = FilePosition { file_id, offset: it.node_range.start() };
                 let nav_info = self.analysis().goto_implementation(position).unwrap()?;
 
                 let title = if nav_info.info.len() == 1 {
@@ -284,12 +282,19 @@ impl WorldState {
         serde_wasm_bindgen::to_value(&results).unwrap()
     }
 
-    pub fn references(&self, line_number: u32, column: u32, include_declaration: bool) -> JsValue {
+    pub fn references(
+        &self,
+        file_ind: u32,
+        line_number: u32,
+        column: u32,
+        include_declaration: bool,
+    ) -> JsValue {
         log::warn!("references");
-        let line_index = self.analysis().file_line_index(self.file_id).unwrap();
+        let file_id = FileId(file_ind);
+        let line_index = self.analysis().file_line_index(file_id).unwrap();
 
-        let pos = file_position(line_number, column, &line_index, self.file_id);
-        let search_scope = Some(SearchScope::single_file(self.file_id));
+        let pos = file_position(line_number, column, &line_index, file_id);
+        let search_scope = Some(SearchScope::single_file(file_id));
         let ref_results = match self.analysis().find_all_refs(pos, search_scope) {
             Ok(Some(info)) => info,
             _ => return JsValue::NULL,
@@ -314,28 +319,30 @@ impl WorldState {
         serde_wasm_bindgen::to_value(&res).unwrap()
     }
 
-    pub fn prepare_rename(&self, line_number: u32, column: u32) -> JsValue {
+    pub fn prepare_rename(&self, file_ind: u32, line_number: u32, column: u32) -> JsValue {
         log::warn!("prepare_rename");
-        let line_index = self.analysis().file_line_index(self.file_id).unwrap();
+        let file_id = FileId(file_ind);
+        let line_index = self.analysis().file_line_index(file_id).unwrap();
 
-        let pos = file_position(line_number, column, &line_index, self.file_id);
+        let pos = file_position(line_number, column, &line_index, file_id);
         let range_info = match self.analysis().prepare_rename(pos).unwrap() {
             Ok(refs) => refs,
             _ => return JsValue::NULL,
         };
 
         let range = to_proto::text_range(range_info.range, &line_index);
-        let file_text = self.analysis().file_text(self.file_id).unwrap();
+        let file_text = self.analysis().file_text(file_id).unwrap();
         let text = file_text[range_info.range].to_owned();
 
         serde_wasm_bindgen::to_value(&RenameLocation { range, text }).unwrap()
     }
 
-    pub fn rename(&self, line_number: u32, column: u32, new_name: &str) -> JsValue {
+    pub fn rename(&self, file_ind: u32, line_number: u32, column: u32, new_name: &str) -> JsValue {
         log::warn!("rename");
-        let line_index = self.analysis().file_line_index(self.file_id).unwrap();
+        let file_id = FileId(file_ind);
+        let line_index = self.analysis().file_line_index(file_id).unwrap();
 
-        let pos = file_position(line_number, column, &line_index, self.file_id);
+        let pos = file_position(line_number, column, &line_index, file_id);
         let change = match self.analysis().rename(pos, new_name).unwrap() {
             Ok(change) => change,
             Err(_) => return JsValue::NULL,
@@ -351,11 +358,12 @@ impl WorldState {
         serde_wasm_bindgen::to_value(&result).unwrap()
     }
 
-    pub fn signature_help(&self, line_number: u32, column: u32) -> JsValue {
+    pub fn signature_help(&self, file_ind: u32, line_number: u32, column: u32) -> JsValue {
         log::warn!("signature_help");
-        let line_index = self.analysis().file_line_index(self.file_id).unwrap();
+        let file_id = FileId(file_ind);
+        let line_index = self.analysis().file_line_index(file_id).unwrap();
 
-        let pos = file_position(line_number, column, &line_index, self.file_id);
+        let pos = file_position(line_number, column, &line_index, file_id);
         let call_info = match self.analysis().call_info(pos) {
             Ok(Some(call_info)) => call_info,
             _ => return JsValue::NULL,
@@ -372,11 +380,12 @@ impl WorldState {
         serde_wasm_bindgen::to_value(&result).unwrap()
     }
 
-    pub fn definition(&self, line_number: u32, column: u32) -> JsValue {
+    pub fn definition(&self, file_ind: u32, line_number: u32, column: u32) -> JsValue {
         log::warn!("definition");
-        let line_index = self.analysis().file_line_index(self.file_id).unwrap();
+        let file_id = FileId(file_ind);
+        let line_index = self.analysis().file_line_index(file_id).unwrap();
 
-        let pos = file_position(line_number, column, &line_index, self.file_id);
+        let pos = file_position(line_number, column, &line_index, file_id);
         let nav_info = match self.analysis().goto_definition(pos) {
             Ok(Some(nav_info)) => nav_info,
             _ => return JsValue::NULL,
@@ -386,11 +395,12 @@ impl WorldState {
         serde_wasm_bindgen::to_value(&res).unwrap()
     }
 
-    pub fn type_definition(&self, line_number: u32, column: u32) -> JsValue {
+    pub fn type_definition(&self, file_ind: u32, line_number: u32, column: u32) -> JsValue {
         log::warn!("type_definition");
-        let line_index = self.analysis().file_line_index(self.file_id).unwrap();
+        let file_id = FileId(file_ind);
+        let line_index = self.analysis().file_line_index(file_id).unwrap();
 
-        let pos = file_position(line_number, column, &line_index, self.file_id);
+        let pos = file_position(line_number, column, &line_index, file_id);
         let nav_info = match self.analysis().goto_type_definition(pos) {
             Ok(Some(nav_info)) => nav_info,
             _ => return JsValue::NULL,
@@ -400,11 +410,12 @@ impl WorldState {
         serde_wasm_bindgen::to_value(&res).unwrap()
     }
 
-    pub fn document_symbols(&self) -> JsValue {
+    pub fn document_symbols(&self, file_ind: u32) -> JsValue {
         log::warn!("document_symbols");
-        let line_index = self.analysis().file_line_index(self.file_id).unwrap();
+        let file_id = FileId(file_ind);
+        let line_index = self.analysis().file_line_index(file_id).unwrap();
 
-        let struct_nodes = match self.analysis().file_structure(self.file_id) {
+        let struct_nodes = match self.analysis().file_structure(file_id) {
             Ok(struct_nodes) => struct_nodes,
             _ => return JsValue::NULL,
         };
@@ -440,11 +451,18 @@ impl WorldState {
         serde_wasm_bindgen::to_value(&res).unwrap()
     }
 
-    pub fn type_formatting(&self, line_number: u32, column: u32, ch: char) -> JsValue {
+    pub fn type_formatting(
+        &self,
+        file_ind: u32,
+        line_number: u32,
+        column: u32,
+        ch: char,
+    ) -> JsValue {
         log::warn!("type_formatting");
-        let line_index = self.analysis().file_line_index(self.file_id).unwrap();
+        let file_id = FileId(file_ind);
+        let line_index = self.analysis().file_line_index(file_id).unwrap();
 
-        let mut pos = file_position(line_number, column, &line_index, self.file_id);
+        let mut pos = file_position(line_number, column, &line_index, file_id);
         pos.offset -= TextSize::of('.');
 
         let edit = self.analysis().on_char_typed(pos, ch);
@@ -458,10 +476,11 @@ impl WorldState {
         serde_wasm_bindgen::to_value(&change).unwrap()
     }
 
-    pub fn folding_ranges(&self) -> JsValue {
+    pub fn folding_ranges(&self, file_ind: u32) -> JsValue {
         log::warn!("folding_ranges");
-        let line_index = self.analysis().file_line_index(self.file_id).unwrap();
-        if let Ok(folds) = self.analysis().folding_ranges(self.file_id) {
+        let file_id = FileId(file_ind);
+        let line_index = self.analysis().file_line_index(file_id).unwrap();
+        if let Ok(folds) = self.analysis().folding_ranges(file_id) {
             let res: Vec<_> =
                 folds.into_iter().map(|fold| to_proto::folding_range(fold, &line_index)).collect();
             serde_wasm_bindgen::to_value(&res).unwrap()
@@ -470,11 +489,12 @@ impl WorldState {
         }
     }
 
-    pub fn goto_implementation(&self, line_number: u32, column: u32) -> JsValue {
+    pub fn goto_implementation(&self, file_ind: u32, line_number: u32, column: u32) -> JsValue {
         log::warn!("goto_implementation");
-        let line_index = self.analysis().file_line_index(self.file_id).unwrap();
+        let file_id = FileId(file_ind);
+        let line_index = self.analysis().file_line_index(file_id).unwrap();
 
-        let pos = file_position(line_number, column, &line_index, self.file_id);
+        let pos = file_position(line_number, column, &line_index, file_id);
         let nav_info = match self.analysis().goto_implementation(pos) {
             Ok(Some(it)) => it,
             _ => return JsValue::NULL,

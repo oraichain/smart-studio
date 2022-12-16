@@ -7,12 +7,13 @@ use ide_db::base_db::{CrateName, Dependency, Env, FileSet, VfsPath};
 
 use change_json::ChangeJson;
 
-pub const CONTRACT_FILE_PATH: &str = "/contract_crate/main.rs";
+pub const CONTRACT_FILES: [&str; 5] =
+    ["/src/lib.rs", "/src/msg.rs", "/src/state.rs", "/src/error.rs", "/src/contract.rs"];
 
 pub fn create_crate(crate_graph: &mut CrateGraph, f: FileId) -> CrateId {
     let mut cfg = CfgOptions::default();
-    cfg.insert_atom("unix".into());
-    cfg.insert_key_value("target_arch".into(), "x86_64".into());
+    cfg.insert_atom("wasm".into());
+    cfg.insert_key_value("target_arch".into(), "wasm32-unknown-unknown".into());
     cfg.insert_key_value("target_pointer_width".into(), "64".into());
     crate_graph.add_crate_root(
         f,
@@ -49,19 +50,23 @@ pub fn load_change_from_files(
     rust_cosmwasm_crypto: String,
     rust_cosmwasm_storage: String,
 ) -> Change {
-    let file_id = FileId(0);
-    let std_id = FileId(1);
-    let core_id = FileId(2);
-    let alloc_id = FileId(3);
-    let cosmwasm_derive_id = FileId(4);
-    let cosmwasm_schema_derive_id = FileId(5);
-    let cosmwasm_schema_id = FileId(6);
-    let cosmwasm_std_id = FileId(7);
-    let cosmwasm_crypto_id = FileId(8);
-    let cosmwasm_storage_id = FileId(9);
+    // use 10 items for contract files
+    let std_id = FileId(11);
+    let core_id = FileId(12);
+    let alloc_id = FileId(13);
+    let cosmwasm_derive_id = FileId(14);
+    let cosmwasm_schema_derive_id = FileId(15);
+    let cosmwasm_schema_id = FileId(16);
+    let cosmwasm_std_id = FileId(17);
+    let cosmwasm_crypto_id = FileId(18);
+    let cosmwasm_storage_id = FileId(19);
 
     let mut file_set = FileSet::default();
-    file_set.insert(file_id, VfsPath::new_virtual_path(CONTRACT_FILE_PATH.to_string()));
+    for file_ind in 0..CONTRACT_FILES.len() {
+        let file_id = FileId(file_ind as u32);
+        file_set.insert(file_id, VfsPath::new_virtual_path(CONTRACT_FILES[file_ind].to_string()));
+    }
+
     let source_root = SourceRoot::new_local(file_set);
 
     let mut change = Change::new();
@@ -78,7 +83,7 @@ pub fn load_change_from_files(
         create_source_root("cosmwasm_storage", cosmwasm_storage_id),
     ]);
     let mut crate_graph = CrateGraph::default();
-    let contract_crate = create_crate(&mut crate_graph, file_id);
+    let contract_crate = create_crate(&mut crate_graph, FileId(0)); // /src/lib.rs is root with file_id == 0
     let std_crate = create_crate(&mut crate_graph, std_id);
     let core_crate = create_crate(&mut crate_graph, core_id);
     let alloc_crate = create_crate(&mut crate_graph, alloc_id);
@@ -135,6 +140,11 @@ pub fn load_change_from_files(
     change.change_file(cosmwasm_std_id, Some(Arc::new(rust_cosmwasm_std)));
     change.change_file(cosmwasm_crypto_id, Some(Arc::new(rust_cosmwasm_crypto)));
     change.change_file(cosmwasm_storage_id, Some(Arc::new(rust_cosmwasm_storage)));
+
+    // init empty code
+    for file_ind in 0..CONTRACT_FILES.len() {
+        change.change_file(FileId(file_ind as u32), Some(Arc::new(String::new())));
+    }
 
     change.set_crate_graph(crate_graph);
 

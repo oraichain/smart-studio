@@ -27,6 +27,7 @@ import { layout } from './util';
 import { MonacoUtils } from './monaco-utils';
 
 import '../assets/global.css';
+import { Service } from './service';
 
 export function forEachUrlParameter(callback: (key: string, value: any) => void) {
   let url = history.location.search.substring(1);
@@ -124,6 +125,10 @@ export async function init(environment = 'production') {
   window.addEventListener('beforeunload', unloadPageHandler, false);
 
   MonacoUtils.initialize();
+
+  // wait for language updated
+  await Service.LanguageUpdater.initialize();
+
   ReactDOM.render(<AppWatchRouter windowContext={appWindowContext} />, document.getElementById('app'));
 }
 
