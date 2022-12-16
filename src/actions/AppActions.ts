@@ -214,7 +214,7 @@ export async function openProjectFiles(template: Template) {
   openProject(newProject);
 }
 
-export function openProject(newProject: Project, defaultPath: string = 'src/contract.rs') {
+export function openProject(newProject: Project, defaultPath: string = 'src/lib.rs') {
   loadProject(newProject);
   let openedFile = newProject.getFile(defaultPath);
   if (openedFile) {

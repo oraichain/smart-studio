@@ -13,7 +13,7 @@ window.MonacoEnvironment = {
 };
 
 export class LanguageUpdater {
-  static contractFiles: string[] = ['lib.rs', 'msg.rs', 'state.rs', 'error.rs', 'contract.rs'];
+  static contractFiles: string[] = ['lib.rs'];
   private state: WorldState;
   private fileIdMap: Map<monaco.Uri, number> = new Map();
   private languageId: string;
@@ -52,12 +52,11 @@ export class LanguageUpdater {
   }
 
   private async addModel(model: monaco.editor.ITextModel) {
+    const fileInd = this.fileIdMap.get(model.uri);
+    if (fileInd === -1) return;
     const update = async () => {
-      const fileInd = this.fileIdMap.get(model.uri);
-      if (fileInd > -1) {
-        const res = await this.state.update(fileInd, model.getValue());
-        monaco.editor.setModelMarkers(model, this.languageId, res.diagnostics);
-      }
+      const res = await this.state.update(fileInd, model.getValue());
+      monaco.editor.setModelMarkers(model, this.languageId, res.diagnostics);
     };
 
     // const start = Date.now();
@@ -111,29 +110,29 @@ export class LanguageUpdater {
     return { lenses, dispose() {} };
   }
 
-  async provideReferences(model: monaco.editor.ITextModel, pos: monaco.Position, { includeDeclaration }: any) {
+  async provideReferences(model: monaco.editor.ITextModel, pos: monaco.Position, { includeDeclaration }: monaco.languages.ReferenceContext): Promise<monaco.languages.Location[]> {
     const fileInd = this.fileIdMap.get(model.uri);
     if (fileInd === -1) return;
-    const references = await this.state.references(fileInd, pos.lineNumber, pos.column, includeDeclaration);
+    const references: monaco.languages.Location[] = await this.state.references(fileInd, pos.lineNumber, pos.column, includeDeclaration);
     if (references) {
-      return references.map(({ range }: any) => ({ uri: model.uri, range }));
+      return references.map(({ range }) => ({ uri: model.uri, range }));
     }
   }
 
-  async provideDocumentHighlights(model: monaco.editor.ITextModel, pos: monaco.Position) {
+  async provideDocumentHighlights(model: monaco.editor.ITextModel, pos: monaco.Position): Promise<monaco.languages.DocumentHighlight[]> {
     const fileInd = this.fileIdMap.get(model.uri);
     if (fileInd === -1) return;
     const references = this.state.references(fileInd, pos.lineNumber, pos.column, true);
     return references;
   }
 
-  async provideRenameEdits(model: monaco.editor.ITextModel, pos: monaco.Position, newName: string) {
+  async provideRenameEdits(model: monaco.editor.ITextModel, pos: monaco.Position, newName: string): Promise<monaco.languages.WorkspaceEdit> {
     const fileInd = this.fileIdMap.get(model.uri);
     if (fileInd === -1) return;
-    const edits = await this.state.rename(fileInd, pos.lineNumber, pos.column, newName);
+    const edits: monaco.languages.TextEdit[] = await this.state.rename(fileInd, pos.lineNumber, pos.column, newName);
     if (edits) {
       return {
-        edits: edits.map((edit: any) => ({
+        edits: edits.map((edit) => ({
           resource: model.uri,
           edit
         }))
@@ -141,16 +140,18 @@ export class LanguageUpdater {
     }
   }
 
-  async resolveRenameLocation(model: monaco.editor.ITextModel, pos: monaco.Position) {
+  async resolveRenameLocation(model: monaco.editor.ITextModel, pos: monaco.Position): Promise<monaco.languages.RenameLocation> {
     const fileInd = this.fileIdMap.get(model.uri);
     if (fileInd === -1) return;
     return await this.state.prepare_rename(fileInd, pos.lineNumber, pos.column);
   }
 
-  async provideCompletionItems(model: monaco.editor.ITextModel, pos: monaco.Position) {
+  async provideCompletionItems(model: monaco.editor.ITextModel, pos: monaco.Position): Promise<monaco.languages.CompletionList> {
     const fileInd = this.fileIdMap.get(model.uri);
+
     if (fileInd === -1) return;
     const suggestions = await this.state.completions(fileInd, pos.lineNumber, pos.column);
+
     if (suggestions) {
       return { suggestions };
     }
@@ -178,7 +179,7 @@ export class LanguageUpdater {
     };
   }
 
-  async provideSignatureHelp(model: monaco.editor.ITextModel, pos: monaco.Position) {
+  async provideSignatureHelp(model: monaco.editor.ITextModel, pos: monaco.Position): Promise<monaco.languages.SignatureHelpResult> {
     const fileInd = this.fileIdMap.get(model.uri);
     if (fileInd === -1) return;
     const value = await this.state.signature_help(fileInd, pos.lineNumber, pos.column);
@@ -190,7 +191,7 @@ export class LanguageUpdater {
     }
   }
 
-  async provideDefinition(model: monaco.editor.ITextModel, pos: monaco.Position) {
+  async provideDefinition(model: monaco.editor.ITextModel, pos: monaco.Position): Promise<monaco.languages.Definition> {
     const fileInd = this.fileIdMap.get(model.uri);
     if (fileInd === -1) return;
     const list = await this.state.definition(fileInd, pos.lineNumber, pos.column);
@@ -199,7 +200,7 @@ export class LanguageUpdater {
     }
   }
 
-  async provideTypeDefinition(model: monaco.editor.ITextModel, pos: monaco.Position) {
+  async provideTypeDefinition(model: monaco.editor.ITextModel, pos: monaco.Position): Promise<monaco.languages.Definition> {
     const fileInd = this.fileIdMap.get(model.uri);
     if (fileInd === -1) return;
     const list = await this.state.type_definition(fileInd, pos.lineNumber, pos.column);
@@ -208,7 +209,7 @@ export class LanguageUpdater {
     }
   }
 
-  async provideImplementation(model: monaco.editor.ITextModel, pos: monaco.Position) {
+  async provideImplementation(model: monaco.editor.ITextModel, pos: monaco.Position): Promise<monaco.languages.Definition> {
     const fileInd = this.fileIdMap.get(model.uri);
     if (fileInd === -1) return;
     const list = await this.state.goto_implementation(fileInd, pos.lineNumber, pos.column);
@@ -217,19 +218,19 @@ export class LanguageUpdater {
     }
   }
 
-  async provideDocumentSymbols(model: monaco.editor.ITextModel) {
+  async provideDocumentSymbols(model: monaco.editor.ITextModel): Promise<monaco.languages.DocumentSymbol[]> {
     const fileInd = this.fileIdMap.get(model.uri);
     if (fileInd === -1) return;
     return await this.state.document_symbols(fileInd);
   }
 
-  async provideOnTypeFormattingEdits(model: monaco.editor.ITextModel, pos: monaco.Position, ch: string) {
+  async provideOnTypeFormattingEdits(model: monaco.editor.ITextModel, pos: monaco.Position, ch: string): Promise<monaco.languages.TextEdit[]> {
     const fileInd = this.fileIdMap.get(model.uri);
     if (fileInd === -1) return;
     return await this.state.type_formatting(fileInd, pos.lineNumber, pos.column, ch);
   }
 
-  async provideFoldingRanges(model: monaco.editor.ITextModel) {
+  async provideFoldingRanges(model: monaco.editor.ITextModel): Promise<monaco.languages.FoldingRange[]> {
     const fileInd = this.fileIdMap.get(model.uri);
     if (fileInd === -1) return;
     return await this.state.folding_ranges(fileInd);

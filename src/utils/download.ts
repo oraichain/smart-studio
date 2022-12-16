@@ -39,8 +39,7 @@ export async function downloadProject(project: Project, uri?: string) {
       continue;
     }
 
-    // @ts-ignore
-    zipFile.file(fileName, file.data.data || file.data);
+    zipFile.file(fileName, file.data);
   }
   await zipFile.generateAsync({ type: 'blob', mimeType: 'application/zip' }).then((blob: Blob) => {
     // Creating <a> to programmatically click for downloading zip via blob's URL

@@ -21,7 +21,6 @@ use wasm_bindgen::prelude::*;
 mod to_proto;
 
 mod return_types;
-// use rayon::prelude::*;
 use return_types::*;
 pub use wasm_bindgen_rayon::init_thread_pool;
 
@@ -117,11 +116,12 @@ impl WorldState {
             })
             .collect();
 
-        let config = DiagnosticsConfig::default();
+        let mut config = DiagnosticsConfig::default();
+        config.disabled.insert("unresolved-macro-call".to_string());
 
         let diagnostics: Vec<_> = self
             .analysis()
-            .diagnostics(&config, ide::AssistResolveStrategy::All, file_id)
+            .diagnostics(&config, ide::AssistResolveStrategy::None, file_id)
             .unwrap()
             .into_iter()
             .map(|d| {
@@ -171,6 +171,7 @@ impl WorldState {
 
     pub fn completions(&self, file_ind: u32, line_number: u32, column: u32) -> JsValue {
         let file_id = FileId(file_ind);
+
         const COMPLETION_CONFIG: CompletionConfig = CompletionConfig {
             enable_postfix_completions: true,
             enable_imports_on_the_fly: true,
@@ -179,11 +180,11 @@ impl WorldState {
             add_call_argument_snippets: true,
             snippet_cap: SnippetCap::new(true),
             insert_use: InsertUseConfig {
-                granularity: ImportGranularity::Module,
-                enforce_granularity: false,
+                granularity: ImportGranularity::Crate,
+                enforce_granularity: true,
                 prefix_kind: PrefixKind::Plain,
                 group: true,
-                skip_glob_imports: false,
+                skip_glob_imports: true,
             },
             snippets: Vec::new(),
         };
