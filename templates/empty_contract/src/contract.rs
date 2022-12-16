@@ -6,7 +6,7 @@ use cosmwasm_std::{
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::state{store_config, read_config};
+use crate::state::{read_config, store_config};
 
 // Note, you can use StdResult in some functions where you do not
 // make use of the custom errors
@@ -26,10 +26,15 @@ pub fn instantiate(
 
 // And declare a custom Error variant for the ones where you will want to make use of it
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn execute(_: DepsMut, _env: Env, _: MessageInfo, _: ExecuteMsg) -> Result<Response, ContractError> {
-    match msg {        
-        ExecuteMsg::ChangeOwner { owner }  => execute_change_owner(deps, env, info, owner)
-    }    
+pub fn execute(
+    _: DepsMut,
+    _env: Env,
+    _: MessageInfo,
+    _: ExecuteMsg,
+) -> Result<Response, ContractError> {
+    match msg {
+        ExecuteMsg::ChangeOwner { owner } => execute_change_owner(deps, env, info, owner),
+    }
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -39,16 +44,18 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     }
 }
 
-pub fn execute_change_owner(deps: DepsMut, env: Env, info: MessageInfo, owner: Addr) -> Result<Response, ContractError> {
+pub fn execute_change_owner(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    owner: Addr,
+) -> Result<Response, ContractError> {
     let state: Config = read_config(deps.storage)?;
     if state.owner.ne(&info.sender) {
         return Err(ContractError::Unauthorized {});
     }
 
-    store_config(
-        deps.storage,
-        &Config { owner: deps.api.addr_canonicalize(owner.as_str())? },
-    )?;
+    store_config(deps.storage, &Config { owner: deps.api.addr_canonicalize(owner.as_str())? })?;
 
     Ok(Response::default())
 }
