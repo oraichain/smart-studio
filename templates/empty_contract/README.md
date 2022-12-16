@@ -9,10 +9,11 @@ bundler so you can poke around all the raw output!
 
 Some files you may be interested in are:
 
-- `src/lib.rs` - this is the library
-- `contract.rs` - this is the main implementation
+- `contract.rs`. This is the main implementation
+- `error.rs`. Here you'll define errors.
+- `lib.rs`. This is the library
 - `msg.rs`. Here you'll define the structures to communicate with contract ABI.
-  `error.rs`. Here you'll define errors.
+- `state.rs`. Storage for smart contract
 
 When building the project you'll get `artifacts/cv009.wasm`, the generated wasm
 filtered through the `wasmer` compiler, as well as `artifacts/checksums.txt`.

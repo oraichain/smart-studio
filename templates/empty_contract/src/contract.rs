@@ -1,12 +1,11 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::{
-    entry_point, to_binary, Addr, Binary, CanonicalAddr, Deps, DepsMut, Env, MessageInfo, Response,
-    StdResult, Storage,
+    entry_point, to_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult,
 };
 
 use crate::error::ContractError;
-use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::state::{read_config, store_config};
+use crate::msg::{ConfigResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
+use crate::state::{read_config, store_config, Config};
 
 // Note, you can use StdResult in some functions where you do not
 // make use of the custom errors
@@ -27,13 +26,13 @@ pub fn instantiate(
 // And declare a custom Error variant for the ones where you will want to make use of it
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
-    _: DepsMut,
+    deps: DepsMut,
     _env: Env,
-    _: MessageInfo,
-    _: ExecuteMsg,
+    info: MessageInfo,
+    msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::ChangeOwner { owner } => execute_change_owner(deps, env, info, owner),
+        ExecuteMsg::ChangeOwner { owner } => execute_change_owner(deps, info, owner),
     }
 }
 
@@ -46,12 +45,12 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 
 pub fn execute_change_owner(
     deps: DepsMut,
-    env: Env,
     info: MessageInfo,
     owner: Addr,
 ) -> Result<Response, ContractError> {
     let state: Config = read_config(deps.storage)?;
-    if state.owner.ne(&info.sender) {
+    let current_owner = deps.api.addr_humanize(&state.owner)?;
+    if current_owner.ne(&info.sender) {
         return Err(ContractError::Unauthorized {});
     }
 
