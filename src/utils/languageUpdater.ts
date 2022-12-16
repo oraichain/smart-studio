@@ -4,11 +4,11 @@ import { WorldState } from '../../crates/ra-wasm/pkg';
 import { createRA } from './creat-ra';
 
 window.MonacoEnvironment = {
-  getWorkerUrl: () => {
-    // if (label === 'json') {
-    return './json.worker.bundle.js';
-    // }
-    // return './editor.worker.bundle.js';
+  getWorkerUrl: (workerId: string, label: string): string => {
+    if (label === 'json') {
+      return './json.worker.bundle.js';
+    }
+    return './editor.worker.bundle.js';
   }
 };
 
