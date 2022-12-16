@@ -277,7 +277,8 @@ export class App extends React.Component<AppProps, AppState> {
   async loadHelp() {
     const response = await fetch('notes/help.md');
     const src = await response.text();
-    const help = new File('Help', FileType.Markdown, false);
+    const help = new File('Help', FileType.Markdown);
+    help.isBufferReadOnly = true;
     help.setData(src);
     openFile(help, defaultViewTypeForFileType(help.type));
   }
