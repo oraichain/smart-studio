@@ -1,7 +1,7 @@
 import * as monaco from 'monaco-editor';
 import { File, FileType, languageForFileType } from '../models';
 import { WorldState } from '../../crates/ra-wasm/pkg';
-import { createRA } from './creat-ra';
+import { createRA } from './create-ra';
 
 window.MonacoEnvironment = {
   getWorkerUrl: (moduleId, label) => {
@@ -40,7 +40,10 @@ export class LanguageUpdater {
         import('../rust/cosmwasm-schema.rs'),
         import('../rust/cosmwasm-std.rs'),
         import('../rust/cosmwasm-crypto.rs'),
-        import('../rust/cosmwasm-storage.rs')
+        import('../rust/cosmwasm-storage.rs'),
+        import('../rust/thiserror-1.0.23.rs'),
+        import('../rust/thiserror-impl-1.0.23.rs'),
+        import('../rust/proc-macro2-1.0.6.rs')
       ]);
 
       // @ts-ignore

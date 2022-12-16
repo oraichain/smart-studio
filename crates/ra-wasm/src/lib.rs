@@ -74,6 +74,9 @@ impl WorldState {
         rust_cosmwasm_std: String,
         rust_cosmwasm_crypto: String,
         rust_cosmwasm_storage: String,
+        rust_thiserror: String,
+        rust_thiserror_impl: String,
+        rust_proc_macro2: String,
     ) {
         let change = rust_pack::extractor::load_change_from_files(
             rust_std,
@@ -85,6 +88,9 @@ impl WorldState {
             rust_cosmwasm_std,
             rust_cosmwasm_crypto,
             rust_cosmwasm_storage,
+            rust_thiserror,
+            rust_thiserror_impl,
+            rust_proc_macro2,
         );
 
         // apply change
