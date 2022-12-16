@@ -12,8 +12,8 @@ pub const CONTRACT_FILES: [&str; 5] =
 
 pub fn create_crate(crate_graph: &mut CrateGraph, f: FileId) -> CrateId {
     let mut cfg = CfgOptions::default();
-    cfg.insert_atom("wasm".into());
-    cfg.insert_key_value("target_arch".into(), "wasm32-unknown-unknown".into());
+    cfg.insert_atom("unix".into());
+    cfg.insert_key_value("target_arch".into(), "x86_64".into());
     cfg.insert_key_value("target_pointer_width".into(), "64".into());
     crate_graph.add_crate_root(
         f,
