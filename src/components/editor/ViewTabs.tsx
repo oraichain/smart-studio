@@ -138,7 +138,7 @@ export class ViewTabs extends React.Component<ViewTabsProps, ViewTabsState> {
         }}
       />
     ];
-    if (view.file.type === FileType.Markdown) {
+    if (view.file.type === FileType.Markdown && view.file.editable) {
       const markdown = view.type === ViewType.Markdown;
       commands.unshift(
         <Button
@@ -196,10 +196,12 @@ export class ViewTabs extends React.Component<ViewTabsProps, ViewTabsState> {
           {views.map((v) => {
             const { file: x } = v;
             let name = x.name;
-            if (v.type === ViewType.Binary) {
-              name = 'Binary ' + name;
-            } else if (v.type === ViewType.Markdown || v.type === ViewType.Viz) {
-              name = 'Preview ' + name;
+            if (x.editable) {
+              if (v.type === ViewType.Binary) {
+                name = 'Binary ' + name;
+              } else if (v.type === ViewType.Markdown || v.type === ViewType.Viz) {
+                name = 'Preview ' + name;
+              }
             }
             return (
               <Tab
@@ -212,7 +214,7 @@ export class ViewTabs extends React.Component<ViewTabsProps, ViewTabsState> {
                 isItalic={v === preview}
                 onClick={onClickView}
                 onDoubleClick={onDoubleClickView}
-                onClose={onClose}
+                onClose={x.editable ? null : onClose}
               />
             );
           })}

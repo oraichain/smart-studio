@@ -7,18 +7,15 @@ To build Oraichain Studio whenever a file changes run:
 # build rust
 wasm-pack build crates/ra-wasm --target web
 
-# default bundle to json change
-COSMWASM_PATH=../cosmwasm cargo run -p rust-pack --release
-
-# for hot-reload in development
-TOOLCHAIN=+1.51.0 OUTPUT_TYPE=rust|json COSMWASM_PATH=../cosmwasm cargo run -p rust-pack --release
+# for hot-reload in development, default is both: --output=rust&json
+cargo run -p rust-pack --release -- ../cosmwasm --toolchain +1.51.0
 
 # change toolchain for lib and install source code to reference
 rustup toolchain add 1.51.0 --profile minimal && rustup +1.51.0 component add rust-src
 
 # or using source code, should be version >= 1.47.0, minimum support is 1.42.0
 svn export https://github.com/rust-lang/rust/tags/1.47.0/library rust_library/1.47.0
-RUST_PATH=rust_library/1.47.0 OUTPUT_TYPE=rust COSMWASM_PATH=../cosmwasm cargo run -p rust-pack --release
+cargo run -p rust-pack --release -- ../cosmwasm --toolchain rust_library/1.47.0 --output rust
 
 # to build client
 # rebuild template

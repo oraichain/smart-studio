@@ -34,9 +34,11 @@ import appStore from '../stores/AppStore';
 export class File {
   name: string;
   type: FileType;
+  editable: boolean;
   data: string | ArrayBuffer;
   parent: Directory;
   onClose?: Function;
+
   /**
    * True if the buffer is out of sync with the data.
    */
@@ -60,10 +62,11 @@ export class File {
   bufferType: FileType;
   description: string;
   problems: Problem[] = [];
-  constructor(name: string, type: FileType) {
+  constructor(name: string, type: FileType, editable: boolean = true) {
     this.name = name;
     this.type = type;
     this.data = null;
+    this.editable = editable;
     if (isBinaryFileType(type)) {
       this.bufferType = FileType.Unknown;
       this.buffer = monaco.editor.createModel('');
