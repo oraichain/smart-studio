@@ -38,4 +38,5 @@ export default function registerTheme() {
       { token: 'custom-error', background: '00ff00', foreground: 'ff0000', fontStyle: 'bold' }
     ]
   });
+  monaco.editor.setTheme('fiddle-theme');
 }

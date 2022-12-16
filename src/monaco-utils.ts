@@ -54,8 +54,11 @@ export class MonacoUtils {
     const keybindingService = services.get(IKeybindingService);
 
     // set fiddle-theme
+    const themeService = services.get(IThemeService);
+    themeService.setTheme('fiddle-theme');
+
     // create static ContextMenuserviceInstance
-    MonacoUtils.ContextMenuserviceInstance = new ContextMenuService(telemetryService, notificationService, contextViewService, keybindingService);
+    MonacoUtils.ContextMenuserviceInstance = new ContextMenuService(telemetryService, notificationService, contextViewService, keybindingService, themeService);
   }
 
   static expandTree(tree: ITree) {
