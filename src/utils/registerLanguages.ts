@@ -43,27 +43,33 @@ export default function registerLanguages() {
   monaco.languages.setMonarchTokensProvider(Language.Rust, language);
   monaco.languages.setLanguageConfiguration(Language.Rust, conf);
 
-  monaco.languages.registerHoverProvider(Language.Rust, {
+  // rust analyzer language for editor
+  monaco.languages.register({
+    id: Language.RustAnalyzer
+  });
+  monaco.languages.setLanguageConfiguration(Language.RustAnalyzer, conf);
+
+  monaco.languages.registerHoverProvider(Language.RustAnalyzer, {
     provideHover(model, pos) {
       return Service.LanguageUpdater.provideHover(model, pos);
     }
   });
-  monaco.languages.registerCodeLensProvider(Language.Rust, {
+  monaco.languages.registerCodeLensProvider(Language.RustAnalyzer, {
     provideCodeLenses(model) {
       return Service.LanguageUpdater.provideCodeLenses(model);
     }
   });
-  monaco.languages.registerReferenceProvider(Language.Rust, {
+  monaco.languages.registerReferenceProvider(Language.RustAnalyzer, {
     provideReferences(model, pos, context) {
       return Service.LanguageUpdater.provideReferences(model, pos, context);
     }
   });
-  monaco.languages.registerDocumentHighlightProvider(Language.Rust, {
+  monaco.languages.registerDocumentHighlightProvider(Language.RustAnalyzer, {
     provideDocumentHighlights(model, pos) {
       return Service.LanguageUpdater.provideDocumentHighlights(model, pos);
     }
   });
-  monaco.languages.registerRenameProvider(Language.Rust, {
+  monaco.languages.registerRenameProvider(Language.RustAnalyzer, {
     provideRenameEdits: (model, pos, newName) => {
       return Service.LanguageUpdater.provideRenameEdits(model, pos, newName);
     },
@@ -71,52 +77,52 @@ export default function registerLanguages() {
       return Service.LanguageUpdater.resolveRenameLocation(model, pos);
     }
   });
-  monaco.languages.registerCompletionItemProvider(Language.Rust, {
+  monaco.languages.registerCompletionItemProvider(Language.RustAnalyzer, {
     triggerCharacters: ['.', ':', '='],
     provideCompletionItems(model, pos) {
       return Service.LanguageUpdater.provideCompletionItems(model, pos);
     }
   });
 
-  monaco.languages.registerInlayHintsProvider(Language.Rust, {
+  monaco.languages.registerInlayHintsProvider(Language.RustAnalyzer, {
     provideInlayHints(model: any) {
       return Service.LanguageUpdater.provideInlayHints(model);
     }
   });
 
-  monaco.languages.registerSignatureHelpProvider(Language.Rust, {
+  monaco.languages.registerSignatureHelpProvider(Language.RustAnalyzer, {
     signatureHelpTriggerCharacters: ['(', ','],
     provideSignatureHelp(model, pos) {
       return Service.LanguageUpdater.provideSignatureHelp(model, pos);
     }
   });
-  monaco.languages.registerDefinitionProvider(Language.Rust, {
+  monaco.languages.registerDefinitionProvider(Language.RustAnalyzer, {
     provideDefinition(model, pos) {
       return Service.LanguageUpdater.provideDefinition(model, pos);
     }
   });
-  monaco.languages.registerTypeDefinitionProvider(Language.Rust, {
+  monaco.languages.registerTypeDefinitionProvider(Language.RustAnalyzer, {
     provideTypeDefinition(model, pos) {
       return Service.LanguageUpdater.provideTypeDefinition(model, pos);
     }
   });
-  monaco.languages.registerImplementationProvider(Language.Rust, {
+  monaco.languages.registerImplementationProvider(Language.RustAnalyzer, {
     provideImplementation(model, pos) {
       return Service.LanguageUpdater.provideImplementation(model, pos);
     }
   });
-  monaco.languages.registerDocumentSymbolProvider(Language.Rust, {
+  monaco.languages.registerDocumentSymbolProvider(Language.RustAnalyzer, {
     provideDocumentSymbols(model) {
       return Service.LanguageUpdater.provideDocumentSymbols(model);
     }
   });
-  monaco.languages.registerOnTypeFormattingEditProvider(Language.Rust, {
+  monaco.languages.registerOnTypeFormattingEditProvider(Language.RustAnalyzer, {
     autoFormatTriggerCharacters: ['.', '='],
     provideOnTypeFormattingEdits(model, pos, ch) {
       return Service.LanguageUpdater.provideOnTypeFormattingEdits(model, pos, ch);
     }
   });
-  monaco.languages.registerFoldingRangeProvider(Language.Rust, {
+  monaco.languages.registerFoldingRangeProvider(Language.RustAnalyzer, {
     provideFoldingRanges(model) {
       return Service.LanguageUpdater.provideFoldingRanges(model);
     }

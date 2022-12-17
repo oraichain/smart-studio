@@ -24,6 +24,7 @@ export enum Language {
   Wat = 'wat',
   Wasm = 'wasm',
   Rust = 'rust',
+  RustAnalyzer = 'ra-rust',
   Cretonne = 'cton',
   x86 = 'x86',
   Json = 'json',

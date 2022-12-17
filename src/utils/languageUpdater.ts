@@ -2,6 +2,7 @@ import * as monaco from 'monaco-editor';
 import { File, FileType, languageForFileType } from '../models';
 import { WorldState } from '../../crates/ra-wasm/pkg';
 import { createRA } from './create-ra';
+import { Language } from '../compilerServices';
 
 window.MonacoEnvironment = {
   getWorkerUrl: (moduleId, label) => {
@@ -11,6 +12,26 @@ window.MonacoEnvironment = {
     return './editor.worker.bundle.js';
   }
 };
+
+export type Token = {
+  range: monaco.IRange;
+  tag: string;
+};
+
+class TokenState {
+  line: number;
+  equals: (other?: monaco.languages.IState) => boolean;
+  constructor(line = 0) {
+    this.line = line;
+    this.equals = () => true;
+  }
+
+  clone() {
+    const res = new TokenState(this.line);
+    res.line += 1;
+    return res;
+  }
+}
 
 export class LanguageUpdater {
   static contractFiles: string[] = ['lib.rs'];
@@ -28,7 +49,7 @@ export class LanguageUpdater {
       const data = await fetch('/change.json');
       const textData = await data.text();
       const encoder = new TextEncoder();
-      await this.state.load(encoder.encode(textData));
+      this.state.load(encoder.encode(textData));
     } else {
       // fallback loading from source code
       const rustFiles = await Promise.all([
@@ -47,8 +68,28 @@ export class LanguageUpdater {
       ]);
 
       // @ts-ignore
-      await this.state.init(...rustFiles.map((m) => m.default));
+      this.state.init(...rustFiles.map((m) => m.default));
     }
+  }
+
+  private setTokens(allTokens: Token[]) {
+    monaco.languages.setTokensProvider(Language.RustAnalyzer, {
+      getInitialState: () => new TokenState(),
+      tokenize(_, st: TokenState) {
+        const filteredTokens = allTokens.filter((token) => token.range.startLineNumber === st.line);
+
+        const tokens = filteredTokens.map((token) => ({
+          startIndex: token.range.startColumn - 1,
+          scopes: token.tag
+        }));
+        tokens.sort((a, b) => a.startIndex - b.startIndex);
+
+        return {
+          tokens,
+          endState: new TokenState(st.line + 1)
+        };
+      }
+    });
   }
 
   private async addModel(model: monaco.editor.ITextModel) {
@@ -56,13 +97,16 @@ export class LanguageUpdater {
     if (fileInd === -1) return;
     const update = async () => {
       const res = await this.state.update(fileInd, model.getValue());
-      monaco.editor.setModelMarkers(model, this.languageId, res.diagnostics);
+      monaco.editor.setModelMarkers(model, Language.RustAnalyzer, res.diagnostics);
+      // update token highlights
+      this.setTokens(res.highlights);
     };
 
     // const start = Date.now();
     await update();
     // console.log('Took', Date.now() - start, 'ms');
     model.onDidChangeContent(update);
+    monaco.editor.setModelLanguage(model, Language.RustAnalyzer);
   }
 
   addFile(file: File) {
@@ -76,11 +120,27 @@ export class LanguageUpdater {
     }
   }
 
-  async provideHover(model: monaco.editor.ITextModel, pos: monaco.Position) {
+  async provideHover(model: monaco.editor.ITextModel, pos: monaco.Position):Promise<monaco.languages.Hover> {
     const fileInd = this.fileIdMap.get(model.uri);
     if (fileInd === -1) return;
-    const hoverData = await this.state.hover(fileInd, pos.lineNumber, pos.column);
-    return hoverData;
+    const content:monaco.languages.Hover = await this.state.hover(fileInd, pos.lineNumber, pos.column);
+    // this fixes rust-ra language at client
+    if (content?.range) {
+      return {
+        contents: [
+          {
+            ...content.contents[0],
+            value: JSON.parse(
+              JSON.stringify(content.contents[0]?.value)
+                .replaceAll(/```(.*?)```/g, '```rust$1```')
+                .replaceAll('rustrust', 'rust')                
+            ),
+            supportThemeIcons: true,
+          },
+        ],
+        range: content.range,
+      } as monaco.languages.Hover;
+    }
   }
 
   async provideCodeLenses(model: monaco.editor.ITextModel) {

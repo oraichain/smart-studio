@@ -106,7 +106,7 @@ pub fn execute_change_owner(
 }
 
 pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
-    let state: Config = read_config(deps.storage)?;
+    let state = read_config(deps.storage)?;
     let resp = ConfigResponse { owner: deps.api.addr_humanize(&state.owner)? };
 
     Ok(resp)

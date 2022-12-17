@@ -372,7 +372,7 @@ fn main() {
             let name = format!("{}{}", out_prefix, package);
             output = remove_skip_format(&output);
             output = remove_extern_c(&output);
-            output = remove_unstable_feature(&output);
+            // output = remove_unstable_feature(&output);
             output = remove_test_mod(&output);
             output = remove_function_body(&output);
 
