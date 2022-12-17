@@ -99,7 +99,6 @@ export class LanguageUpdater {
       const res = await this.state.update(fileInd, model.getValue());
       monaco.editor.setModelMarkers(model, Language.RustAnalyzer, res.diagnostics);
       // update token highlights
-      console.log(res.highlights)
       this.setTokens(res.highlights);
     };
 
