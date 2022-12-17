@@ -214,12 +214,10 @@ export async function openProjectFiles(template: Template) {
   openProject(newProject);
 }
 
-export function openProject(newProject: Project, defaultPath: string = 'src/lib.rs') {
+export function openProject(newProject: Project, openedFiles: string[] = ['README.md', 'src/contract.rs']) {
   loadProject(newProject);
-  let openedFile = newProject.getFile(defaultPath);
-  if (openedFile) {
-    openFiles([['README.md', defaultPath]]);
-  }
+  // open files existed in project
+  openFiles([openedFiles.filter((path) => newProject.getFile(path))]);
 }
 
 export async function saveProject(newProject?: Project): Promise<string> {
@@ -303,6 +301,7 @@ export async function runTask(name: string, optional: boolean = false, externals
       if (fiddle.success) {
         await Service.loadFilesIntoProject(fiddle.files, project);
       }
+
       break;
     case 'schema':
       fiddle = await Service.buildSchema(project.name);

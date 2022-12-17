@@ -5,7 +5,9 @@ const start = async () => {
 
   // Thread pool initialization with the given number of threads
   // (pass `navigator.hardwareConcurrency` if you want to use all cores).
-  await initThreadPool(navigator.hardwareConcurrency);
+  // console.log(navigator.hardwareConcurrency);
+  // use single thread for faster communication
+  await initThreadPool(1);
 
   const state = new WorldState();
 
