@@ -372,7 +372,14 @@ fn main() {
             let name = format!("{}{}", out_prefix, package);
             output = remove_skip_format(&output);
             output = remove_extern_c(&output);
-            // output = remove_unstable_feature(&output);
+            if name != "libcore" {
+                output = remove_unstable_feature(&output);
+            } else {
+                let (left, right) = output.split_at(output.len() * 24 / 100); // 23-24%
+                let mut keep_unwrap_flattern = String::from(left);
+                keep_unwrap_flattern.push_str(&remove_unstable_feature(right));
+                output = keep_unwrap_flattern;
+            }
             output = remove_test_mod(&output);
             output = remove_function_body(&output);
 
@@ -433,9 +440,8 @@ fn main() {
 }
 
 // fn main() {
-//     let mut output =
-//         fs::read_to_string("/Users/phamtu/Projects/smart-studio/src/rust/core.rs").unwrap();
-//     output = remove_test_mod(&output);
-//     output = remove_function_body(&output);
+//     let mut output = fs::read_to_string("/Users/phamtu/Projects/smart-studio/test.rs").unwrap();
+
+//     output = remove_unstable_feature(&output);
 //     println!("{}", output);
 // }
