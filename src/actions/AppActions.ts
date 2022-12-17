@@ -20,7 +20,7 @@
  */
 
 import dispatcher from '../dispatcher';
-import { File, Directory, Project } from '../models';
+import { File, Directory, Project, FileType } from '../models';
 import { Template } from '../components/NewProjectDialog';
 import { View, ViewType } from '../components/editor/View';
 import appStore from '../stores/AppStore';
@@ -299,7 +299,7 @@ export async function runTask(name: string, optional: boolean = false, externals
 
       // load wasm file to show
       if (fiddle.success) {
-        await Service.loadFilesIntoProject(fiddle.files, project);
+        await Service.loadFilesIntoProject(fiddle.files.filter((file) => file.name.endsWith(FileType.Wasm)), project);
       }
 
       break;
@@ -309,7 +309,7 @@ export async function runTask(name: string, optional: boolean = false, externals
 
       // load schema file to show
       if (fiddle.success) {
-        await Service.loadFilesIntoProject(fiddle.files, project);
+        await Service.loadFilesIntoProject(fiddle.files.filter((file) => file.name.endsWith(FileType.JSON)), project);
       }
 
       break;
