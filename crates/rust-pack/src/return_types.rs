@@ -37,6 +37,7 @@ pub struct Command {
 
 #[derive(Serialize)]
 pub struct Highlight {
+    pub fileId: u32,
     pub tag: Option<String>,
     pub range: Range,
 }
@@ -177,6 +178,7 @@ pub struct SignatureHelp {
 
 #[derive(Serialize)]
 pub struct LocationLink {
+    pub fileId: u32,
     pub originSelectionRange: Range,
     pub range: Range,
     pub targetSelectionRange: Range,

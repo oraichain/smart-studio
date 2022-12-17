@@ -88,6 +88,7 @@ impl LocalState {
             .unwrap()
             .into_iter()
             .map(|hl| Highlight {
+                fileId: file_ind,
                 tag: Some(hl.highlight.tag.to_string()),
                 range: text_range(hl.range, &line_index),
             })
@@ -276,13 +277,21 @@ impl LocalState {
             if include_declaration {
                 if let Some(r) = ref_result.declaration {
                     let r = r.nav.focus_range.unwrap_or(r.nav.full_range);
-                    res.push(Highlight { tag: None, range: text_range(r, &line_index) });
+                    res.push(Highlight {
+                        fileId: file_id.0,
+                        tag: None,
+                        range: text_range(r, &line_index),
+                    });
                 }
             }
-            ref_result.references.iter().for_each(|(_id, ranges)| {
-                // FIXME: handle multiple files
+            ref_result.references.iter().for_each(|(file_id, ranges)| {
+                // handle multiple files
                 for (r, _) in ranges {
-                    res.push(Highlight { tag: None, range: text_range(*r, &line_index) });
+                    res.push(Highlight {
+                        fileId: file_id.0,
+                        tag: None,
+                        range: text_range(*r, &line_index),
+                    });
                 }
             });
         }

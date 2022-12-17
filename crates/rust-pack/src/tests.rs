@@ -1,5 +1,6 @@
 use std::fs;
 
+use crate::extractor::CONTRACT_FILES;
 use crate::state::LocalState;
 
 #[test]
@@ -9,12 +10,13 @@ fn initialize_state() {
     println!("json length {}", change_json.len());
     state.load(change_json.into_bytes());
 
-    let code = fs::read_to_string("../../templates/empty_contract/src/contract.rs").unwrap();
-    println!("code length {}", code.len());
-    let ret = state.update(0, code);
+    for id in 0..CONTRACT_FILES.len() {
+        let code =
+            fs::read_to_string(format!("../../templates/empty_contract{}", CONTRACT_FILES[id]))
+                .unwrap();
+        state.update(id as u32, code);
+    }
 
-    println!("{:?}", ret.highlights.first().unwrap().tag);
-
-    let ret = state.completions(0, 34, 4);
+    let ret = state.completions(4, 34, 4);
     assert!(ret.len() > 0);
 }

@@ -92,6 +92,24 @@ export class LanguageUpdater {
     });
   }
 
+  private getUri(fileInd: number, defaultUri: monaco.Uri): monaco.Uri {
+    for (const uri of this.fileIdMap.keys()) {
+      if (this.fileIdMap.get(uri) === fileInd) {
+        return uri;
+      }
+    }
+    return defaultUri;
+  }
+
+  private getDefinition(list: any[], defaultUri: monaco.Uri): monaco.languages.LocationLink[] {
+    return list.map(({ originSelectionRange, targetSelectionRange, fileId, range }: any) => ({
+      originSelectionRange,
+      targetSelectionRange,
+      range,
+      uri: this.getUri(fileId, defaultUri)
+    }));
+  }
+
   private async addModel(model: monaco.editor.ITextModel) {
     const fileInd = this.fileIdMap.get(model.uri);
     if (fileInd === -1) return;
@@ -120,25 +138,25 @@ export class LanguageUpdater {
     }
   }
 
-  async provideHover(model: monaco.editor.ITextModel, pos: monaco.Position):Promise<monaco.languages.Hover> {
+  async provideHover(model: monaco.editor.ITextModel, pos: monaco.Position): Promise<monaco.languages.Hover> {
     const fileInd = this.fileIdMap.get(model.uri);
     if (fileInd === -1) return;
-    const content:monaco.languages.Hover = await this.state.hover(fileInd, pos.lineNumber, pos.column);
+    const content: monaco.languages.Hover = await this.state.hover(fileInd, pos.lineNumber, pos.column);
     // this fixes rust-ra language at client
-    if (content?.range) {
+    if (content && content.range) {
       return {
         contents: [
           {
             ...content.contents[0],
             value: JSON.parse(
-              JSON.stringify(content.contents[0]?.value)
+              JSON.stringify(content.contents[0].value)
                 .replaceAll(/```(.*?)```/g, '```rust$1```')
-                .replaceAll('rustrust', 'rust')                
+                .replaceAll('rustrust', 'rust')
             ),
-            supportThemeIcons: true,
-          },
+            supportThemeIcons: true
+          }
         ],
-        range: content.range,
+        range: content.range
       } as monaco.languages.Hover;
     }
   }
@@ -157,6 +175,7 @@ export class LanguageUpdater {
         range: pos,
         uri: model.uri
       }));
+
       return {
         range,
         command: {
@@ -173,16 +192,18 @@ export class LanguageUpdater {
   async provideReferences(model: monaco.editor.ITextModel, pos: monaco.Position, { includeDeclaration }: monaco.languages.ReferenceContext): Promise<monaco.languages.Location[]> {
     const fileInd = this.fileIdMap.get(model.uri);
     if (fileInd === -1) return;
-    const references: monaco.languages.Location[] = await this.state.references(fileInd, pos.lineNumber, pos.column, includeDeclaration);
-    if (references) {
-      return references.map(({ range }) => ({ uri: model.uri, range }));
+    const ret = await this.state.references(fileInd, pos.lineNumber, pos.column, includeDeclaration);
+
+    if (ret) {
+      const references: monaco.languages.Location[] = ret.map(({ range, fileId }: any) => ({ uri: this.getUri(fileId, model.uri), range }));
+      return references;
     }
   }
 
   async provideDocumentHighlights(model: monaco.editor.ITextModel, pos: monaco.Position): Promise<monaco.languages.DocumentHighlight[]> {
     const fileInd = this.fileIdMap.get(model.uri);
     if (fileInd === -1) return;
-    const references = this.state.references(fileInd, pos.lineNumber, pos.column, true);
+    const references: monaco.languages.DocumentHighlight[] = this.state.references(fileInd, pos.lineNumber, pos.column, true);
     return references;
   }
 
@@ -209,9 +230,7 @@ export class LanguageUpdater {
 
   async provideCompletionItems(model: monaco.editor.ITextModel, pos: monaco.Position): Promise<monaco.languages.CompletionList> {
     const fileInd = this.fileIdMap.get(model.uri);
-
     if (fileInd === -1) return;
-    
     const suggestions = await this.state.completions(fileInd, pos.lineNumber, pos.column);
 
     if (suggestions) {
@@ -223,22 +242,23 @@ export class LanguageUpdater {
     const fileInd = this.fileIdMap.get(model.uri);
     if (fileInd === -1) return;
     const inlayHints = await this.state.inlay_hints(fileInd);
-    if (!inlayHints) return;
 
-    return {
-      hints: inlayHints.map(({ label, hint_type, range }: any) => {
-        return {
-          label,
-          kind: hint_type,
-          paddingRight: true,
-          position: {
-            column: range.startColumn,
-            lineNumber: range.startLineNumber
-          }
-        };
-      }),
-      dispose() {}
-    };
+    if (inlayHints) {
+      return {
+        hints: inlayHints.map(({ label, hint_type, range }: any) => {
+          return {
+            label,
+            kind: hint_type,
+            paddingRight: true,
+            position: {
+              column: range.startColumn,
+              lineNumber: range.startLineNumber
+            }
+          };
+        }),
+        dispose() {}
+      };
+    }
   }
 
   async provideSignatureHelp(model: monaco.editor.ITextModel, pos: monaco.Position): Promise<monaco.languages.SignatureHelpResult> {
@@ -257,8 +277,9 @@ export class LanguageUpdater {
     const fileInd = this.fileIdMap.get(model.uri);
     if (fileInd === -1) return;
     const list = await this.state.definition(fileInd, pos.lineNumber, pos.column);
+
     if (list) {
-      return list.map((def: any) => ({ ...def, uri: model.uri }));
+      return this.getDefinition(list, model.uri);
     }
   }
 
@@ -267,7 +288,7 @@ export class LanguageUpdater {
     if (fileInd === -1) return;
     const list = await this.state.type_definition(fileInd, pos.lineNumber, pos.column);
     if (list) {
-      return list.map((def: any) => ({ ...def, uri: model.uri }));
+      return this.getDefinition(list, model.uri);
     }
   }
 
@@ -276,7 +297,7 @@ export class LanguageUpdater {
     if (fileInd === -1) return;
     const list = await this.state.goto_implementation(fileInd, pos.lineNumber, pos.column);
     if (list) {
-      return list.map((def: any) => ({ ...def, uri: model.uri }));
+      return this.getDefinition(list, model.uri);
     }
   }
 

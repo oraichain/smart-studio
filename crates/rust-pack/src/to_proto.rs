@@ -147,6 +147,7 @@ pub(crate) fn location_links(
                 nav.focus_range.map(|it| text_range(it, line_index)).unwrap_or(range);
 
             return_types::LocationLink {
+                fileId: nav.file_id.0,
                 originSelectionRange: selection,
                 range,
                 targetSelectionRange: target_selection_range,
