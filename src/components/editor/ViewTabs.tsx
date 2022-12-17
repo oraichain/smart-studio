@@ -177,7 +177,7 @@ export class ViewTabs extends React.Component<ViewTabsProps, ViewTabsState> {
     } else if (view.type === ViewType.Binary) {
       viewer = <BinaryView view={view} />;
     } else if (file) {
-      viewer = <EditorView view={view} options={{ readOnly: file.isBufferReadOnly }} />;
+      viewer = <EditorView view={view} options={{ minimap: { enabled: true }, readOnly: file.isBufferReadOnly }} />;
     } else {
       return <div className="editor-pane-container empty" />;
     }

@@ -147,7 +147,7 @@ export class Monaco extends React.Component<MonacoProps, {}> {
         value: '',
         theme: 'fiddle-theme',
         minimap: {
-          enabled: true
+          enabled: false
         },
         renderLineHighlight: 'none'
       },
