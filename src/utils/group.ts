@@ -19,9 +19,10 @@
  * SOFTWARE.
  */
 
-import { assert } from "../util";
-import { View, ViewType } from "../components/editor/View";
-import { File } from "../models";
+import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
+import { assert } from '../util';
+import { View, ViewType } from '../components/editor/View';
+import { File } from '../models';
 
 export default class Group {
   currentView: View;
@@ -60,16 +61,17 @@ export default class Group {
       this.preview = null;
     }
   }
-  openFile(file: File, type: ViewType = ViewType.Editor, preview = true) {
-    const index =  this.views.findIndex(view => view.file === file && view.type === type);
-    const view = (index >= 0) ? this.views[index] : new View(file, type);
+  openFile(file: File, type: ViewType = ViewType.Editor, preview = true, position?: monaco.IPosition) {
+    const index = this.views.findIndex((view) => view.file === file && view.type === type);
+    const view = index >= 0 ? this.views[index] : new View(file, type);
+    view.position = position;
     this.open(view, preview);
   }
 
   close(view: View) {
     const i = this.views.indexOf(view);
     if (i < 0) {
-      return ;
+      return;
     }
 
     this.views.splice(i, 1);

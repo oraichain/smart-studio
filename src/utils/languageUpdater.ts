@@ -92,6 +92,13 @@ export class LanguageUpdater {
     });
   }
 
+  public getPath(resource: monaco.Uri): string | undefined {
+    const fileId = this.fileIdMap.get(resource);
+    if (fileId !== undefined) {
+      return `src/${LanguageUpdater.contractFiles[fileId]}`;
+    }
+  }
+
   private getUri(fileInd: number, defaultUri: monaco.Uri): monaco.Uri {
     for (const uri of this.fileIdMap.keys()) {
       if (this.fileIdMap.get(uri) === fileInd) {
@@ -277,7 +284,6 @@ export class LanguageUpdater {
     const fileInd = this.fileIdMap.get(model.uri);
     if (fileInd === -1) return;
     const list = await this.state.definition(fileInd, pos.lineNumber, pos.column);
-
     if (list) {
       return this.getDefinition(list, model.uri);
     }

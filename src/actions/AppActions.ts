@@ -19,6 +19,7 @@
  * SOFTWARE.
  */
 
+import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
 import dispatcher from '../dispatcher';
 import { File, Directory, Project, FileType } from '../models';
 import { Template } from '../components/NewProjectDialog';
@@ -28,7 +29,6 @@ import { Service, ILoadFiddleResponse } from '../service';
 import Group from '../utils/group';
 import { rewriteHTML, RewriteSourcesContext } from '../utils/rewriteSources';
 import { RunTaskExternals } from '../utils/taskRunner';
-import { LanguageUpdater } from '../utils/languageUpdater';
 
 export enum AppActionType {
   ADD_FILE_TO = 'ADD_FILE_TO',
@@ -184,15 +184,16 @@ export interface OpenFileAction extends AppAction {
   file: File;
   viewType: ViewType;
   preview: boolean;
-  // TODO: Add the location where the file should open.
+  position?: monaco.IPosition;
 }
 
-export function openFile(file: File, type: ViewType = ViewType.Editor, preview = true) {
+export function openFile(file: File, type: ViewType = ViewType.Editor, preview = true, position?: monaco.IPosition) {
   dispatcher.dispatch({
     type: AppActionType.OPEN_FILE,
     file,
     viewType: type,
-    preview
+    preview,
+    position
   } as OpenFileAction);
 }
 

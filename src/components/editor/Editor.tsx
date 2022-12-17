@@ -83,6 +83,12 @@ export class Monaco extends React.Component<MonacoProps, {}> {
 
       // TODO: Weird that we need this to make monaco really think it needs to update the language.
       monaco.editor.setModelLanguage(this.editor.getModel(), languageForFileType(view.file.type));
+      if (view.position) {
+        console.log(view.position);
+        this.editor.setPosition(view.position);
+        // clear position to get from state
+        view.position = null;
+      }
     }
   }
 

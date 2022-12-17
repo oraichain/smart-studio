@@ -28,8 +28,7 @@
     },
     "include": [
         "./src/**/*",
-        "types",
-        "node_modules/monaco-editor/monaco.d.ts"
+        "types"
     ],
     "exclude": [
         "./templates/**/*"

@@ -53,6 +53,7 @@ export class View {
   public file: File;
   public type: ViewType;
   public state: monaco.editor.ICodeEditorViewState;
+  public position?: monaco.IPosition;
 
   constructor(file: File, type = ViewType.Editor) {
     this.file = file;

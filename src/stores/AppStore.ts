@@ -213,8 +213,8 @@ export class AppStore {
     this.onTabsChange.dispatch();
   }
 
-  private openFile(file: File, type: ViewType, preview: boolean) {
-    this.activeTabGroup.openFile(file, type, preview);
+  private openFile(file: File, type: ViewType, preview: boolean, position?: monaco.IPosition) {
+    this.activeTabGroup.openFile(file, type, preview, position);
     this.onTabsChange.dispatch();
   }
 
@@ -322,8 +322,8 @@ export class AppStore {
         break;
       }
       case AppActionType.OPEN_FILE: {
-        const { file, viewType, preview } = action as OpenFileAction;
-        this.openFile(file, viewType, preview);
+        const { file, viewType, preview, position } = action as OpenFileAction;
+        this.openFile(file, viewType, preview, position);
         break;
       }
       case AppActionType.OPEN_FILES: {

@@ -26,7 +26,7 @@ import { Workspace } from './Workspace';
 import { EditorPanes } from './editor';
 import { Toolbar } from './Toolbar';
 import { defaultViewTypeForFileType } from './editor/View';
-import { schema, build, test, run, runTask, openFiles, pushStatus, popStatus, openProject, closeTabs, deleteFile } from '../actions/AppActions';
+import { schema, build, test, run, runTask, pushStatus, popStatus, openProject, closeTabs, deleteFile } from '../actions/AppActions';
 
 import appStore from '../stores/AppStore';
 import { addFileTo, initStore, updateFileNameAndDescription, openFile, saveProject, logLn } from '../actions/AppActions';
