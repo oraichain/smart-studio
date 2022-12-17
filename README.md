@@ -3,6 +3,8 @@
 To build Oraichain Studio whenever a file changes run:
 
 ```bash
+# run test crates
+cargo test --package rust-pack --lib --release -- tests::initialize_state --exact --nocapture
 
 # build rust
 wasm-pack build crates/ra-wasm --target web

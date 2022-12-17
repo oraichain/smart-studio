@@ -211,6 +211,7 @@ export class LanguageUpdater {
     const fileInd = this.fileIdMap.get(model.uri);
 
     if (fileInd === -1) return;
+    console.log(pos.lineNumber, pos.column)
     const suggestions = await this.state.completions(fileInd, pos.lineNumber, pos.column);
 
     if (suggestions) {

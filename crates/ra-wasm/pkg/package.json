@@ -1,7 +1,7 @@
 {
   "name": "ra-wasm",
   "collaborators": [
-    "rust-analyzer developers"
+    "tu@orai.io"
   ],
   "version": "0.1.0",
   "files": [
