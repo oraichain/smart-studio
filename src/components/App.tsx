@@ -392,10 +392,10 @@ export class App extends React.Component<AppProps, AppState> {
           title="Delete Project"
           isDisabled={this.toolbarButtonsAreDisabled()}
           onClick={async () => {
-            const message = `Are you sure you want to delete Project '${this.state.fiddle}' and its contents?`;
+            const projectModel = this.state.project.getModel();
+            const message = `Are you sure you want to delete Project '${projectModel.name}' and its contents?`;
 
             if (confirm(message)) {
-              const projectModel = this.state.project.getModel();
               const ret = await Service.deleteFile(projectModel);
 
               if (ret.success) {

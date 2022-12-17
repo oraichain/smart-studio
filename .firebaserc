@@ -1,0 +1,12 @@
+{
+  "projects": {},
+  "targets": {
+    "zk-wasmer": {
+      "hosting": {
+        "cw-play": [
+          "cw-play"
+        ]
+      }
+    }
+  }
+}
