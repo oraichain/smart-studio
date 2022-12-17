@@ -34,7 +34,7 @@ class TokenState {
 }
 
 export class LanguageUpdater {
-  static contractFiles: string[] = ['lib.rs'];
+  static contractFiles: string[] = ['lib.rs', 'msg.rs', 'state.rs', 'error.rs', 'contract.rs'];
   private state: WorldState;
   private fileIdMap: Map<monaco.Uri, number> = new Map();
   private languageId: string;
