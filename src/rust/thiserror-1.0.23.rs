@@ -1,8 +1,8 @@
 //! [![github]](https://github.com/dtolnay/thiserror)&ensp;[![crates-io]](https://crates.io/crates/thiserror)&ensp;[![docs-rs]](https://docs.rs/thiserror)
 //!
-//! [github]: /assets/img/github.svg
-//! [crates-io]: /assets/img/crates-io.svg
-//! [docs-rs]: /assets/img/docs-rs.svg
+//! [github]: https://studio.orai.network/assets/img/github.svg
+//! [crates-io]: https://studio.orai.network/assets/img/crates-io.svg
+//! [docs-rs]: https://studio.orai.network/assets/img/docs-rs.svg
 //!
 //! <br>
 //!
