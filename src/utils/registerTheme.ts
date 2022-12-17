@@ -29,14 +29,6 @@ const dark_blue = '6298d4';
 const dark_blue_secondary = '95d9fc';
 const dark_yellow = 'dcdd9b';
 
-const light_teal = '14b79d';
-const light_text = '000000';
-const light_green = '008000';
-const light_orange = 'a51b1b';
-const light_blue = '0000ff';
-const light_blue_secondary = '0A59DF';
-const light_yellow = 'D9CA00';
-
 export default function registerTheme() {
   monaco.editor.defineTheme('fiddle-theme', {
     base: 'vs-dark',
@@ -55,10 +47,17 @@ export default function registerTheme() {
       { token: 'field', foreground: dark_blue_secondary },
       { token: 'builtin_type', foreground: dark_teal },
       { token: 'function', foreground: dark_yellow },
-      { token: 'value_param', foreground: dark_teal },
+      { token: 'value_param', foreground: dark_blue_secondary },
       { token: 'self_type', foreground: dark_teal },
       { token: 'trait', foreground: dark_teal },
       { token: 'self_keyword', foreground: dark_blue },
+      { token: 'enum', foreground: dark_teal },
+      { token: 'type_alias' },
+      { token: 'enum_variant', foreground: dark_blue },
+      // { token: 'angle' },
+      // { token: 'static' },
+      // { token: 'bracket' },
+      // { token: 'numeric_literal' },
       { token: 'variable', foreground: dark_blue_secondary },
       { token: 'unresolved_reference', foreground: dark_blue },
       { token: 'macro', foreground: dark_blue },
