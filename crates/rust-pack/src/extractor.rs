@@ -7,10 +7,8 @@ use ide_db::base_db::{CrateName, Dependency, Env, FileSet, VfsPath};
 
 use change_json::ChangeJson;
 
-pub const CONTRACT_FILES: [&str; 1] = [
-    "/src/lib.rs",
-    //  "/src/msg.rs", "/src/state.rs", "/src/error.rs", "/src/contract.rs"
-];
+pub const CONTRACT_FILES: [&str; 5] =
+    ["/src/lib.rs", "/src/msg.rs", "/src/state.rs", "/src/error.rs", "/src/contract.rs"];
 
 pub fn create_crate(crate_graph: &mut CrateGraph, f: FileId) -> CrateId {
     let mut cfg = CfgOptions::default();

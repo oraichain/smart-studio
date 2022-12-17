@@ -20,7 +20,7 @@ export const conf = {
 
 export const language = {
   // Set defaultToken to invalid to see what you do not tokenize yet
-  defaultToken: 'invalid',
+  // defaultToken: 'invalid',
   ...rustLanguage,
 
   keywords: [
