@@ -374,6 +374,7 @@ fn main() {
             output = remove_extern_c(&output);
             if name != "libcore" {
                 output = remove_unstable_feature(&output);
+                output = remove_function_body(&output);
             } else {
                 let (left, right) = output.split_at(output.len() * 24 / 100); // 23-24%
                 let mut keep_unwrap_flattern = String::from(left);
@@ -381,7 +382,6 @@ fn main() {
                 output = keep_unwrap_flattern;
             }
             output = remove_test_mod(&output);
-            output = remove_function_body(&output);
 
             // fix reference for libcore
             if name.eq("libcore") {
