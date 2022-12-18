@@ -144,17 +144,17 @@ pub fn load_change_from_files(
     // crate_graph.add_dep(thiserror_impl_crate, proc_macro2_dep.clone()).unwrap();
 
     // comment out indirect depedencies
-    // crate_graph.add_dep(contract_crate, core_dep).unwrap();
-    // crate_graph.add_dep(contract_crate, alloc_dep).unwrap();
+    crate_graph.add_dep(contract_crate, core_dep).unwrap();
+    crate_graph.add_dep(contract_crate, alloc_dep).unwrap();
     crate_graph.add_dep(contract_crate, std_dep).unwrap();
-    // crate_graph.add_dep(contract_crate, cosmwasm_derive_dep).unwrap();
-    // crate_graph.add_dep(contract_crate, cosmwasm_schema_derive_dep).unwrap();
+    crate_graph.add_dep(contract_crate, cosmwasm_derive_dep).unwrap();
+    crate_graph.add_dep(contract_crate, cosmwasm_schema_derive_dep).unwrap();
     crate_graph.add_dep(contract_crate, cosmwasm_schema_dep).unwrap();
     crate_graph.add_dep(contract_crate, cosmwasm_std_dep).unwrap();
     crate_graph.add_dep(contract_crate, cosmwasm_crypto_dep).unwrap();
     crate_graph.add_dep(contract_crate, cosmwasm_storage_dep).unwrap();
     crate_graph.add_dep(contract_crate, thiserror_dep).unwrap();
-    // crate_graph.add_dep(contract_crate, thiserror_impl_dep).unwrap();
+    crate_graph.add_dep(contract_crate, thiserror_impl_dep).unwrap();
     // crate_graph.add_dep(contract_crate, proc_macro2_dep).unwrap();
 
     change.change_file(std_id, Some(Arc::new(rust_std)));
