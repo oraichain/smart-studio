@@ -70,11 +70,10 @@ export class MonacoUtils {
 
         const project = appStore.getProject().getModel();
         const file = project.getFile(path);
+        const range = input.options.selection;
+        const position = { lineNumber: range.startLineNumber, column: range.startColumn };
         // open this file
-        openFile(file);
-
-        // const range = input.options.selection;
-        // openFile(file, undefined, undefined, { lineNumber: range.startLineNumber, column: range.startColumn });
+        openFile(file, undefined, undefined, position);
       }
 
       return result; // always return the base result

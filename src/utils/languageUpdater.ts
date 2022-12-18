@@ -124,11 +124,13 @@ export class LanguageUpdater {
       const res = await this.state.update(fileInd, model.getValue());
       monaco.editor.setModelMarkers(model, Language.RustAnalyzer, res.diagnostics);
       // update token highlights
-      this.setTokens(res.highlights);
+      // this.setTokens(res.highlights);
+      return res.highlights;
     };
 
     // const start = Date.now();
-    await update();
+    const highlights = await update();
+    this.setTokens(highlights);
     // console.log('Took', Date.now() - start, 'ms');
     model.onDidChangeContent(update);
     monaco.editor.setModelLanguage(model, Language.RustAnalyzer);

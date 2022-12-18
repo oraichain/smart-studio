@@ -5,7 +5,7 @@ use crate::state::LocalState;
 
 #[test]
 fn initialize_state() {
-    let mut state = LocalState::new();
+    let mut state = LocalState::default();
     let change_json = fs::read_to_string("../../change.json").unwrap();
     println!("json length {}", change_json.len());
     state.load(change_json.into_bytes());

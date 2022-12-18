@@ -1,8 +1,10 @@
 //! Conversion of rust-analyzer specific types to return_types equivalents.
+use ide::Analysis;
+
 use crate::return_types;
 
 pub(crate) fn text_range(
-    range: ide::TextRange,
+    range: &ide::TextRange,
     line_index: &ide::LineIndex,
 ) -> return_types::Range {
     let start = line_index.line_col(range.start());
@@ -63,7 +65,7 @@ pub(crate) fn severity(s: ide::Severity) -> return_types::MarkerSeverity {
 
 pub(crate) fn text_edit(indel: &ide::Indel, line_index: &ide::LineIndex) -> return_types::TextEdit {
     let text = indel.insert.clone();
-    return_types::TextEdit { range: text_range(indel.delete, line_index), text }
+    return_types::TextEdit { range: text_range(&indel.delete, line_index), text }
 }
 
 pub(crate) fn text_edits(edit: ide::TextEdit, ctx: &ide::LineIndex) -> Vec<return_types::TextEdit> {
@@ -135,20 +137,22 @@ pub(crate) fn signature_information(
 pub(crate) fn location_links(
     nav_info: ide::RangeInfo<Vec<ide::NavigationTarget>>,
     line_index: &ide::LineIndex,
+    analysis: &Analysis,
 ) -> Vec<return_types::LocationLink> {
-    let selection = text_range(nav_info.range, line_index);
+    let origin_selection_range = text_range(&nav_info.range, &line_index);
     nav_info
         .info
         .into_iter()
         .map(|nav| {
-            let range = text_range(nav.full_range, line_index);
+            let line_index = analysis.file_line_index(nav.file_id).unwrap();
 
+            let range = text_range(&nav.full_range, &line_index);
             let target_selection_range =
-                nav.focus_range.map(|it| text_range(it, line_index)).unwrap_or(range);
+                nav.focus_range.map(|it| text_range(&it, &line_index)).unwrap_or(range);
 
             return_types::LocationLink {
                 fileId: nav.file_id.0,
-                originSelectionRange: selection,
+                originSelectionRange: origin_selection_range,
                 range,
                 targetSelectionRange: target_selection_range,
             }
@@ -189,7 +193,7 @@ pub(crate) fn symbol_kind(kind: ide::StructureNodeKind) -> return_types::SymbolK
 }
 
 pub(crate) fn folding_range(fold: ide::Fold, ctx: &ide::LineIndex) -> return_types::FoldingRange {
-    let range = text_range(fold.range, ctx);
+    let range = text_range(&fold.range, ctx);
     return_types::FoldingRange {
         start: range.startLineNumber,
         end: range.endLineNumber,
