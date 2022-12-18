@@ -19,7 +19,6 @@
  * SOFTWARE.
  */
 
-import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
 import dispatcher from '../dispatcher';
 import { File, Directory, Project, FileType } from '../models';
 import { Template } from '../components/NewProjectDialog';

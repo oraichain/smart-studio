@@ -14,7 +14,7 @@ fn initialize_state() {
         let code =
             fs::read_to_string(format!("../../templates/empty_contract{}", CONTRACT_FILES[id]))
                 .unwrap();
-        state.update(id as u32, code);
+        state.update(id as u32, code, false);
     }
 
     let ret = state.completions(4, 34, 4);

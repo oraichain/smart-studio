@@ -1,166 +1,9 @@
-import { language as rustLanguage, conf as RustConf } from 'monaco-editor/esm/vs/basic-languages/rust/rust';
+import { language as rustLanguage, conf as rustConf } from 'monaco-editor/esm/vs/basic-languages/rust/rust';
 
-export const conf = {
-  ...RustConf,
-
-  comments: {
-    lineComment: '//',
-    blockComment: ['/*', '*/']
-  },
-  brackets: [['{', '}'], ['[', ']'], ['(', ')']],
-  autoClosingPairs: [{ open: '[', close: ']' }, { open: '{', close: '}' }, { open: '(', close: ')' }, { open: '"', close: '"', notIn: ['string'] }],
-  surroundingPairs: [{ open: '{', close: '}' }, { open: '[', close: ']' }, { open: '(', close: ')' }, { open: '"', close: '"' }, { open: "'", close: "'" }],
-  folding: {
-    markers: {
-      start: new RegExp('^\\s*#pragma\\s+region\\b'),
-      end: new RegExp('^\\s*#pragma\\s+endregion\\b')
-    }
-  }
-};
-
-export const language = {
+export const language: monaco.languages.IMonarchLanguage = {
   // Set defaultToken to invalid to see what you do not tokenize yet
-  // defaultToken: 'invalid',
   ...rustLanguage,
-
-  keywords: [
-    'as',
-    'break',
-    'const',
-    'crate',
-    'enum',
-    'extern',
-    'false',
-    'fn',
-    'impl',
-    'in',
-    'let',
-    'mod',
-    'move',
-    'mut',
-    'pub',
-    'ref',
-    'return',
-    'self',
-    'Self',
-    'static',
-    'struct',
-    'super',
-    'trait',
-    'true',
-    'type',
-    'unsafe',
-    'use',
-    'where',
-    'macro_rules'
-  ],
-
   controlFlowKeywords: ['continue', 'else', 'for', 'if', 'while', 'loop', 'match'],
-
-  typeKeywords: [
-    'Self',
-    'm32',
-    'm64',
-    'm128',
-    'f80',
-    'f16',
-    'f128',
-    'int',
-    'uint',
-    'float',
-    'char',
-    'bool',
-    'u8',
-    'u16',
-    'u32',
-    'u64',
-    'f32',
-    'f64',
-    'i8',
-    'i16',
-    'i32',
-    'i64',
-    'str',
-    'Option',
-    'Either',
-    'c_float',
-    'c_double',
-    'c_void',
-    'FILE',
-    'fpos_t',
-    'DIR',
-    'dirent',
-    'c_char',
-    'c_schar',
-    'c_uchar',
-    'c_short',
-    'c_ushort',
-    'c_int',
-    'c_uint',
-    'c_long',
-    'c_ulong',
-    'size_t',
-    'ptrdiff_t',
-    'clock_t',
-    'time_t',
-    'c_longlong',
-    'c_ulonglong',
-    'intptr_t',
-    'uintptr_t',
-    'off_t',
-    'dev_t',
-    'ino_t',
-    'pid_t',
-    'mode_t',
-    'ssize_t'
-  ],
-
-  operators: [
-    '=',
-    '>',
-    '<',
-    '!',
-    '~',
-    '?',
-    ':',
-    '==',
-    '<=',
-    '>=',
-    '!=',
-    '&&',
-    '||',
-    '++',
-    '--',
-    '+',
-    '-',
-    '*',
-    '/',
-    '&',
-    '|',
-    '^',
-    '%',
-    '<<',
-    '>>',
-    '>>>',
-    '+=',
-    '-=',
-    '*=',
-    '/=',
-    '&=',
-    '|=',
-    '^=',
-    '%=',
-    '<<=',
-    '>>=',
-    '>>>='
-  ],
-
-  // we include these common regular expressions
-  symbols: /[=><!~?:&|+\-*\/\^%]+/,
-
-  // C# style strings
-  escapes: /\\(?:[abfnrtv\\"']|x[0-9A-Fa-f]{1,4}|u[0-9A-Fa-f]{4}|U[0-9A-Fa-f]{8})/,
-
   // The main tokenizer for our languages
   tokenizer: {
     root: [
@@ -233,6 +76,10 @@ export const language = {
 
     whitespace: [[/[ \t\r\n]+/, 'white'], [/\/\*/, 'comment', '@comment'], [/\/\/.*$/, 'comment']],
 
-    func_decl: [[/[a-z_$][\w$]*/, 'support.function', '@pop']]
+    func_decl: [[/[a-z_$][\w$]*/, 'support.function', '@pop']],
+
+    func_call: [[/[a-z_$][\w$]*(?=\s*\()/, 'support.function', '@pop'], [/.*/, '']]
   }
 };
+
+export const conf: monaco.languages.LanguageConfiguration = rustConf;

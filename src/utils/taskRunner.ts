@@ -19,7 +19,6 @@
  * SOFTWARE.
  */
 
-import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
 import { Project, fileTypeForExtension, mimeTypeForFileType } from '../models';
 import { Gulpy } from '../gulpy';
 import { Service } from '../service';

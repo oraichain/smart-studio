@@ -19,10 +19,8 @@
  * SOFTWARE.
  */
 
-import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
-
 import { Action } from 'monaco-editor/esm/vs/base/common/actions';
-import { ContextSubMenu } from 'monaco-editor/esm/vs/base/browser/contextmenu';
+// import { ContextSubMenu } from 'monaco-editor/esm/vs/base/browser/contextmenu';
 import { ContextMenuService } from 'monaco-editor/esm/vs/platform/contextview/browser/contextMenuService';
 import { StandaloneServices } from 'monaco-editor/esm/vs/editor/standalone/browser/standaloneServices';
 import { IContextViewService } from 'monaco-editor/esm/vs/platform/contextview/browser/contextView';
@@ -35,13 +33,13 @@ import { INotificationService } from 'monaco-editor/esm/vs/platform/notification
 import { ITree } from './monaco-extra';
 import registerTheme from './utils/registerTheme';
 import registerLanguages from './utils/registerLanguages';
-import { Service } from './service';
 import appStore from './stores/AppStore';
 import { openFile } from './actions/AppActions';
+import { LanguageUpdater } from './utils/languageUpdater';
 // Utils provided by monaco editor, but exposed only via AMD require().
 // See index.tsx for initialization.
 export class MonacoUtils {
-  static ContextSubMenu = ContextSubMenu;
+  // static ContextSubMenu = ContextSubMenu;
   static Action = Action;
   static ContextMenuserviceInstance: any;
   static initialize() {
@@ -66,7 +64,7 @@ export class MonacoUtils {
     codeEditorService.openCodeEditor = async (input: { resource: monaco.Uri; options: { selection: monaco.Range } }, source: any) => {
       const result = await openEditorBase(input, source);
       if (result === null) {
-        const path = Service.LanguageUpdater.getPath(input.resource);
+        const path = LanguageUpdater.instance.getPath(input.resource);
 
         const project = appStore.getProject().getModel();
         const file = project.getFile(path);

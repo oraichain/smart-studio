@@ -185,6 +185,10 @@ function passArray8ToWasm0(arg, malloc) {
     return ptr;
 }
 
+function isLikeNone(x) {
+    return x === undefined || x === null;
+}
+
 function handleError(f, args) {
     try {
         return f.apply(this, args);
@@ -288,12 +292,13 @@ export class WorldState {
     /**
     * @param {number} file_ind
     * @param {string} code
+    * @param {boolean | undefined} with_highlight
     * @returns {any}
     */
-    update(file_ind, code) {
+    update(file_ind, code, with_highlight) {
         const ptr0 = passStringToWasm0(code, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len0 = WASM_VECTOR_LEN;
-        const ret = wasm.worldstate_update(this.ptr, file_ind, ptr0, len0);
+        const ret = wasm.worldstate_update(this.ptr, file_ind, ptr0, len0, isLikeNone(with_highlight) ? 0xFFFFFF : with_highlight ? 1 : 0);
         return takeObject(ret);
     }
     /**

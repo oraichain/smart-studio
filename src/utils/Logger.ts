@@ -20,12 +20,11 @@
  */
 
 import Raven from 'raven-js';
-import config from '../../config.json';
 
 export class Logger {
   static init() {
     if (Logger.isRunningInProduction()) {
-      Raven.config(config.sentryDNS).install();
+      // Raven.config(config.sentryDNS).install();
     }
   }
   static captureException(e: any, additionalData?: Raven.RavenOptions) {

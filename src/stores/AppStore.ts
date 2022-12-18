@@ -18,7 +18,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
+
 import { EventDispatcher, ModelRef, Project, File, Directory, FileType } from '../models';
 import { SandboxRun } from '../models/types';
 

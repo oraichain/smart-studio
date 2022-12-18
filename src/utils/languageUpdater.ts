@@ -1,8 +1,6 @@
-import * as monaco from 'monaco-editor';
 import { File, FileType, languageForFileType } from '../models';
 import { WorldState } from '../../crates/ra-wasm/pkg';
 import { createRA } from './create-ra';
-import { Language } from '../compilerServices';
 
 window.MonacoEnvironment = {
   getWorkerUrl: (moduleId, label) => {
@@ -38,12 +36,21 @@ export class LanguageUpdater {
   private state: WorldState;
   private fileIdMap: Map<monaco.Uri, number> = new Map();
   private languageId: string;
-  constructor(fileType: FileType) {
+  private analyzerLanguageId: string;
+  constructor(fileType: FileType, analyzerLanguageId?: string) {
     this.languageId = languageForFileType(fileType);
+    this.analyzerLanguageId = analyzerLanguageId || this.languageId;
+  }
+
+  static instance = new LanguageUpdater(FileType.Rust /*,Language.RustAnalyzer*/);
+
+  get AnalyzerLanguageId() {
+    return this.analyzerLanguageId;
   }
 
   async initialize() {
     if (this.state) return;
+
     this.state = (await createRA()) as WorldState;
     if (process.env.NODE_ENV === 'production') {
       const data = await fetch('/change.json');
@@ -52,18 +59,20 @@ export class LanguageUpdater {
       this.state.load(encoder.encode(textData));
     } else {
       // fallback loading from source code
+
       const rustFiles = await Promise.all([
-        import('../rust/libstd.rs'),
-        import('../rust/libcore.rs'),
-        import('../rust/liballoc.rs'),
-        import('../rust/cosmwasm-derive.rs'),
-        import('../rust/cosmwasm-schema-derive.rs'),
-        import('../rust/cosmwasm-schema.rs'),
-        import('../rust/cosmwasm-std.rs'),
-        import('../rust/cosmwasm-crypto.rs'),
-        import('../rust/cosmwasm-storage.rs'),
-        import('../rust/thiserror-1.0.23.rs'),
-        import('../rust/thiserror-impl-1.0.23.rs'),
+        import(// @ts-ignore
+        '../rust/libstd.rs'), // @ts-ignore
+        import('../rust/libcore.rs'), // @ts-ignore
+        import('../rust/liballoc.rs'), // @ts-ignore
+        import('../rust/cosmwasm-derive.rs'), // @ts-ignore
+        import('../rust/cosmwasm-schema-derive.rs'), // @ts-ignore
+        import('../rust/cosmwasm-schema.rs'), // @ts-ignore
+        import('../rust/cosmwasm-std.rs'), // @ts-ignore
+        import('../rust/cosmwasm-crypto.rs'), // @ts-ignore
+        import('../rust/cosmwasm-storage.rs'), // @ts-ignore
+        import('../rust/thiserror-1.0.23.rs'), // @ts-ignore
+        import('../rust/thiserror-impl-1.0.23.rs'), // @ts-ignore
         import('../rust/proc-macro2-1.0.6.rs')
       ]);
 
@@ -73,7 +82,7 @@ export class LanguageUpdater {
   }
 
   private setTokens(allTokens: Token[]) {
-    monaco.languages.setTokensProvider(Language.RustAnalyzer, {
+    monaco.languages.setTokensProvider(this.analyzerLanguageId, {
       getInitialState: () => new TokenState(),
       tokenize(_, st: TokenState) {
         const filteredTokens = allTokens.filter((token) => token.range.startLineNumber === st.line);
@@ -122,16 +131,18 @@ export class LanguageUpdater {
     if (fileInd === -1) return;
     const update = async () => {
       const res = await this.state.update(fileInd, model.getValue());
-      monaco.editor.setModelMarkers(model, Language.RustAnalyzer, res.diagnostics);
+      monaco.editor.setModelMarkers(model, this.analyzerLanguageId, res.diagnostics);
       // update token highlights
-      this.setTokens(res.highlights);
+      if (res.highlights.length) {
+        this.setTokens(res.highlights);
+      }
     };
 
     // const start = Date.now();
     const highlights = await update();
     // console.log('Took', Date.now() - start, 'ms');
     model.onDidChangeContent(update);
-    monaco.editor.setModelLanguage(model, Language.RustAnalyzer);
+    monaco.editor.setModelLanguage(model, this.analyzerLanguageId);
   }
 
   addFile(file: File) {

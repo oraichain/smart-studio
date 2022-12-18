@@ -19,8 +19,6 @@
  * SOFTWARE.
  */
 
-import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
-
 import { getNextKey } from '../util';
 import { File } from './File';
 

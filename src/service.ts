@@ -19,7 +19,6 @@
  * SOFTWARE.
  */
 
-import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
 import { File, Project, Directory, FileType, isBinaryFileType, fileTypeFromFileName } from './models';
 import { IStatusProvider } from './models/types';
 import { decodeRestrictedBase64ToBytes, base64EncodeBytes } from './util';
@@ -63,11 +62,6 @@ export { Language } from './compilerServices';
 
 export class Service {
   // private static worker = new ServiceWorker();
-  private static languageUpdater = new LanguageUpdater(FileType.Rust);
-
-  static get LanguageUpdater() {
-    return Service.languageUpdater;
-  }
 
   static getMarkers(response: string): monaco.editor.IMarkerData[] {
     // Parse and annotate errors if compilation fails.
@@ -413,7 +407,7 @@ export class Service {
       }
       file.setData(data);
       // update when load Projects
-      Service.languageUpdater.addFile(file);
+      LanguageUpdater.instance.addFile(file);
     }
   }
 

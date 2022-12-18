@@ -19,7 +19,6 @@
  * SOFTWARE.
  */
 
-import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
 import { assert, getNextKey } from '../util';
 import { Service } from '../service';
 import { FileType, IStatusProvider, isBinaryFileType, languageForFileType } from './types';
@@ -27,9 +26,9 @@ import { Directory } from './Directory';
 import { EventDispatcher } from './EventDispatcher';
 import { Problem } from './Problem';
 import { Project } from './Project';
-import { AppAction, AppActionType, logLn } from '../actions/AppActions';
-import dispatcher from '../dispatcher';
-import appStore from '../stores/AppStore';
+// import { AppAction, AppActionType, logLn } from '../actions/AppActions';
+// import dispatcher from '../dispatcher';
+// import appStore from '../stores/AppStore';
 
 export class File {
   name: string;

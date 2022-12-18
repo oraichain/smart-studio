@@ -19,15 +19,14 @@
  * SOFTWARE.
  */
 
-import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
-
 const dark_teal = '67c6b0';
 const dark_text = 'ffffff';
 const dark_green = '709950';
 const dark_orange = 'ce9178';
+const dark_magenta = 'da70d6';
 const dark_blue = '6298d4';
 const dark_blue_secondary = '95d9fc';
-const dark_yellow = 'dcdd9b';
+const dark_yellow = 'dcdcaa';
 
 export default function registerTheme() {
   monaco.editor.defineTheme('fiddle-theme', {
@@ -38,6 +37,10 @@ export default function registerTheme() {
       { token: 'custom-info', foreground: 'd4d4d4' },
       { token: 'custom-warn', foreground: 'ff9900' },
       { token: 'custom-error', background: '00ff00', foreground: 'ff0000', fontStyle: 'bold' },
+      // { token: 'angle' },
+      // { token: 'static' },
+      // { token: 'bracket' },
+      // { token: 'numeric_literal' },
       { token: 'comment', foreground: dark_green },
       { token: 'builtin_attr', foreground: dark_teal },
       { token: 'string_literal', foreground: dark_orange },
@@ -46,7 +49,6 @@ export default function registerTheme() {
       { token: 'struct', foreground: dark_teal },
       { token: 'field', foreground: dark_blue_secondary },
       { token: 'builtin_type', foreground: dark_teal },
-      { token: 'function', foreground: dark_yellow },
       { token: 'value_param', foreground: dark_blue_secondary },
       { token: 'self_type', foreground: dark_teal },
       { token: 'trait', foreground: dark_teal },
@@ -54,10 +56,6 @@ export default function registerTheme() {
       { token: 'enum', foreground: dark_teal },
       { token: 'type_alias' },
       { token: 'enum_variant', foreground: dark_blue },
-      // { token: 'angle' },
-      // { token: 'static' },
-      // { token: 'bracket' },
-      // { token: 'numeric_literal' },
       { token: 'variable', foreground: dark_blue_secondary },
       { token: 'unresolved_reference', foreground: dark_blue },
       { token: 'macro', foreground: dark_blue },
@@ -71,7 +69,10 @@ export default function registerTheme() {
       { token: 'brace', foreground: dark_text },
       { token: 'colon', foreground: dark_text },
       { token: 'logical', foreground: dark_text },
-      { token: 'punctuation', foreground: dark_text }
+      { token: 'punctuation', foreground: dark_text },
+      { token: 'delimiter.square', foreground: dark_yellow },
+      { token: 'delimiter.curly', foreground: dark_magenta },
+      { token: 'support.function', foreground: dark_yellow }
     ]
   });
   monaco.editor.setTheme('fiddle-theme');

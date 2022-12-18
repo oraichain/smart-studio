@@ -4,9 +4,10 @@
         "allowSyntheticDefaultImports": true,
         "outDir": "./dist/",
         "sourceMap": true,
-        "noImplicitAny": true,
+        "noImplicitAny": false,
         "skipLibCheck": true,
         "module": "esnext",
+        "allowJs": true,
         "forceConsistentCasingInFileNames": true,
         "noFallthroughCasesInSwitch": true,
         "moduleResolution": "node",
@@ -17,7 +18,7 @@
             "es2017.object"
         ],
         "jsx": "react",
-        "declaration": true,
+        "declaration": false,
         "removeComments": false,
         "baseUrl": "./",
         "paths": {
@@ -28,7 +29,8 @@
     },
     "include": [
         "./src/**/*",
-        "types"
+        "types",
+        "node_modules/monaco-editor/monaco.d.ts"
     ],
     "exclude": [
         "./templates/**/*"

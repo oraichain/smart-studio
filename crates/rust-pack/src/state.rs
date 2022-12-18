@@ -77,7 +77,7 @@ impl LocalState {
         self.host.apply_change(change);
     }
 
-    pub fn update(&mut self, file_ind: u32, code: String) -> UpdateResult {
+    pub fn update(&mut self, file_ind: u32, code: String, with_highlight: bool) -> UpdateResult {
         let file_id = FileId(file_ind);
 
         let mut change = Change::new();
@@ -86,17 +86,20 @@ impl LocalState {
 
         let line_index = self.analysis().file_line_index(file_id).unwrap();
 
-        let highlights: Vec<_> = self
-            .analysis()
-            .highlight(file_id)
-            .unwrap()
-            .into_iter()
-            .map(|hl| Highlight {
-                fileId: file_ind,
-                tag: Some(hl.highlight.tag.to_string()),
-                range: text_range(&hl.range, &line_index),
-            })
-            .collect();
+        let highlights: Vec<_> = if with_highlight {
+            self.analysis()
+                .highlight(file_id)
+                .unwrap()
+                .into_iter()
+                .map(|hl| Highlight {
+                    fileId: file_ind,
+                    tag: Some(hl.highlight.tag.to_string()),
+                    range: text_range(&hl.range, &line_index),
+                })
+                .collect()
+        } else {
+            vec![]
+        };
 
         let mut config = DiagnosticsConfig::default();
         config.disabled.insert("unresolved-macro-call".to_string());

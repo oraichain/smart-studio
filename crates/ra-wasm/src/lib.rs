@@ -59,9 +59,9 @@ impl WorldState {
         );
     }
 
-    pub fn update(&mut self, file_ind: u32, code: String) -> JsValue {
+    pub fn update(&mut self, file_ind: u32, code: String, with_highlight: Option<bool>) -> JsValue {
         log::warn!("update");
-        let ret = self.state.update(file_ind, code);
+        let ret = self.state.update(file_ind, code, with_highlight.unwrap_or_default());
 
         serde_wasm_bindgen::to_value(&ret).unwrap()
     }

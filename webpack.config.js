@@ -90,7 +90,7 @@ module.exports = (env, options) => {
     // dependencies, which allows browsers to cache those libraries between builds.
 
     plugins: [
-      new ForkTsCheckerWebpackPlugin(),
+      options.mode !== 'production' && new ForkTsCheckerWebpackPlugin(),
       new webpack.EnvironmentPlugin({
         SERVICE_URL: false,
         NODE_ENV: options.mode,
@@ -99,7 +99,7 @@ module.exports = (env, options) => {
       new webpack.ProvidePlugin({
         process: 'process/browser'
       })
-    ],
+    ].filter(Boolean),
     experiments: {
       asyncWebAssembly: true
     },

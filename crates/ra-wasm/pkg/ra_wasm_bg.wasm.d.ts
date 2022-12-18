@@ -5,7 +5,7 @@ export function __wbg_worldstate_free(a: number): void;
 export function worldstate_new(): number;
 export function worldstate_load(a: number, b: number, c: number): void;
 export function worldstate_init(a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number, l: number, m: number, n: number, o: number, p: number, q: number, r: number, s: number, t: number, u: number, v: number, w: number, x: number, y: number): void;
-export function worldstate_update(a: number, b: number, c: number, d: number): number;
+export function worldstate_update(a: number, b: number, c: number, d: number, e: number): number;
 export function worldstate_inlay_hints(a: number, b: number): number;
 export function worldstate_completions(a: number, b: number, c: number, d: number): number;
 export function worldstate_hover(a: number, b: number, c: number, d: number): number;

@@ -19,44 +19,16 @@
  * SOFTWARE.
  */
 
-import { DefaultController } from 'monaco-editor/esm/vs/base/parts/tree/browser/treeDefaults';
-import { MonacoUtils } from './monaco-utils';
 import { ITree, ContextMenuEvent } from './monaco-extra';
 
-export class MonacoController extends DefaultController {
+export class MonacoController {
   private getActionsFn?: Function;
 
   constructor(getActionsFn?: Function) {
-    super();
     this.getActionsFn = getActionsFn;
   }
 
   onContextMenu(tree: ITree, file: File, event: ContextMenuEvent): boolean {
     return false;
-    // default Project and nothing
-    if (file.name === 'Project') return;
-    tree.setFocus(file);
-    const anchorOffset = { x: -10, y: -3 };
-    const anchor = { x: event._posx + anchorOffset.x, y: event._posy + anchorOffset.y };
-    const actions = this.getActionsFn && this.getActionsFn(file, event);
-
-    if (!actions || !actions.length) {
-      return false;
-    }
-
-    MonacoUtils.ContextMenuserviceInstance.showContextMenu({
-      getAnchor: () => anchor,
-      getActions: () => actions,
-      getActionViewItem: (action: any): any => null,
-      onHide: (wasCancelled?: boolean) => {
-        if (wasCancelled) {
-          tree.domFocus();
-        }
-      }
-    });
-
-    super.onContextMenu(tree, file, event);
-
-    return true;
   }
 }

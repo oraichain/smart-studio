@@ -4,17 +4,16 @@ import ReactModal from 'react-modal';
 import { Button } from './shared/Button';
 import { Github } from './shared/Icons';
 import { Loading } from './Loading';
-import { sendRequest } from '@/compilerServices/sendRequest';
 
 type GithubConnectDialogState = {
-  isOpen: boolean,
-  onClose: () => void
-}
+  isOpen: boolean;
+  onClose: () => void;
+};
 
 export class GithubConnectDialog extends React.PureComponent<GithubConnectDialogState> {
   state = {
     loading: false
-  }
+  };
 
   async handleConnectGithub() {
     const config = await getConfig();
@@ -52,7 +51,6 @@ export class GithubConnectDialog extends React.PureComponent<GithubConnectDialog
           location.pathname = '/';
         }
       })();
-
     }
   }
 
@@ -61,29 +59,22 @@ export class GithubConnectDialog extends React.PureComponent<GithubConnectDialog
     const { loading } = this.state;
 
     return (
-      <ReactModal 
-        isOpen={isOpen} 
-        contentLabel="Connect to github"
-        className="modal show-file-icons connectGithub"
-        overlayClassName="overlay" ariaHideApp={false}>
-          <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', height: '500%' }}>
-            <div className="modal-title-bar" style={{fontSize:40,height:42,paddingTop:15,textAlign:'center'}}> Oraichain Studio</div>
-            {loading && <Loading /> }
-            <div className="modal-content" style={{ background: '#fff', textAlign: 'center' }}>
-              <img src="/assets/img/orai-studio.png" height="160" style={{ margin: 20 }} />
-            </div>
-
-            <div className="modal-footer">
-              <Button
-                fill
-                icon={<Github />}
-                label="Connect to github"
-                title="Connect to github"
-                onClick={this.handleConnectGithub}
-              />
-            </div>
+      <ReactModal isOpen={isOpen} contentLabel="Connect to github" className="modal show-file-icons connectGithub" overlayClassName="overlay" ariaHideApp={false}>
+        <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', height: '500%' }}>
+          <div className="modal-title-bar" style={{ fontSize: 40, height: 42, paddingTop: 15, textAlign: 'center' }}>
+            {' '}
+            Oraichain Studio
           </div>
-        </ReactModal>
-    )
+          {loading && <Loading />}
+          <div className="modal-content" style={{ background: '#fff', textAlign: 'center' }}>
+            <img src="/assets/img/orai-studio.png" height="160" style={{ margin: 20 }} />
+          </div>
+
+          <div className="modal-footer">
+            <Button fill icon={<Github />} label="Connect to github" title="Connect to github" onClick={this.handleConnectGithub} />
+          </div>
+        </div>
+      </ReactModal>
+    );
   }
 }

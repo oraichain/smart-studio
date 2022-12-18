@@ -21,13 +21,14 @@
 
 import React, { Component } from 'react';
 import ReactDOM from 'react-dom';
+import * as monaco from 'monaco-editor/esm/vs/editor/editor.main';
 import history from 'history/browser';
 import { App, EmbeddingParams, EmbeddingType } from './components/App';
 import { layout } from './util';
 import { MonacoUtils } from './monaco-utils';
 
 import '../assets/global.css';
-import { Service } from './service';
+import { LanguageUpdater } from './utils/languageUpdater';
 
 export function forEachUrlParameter(callback: (key: string, value: any) => void) {
   let url = history.location.search.substring(1);
@@ -123,11 +124,12 @@ export async function init(environment = 'production') {
   // Logger.init();
   window.addEventListener('resize', layout, false);
   window.addEventListener('beforeunload', unloadPageHandler, false);
-
+  // polyfill monaco
+  window.monaco = monaco;
   MonacoUtils.initialize();
 
   // wait for language updated
-  await Service.LanguageUpdater.initialize();
+  await LanguageUpdater.instance.initialize();
 
   ReactDOM.render(<AppWatchRouter windowContext={appWindowContext} />, document.getElementById('app'));
 }

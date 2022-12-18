@@ -41,9 +41,10 @@ export class WorldState {
 /**
 * @param {number} file_ind
 * @param {string} code
+* @param {boolean | undefined} with_highlight
 * @returns {any}
 */
-  update(file_ind: number, code: string): any;
+  update(file_ind: number, code: string, with_highlight?: boolean): any;
 /**
 * @param {number} file_ind
 * @returns {any}
@@ -163,7 +164,7 @@ export interface InitOutput {
   readonly worldstate_new: () => number;
   readonly worldstate_load: (a: number, b: number, c: number) => void;
   readonly worldstate_init: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number, l: number, m: number, n: number, o: number, p: number, q: number, r: number, s: number, t: number, u: number, v: number, w: number, x: number, y: number) => void;
-  readonly worldstate_update: (a: number, b: number, c: number, d: number) => number;
+  readonly worldstate_update: (a: number, b: number, c: number, d: number, e: number) => number;
   readonly worldstate_inlay_hints: (a: number, b: number) => number;
   readonly worldstate_completions: (a: number, b: number, c: number, d: number) => number;
   readonly worldstate_hover: (a: number, b: number, c: number, d: number) => number;

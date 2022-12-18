@@ -19,7 +19,6 @@
  * SOFTWARE.
  */
 
-import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
 import { assert } from '../util';
 import { View, ViewType } from '../components/editor/View';
 import { File } from '../models';
