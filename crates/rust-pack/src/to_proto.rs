@@ -192,8 +192,11 @@ pub(crate) fn symbol_kind(kind: ide::StructureNodeKind) -> return_types::SymbolK
     }
 }
 
-pub(crate) fn folding_range(fold: ide::Fold, ctx: &ide::LineIndex) -> return_types::FoldingRange {
-    let range = text_range(&fold.range, ctx);
+pub(crate) fn folding_range(
+    fold: ide::Fold,
+    line_index: &ide::LineIndex,
+) -> return_types::FoldingRange {
+    let range = text_range(&fold.range, line_index);
     return_types::FoldingRange {
         start: range.startLineNumber,
         end: range.endLineNumber,
