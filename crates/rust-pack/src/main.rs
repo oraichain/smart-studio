@@ -378,9 +378,11 @@ fn main() {
             } else {
                 let (left, right) = output.split_at(output.len() * 24 / 100); // 23-24%
                 let mut keep_unwrap_flattern = String::from(left);
-                keep_unwrap_flattern.push_str(&remove_unstable_feature(right));
+                keep_unwrap_flattern
+                    .push_str(&remove_function_body(&remove_unstable_feature(right)));
                 output = keep_unwrap_flattern;
             }
+
             output = remove_test_mod(&output);
 
             // fix reference for libcore
@@ -428,7 +430,7 @@ fn main() {
             crate_map.get("cosmwasm-storage").unwrap().clone(),
             crate_map.get("thiserror-1.0.23").unwrap().clone(),
             crate_map.get("thiserror-impl-1.0.23").unwrap().clone(),
-            crate_map.get("proc-macro2-1.0.6").unwrap().clone(),
+            // crate_map.get("proc-macro2-1.0.6").unwrap().clone(),
         );
 
         let json = ChangeJson::from(&change);

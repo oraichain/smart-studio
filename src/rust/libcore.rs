@@ -72951,9 +72951,7 @@ macro_rules! atomic_int {
             #[$cfg_cas]
             #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
             pub fn fetch_add(&self, val: $int_type, order: Ordering) -> $int_type {
-                // SAFETY: data races are prevented by atomic intrinsics.
-                unsafe { atomic_add(self.v.get(), val, order) }
-            }
+}
 
             /// Subtracts from the current value, returning the previous value.
             ///
@@ -72981,9 +72979,7 @@ macro_rules! atomic_int {
             #[$cfg_cas]
             #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
             pub fn fetch_sub(&self, val: $int_type, order: Ordering) -> $int_type {
-                // SAFETY: data races are prevented by atomic intrinsics.
-                unsafe { atomic_sub(self.v.get(), val, order) }
-            }
+}
 
             /// Bitwise "and" with the current value.
             ///
@@ -73014,9 +73010,7 @@ macro_rules! atomic_int {
             #[$cfg_cas]
             #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
             pub fn fetch_and(&self, val: $int_type, order: Ordering) -> $int_type {
-                // SAFETY: data races are prevented by atomic intrinsics.
-                unsafe { atomic_and(self.v.get(), val, order) }
-            }
+}
 
             /// Bitwise "nand" with the current value.
             ///
@@ -73047,9 +73041,7 @@ macro_rules! atomic_int {
             #[$cfg_cas]
             #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
             pub fn fetch_nand(&self, val: $int_type, order: Ordering) -> $int_type {
-                // SAFETY: data races are prevented by atomic intrinsics.
-                unsafe { atomic_nand(self.v.get(), val, order) }
-            }
+}
 
             /// Bitwise "or" with the current value.
             ///
@@ -73080,9 +73072,7 @@ macro_rules! atomic_int {
             #[$cfg_cas]
             #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
             pub fn fetch_or(&self, val: $int_type, order: Ordering) -> $int_type {
-                // SAFETY: data races are prevented by atomic intrinsics.
-                unsafe { atomic_or(self.v.get(), val, order) }
-            }
+}
 
             /// Bitwise "xor" with the current value.
             ///
@@ -73113,9 +73103,7 @@ macro_rules! atomic_int {
             #[$cfg_cas]
             #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
             pub fn fetch_xor(&self, val: $int_type, order: Ordering) -> $int_type {
-                // SAFETY: data races are prevented by atomic intrinsics.
-                unsafe { atomic_xor(self.v.get(), val, order) }
-            }
+}
 
             /// Fetches the value, and applies a function to it that returns an optional
             /// new value. Returns a `Result` of `Ok(previous_value)` if the function returned `Some(_)`, else
@@ -73158,15 +73146,7 @@ macro_rules! atomic_int {
                                    fetch_order: Ordering,
                                    mut f: F) -> Result<$int_type, $int_type>
             where F: FnMut($int_type) -> Option<$int_type> {
-                let mut prev = self.load(fetch_order);
-                while let Some(next) = f(prev) {
-                    match self.compare_exchange_weak(prev, next, set_order, fetch_order) {
-                        x @ Ok(_) => return x,
-                        Err(next_prev) => prev = next_prev
-                    }
-                }
-                Err(prev)
-            }
+}
 
             /// Maximum with the current value.
             ///
@@ -73208,9 +73188,7 @@ macro_rules! atomic_int {
             #[$cfg_cas]
             #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
             pub fn fetch_max(&self, val: $int_type, order: Ordering) -> $int_type {
-                // SAFETY: data races are prevented by atomic intrinsics.
-                unsafe { $max_fn(self.v.get(), val, order) }
-            }
+}
 
             /// Minimum with the current value.
             ///
@@ -73254,9 +73232,7 @@ macro_rules! atomic_int {
             #[$cfg_cas]
             #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
             pub fn fetch_min(&self, val: $int_type, order: Ordering) -> $int_type {
-                // SAFETY: data races are prevented by atomic intrinsics.
-                unsafe { $min_fn(self.v.get(), val, order) }
-            }
+}
 
             /// Returns a mutable pointer to the underlying integer.
             ///
@@ -73284,8 +73260,7 @@ macro_rules! atomic_int {
             ///
             // SAFETY: Safe as long as `my_atomic_op` is atomic.
             /// unsafe {
-            ///     my_atomic_op(atomic.as_mut_ptr());
-            /// }
+}
             /// # }
             /// ```
             #[inline]
@@ -73555,59 +73530,22 @@ atomic_int_ptr_sized! {
 #[inline]
 #[cfg(target_has_atomic = "8")]
 fn strongest_failure_ordering(order: Ordering) -> Ordering {
-    match order {
-        Release => Relaxed,
-        Relaxed => Relaxed,
-        SeqCst => SeqCst,
-        Acquire => Acquire,
-        AcqRel => Acquire,
-    }
 }
 
 #[inline]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 unsafe fn atomic_store<T: Copy>(dst: *mut T, val: T, order: Ordering) {
-    // SAFETY: the caller must uphold the safety contract for `atomic_store`.
-    unsafe {
-        match order {
-            Relaxed => intrinsics::atomic_store_relaxed(dst, val),
-            Release => intrinsics::atomic_store_release(dst, val),
-            SeqCst => intrinsics::atomic_store_seqcst(dst, val),
-            Acquire => panic!("there is no such thing as an acquire store"),
-            AcqRel => panic!("there is no such thing as an acquire-release store"),
-        }
-    }
 }
 
 #[inline]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 unsafe fn atomic_load<T: Copy>(dst: *const T, order: Ordering) -> T {
-    // SAFETY: the caller must uphold the safety contract for `atomic_load`.
-    unsafe {
-        match order {
-            Relaxed => intrinsics::atomic_load_relaxed(dst),
-            Acquire => intrinsics::atomic_load_acquire(dst),
-            SeqCst => intrinsics::atomic_load_seqcst(dst),
-            Release => panic!("there is no such thing as a release load"),
-            AcqRel => panic!("there is no such thing as an acquire-release load"),
-        }
-    }
 }
 
 #[inline]
 #[cfg(target_has_atomic = "8")]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 unsafe fn atomic_swap<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
-    // SAFETY: the caller must uphold the safety contract for `atomic_swap`.
-    unsafe {
-        match order {
-            Relaxed => intrinsics::atomic_xchg_relaxed(dst, val),
-            Acquire => intrinsics::atomic_xchg_acquire(dst, val),
-            Release => intrinsics::atomic_xchg_release(dst, val),
-            AcqRel => intrinsics::atomic_xchg_acqrel(dst, val),
-            SeqCst => intrinsics::atomic_xchg_seqcst(dst, val),
-        }
-    }
 }
 
 /// Returns the previous value (like __sync_fetch_and_add).
@@ -73615,16 +73553,6 @@ unsafe fn atomic_swap<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
 #[cfg(target_has_atomic = "8")]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 unsafe fn atomic_add<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
-    // SAFETY: the caller must uphold the safety contract for `atomic_add`.
-    unsafe {
-        match order {
-            Relaxed => intrinsics::atomic_xadd_relaxed(dst, val),
-            Acquire => intrinsics::atomic_xadd_acquire(dst, val),
-            Release => intrinsics::atomic_xadd_release(dst, val),
-            AcqRel => intrinsics::atomic_xadd_acqrel(dst, val),
-            SeqCst => intrinsics::atomic_xadd_seqcst(dst, val),
-        }
-    }
 }
 
 /// Returns the previous value (like __sync_fetch_and_sub).
@@ -73632,16 +73560,6 @@ unsafe fn atomic_add<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
 #[cfg(target_has_atomic = "8")]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 unsafe fn atomic_sub<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
-    // SAFETY: the caller must uphold the safety contract for `atomic_sub`.
-    unsafe {
-        match order {
-            Relaxed => intrinsics::atomic_xsub_relaxed(dst, val),
-            Acquire => intrinsics::atomic_xsub_acquire(dst, val),
-            Release => intrinsics::atomic_xsub_release(dst, val),
-            AcqRel => intrinsics::atomic_xsub_acqrel(dst, val),
-            SeqCst => intrinsics::atomic_xsub_seqcst(dst, val),
-        }
-    }
 }
 
 #[inline]
@@ -73654,37 +73572,6 @@ unsafe fn atomic_compare_exchange<T: Copy>(
     success: Ordering,
     failure: Ordering,
 ) -> Result<T, T> {
-    // SAFETY: the caller must uphold the safety contract for `atomic_compare_exchange`.
-    let (val, ok) = unsafe {
-        match (success, failure) {
-            (Relaxed, Relaxed) => intrinsics::atomic_cxchg_relaxed_relaxed(dst, old, new),
-            #[cfg(not(bootstrap))]
-            (Relaxed, Acquire) => intrinsics::atomic_cxchg_relaxed_acquire(dst, old, new),
-            #[cfg(not(bootstrap))]
-            (Relaxed, SeqCst) => intrinsics::atomic_cxchg_relaxed_seqcst(dst, old, new),
-            (Acquire, Relaxed) => intrinsics::atomic_cxchg_acquire_relaxed(dst, old, new),
-            (Acquire, Acquire) => intrinsics::atomic_cxchg_acquire_acquire(dst, old, new),
-            #[cfg(not(bootstrap))]
-            (Acquire, SeqCst) => intrinsics::atomic_cxchg_acquire_seqcst(dst, old, new),
-            (Release, Relaxed) => intrinsics::atomic_cxchg_release_relaxed(dst, old, new),
-            #[cfg(not(bootstrap))]
-            (Release, Acquire) => intrinsics::atomic_cxchg_release_acquire(dst, old, new),
-            #[cfg(not(bootstrap))]
-            (Release, SeqCst) => intrinsics::atomic_cxchg_release_seqcst(dst, old, new),
-            (AcqRel, Relaxed) => intrinsics::atomic_cxchg_acqrel_relaxed(dst, old, new),
-            (AcqRel, Acquire) => intrinsics::atomic_cxchg_acqrel_acquire(dst, old, new),
-            #[cfg(not(bootstrap))]
-            (AcqRel, SeqCst) => intrinsics::atomic_cxchg_acqrel_seqcst(dst, old, new),
-            (SeqCst, Relaxed) => intrinsics::atomic_cxchg_seqcst_relaxed(dst, old, new),
-            (SeqCst, Acquire) => intrinsics::atomic_cxchg_seqcst_acquire(dst, old, new),
-            (SeqCst, SeqCst) => intrinsics::atomic_cxchg_seqcst_seqcst(dst, old, new),
-            (_, AcqRel) => panic!("there is no such thing as an acquire-release failure ordering"),
-            (_, Release) => panic!("there is no such thing as a release failure ordering"),
-            #[cfg(bootstrap)]
-            _ => panic!("a failure ordering can't be stronger than a success ordering"),
-        }
-    };
-    if ok { Ok(val) } else { Err(val) }
 }
 
 #[inline]
@@ -73697,101 +73584,30 @@ unsafe fn atomic_compare_exchange_weak<T: Copy>(
     success: Ordering,
     failure: Ordering,
 ) -> Result<T, T> {
-    // SAFETY: the caller must uphold the safety contract for `atomic_compare_exchange_weak`.
-    let (val, ok) = unsafe {
-        match (success, failure) {
-            (Relaxed, Relaxed) => intrinsics::atomic_cxchgweak_relaxed_relaxed(dst, old, new),
-            #[cfg(not(bootstrap))]
-            (Relaxed, Acquire) => intrinsics::atomic_cxchgweak_relaxed_acquire(dst, old, new),
-            #[cfg(not(bootstrap))]
-            (Relaxed, SeqCst) => intrinsics::atomic_cxchgweak_relaxed_seqcst(dst, old, new),
-            (Acquire, Relaxed) => intrinsics::atomic_cxchgweak_acquire_relaxed(dst, old, new),
-            (Acquire, Acquire) => intrinsics::atomic_cxchgweak_acquire_acquire(dst, old, new),
-            #[cfg(not(bootstrap))]
-            (Acquire, SeqCst) => intrinsics::atomic_cxchgweak_acquire_seqcst(dst, old, new),
-            (Release, Relaxed) => intrinsics::atomic_cxchgweak_release_relaxed(dst, old, new),
-            #[cfg(not(bootstrap))]
-            (Release, Acquire) => intrinsics::atomic_cxchgweak_release_acquire(dst, old, new),
-            #[cfg(not(bootstrap))]
-            (Release, SeqCst) => intrinsics::atomic_cxchgweak_release_seqcst(dst, old, new),
-            (AcqRel, Relaxed) => intrinsics::atomic_cxchgweak_acqrel_relaxed(dst, old, new),
-            (AcqRel, Acquire) => intrinsics::atomic_cxchgweak_acqrel_acquire(dst, old, new),
-            #[cfg(not(bootstrap))]
-            (AcqRel, SeqCst) => intrinsics::atomic_cxchgweak_acqrel_seqcst(dst, old, new),
-            (SeqCst, Relaxed) => intrinsics::atomic_cxchgweak_seqcst_relaxed(dst, old, new),
-            (SeqCst, Acquire) => intrinsics::atomic_cxchgweak_seqcst_acquire(dst, old, new),
-            (SeqCst, SeqCst) => intrinsics::atomic_cxchgweak_seqcst_seqcst(dst, old, new),
-            (_, AcqRel) => panic!("there is no such thing as an acquire-release failure ordering"),
-            (_, Release) => panic!("there is no such thing as a release failure ordering"),
-            #[cfg(bootstrap)]
-            _ => panic!("a failure ordering can't be stronger than a success ordering"),
-        }
-    };
-    if ok { Ok(val) } else { Err(val) }
 }
 
 #[inline]
 #[cfg(target_has_atomic = "8")]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 unsafe fn atomic_and<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
-    // SAFETY: the caller must uphold the safety contract for `atomic_and`
-    unsafe {
-        match order {
-            Relaxed => intrinsics::atomic_and_relaxed(dst, val),
-            Acquire => intrinsics::atomic_and_acquire(dst, val),
-            Release => intrinsics::atomic_and_release(dst, val),
-            AcqRel => intrinsics::atomic_and_acqrel(dst, val),
-            SeqCst => intrinsics::atomic_and_seqcst(dst, val),
-        }
-    }
 }
 
 #[inline]
 #[cfg(target_has_atomic = "8")]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 unsafe fn atomic_nand<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
-    // SAFETY: the caller must uphold the safety contract for `atomic_nand`
-    unsafe {
-        match order {
-            Relaxed => intrinsics::atomic_nand_relaxed(dst, val),
-            Acquire => intrinsics::atomic_nand_acquire(dst, val),
-            Release => intrinsics::atomic_nand_release(dst, val),
-            AcqRel => intrinsics::atomic_nand_acqrel(dst, val),
-            SeqCst => intrinsics::atomic_nand_seqcst(dst, val),
-        }
-    }
 }
 
 #[inline]
 #[cfg(target_has_atomic = "8")]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 unsafe fn atomic_or<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
-    // SAFETY: the caller must uphold the safety contract for `atomic_or`
-    unsafe {
-        match order {
-            SeqCst => intrinsics::atomic_or_seqcst(dst, val),
-            Acquire => intrinsics::atomic_or_acquire(dst, val),
-            Release => intrinsics::atomic_or_release(dst, val),
-            AcqRel => intrinsics::atomic_or_acqrel(dst, val),
-            Relaxed => intrinsics::atomic_or_relaxed(dst, val),
-        }
-    }
 }
 
 #[inline]
 #[cfg(target_has_atomic = "8")]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 unsafe fn atomic_xor<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
-    // SAFETY: the caller must uphold the safety contract for `atomic_xor`
-    unsafe {
-        match order {
-            SeqCst => intrinsics::atomic_xor_seqcst(dst, val),
-            Acquire => intrinsics::atomic_xor_acquire(dst, val),
-            Release => intrinsics::atomic_xor_release(dst, val),
-            AcqRel => intrinsics::atomic_xor_acqrel(dst, val),
-            Relaxed => intrinsics::atomic_xor_relaxed(dst, val),
-        }
-    }
 }
 
 /// returns the max value (signed comparison)
@@ -73799,16 +73615,6 @@ unsafe fn atomic_xor<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
 #[cfg(target_has_atomic = "8")]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 unsafe fn atomic_max<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
-    // SAFETY: the caller must uphold the safety contract for `atomic_max`
-    unsafe {
-        match order {
-            Relaxed => intrinsics::atomic_max_relaxed(dst, val),
-            Acquire => intrinsics::atomic_max_acquire(dst, val),
-            Release => intrinsics::atomic_max_release(dst, val),
-            AcqRel => intrinsics::atomic_max_acqrel(dst, val),
-            SeqCst => intrinsics::atomic_max_seqcst(dst, val),
-        }
-    }
 }
 
 /// returns the min value (signed comparison)
@@ -73816,16 +73622,6 @@ unsafe fn atomic_max<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
 #[cfg(target_has_atomic = "8")]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 unsafe fn atomic_min<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
-    // SAFETY: the caller must uphold the safety contract for `atomic_min`
-    unsafe {
-        match order {
-            Relaxed => intrinsics::atomic_min_relaxed(dst, val),
-            Acquire => intrinsics::atomic_min_acquire(dst, val),
-            Release => intrinsics::atomic_min_release(dst, val),
-            AcqRel => intrinsics::atomic_min_acqrel(dst, val),
-            SeqCst => intrinsics::atomic_min_seqcst(dst, val),
-        }
-    }
 }
 
 /// returns the max value (unsigned comparison)
@@ -73833,16 +73629,6 @@ unsafe fn atomic_min<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
 #[cfg(target_has_atomic = "8")]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 unsafe fn atomic_umax<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
-    // SAFETY: the caller must uphold the safety contract for `atomic_umax`
-    unsafe {
-        match order {
-            Relaxed => intrinsics::atomic_umax_relaxed(dst, val),
-            Acquire => intrinsics::atomic_umax_acquire(dst, val),
-            Release => intrinsics::atomic_umax_release(dst, val),
-            AcqRel => intrinsics::atomic_umax_acqrel(dst, val),
-            SeqCst => intrinsics::atomic_umax_seqcst(dst, val),
-        }
-    }
 }
 
 /// returns the min value (unsigned comparison)
@@ -73850,16 +73636,6 @@ unsafe fn atomic_umax<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
 #[cfg(target_has_atomic = "8")]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 unsafe fn atomic_umin<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
-    // SAFETY: the caller must uphold the safety contract for `atomic_umin`
-    unsafe {
-        match order {
-            Relaxed => intrinsics::atomic_umin_relaxed(dst, val),
-            Acquire => intrinsics::atomic_umin_acquire(dst, val),
-            Release => intrinsics::atomic_umin_release(dst, val),
-            AcqRel => intrinsics::atomic_umin_acqrel(dst, val),
-            SeqCst => intrinsics::atomic_umin_seqcst(dst, val),
-        }
-    }
 }
 
 /// An atomic fence.
@@ -73941,16 +73717,6 @@ unsafe fn atomic_umin<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
 #[rustc_diagnostic_item = "fence"]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 pub fn fence(order: Ordering) {
-    // SAFETY: using an atomic fence is safe.
-    unsafe {
-        match order {
-            Acquire => intrinsics::atomic_fence_acquire(),
-            Release => intrinsics::atomic_fence_release(),
-            AcqRel => intrinsics::atomic_fence_acqrel(),
-            SeqCst => intrinsics::atomic_fence_seqcst(),
-            Relaxed => panic!("there is no such thing as a relaxed fence"),
-        }
-    }
 }
 
 /// A compiler memory fence.
@@ -74024,40 +73790,27 @@ pub fn fence(order: Ordering) {
 #[rustc_diagnostic_item = "compiler_fence"]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 pub fn compiler_fence(order: Ordering) {
-    // SAFETY: using an atomic fence is safe.
-    unsafe {
-        match order {
-            Acquire => intrinsics::atomic_singlethreadfence_acquire(),
-            Release => intrinsics::atomic_singlethreadfence_release(),
-            AcqRel => intrinsics::atomic_singlethreadfence_acqrel(),
-            SeqCst => intrinsics::atomic_singlethreadfence_seqcst(),
-            Relaxed => panic!("there is no such thing as a relaxed compiler fence"),
-        }
-    }
 }
 
 #[cfg(target_has_atomic_load_store = "8")]
 #[stable(feature = "atomic_debug", since = "1.3.0")]
 impl fmt::Debug for AtomicBool {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Debug::fmt(&self.load(Ordering::Relaxed), f)
-    }
+}
 }
 
 #[cfg(target_has_atomic_load_store = "ptr")]
 #[stable(feature = "atomic_debug", since = "1.3.0")]
 impl<T> fmt::Debug for AtomicPtr<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Debug::fmt(&self.load(Ordering::Relaxed), f)
-    }
+}
 }
 
 #[cfg(target_has_atomic_load_store = "ptr")]
 #[stable(feature = "atomic_pointer", since = "1.24.0")]
 impl<T> fmt::Pointer for AtomicPtr<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Pointer::fmt(&self.load(Ordering::SeqCst), f)
-    }
+}
 }
 
 /// Signals the processor that it is inside a busy-wait spin-loop ("spin lock").
@@ -74069,7 +73822,6 @@ impl<T> fmt::Pointer for AtomicPtr<T> {
 #[stable(feature = "spin_loop_hint", since = "1.24.0")]
 #[deprecated(since = "1.51.0", note = "use hint::spin_loop instead")]
 pub fn spin_loop_hint() {
-    spin_loop()
 }
 }
 mod exclusive {
@@ -74197,8 +73949,7 @@ struct PadAdapterState {
 
 impl Default for PadAdapterState {
     fn default() -> Self {
-        PadAdapterState { on_newline: true }
-    }
+}
 }
 
 impl<'buf, 'state> PadAdapter<'buf, 'state> {
@@ -74207,33 +73958,12 @@ impl<'buf, 'state> PadAdapter<'buf, 'state> {
         slot: &'slot mut Option<Self>,
         state: &'state mut PadAdapterState,
     ) -> fmt::Formatter<'slot> {
-        fmt.wrap_buf(move |buf| slot.insert(PadAdapter { buf, state }))
-    }
+}
 }
 
 impl fmt::Write for PadAdapter<'_, '_> {
     fn write_str(&mut self, mut s: &str) -> fmt::Result {
-        while !s.is_empty() {
-            if self.state.on_newline {
-                self.buf.write_str("    ")?;
-            }
-
-            let split = match s.find('\n') {
-                Some(pos) => {
-                    self.state.on_newline = true;
-                    pos + 1
-                }
-                None => {
-                    self.state.on_newline = false;
-                    s.len()
-                }
-            };
-            self.buf.write_str(&s[..split])?;
-            s = &s[split..];
-        }
-
-        Ok(())
-    }
+}
 }
 
 /// A struct to help with [`fmt::Debug`](Debug) implementations.
@@ -74280,8 +74010,6 @@ pub(super) fn debug_struct_new<'a, 'b>(
     fmt: &'a mut fmt::Formatter<'b>,
     name: &str,
 ) -> DebugStruct<'a, 'b> {
-    let result = fmt.write_str(name);
-    DebugStruct { fmt, result, has_fields: false }
 }
 
 impl<'a, 'b: 'a> DebugStruct<'a, 'b> {
@@ -74315,76 +74043,7 @@ impl<'a, 'b: 'a> DebugStruct<'a, 'b> {
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
     pub fn field(&mut self, name: &str, value: &dyn fmt::Debug) -> &mut Self {
-        self.result = self.result.and_then(|_| {
-            if self.is_pretty() {
-                if !self.has_fields {
-                    self.fmt.write_str(" {\n")?;
-                }
-                let mut slot = None;
-                let mut state = Default::default();
-                let mut writer = PadAdapter::wrap(self.fmt, &mut slot, &mut state);
-                writer.write_str(name)?;
-                writer.write_str(": ")?;
-                value.fmt(&mut writer)?;
-                writer.write_str(",\n")
-            } else {
-                let prefix = if self.has_fields { ", " } else { " { " };
-                self.fmt.write_str(prefix)?;
-                self.fmt.write_str(name)?;
-                self.fmt.write_str(": ")?;
-                value.fmt(self.fmt)
-            }
-        });
-
-        self.has_fields = true;
-        self
-    }
-
-    /// Marks the struct as non-exhaustive, indicating to the reader that there are some other
-    /// fields that are not shown in the debug representation.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::fmt;
-    ///
-    /// struct Bar {
-    ///     bar: i32,
-    ///     hidden: f32,
-    /// }
-    ///
-    /// impl fmt::Debug for Bar {
-    ///     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-    ///         fmt.debug_struct("Bar")
-    ///            .field("bar", &self.bar)
-    ///            .finish_non_exhaustive() // Show that some other field(s) exist.
-    ///     }
-    /// }
-    ///
-    /// assert_eq!(
-    ///     format!("{:?}", Bar { bar: 10, hidden: 1.0 }),
-    ///     "Bar { bar: 10, .. }",
-    /// );
-    /// ```
-    #[stable(feature = "debug_non_exhaustive", since = "1.53.0")]
-    pub fn finish_non_exhaustive(&mut self) -> fmt::Result {
-        self.result = self.result.and_then(|_| {
-            if self.has_fields {
-                if self.is_pretty() {
-                    let mut slot = None;
-                    let mut state = Default::default();
-                    let mut writer = PadAdapter::wrap(self.fmt, &mut slot, &mut state);
-                    writer.write_str("..\n")?;
-                    self.fmt.write_str("}")
-                } else {
-                    self.fmt.write_str(", .. }")
-                }
-            } else {
-                self.fmt.write_str(" { .. }")
-            }
-        });
-        self.result
-    }
+}
 
     /// Finishes output and returns any error encountered.
     ///
@@ -74415,17 +74074,13 @@ impl<'a, 'b: 'a> DebugStruct<'a, 'b> {
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
     pub fn finish(&mut self) -> fmt::Result {
-        if self.has_fields {
-            self.result = self.result.and_then(|_| {
-                if self.is_pretty() { self.fmt.write_str("}") } else { self.fmt.write_str(" }") }
-            });
+});
         }
         self.result
     }
 
     fn is_pretty(&self) -> bool {
-        self.fmt.alternate()
-    }
+}
 }
 
 /// A struct to help with [`fmt::Debug`](Debug) implementations.
@@ -74470,8 +74125,6 @@ pub(super) fn debug_tuple_new<'a, 'b>(
     fmt: &'a mut fmt::Formatter<'b>,
     name: &str,
 ) -> DebugTuple<'a, 'b> {
-    let result = fmt.write_str(name);
-    DebugTuple { fmt, result, fields: 0, empty_name: name.is_empty() }
 }
 
 impl<'a, 'b: 'a> DebugTuple<'a, 'b> {
@@ -74500,26 +74153,7 @@ impl<'a, 'b: 'a> DebugTuple<'a, 'b> {
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
     pub fn field(&mut self, value: &dyn fmt::Debug) -> &mut Self {
-        self.result = self.result.and_then(|_| {
-            if self.is_pretty() {
-                if self.fields == 0 {
-                    self.fmt.write_str("(\n")?;
-                }
-                let mut slot = None;
-                let mut state = Default::default();
-                let mut writer = PadAdapter::wrap(self.fmt, &mut slot, &mut state);
-                value.fmt(&mut writer)?;
-                writer.write_str(",\n")
-            } else {
-                let prefix = if self.fields == 0 { "(" } else { ", " };
-                self.fmt.write_str(prefix)?;
-                value.fmt(self.fmt)
-            }
-        });
-
-        self.fields += 1;
-        self
-    }
+}
 
     /// Finishes output and returns any error encountered.
     ///
@@ -74547,20 +74181,10 @@ impl<'a, 'b: 'a> DebugTuple<'a, 'b> {
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
     pub fn finish(&mut self) -> fmt::Result {
-        if self.fields > 0 {
-            self.result = self.result.and_then(|_| {
-                if self.fields == 1 && self.empty_name && !self.is_pretty() {
-                    self.fmt.write_str(",")?;
-                }
-                self.fmt.write_str(")")
-            });
-        }
-        self.result
-    }
+}
 
     fn is_pretty(&self) -> bool {
-        self.fmt.alternate()
-    }
+}
 }
 
 struct DebugInner<'a, 'b: 'a> {
@@ -74571,30 +74195,10 @@ struct DebugInner<'a, 'b: 'a> {
 
 impl<'a, 'b: 'a> DebugInner<'a, 'b> {
     fn entry(&mut self, entry: &dyn fmt::Debug) {
-        self.result = self.result.and_then(|_| {
-            if self.is_pretty() {
-                if !self.has_fields {
-                    self.fmt.write_str("\n")?;
-                }
-                let mut slot = None;
-                let mut state = Default::default();
-                let mut writer = PadAdapter::wrap(self.fmt, &mut slot, &mut state);
-                entry.fmt(&mut writer)?;
-                writer.write_str(",\n")
-            } else {
-                if self.has_fields {
-                    self.fmt.write_str(", ")?
-                }
-                entry.fmt(self.fmt)
-            }
-        });
-
-        self.has_fields = true;
-    }
+}
 
     fn is_pretty(&self) -> bool {
-        self.fmt.alternate()
-    }
+}
 }
 
 /// A struct to help with [`fmt::Debug`](Debug) implementations.
@@ -74630,101 +74234,6 @@ pub struct DebugSet<'a, 'b: 'a> {
 }
 
 pub(super) fn debug_set_new<'a, 'b>(fmt: &'a mut fmt::Formatter<'b>) -> DebugSet<'a, 'b> {
-    let result = fmt.write_str("{");
-    DebugSet { inner: DebugInner { fmt, result, has_fields: false } }
-}
-
-impl<'a, 'b: 'a> DebugSet<'a, 'b> {
-    /// Adds a new entry to the set output.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::fmt;
-    ///
-    /// struct Foo(Vec<i32>, Vec<u32>);
-    ///
-    /// impl fmt::Debug for Foo {
-    ///     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-    ///         fmt.debug_set()
-    ///            .entry(&self.0) // Adds the first "entry".
-    ///            .entry(&self.1) // Adds the second "entry".
-    ///            .finish()
-    ///     }
-    /// }
-    ///
-    /// assert_eq!(
-    ///     format!("{:?}", Foo(vec![10, 11], vec![12, 13])),
-    ///     "{[10, 11], [12, 13]}",
-    /// );
-    /// ```
-    #[stable(feature = "debug_builders", since = "1.2.0")]
-    pub fn entry(&mut self, entry: &dyn fmt::Debug) -> &mut Self {
-        self.inner.entry(entry);
-        self
-    }
-
-    /// Adds the contents of an iterator of entries to the set output.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::fmt;
-    ///
-    /// struct Foo(Vec<i32>, Vec<u32>);
-    ///
-    /// impl fmt::Debug for Foo {
-    ///     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-    ///         fmt.debug_set()
-    ///            .entries(self.0.iter()) // Adds the first "entry".
-    ///            .entries(self.1.iter()) // Adds the second "entry".
-    ///            .finish()
-    ///     }
-    /// }
-    ///
-    /// assert_eq!(
-    ///     format!("{:?}", Foo(vec![10, 11], vec![12, 13])),
-    ///     "{10, 11, 12, 13}",
-    /// );
-    /// ```
-    #[stable(feature = "debug_builders", since = "1.2.0")]
-    pub fn entries<D, I>(&mut self, entries: I) -> &mut Self
-    where
-        D: fmt::Debug,
-        I: IntoIterator<Item = D>,
-    {
-        for entry in entries {
-            self.entry(&entry);
-        }
-        self
-    }
-
-    /// Finishes output and returns any error encountered.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::fmt;
-    ///
-    /// struct Foo(Vec<i32>);
-    ///
-    /// impl fmt::Debug for Foo {
-    ///     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-    ///         fmt.debug_set()
-    ///            .entries(self.0.iter())
-    ///            .finish() // Ends the struct formatting.
-    ///     }
-    /// }
-    ///
-    /// assert_eq!(
-    ///     format!("{:?}", Foo(vec![10, 11])),
-    ///     "{10, 11}",
-    /// );
-    /// ```
-    #[stable(feature = "debug_builders", since = "1.2.0")]
-    pub fn finish(&mut self) -> fmt::Result {
-        self.inner.result.and_then(|_| self.inner.fmt.write_str("}"))
-    }
 }
 
 /// A struct to help with [`fmt::Debug`](Debug) implementations.
@@ -74760,8 +74269,6 @@ pub struct DebugList<'a, 'b: 'a> {
 }
 
 pub(super) fn debug_list_new<'a, 'b>(fmt: &'a mut fmt::Formatter<'b>) -> DebugList<'a, 'b> {
-    let result = fmt.write_str("[");
-    DebugList { inner: DebugInner { fmt, result, has_fields: false } }
 }
 
 impl<'a, 'b: 'a> DebugList<'a, 'b> {
@@ -74790,9 +74297,7 @@ impl<'a, 'b: 'a> DebugList<'a, 'b> {
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
     pub fn entry(&mut self, entry: &dyn fmt::Debug) -> &mut Self {
-        self.inner.entry(entry);
-        self
-    }
+}
 
     /// Adds the contents of an iterator of entries to the list output.
     ///
@@ -74823,11 +74328,7 @@ impl<'a, 'b: 'a> DebugList<'a, 'b> {
         D: fmt::Debug,
         I: IntoIterator<Item = D>,
     {
-        for entry in entries {
-            self.entry(&entry);
-        }
-        self
-    }
+}
 
     /// Finishes output and returns any error encountered.
     ///
@@ -74853,8 +74354,7 @@ impl<'a, 'b: 'a> DebugList<'a, 'b> {
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
     pub fn finish(&mut self) -> fmt::Result {
-        self.inner.result.and_then(|_| self.inner.fmt.write_str("]"))
-    }
+}
 }
 
 /// A struct to help with [`fmt::Debug`](Debug) implementations.
@@ -74895,231 +74395,6 @@ pub struct DebugMap<'a, 'b: 'a> {
 }
 
 pub(super) fn debug_map_new<'a, 'b>(fmt: &'a mut fmt::Formatter<'b>) -> DebugMap<'a, 'b> {
-    let result = fmt.write_str("{");
-    DebugMap { fmt, result, has_fields: false, has_key: false, state: Default::default() }
-}
-
-impl<'a, 'b: 'a> DebugMap<'a, 'b> {
-    /// Adds a new entry to the map output.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::fmt;
-    ///
-    /// struct Foo(Vec<(String, i32)>);
-    ///
-    /// impl fmt::Debug for Foo {
-    ///     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-    ///         fmt.debug_map()
-    ///            .entry(&"whole", &self.0) // We add the "whole" entry.
-    ///            .finish()
-    ///     }
-    /// }
-    ///
-    /// assert_eq!(
-    ///     format!("{:?}", Foo(vec![("A".to_string(), 10), ("B".to_string(), 11)])),
-    ///     "{\"whole\": [(\"A\", 10), (\"B\", 11)]}",
-    /// );
-    /// ```
-    #[stable(feature = "debug_builders", since = "1.2.0")]
-    pub fn entry(&mut self, key: &dyn fmt::Debug, value: &dyn fmt::Debug) -> &mut Self {
-        self.key(key).value(value)
-    }
-
-    /// Adds the key part of a new entry to the map output.
-    ///
-    /// This method, together with `value`, is an alternative to `entry` that
-    /// can be used when the complete entry isn't known upfront. Prefer the `entry`
-    /// method when it's possible to use.
-    ///
-    /// # Panics
-    ///
-    /// `key` must be called before `value` and each call to `key` must be followed
-    /// by a corresponding call to `value`. Otherwise this method will panic.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::fmt;
-    ///
-    /// struct Foo(Vec<(String, i32)>);
-    ///
-    /// impl fmt::Debug for Foo {
-    ///     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-    ///         fmt.debug_map()
-    ///            .key(&"whole").value(&self.0) // We add the "whole" entry.
-    ///            .finish()
-    ///     }
-    /// }
-    ///
-    /// assert_eq!(
-    ///     format!("{:?}", Foo(vec![("A".to_string(), 10), ("B".to_string(), 11)])),
-    ///     "{\"whole\": [(\"A\", 10), (\"B\", 11)]}",
-    /// );
-    /// ```
-    #[stable(feature = "debug_map_key_value", since = "1.42.0")]
-    pub fn key(&mut self, key: &dyn fmt::Debug) -> &mut Self {
-        self.result = self.result.and_then(|_| {
-            assert!(
-                !self.has_key,
-                "attempted to begin a new map entry \
-                                    without completing the previous one"
-            );
-
-            if self.is_pretty() {
-                if !self.has_fields {
-                    self.fmt.write_str("\n")?;
-                }
-                let mut slot = None;
-                self.state = Default::default();
-                let mut writer = PadAdapter::wrap(self.fmt, &mut slot, &mut self.state);
-                key.fmt(&mut writer)?;
-                writer.write_str(": ")?;
-            } else {
-                if self.has_fields {
-                    self.fmt.write_str(", ")?
-                }
-                key.fmt(self.fmt)?;
-                self.fmt.write_str(": ")?;
-            }
-
-            self.has_key = true;
-            Ok(())
-        });
-
-        self
-    }
-
-    /// Adds the value part of a new entry to the map output.
-    ///
-    /// This method, together with `key`, is an alternative to `entry` that
-    /// can be used when the complete entry isn't known upfront. Prefer the `entry`
-    /// method when it's possible to use.
-    ///
-    /// # Panics
-    ///
-    /// `key` must be called before `value` and each call to `key` must be followed
-    /// by a corresponding call to `value`. Otherwise this method will panic.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::fmt;
-    ///
-    /// struct Foo(Vec<(String, i32)>);
-    ///
-    /// impl fmt::Debug for Foo {
-    ///     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-    ///         fmt.debug_map()
-    ///            .key(&"whole").value(&self.0) // We add the "whole" entry.
-    ///            .finish()
-    ///     }
-    /// }
-    ///
-    /// assert_eq!(
-    ///     format!("{:?}", Foo(vec![("A".to_string(), 10), ("B".to_string(), 11)])),
-    ///     "{\"whole\": [(\"A\", 10), (\"B\", 11)]}",
-    /// );
-    /// ```
-    #[stable(feature = "debug_map_key_value", since = "1.42.0")]
-    pub fn value(&mut self, value: &dyn fmt::Debug) -> &mut Self {
-        self.result = self.result.and_then(|_| {
-            assert!(self.has_key, "attempted to format a map value before its key");
-
-            if self.is_pretty() {
-                let mut slot = None;
-                let mut writer = PadAdapter::wrap(self.fmt, &mut slot, &mut self.state);
-                value.fmt(&mut writer)?;
-                writer.write_str(",\n")?;
-            } else {
-                value.fmt(self.fmt)?;
-            }
-
-            self.has_key = false;
-            Ok(())
-        });
-
-        self.has_fields = true;
-        self
-    }
-
-    /// Adds the contents of an iterator of entries to the map output.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::fmt;
-    ///
-    /// struct Foo(Vec<(String, i32)>);
-    ///
-    /// impl fmt::Debug for Foo {
-    ///     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-    ///         fmt.debug_map()
-    ///            // We map our vec so each entries' first field will become
-    ///            // the "key".
-    ///            .entries(self.0.iter().map(|&(ref k, ref v)| (k, v)))
-    ///            .finish()
-    ///     }
-    /// }
-    ///
-    /// assert_eq!(
-    ///     format!("{:?}", Foo(vec![("A".to_string(), 10), ("B".to_string(), 11)])),
-    ///     "{\"A\": 10, \"B\": 11}",
-    /// );
-    /// ```
-    #[stable(feature = "debug_builders", since = "1.2.0")]
-    pub fn entries<K, V, I>(&mut self, entries: I) -> &mut Self
-    where
-        K: fmt::Debug,
-        V: fmt::Debug,
-        I: IntoIterator<Item = (K, V)>,
-    {
-        for (k, v) in entries {
-            self.entry(&k, &v);
-        }
-        self
-    }
-
-    /// Finishes output and returns any error encountered.
-    ///
-    /// # Panics
-    ///
-    /// `key` must be called before `value` and each call to `key` must be followed
-    /// by a corresponding call to `value`. Otherwise this method will panic.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::fmt;
-    ///
-    /// struct Foo(Vec<(String, i32)>);
-    ///
-    /// impl fmt::Debug for Foo {
-    ///     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-    ///         fmt.debug_map()
-    ///            .entries(self.0.iter().map(|&(ref k, ref v)| (k, v)))
-    ///            .finish() // Ends the struct formatting.
-    ///     }
-    /// }
-    ///
-    /// assert_eq!(
-    ///     format!("{:?}", Foo(vec![("A".to_string(), 10), ("B".to_string(), 11)])),
-    ///     "{\"A\": 10, \"B\": 11}",
-    /// );
-    /// ```
-    #[stable(feature = "debug_builders", since = "1.2.0")]
-    pub fn finish(&mut self) -> fmt::Result {
-        self.result.and_then(|_| {
-            assert!(!self.has_key, "attempted to finish a map with a partial entry");
-
-            self.fmt.write_str("}")
-        })
-    }
-
-    fn is_pretty(&self) -> bool {
-        self.fmt.alternate()
-    }
 }
 }
 #[cfg(not(no_fp_fmt_parse))]
@@ -75140,9 +74415,7 @@ macro_rules! impl_general_format {
     ($($t:ident)*) => {
         $(impl GeneralFormat for $t {
             fn already_rounded_value_should_use_exponential(&self) -> bool {
-                let abs = $t::abs_private(*self);
-                (abs != 0.0 && abs < 1e-4) || abs >= 1e+16
-            }
+}
         })*
     }
 }
@@ -75161,17 +74434,6 @@ fn float_to_decimal_common_exact<T>(
 where
     T: flt2dec::DecodableFloat,
 {
-    let mut buf: [MaybeUninit<u8>; 1024] = MaybeUninit::uninit_array(); // enough for f32 and f64
-    let mut parts: [MaybeUninit<numfmt::Part<'_>>; 4] = MaybeUninit::uninit_array();
-    let formatted = flt2dec::to_exact_fixed_str(
-        flt2dec::strategy::grisu::format_exact,
-        *num,
-        sign,
-        precision,
-        &mut buf,
-        &mut parts,
-    );
-    fmt.pad_formatted_parts(&formatted)
 }
 
 // Don't inline this so callers that call both this and the above won't wind
@@ -75186,36 +74448,12 @@ fn float_to_decimal_common_shortest<T>(
 where
     T: flt2dec::DecodableFloat,
 {
-    // enough for f32 and f64
-    let mut buf: [MaybeUninit<u8>; flt2dec::MAX_SIG_DIGITS] = MaybeUninit::uninit_array();
-    let mut parts: [MaybeUninit<numfmt::Part<'_>>; 4] = MaybeUninit::uninit_array();
-    let formatted = flt2dec::to_shortest_str(
-        flt2dec::strategy::grisu::format_shortest,
-        *num,
-        sign,
-        precision,
-        &mut buf,
-        &mut parts,
-    );
-    fmt.pad_formatted_parts(&formatted)
 }
 
 fn float_to_decimal_display<T>(fmt: &mut Formatter<'_>, num: &T) -> Result
 where
     T: flt2dec::DecodableFloat,
 {
-    let force_sign = fmt.sign_plus();
-    let sign = match force_sign {
-        false => flt2dec::Sign::Minus,
-        true => flt2dec::Sign::MinusPlus,
-    };
-
-    if let Some(precision) = fmt.precision {
-        float_to_decimal_common_exact(fmt, num, sign, precision)
-    } else {
-        let min_precision = 0;
-        float_to_decimal_common_shortest(fmt, num, sign, min_precision)
-    }
 }
 
 // Don't inline this so callers don't use the stack space this function
@@ -75231,18 +74469,6 @@ fn float_to_exponential_common_exact<T>(
 where
     T: flt2dec::DecodableFloat,
 {
-    let mut buf: [MaybeUninit<u8>; 1024] = MaybeUninit::uninit_array(); // enough for f32 and f64
-    let mut parts: [MaybeUninit<numfmt::Part<'_>>; 6] = MaybeUninit::uninit_array();
-    let formatted = flt2dec::to_exact_exp_str(
-        flt2dec::strategy::grisu::format_exact,
-        *num,
-        sign,
-        precision,
-        upper,
-        &mut buf,
-        &mut parts,
-    );
-    fmt.pad_formatted_parts(&formatted)
 }
 
 // Don't inline this so callers that call both this and the above won't wind
@@ -75257,19 +74483,6 @@ fn float_to_exponential_common_shortest<T>(
 where
     T: flt2dec::DecodableFloat,
 {
-    // enough for f32 and f64
-    let mut buf: [MaybeUninit<u8>; flt2dec::MAX_SIG_DIGITS] = MaybeUninit::uninit_array();
-    let mut parts: [MaybeUninit<numfmt::Part<'_>>; 6] = MaybeUninit::uninit_array();
-    let formatted = flt2dec::to_shortest_exp_str(
-        flt2dec::strategy::grisu::format_shortest,
-        *num,
-        sign,
-        (0, 0),
-        upper,
-        &mut buf,
-        &mut parts,
-    );
-    fmt.pad_formatted_parts(&formatted)
 }
 
 // Common code of floating point LowerExp and UpperExp.
@@ -75277,43 +74490,12 @@ fn float_to_exponential_common<T>(fmt: &mut Formatter<'_>, num: &T, upper: bool)
 where
     T: flt2dec::DecodableFloat,
 {
-    let force_sign = fmt.sign_plus();
-    let sign = match force_sign {
-        false => flt2dec::Sign::Minus,
-        true => flt2dec::Sign::MinusPlus,
-    };
-
-    if let Some(precision) = fmt.precision {
-        // 1 integral digit + `precision` fractional digits = `precision + 1` total digits
-        float_to_exponential_common_exact(fmt, num, sign, precision + 1, upper)
-    } else {
-        float_to_exponential_common_shortest(fmt, num, sign, upper)
-    }
 }
 
 fn float_to_general_debug<T>(fmt: &mut Formatter<'_>, num: &T) -> Result
 where
     T: flt2dec::DecodableFloat + GeneralFormat,
 {
-    let force_sign = fmt.sign_plus();
-    let sign = match force_sign {
-        false => flt2dec::Sign::Minus,
-        true => flt2dec::Sign::MinusPlus,
-    };
-
-    if let Some(precision) = fmt.precision {
-        // this behavior of {:.PREC?} predates exponential formatting for {:?}
-        float_to_decimal_common_exact(fmt, num, sign, precision)
-    } else {
-        // since there is no precision, there will be no rounding
-        if num.already_rounded_value_should_use_exponential() {
-            let upper = false;
-            float_to_exponential_common_shortest(fmt, num, sign, upper)
-        } else {
-            let min_precision = 1;
-            float_to_decimal_common_shortest(fmt, num, sign, min_precision)
-        }
-    }
 }
 
 macro_rules! floating {
@@ -75321,29 +74503,25 @@ macro_rules! floating {
         #[stable(feature = "rust1", since = "1.0.0")]
         impl Debug for $ty {
             fn fmt(&self, fmt: &mut Formatter<'_>) -> Result {
-                float_to_general_debug(fmt, self)
-            }
+}
         }
 
         #[stable(feature = "rust1", since = "1.0.0")]
         impl Display for $ty {
             fn fmt(&self, fmt: &mut Formatter<'_>) -> Result {
-                float_to_decimal_display(fmt, self)
-            }
+}
         }
 
         #[stable(feature = "rust1", since = "1.0.0")]
         impl LowerExp for $ty {
             fn fmt(&self, fmt: &mut Formatter<'_>) -> Result {
-                float_to_exponential_common(fmt, self, false)
-            }
+}
         }
 
         #[stable(feature = "rust1", since = "1.0.0")]
         impl UpperExp for $ty {
             fn fmt(&self, fmt: &mut Formatter<'_>) -> Result {
-                float_to_exponential_common(fmt, self, true)
-            }
+}
         }
     };
 }
@@ -75360,8 +74538,7 @@ macro_rules! floating {
         #[stable(feature = "rust1", since = "1.0.0")]
         impl Debug for $ty {
             fn fmt(&self, _fmt: &mut Formatter<'_>) -> Result {
-                panic!("floating point support is turned off");
-            }
+}
         }
     };
 }
@@ -75396,26 +74573,26 @@ trait DisplayInt:
 macro_rules! impl_int {
     ($($t:ident)*) => (
       $(impl DisplayInt for $t {
-          fn zero() -> Self { 0 }
-          fn from_u8(u: u8) -> Self { u as Self }
-          fn to_u8(&self) -> u8 { *self as u8 }
-          fn to_u16(&self) -> u16 { *self as u16 }
-          fn to_u32(&self) -> u32 { *self as u32 }
-          fn to_u64(&self) -> u64 { *self as u64 }
-          fn to_u128(&self) -> u128 { *self as u128 }
+          fn zero() -> Self { }
+          fn from_u8(u: u8) -> Self { }
+          fn to_u8(&self) -> u8 { }
+          fn to_u16(&self) -> u16 { }
+          fn to_u32(&self) -> u32 { }
+          fn to_u64(&self) -> u64 { }
+          fn to_u128(&self) -> u128 { }
       })*
     )
 }
 macro_rules! impl_uint {
     ($($t:ident)*) => (
       $(impl DisplayInt for $t {
-          fn zero() -> Self { 0 }
-          fn from_u8(u: u8) -> Self { u as Self }
-          fn to_u8(&self) -> u8 { *self as u8 }
-          fn to_u16(&self) -> u16 { *self as u16 }
-          fn to_u32(&self) -> u32 { *self as u32 }
-          fn to_u64(&self) -> u64 { *self as u64 }
-          fn to_u128(&self) -> u128 { *self as u128 }
+          fn zero() -> Self { }
+          fn from_u8(u: u8) -> Self { }
+          fn to_u8(&self) -> u8 { }
+          fn to_u16(&self) -> u16 { }
+          fn to_u32(&self) -> u32 { }
+          fn to_u64(&self) -> u64 { }
+          fn to_u128(&self) -> u128 { }
       })*
     )
 }
@@ -75505,11 +74682,7 @@ macro_rules! radix {
             const BASE: u8 = $base;
             const PREFIX: &'static str = $prefix;
             fn digit(x: u8) -> u8 {
-                match x {
-                    $($x => $conv,)+
-                    x => panic!("number not in the range 0..={}: {}", Self::BASE - 1, x),
-                }
-            }
+}
         }
     }
 }
@@ -75524,8 +74697,7 @@ macro_rules! int_base {
         #[stable(feature = "rust1", since = "1.0.0")]
         impl fmt::$Trait for $T {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                $Radix.fmt_int(*self as $U, f)
-            }
+}
         }
     };
 }
@@ -75555,14 +74727,7 @@ macro_rules! debug {
         impl fmt::Debug for $T {
             #[inline]
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                if f.debug_lower_hex() {
-                    fmt::LowerHex::fmt(self, f)
-                } else if f.debug_upper_hex() {
-                    fmt::UpperHex::fmt(self, f)
-                } else {
-                    fmt::Display::fmt(self, f)
-                }
-            }
+}
         }
     )*};
 }
@@ -75581,83 +74746,13 @@ static DEC_DIGITS_LUT: &[u8; 200] = b"0001020304050607080910111213141516171819\
 macro_rules! impl_Display {
     ($($t:ident),* as $u:ident via $conv_fn:ident named $name:ident) => {
         fn $name(mut n: $u, is_nonnegative: bool, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            // 2^128 is about 3*10^38, so 39 gives an extra byte of space
-            let mut buf = [MaybeUninit::<u8>::uninit(); 39];
-            let mut curr = buf.len() as isize;
-            let buf_ptr = MaybeUninit::slice_as_mut_ptr(&mut buf);
-            let lut_ptr = DEC_DIGITS_LUT.as_ptr();
-
-            // SAFETY: Since `d1` and `d2` are always less than or equal to `198`, we
-            // can copy from `lut_ptr[d1..d1 + 1]` and `lut_ptr[d2..d2 + 1]`. To show
-            // that it's OK to copy into `buf_ptr`, notice that at the beginning
-            // `curr == buf.len() == 39 > log(n)` since `n < 2^128 < 10^39`, and at
-            // each step this is kept the same as `n` is divided. Since `n` is always
-            // non-negative, this means that `curr > 0` so `buf_ptr[curr..curr + 1]`
-            // is safe to access.
-            unsafe {
-                // need at least 16 bits for the 4-characters-at-a-time to work.
-                assert!(crate::mem::size_of::<$u>() >= 2);
-
-                // eagerly decode 4 characters at a time
-                while n >= 10000 {
-                    let rem = (n % 10000) as isize;
-                    n /= 10000;
-
-                    let d1 = (rem / 100) << 1;
-                    let d2 = (rem % 100) << 1;
-                    curr -= 4;
-
-                    // We are allowed to copy to `buf_ptr[curr..curr + 3]` here since
-                    // otherwise `curr < 0`. But then `n` was originally at least `10000^10`
-                    // which is `10^40 > 2^128 > n`.
-                    ptr::copy_nonoverlapping(lut_ptr.offset(d1), buf_ptr.offset(curr), 2);
-                    ptr::copy_nonoverlapping(lut_ptr.offset(d2), buf_ptr.offset(curr + 2), 2);
-                }
-
-                // if we reach here numbers are <= 9999, so at most 4 chars long
-                let mut n = n as isize; // possibly reduce 64bit math
-
-                // decode 2 more chars, if > 2 chars
-                if n >= 100 {
-                    let d1 = (n % 100) << 1;
-                    n /= 100;
-                    curr -= 2;
-                    ptr::copy_nonoverlapping(lut_ptr.offset(d1), buf_ptr.offset(curr), 2);
-                }
-
-                // decode last 1 or 2 chars
-                if n < 10 {
-                    curr -= 1;
-                    *buf_ptr.offset(curr) = (n as u8) + b'0';
-                } else {
-                    let d1 = n << 1;
-                    curr -= 2;
-                    ptr::copy_nonoverlapping(lut_ptr.offset(d1), buf_ptr.offset(curr), 2);
-                }
-            }
-
-            // SAFETY: `curr` > 0 (since we made `buf` large enough), and all the chars are valid
-            // UTF-8 since `DEC_DIGITS_LUT` is
-            let buf_slice = unsafe {
-                str::from_utf8_unchecked(
-                    slice::from_raw_parts(buf_ptr.offset(curr), buf.len() - curr as usize))
-            };
-            f.pad_integral(is_nonnegative, "", buf_slice)
-        }
+}
 
         $(#[stable(feature = "rust1", since = "1.0.0")]
         impl fmt::Display for $t {
             #[allow(unused_comparisons)]
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                let is_nonnegative = *self >= 0;
-                let n = if is_nonnegative {
-                    self.$conv_fn()
-                } else {
-                    // convert the negative num to positive by summing 1 to it's 2 complement
-                    (!self.$conv_fn()).wrapping_add(1)
-                };
-                $name(n, is_nonnegative, f)
-            }
+}
         })*
     };
 }
@@ -75670,157 +74765,21 @@ macro_rules! impl_Exp {
             upper: bool,
             f: &mut fmt::Formatter<'_>
         ) -> fmt::Result {
-            let (mut n, mut exponent, trailing_zeros, added_precision) = {
-                let mut exponent = 0;
-                // count and remove trailing decimal zeroes
-                while n % 10 == 0 && n >= 10 {
-                    n /= 10;
-                    exponent += 1;
-                }
-
-                let (added_precision, subtracted_precision) = match f.precision() {
-                    Some(fmt_prec) => {
-                        // number of decimal digits minus 1
-                        let mut tmp = n;
-                        let mut prec = 0;
-                        while tmp >= 10 {
-                            tmp /= 10;
-                            prec += 1;
-                        }
-                        (fmt_prec.saturating_sub(prec), prec.saturating_sub(fmt_prec))
-                    }
-                    None => (0, 0)
-                };
-                for _ in 1..subtracted_precision {
-                    n /= 10;
-                    exponent += 1;
-                }
-                if subtracted_precision != 0 {
-                    let rem = n % 10;
-                    n /= 10;
-                    exponent += 1;
-                    // round up last digit
-                    if rem >= 5 {
-                        n += 1;
-                    }
-                }
-                (n, exponent, exponent, added_precision)
-            };
-
-            // 39 digits (worst case u128) + . = 40
-            // Since `curr` always decreases by the number of digits copied, this means
-            // that `curr >= 0`.
-            let mut buf = [MaybeUninit::<u8>::uninit(); 40];
-            let mut curr = buf.len() as isize; //index for buf
-            let buf_ptr = MaybeUninit::slice_as_mut_ptr(&mut buf);
-            let lut_ptr = DEC_DIGITS_LUT.as_ptr();
-
-            // decode 2 chars at a time
-            while n >= 100 {
-                let d1 = ((n % 100) as isize) << 1;
-                curr -= 2;
-                // SAFETY: `d1 <= 198`, so we can copy from `lut_ptr[d1..d1 + 2]` since
-                // `DEC_DIGITS_LUT` has a length of 200.
-                unsafe {
-                    ptr::copy_nonoverlapping(lut_ptr.offset(d1), buf_ptr.offset(curr), 2);
-                }
-                n /= 100;
-                exponent += 2;
-            }
-            // n is <= 99, so at most 2 chars long
-            let mut n = n as isize; // possibly reduce 64bit math
-            // decode second-to-last character
-            if n >= 10 {
-                curr -= 1;
-                // SAFETY: Safe since `40 > curr >= 0` (see comment)
-                unsafe {
-                    *buf_ptr.offset(curr) = (n as u8 % 10_u8) + b'0';
-                }
-                n /= 10;
-                exponent += 1;
-            }
-            // add decimal point iff >1 mantissa digit will be printed
-            if exponent != trailing_zeros || added_precision != 0 {
-                curr -= 1;
-                // SAFETY: Safe since `40 > curr >= 0`
-                unsafe {
-                    *buf_ptr.offset(curr) = b'.';
-                }
-            }
-
-            // SAFETY: Safe since `40 > curr >= 0`
-            let buf_slice = unsafe {
-                // decode last character
-                curr -= 1;
-                *buf_ptr.offset(curr) = (n as u8) + b'0';
-
-                let len = buf.len() - curr as usize;
-                slice::from_raw_parts(buf_ptr.offset(curr), len)
-            };
-
-            // stores 'e' (or 'E') and the up to 2-digit exponent
-            let mut exp_buf = [MaybeUninit::<u8>::uninit(); 3];
-            let exp_ptr = MaybeUninit::slice_as_mut_ptr(&mut exp_buf);
-            // SAFETY: In either case, `exp_buf` is written within bounds and `exp_ptr[..len]`
-            // is contained within `exp_buf` since `len <= 3`.
-            let exp_slice = unsafe {
-                *exp_ptr.offset(0) = if upper { b'E' } else { b'e' };
-                let len = if exponent < 10 {
-                    *exp_ptr.offset(1) = (exponent as u8) + b'0';
-                    2
-                } else {
-                    let off = exponent << 1;
-                    ptr::copy_nonoverlapping(lut_ptr.offset(off), exp_ptr.offset(1), 2);
-                    3
-                };
-                slice::from_raw_parts(exp_ptr, len)
-            };
-
-            let parts = &[
-                numfmt::Part::Copy(buf_slice),
-                numfmt::Part::Zero(added_precision),
-                numfmt::Part::Copy(exp_slice)
-            ];
-            let sign = if !is_nonnegative {
-                "-"
-            } else if f.sign_plus() {
-                "+"
-            } else {
-                ""
-            };
-            let formatted = numfmt::Formatted{sign, parts};
-            f.pad_formatted_parts(&formatted)
-        }
+}
 
         $(
             #[stable(feature = "integer_exp_format", since = "1.42.0")]
             impl fmt::LowerExp for $t {
                 #[allow(unused_comparisons)]
                 fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                    let is_nonnegative = *self >= 0;
-                    let n = if is_nonnegative {
-                        self.$conv_fn()
-                    } else {
-                        // convert the negative num to positive by summing 1 to it's 2 complement
-                        (!self.$conv_fn()).wrapping_add(1)
-                    };
-                    $name(n, is_nonnegative, false, f)
-                }
+}
             })*
         $(
             #[stable(feature = "integer_exp_format", since = "1.42.0")]
             impl fmt::UpperExp for $t {
                 #[allow(unused_comparisons)]
                 fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                    let is_nonnegative = *self >= 0;
-                    let n = if is_nonnegative {
-                        self.$conv_fn()
-                    } else {
-                        // convert the negative num to positive by summing 1 to it's 2 complement
-                        (!self.$conv_fn()).wrapping_add(1)
-                    };
-                    $name(n, is_nonnegative, true, f)
-                }
+}
             })*
     };
 }
@@ -75852,110 +74811,18 @@ impl_Exp!(i128, u128 as u128 via to_u128 named exp_u128);
 
 /// Helper function for writing a u64 into `buf` going from last to first, with `curr`.
 fn parse_u64_into<const N: usize>(mut n: u64, buf: &mut [MaybeUninit<u8>; N], curr: &mut isize) {
-    let buf_ptr = MaybeUninit::slice_as_mut_ptr(buf);
-    let lut_ptr = DEC_DIGITS_LUT.as_ptr();
-    assert!(*curr > 19);
-
-    // SAFETY:
-    // Writes at most 19 characters into the buffer. Guaranteed that any ptr into LUT is at most
-    // 198, so will never OOB. There is a check above that there are at least 19 characters
-    // remaining.
-    unsafe {
-        if n >= 1e16 as u64 {
-            let to_parse = n % 1e16 as u64;
-            n /= 1e16 as u64;
-
-            // Some of these are nops but it looks more elegant this way.
-            let d1 = ((to_parse / 1e14 as u64) % 100) << 1;
-            let d2 = ((to_parse / 1e12 as u64) % 100) << 1;
-            let d3 = ((to_parse / 1e10 as u64) % 100) << 1;
-            let d4 = ((to_parse / 1e8 as u64) % 100) << 1;
-            let d5 = ((to_parse / 1e6 as u64) % 100) << 1;
-            let d6 = ((to_parse / 1e4 as u64) % 100) << 1;
-            let d7 = ((to_parse / 1e2 as u64) % 100) << 1;
-            let d8 = ((to_parse / 1e0 as u64) % 100) << 1;
-
-            *curr -= 16;
-
-            ptr::copy_nonoverlapping(lut_ptr.offset(d1 as isize), buf_ptr.offset(*curr + 0), 2);
-            ptr::copy_nonoverlapping(lut_ptr.offset(d2 as isize), buf_ptr.offset(*curr + 2), 2);
-            ptr::copy_nonoverlapping(lut_ptr.offset(d3 as isize), buf_ptr.offset(*curr + 4), 2);
-            ptr::copy_nonoverlapping(lut_ptr.offset(d4 as isize), buf_ptr.offset(*curr + 6), 2);
-            ptr::copy_nonoverlapping(lut_ptr.offset(d5 as isize), buf_ptr.offset(*curr + 8), 2);
-            ptr::copy_nonoverlapping(lut_ptr.offset(d6 as isize), buf_ptr.offset(*curr + 10), 2);
-            ptr::copy_nonoverlapping(lut_ptr.offset(d7 as isize), buf_ptr.offset(*curr + 12), 2);
-            ptr::copy_nonoverlapping(lut_ptr.offset(d8 as isize), buf_ptr.offset(*curr + 14), 2);
-        }
-        if n >= 1e8 as u64 {
-            let to_parse = n % 1e8 as u64;
-            n /= 1e8 as u64;
-
-            // Some of these are nops but it looks more elegant this way.
-            let d1 = ((to_parse / 1e6 as u64) % 100) << 1;
-            let d2 = ((to_parse / 1e4 as u64) % 100) << 1;
-            let d3 = ((to_parse / 1e2 as u64) % 100) << 1;
-            let d4 = ((to_parse / 1e0 as u64) % 100) << 1;
-            *curr -= 8;
-
-            ptr::copy_nonoverlapping(lut_ptr.offset(d1 as isize), buf_ptr.offset(*curr + 0), 2);
-            ptr::copy_nonoverlapping(lut_ptr.offset(d2 as isize), buf_ptr.offset(*curr + 2), 2);
-            ptr::copy_nonoverlapping(lut_ptr.offset(d3 as isize), buf_ptr.offset(*curr + 4), 2);
-            ptr::copy_nonoverlapping(lut_ptr.offset(d4 as isize), buf_ptr.offset(*curr + 6), 2);
-        }
-        // `n` < 1e8 < (1 << 32)
-        let mut n = n as u32;
-        if n >= 1e4 as u32 {
-            let to_parse = n % 1e4 as u32;
-            n /= 1e4 as u32;
-
-            let d1 = (to_parse / 100) << 1;
-            let d2 = (to_parse % 100) << 1;
-            *curr -= 4;
-
-            ptr::copy_nonoverlapping(lut_ptr.offset(d1 as isize), buf_ptr.offset(*curr + 0), 2);
-            ptr::copy_nonoverlapping(lut_ptr.offset(d2 as isize), buf_ptr.offset(*curr + 2), 2);
-        }
-
-        // `n` < 1e4 < (1 << 16)
-        let mut n = n as u16;
-        if n >= 100 {
-            let d1 = (n % 100) << 1;
-            n /= 100;
-            *curr -= 2;
-            ptr::copy_nonoverlapping(lut_ptr.offset(d1 as isize), buf_ptr.offset(*curr), 2);
-        }
-
-        // decode last 1 or 2 chars
-        if n < 10 {
-            *curr -= 1;
-            *buf_ptr.offset(*curr) = (n as u8) + b'0';
-        } else {
-            let d1 = n << 1;
-            *curr -= 2;
-            ptr::copy_nonoverlapping(lut_ptr.offset(d1 as isize), buf_ptr.offset(*curr), 2);
-        }
-    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for u128 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt_u128(*self, true, f)
-    }
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for i128 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let is_nonnegative = *self >= 0;
-        let n = if is_nonnegative {
-            self.to_u128()
-        } else {
-            // convert the negative num to positive by summing 1 to it's 2 complement
-            (!self.to_u128()).wrapping_add(1)
-        };
-        fmt_u128(n, is_nonnegative, f)
-    }
+}
 }
 
 /// Specialized optimization for u128. Instead of taking two items at a time, it splits
@@ -75963,54 +74830,6 @@ impl fmt::Display for i128 {
 /// It also has to handle 1 last item, as 10^40 > 2^128 > 10^39, whereas
 /// 10^20 > 2^64 > 10^19.
 fn fmt_u128(n: u128, is_nonnegative: bool, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    // 2^128 is about 3*10^38, so 39 gives an extra byte of space
-    let mut buf = [MaybeUninit::<u8>::uninit(); 39];
-    let mut curr = buf.len() as isize;
-
-    let (n, rem) = udiv_1e19(n);
-    parse_u64_into(rem, &mut buf, &mut curr);
-
-    if n != 0 {
-        // 0 pad up to point
-        let target = (buf.len() - 19) as isize;
-        // SAFETY: Guaranteed that we wrote at most 19 bytes, and there must be space
-        // remaining since it has length 39
-        unsafe {
-            ptr::write_bytes(
-                MaybeUninit::slice_as_mut_ptr(&mut buf).offset(target),
-                b'0',
-                (curr - target) as usize,
-            );
-        }
-        curr = target;
-
-        let (n, rem) = udiv_1e19(n);
-        parse_u64_into(rem, &mut buf, &mut curr);
-        // Should this following branch be annotated with unlikely?
-        if n != 0 {
-            let target = (buf.len() - 38) as isize;
-            // The raw `buf_ptr` pointer is only valid until `buf` is used the next time,
-            // buf `buf` is not used in this scope so we are good.
-            let buf_ptr = MaybeUninit::slice_as_mut_ptr(&mut buf);
-            // SAFETY: At this point we wrote at most 38 bytes, pad up to that point,
-            // There can only be at most 1 digit remaining.
-            unsafe {
-                ptr::write_bytes(buf_ptr.offset(target), b'0', (curr - target) as usize);
-                curr = target - 1;
-                *buf_ptr.offset(curr) = (n as u8) + b'0';
-            }
-        }
-    }
-
-    // SAFETY: `curr` > 0 (since we made `buf` large enough), and all the chars are valid
-    // UTF-8 since `DEC_DIGITS_LUT` is
-    let buf_slice = unsafe {
-        str::from_utf8_unchecked(slice::from_raw_parts(
-            MaybeUninit::slice_as_mut_ptr(&mut buf).offset(curr),
-            buf.len() - curr as usize,
-        ))
-    };
-    f.pad_integral(is_nonnegative, "", buf_slice)
 }
 
 /// Partition of `n` into n > 1e19 and rem <= 1e19
@@ -76022,36 +74841,11 @@ fn fmt_u128(n: u128, is_nonnegative: bool, f: &mut fmt::Formatter<'_>) -> fmt::R
 ///   Implementation, 1994, pp. 61–72
 ///
 fn udiv_1e19(n: u128) -> (u128, u64) {
-    const DIV: u64 = 1e19 as u64;
-    const FACTOR: u128 = 156927543384667019095894735580191660403;
-
-    let quot = if n < 1 << 83 {
-        ((n >> 19) as u64 / (DIV >> 19)) as u128
-    } else {
-        u128_mulhi(n, FACTOR) >> 62
-    };
-
-    let rem = (n - quot * DIV as u128) as u64;
-    (quot, rem)
 }
 
 /// Multiply unsigned 128 bit integers, return upper 128 bits of the result
 #[inline]
 fn u128_mulhi(x: u128, y: u128) -> u128 {
-    let x_lo = x as u64;
-    let x_hi = (x >> 64) as u64;
-    let y_lo = y as u64;
-    let y_hi = (y >> 64) as u64;
-
-    // handle possibility of overflow
-    let carry = (x_lo as u128 * y_lo as u128) >> 64;
-    let m = x_lo as u128 * y_hi as u128 + carry;
-    let high1 = m >> 64;
-
-    let m_lo = m as u64;
-    let high2 = (x_hi as u128 * y_lo as u128 + m_lo as u128) >> 64;
-
-    x_hi as u128 * y_hi as u128 + high1 + high2
 }
 }
 
@@ -76197,8 +74991,7 @@ pub trait Write {
     /// ```
     #[stable(feature = "fmt_write_char", since = "1.1.0")]
     fn write_char(&mut self, c: char) -> Result {
-        self.write_str(c.encode_utf8(&mut [0; 4]))
-    }
+}
 
     /// Glue for usage of the [`write!`] macro with implementors of this trait.
     ///
@@ -76220,23 +75013,19 @@ pub trait Write {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn write_fmt(mut self: &mut Self, args: Arguments<'_>) -> Result {
-        write(&mut self, args)
-    }
+}
 }
 
 #[stable(feature = "fmt_write_blanket_impl", since = "1.4.0")]
 impl<W: Write + ?Sized> Write for &mut W {
     fn write_str(&mut self, s: &str) -> Result {
-        (**self).write_str(s)
-    }
+}
 
     fn write_char(&mut self, c: char) -> Result {
-        (**self).write_char(c)
-    }
+}
 
     fn write_fmt(&mut self, args: Arguments<'_>) -> Result {
-        (**self).write_fmt(args)
-    }
+}
 }
 
 /// Configuration for formatting.
@@ -76363,18 +75152,7 @@ impl<'a> ArgumentV1<'a> {
 }
 
     fn as_usize(&self) -> Option<usize> {
-        // We are type punning a bit here: USIZE_MARKER only takes an &usize but
-        // formatter takes an &Opaque. Rust understandably doesn't think we should compare
-        // the function pointers if they don't have the same signature, so we cast to
-        // usizes to tell it that we just want to compare addresses.
-        if self.formatter as usize == USIZE_MARKER as usize {
-            // SAFETY: The `formatter` field is only set to USIZE_MARKER if
-            // the value is a usize, so this is safe
-            Some(unsafe { *(self.value as *const _ as *const usize) })
-        } else {
-            None
-        }
-    }
+}
 }
 
 // flags available in the v1 format of format_args
@@ -76498,26 +75276,19 @@ impl<'a> Arguments<'a> {
     #[must_use]
     #[inline]
     pub const fn as_str(&self) -> Option<&'static str> {
-        match (self.pieces, self.args) {
-            ([], []) => Some(""),
-            ([s], []) => Some(s),
-            _ => None,
-        }
-    }
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Debug for Arguments<'_> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> Result {
-        Display::fmt(self, fmt)
-    }
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Display for Arguments<'_> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> Result {
-        write(fmt.buf, *self)
-    }
+}
 }
 
 /// `?` formatting.
@@ -77170,81 +75941,12 @@ pub trait UpperExp {
 /// [`write!`]: crate::write!
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn write(output: &mut dyn Write, args: Arguments<'_>) -> Result {
-    let mut formatter = Formatter::new(output);
-    let mut idx = 0;
-
-    match args.fmt {
-        None => {
-            // We can use default formatting parameters for all arguments.
-            for (i, arg) in args.args.iter().enumerate() {
-                // SAFETY: args.args and args.pieces come from the same Arguments,
-                // which guarantees the indexes are always within bounds.
-                let piece = unsafe { args.pieces.get_unchecked(i) };
-                if !piece.is_empty() {
-                    formatter.buf.write_str(*piece)?;
-                }
-                (arg.formatter)(arg.value, &mut formatter)?;
-                idx += 1;
-            }
-        }
-        Some(fmt) => {
-            // Every spec has a corresponding argument that is preceded by
-            // a string piece.
-            for (i, arg) in fmt.iter().enumerate() {
-                // SAFETY: fmt and args.pieces come from the same Arguments,
-                // which guarantees the indexes are always within bounds.
-                let piece = unsafe { args.pieces.get_unchecked(i) };
-                if !piece.is_empty() {
-                    formatter.buf.write_str(*piece)?;
-                }
-                // SAFETY: arg and args.args come from the same Arguments,
-                // which guarantees the indexes are always within bounds.
-                unsafe { run(&mut formatter, arg, args.args) }?;
-                idx += 1;
-            }
-        }
-    }
-
-    // There can be only one trailing string piece left.
-    if let Some(piece) = args.pieces.get(idx) {
-        formatter.buf.write_str(*piece)?;
-    }
-
-    Ok(())
 }
 
 unsafe fn run(fmt: &mut Formatter<'_>, arg: &rt::v1::Argument, args: &[ArgumentV1<'_>]) -> Result {
-    fmt.fill = arg.format.fill;
-    fmt.align = arg.format.align;
-    fmt.flags = arg.format.flags;
-    // SAFETY: arg and args come from the same Arguments,
-    // which guarantees the indexes are always within bounds.
-    unsafe {
-        fmt.width = getcount(args, &arg.format.width);
-        fmt.precision = getcount(args, &arg.format.precision);
-    }
-
-    // Extract the correct argument
-    debug_assert!(arg.position < args.len());
-    // SAFETY: arg and args come from the same Arguments,
-    // which guarantees its index is always within bounds.
-    let value = unsafe { args.get_unchecked(arg.position) };
-
-    // Then actually do some printing
-    (value.formatter)(value.value, fmt)
 }
 
 unsafe fn getcount(args: &[ArgumentV1<'_>], cnt: &rt::v1::Count) -> Option<usize> {
-    match *cnt {
-        rt::v1::Count::Is(n) => Some(n),
-        rt::v1::Count::Implied => None,
-        rt::v1::Count::Param(i) => {
-            debug_assert!(i < args.len());
-            // SAFETY: cnt and args come from the same Arguments,
-            // which guarantees this index is always within bounds.
-            unsafe { args.get_unchecked(i).as_usize() }
-        }
-    }
 }
 
 /// Padding after the end of something. Returned by `Formatter::padding`.
@@ -77256,16 +75958,11 @@ pub(crate) struct PostPadding {
 
 impl PostPadding {
     fn new(fill: char, padding: usize) -> PostPadding {
-        PostPadding { fill, padding }
-    }
+}
 
     /// Write this post padding.
     pub(crate) fn write(self, f: &mut Formatter<'_>) -> Result {
-        for _ in 0..self.padding {
-            f.buf.write_char(self.fill)?;
-        }
-        Ok(())
-    }
+}
 }
 
 impl<'a> Formatter<'a> {
@@ -77274,18 +75971,7 @@ impl<'a> Formatter<'a> {
         'b: 'c,
         F: FnOnce(&'b mut (dyn Write + 'b)) -> &'c mut (dyn Write + 'c),
     {
-        Formatter {
-            // We want to change this
-            buf: wrap(self.buf),
-
-            // And preserve these
-            flags: self.flags,
-            fill: self.fill,
-            align: self.align,
-            width: self.width,
-            precision: self.precision,
-        }
-    }
+}
 
     // Helper methods used for padding and processing formatting arguments that
     // all formatting traits can use.
@@ -77336,69 +76022,7 @@ impl<'a> Formatter<'a> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn pad_integral(&mut self, is_nonnegative: bool, prefix: &str, buf: &str) -> Result {
-        let mut width = buf.len();
-
-        let mut sign = None;
-        if !is_nonnegative {
-            sign = Some('-');
-            width += 1;
-        } else if self.sign_plus() {
-            sign = Some('+');
-            width += 1;
-        }
-
-        let prefix = if self.alternate() {
-            width += prefix.chars().count();
-            Some(prefix)
-        } else {
-            None
-        };
-
-        // Writes the sign if it exists, and then the prefix if it was requested
-        #[inline(never)]
-        fn write_prefix(f: &mut Formatter<'_>, sign: Option<char>, prefix: Option<&str>) -> Result {
-            if let Some(c) = sign {
-                f.buf.write_char(c)?;
-            }
-            if let Some(prefix) = prefix { f.buf.write_str(prefix) } else { Ok(()) }
-        }
-
-        // The `width` field is more of a `min-width` parameter at this point.
-        match self.width {
-            // If there's no minimum length requirements then we can just
-            // write the bytes.
-            None => {
-                write_prefix(self, sign, prefix)?;
-                self.buf.write_str(buf)
-            }
-            // Check if we're over the minimum width, if so then we can also
-            // just write the bytes.
-            Some(min) if width >= min => {
-                write_prefix(self, sign, prefix)?;
-                self.buf.write_str(buf)
-            }
-            // The sign and prefix goes before the padding if the fill character
-            // is zero
-            Some(min) if self.sign_aware_zero_pad() => {
-                let old_fill = crate::mem::replace(&mut self.fill, '0');
-                let old_align = crate::mem::replace(&mut self.align, rt::v1::Alignment::Right);
-                write_prefix(self, sign, prefix)?;
-                let post_padding = self.padding(min - width, rt::v1::Alignment::Right)?;
-                self.buf.write_str(buf)?;
-                post_padding.write(self)?;
-                self.fill = old_fill;
-                self.align = old_align;
-                Ok(())
-            }
-            // Otherwise, the sign and prefix goes after the padding
-            Some(min) => {
-                let post_padding = self.padding(min - width, rt::v1::Alignment::Right)?;
-                write_prefix(self, sign, prefix)?;
-                self.buf.write_str(buf)?;
-                post_padding.write(self)
-            }
-        }
-    }
+}
 
     /// This function takes a string slice and emits it to the internal buffer
     /// after applying the relevant formatting flags specified. The flags
@@ -77430,51 +76054,7 @@ impl<'a> Formatter<'a> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn pad(&mut self, s: &str) -> Result {
-        // Make sure there's a fast path up front
-        if self.width.is_none() && self.precision.is_none() {
-            return self.buf.write_str(s);
-        }
-        // The `precision` field can be interpreted as a `max-width` for the
-        // string being formatted.
-        let s = if let Some(max) = self.precision {
-            // If our string is longer that the precision, then we must have
-            // truncation. However other flags like `fill`, `width` and `align`
-            // must act as always.
-            if let Some((i, _)) = s.char_indices().nth(max) {
-                // LLVM here can't prove that `..i` won't panic `&s[..i]`, but
-                // we know that it can't panic. Use `get` + `unwrap_or` to avoid
-                // `unsafe` and otherwise don't emit any panic-related code
-                // here.
-                s.get(..i).unwrap_or(s)
-            } else {
-                &s
-            }
-        } else {
-            &s
-        };
-        // The `width` field is more of a `min-width` parameter at this point.
-        match self.width {
-            // If we're under the maximum length, and there's no minimum length
-            // requirements, then we can just emit the string
-            None => self.buf.write_str(s),
-            Some(width) => {
-                let chars_count = s.chars().count();
-                // If we're under the maximum width, check if we're over the minimum
-                // width, if so it's as easy as just emitting the string.
-                if chars_count >= width {
-                    self.buf.write_str(s)
-                }
-                // If we're under both the maximum and the minimum width, then fill
-                // up the minimum width with the specified string + some alignment.
-                else {
-                    let align = rt::v1::Alignment::Left;
-                    let post_padding = self.padding(width - chars_count, align)?;
-                    self.buf.write_str(s)?;
-                    post_padding.write(self)
-                }
-            }
-        }
-    }
+}
 
     /// Write the pre-padding and return the unwritten post-padding. Callers are
     /// responsible for ensuring post-padding is written after the thing that is
@@ -77484,112 +76064,16 @@ impl<'a> Formatter<'a> {
         padding: usize,
         default: rt::v1::Alignment,
     ) -> result::Result<PostPadding, Error> {
-        let align = match self.align {
-            rt::v1::Alignment::Unknown => default,
-            _ => self.align,
-        };
-
-        let (pre_pad, post_pad) = match align {
-            rt::v1::Alignment::Left => (0, padding),
-            rt::v1::Alignment::Right | rt::v1::Alignment::Unknown => (padding, 0),
-            rt::v1::Alignment::Center => (padding / 2, (padding + 1) / 2),
-        };
-
-        for _ in 0..pre_pad {
-            self.buf.write_char(self.fill)?;
-        }
-
-        Ok(PostPadding::new(self.fill, post_pad))
-    }
+}
 
     /// Takes the formatted parts and applies the padding.
     /// Assumes that the caller already has rendered the parts with required precision,
     /// so that `self.precision` can be ignored.
     fn pad_formatted_parts(&mut self, formatted: &numfmt::Formatted<'_>) -> Result {
-        if let Some(mut width) = self.width {
-            // for the sign-aware zero padding, we render the sign first and
-            // behave as if we had no sign from the beginning.
-            let mut formatted = formatted.clone();
-            let old_fill = self.fill;
-            let old_align = self.align;
-            let mut align = old_align;
-            if self.sign_aware_zero_pad() {
-                // a sign always goes first
-                let sign = formatted.sign;
-                self.buf.write_str(sign)?;
-
-                // remove the sign from the formatted parts
-                formatted.sign = "";
-                width = width.saturating_sub(sign.len());
-                align = rt::v1::Alignment::Right;
-                self.fill = '0';
-                self.align = rt::v1::Alignment::Right;
-            }
-
-            // remaining parts go through the ordinary padding process.
-            let len = formatted.len();
-            let ret = if width <= len {
-                // no padding
-                self.write_formatted_parts(&formatted)
-            } else {
-                let post_padding = self.padding(width - len, align)?;
-                self.write_formatted_parts(&formatted)?;
-                post_padding.write(self)
-            };
-            self.fill = old_fill;
-            self.align = old_align;
-            ret
-        } else {
-            // this is the common case and we take a shortcut
-            self.write_formatted_parts(formatted)
-        }
-    }
+}
 
     fn write_formatted_parts(&mut self, formatted: &numfmt::Formatted<'_>) -> Result {
-        fn write_bytes(buf: &mut dyn Write, s: &[u8]) -> Result {
-            // SAFETY: This is used for `numfmt::Part::Num` and `numfmt::Part::Copy`.
-            // It's safe to use for `numfmt::Part::Num` since every char `c` is between
-            // `b'0'` and `b'9'`, which means `s` is valid UTF-8.
-            // It's also probably safe in practice to use for `numfmt::Part::Copy(buf)`
-            // since `buf` should be plain ASCII, but it's possible for someone to pass
-            // in a bad value for `buf` into `numfmt::to_shortest_str` since it is a
-            // public function.
-            // FIXME: Determine whether this could result in UB.
-            buf.write_str(unsafe { str::from_utf8_unchecked(s) })
-        }
-
-        if !formatted.sign.is_empty() {
-            self.buf.write_str(formatted.sign)?;
-        }
-        for part in formatted.parts {
-            match *part {
-                numfmt::Part::Zero(mut nzeroes) => {
-                    const ZEROES: &str = // 64 zeroes
-                        "0000000000000000000000000000000000000000000000000000000000000000";
-                    while nzeroes > ZEROES.len() {
-                        self.buf.write_str(ZEROES)?;
-                        nzeroes -= ZEROES.len();
-                    }
-                    if nzeroes > 0 {
-                        self.buf.write_str(&ZEROES[..nzeroes])?;
-                    }
-                }
-                numfmt::Part::Num(mut v) => {
-                    let mut s = [0; 5];
-                    let len = part.len();
-                    for c in s[..len].iter_mut().rev() {
-                        *c = b'0' + (v % 10) as u8;
-                        v /= 10;
-                    }
-                    write_bytes(self.buf, &s[..len])?;
-                }
-                numfmt::Part::Copy(buf) => {
-                    write_bytes(self.buf, buf)?;
-                }
-            }
-        }
-        Ok(())
-    }
+}
 
     /// Writes some data to the underlying buffer contained within this
     /// formatter.
@@ -77614,8 +76098,7 @@ impl<'a> Formatter<'a> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn write_str(&mut self, data: &str) -> Result {
-        self.buf.write_str(data)
-    }
+}
 
     /// Writes some formatted information into this instance.
     ///
@@ -77637,8 +76120,7 @@ impl<'a> Formatter<'a> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn write_fmt(&mut self, fmt: Arguments<'_>) -> Result {
-        write(self.buf, fmt)
-    }
+}
 
     /// Flags for formatting
     #[must_use]
@@ -77649,8 +76131,7 @@ impl<'a> Formatter<'a> {
                 or `sign_aware_zero_pad` methods instead"
     )]
     pub fn flags(&self) -> u32 {
-        self.flags
-    }
+}
 
     /// Character used as 'fill' whenever there is alignment.
     ///
@@ -77682,8 +76163,7 @@ impl<'a> Formatter<'a> {
     #[must_use]
     #[stable(feature = "fmt_flags", since = "1.5.0")]
     pub fn fill(&self) -> char {
-        self.fill
-    }
+}
 
     /// Flag indicating what form of alignment was requested.
     ///
@@ -77719,13 +76199,7 @@ impl<'a> Formatter<'a> {
     #[must_use]
     #[stable(feature = "fmt_flags_align", since = "1.28.0")]
     pub fn align(&self) -> Option<Alignment> {
-        match self.align {
-            rt::v1::Alignment::Left => Some(Alignment::Left),
-            rt::v1::Alignment::Right => Some(Alignment::Right),
-            rt::v1::Alignment::Center => Some(Alignment::Center),
-            rt::v1::Alignment::Unknown => None,
-        }
-    }
+}
 
     /// Optionally specified integer width that the output should be.
     ///
@@ -77754,8 +76228,7 @@ impl<'a> Formatter<'a> {
     #[must_use]
     #[stable(feature = "fmt_flags", since = "1.5.0")]
     pub fn width(&self) -> Option<usize> {
-        self.width
-    }
+}
 
     /// Optionally specified precision for numeric types. Alternatively, the
     /// maximum width for string types.
@@ -77785,8 +76258,7 @@ impl<'a> Formatter<'a> {
     #[must_use]
     #[stable(feature = "fmt_flags", since = "1.5.0")]
     pub fn precision(&self) -> Option<usize> {
-        self.precision
-    }
+}
 
     /// Determines if the `+` flag was specified.
     ///
@@ -77816,8 +76288,7 @@ impl<'a> Formatter<'a> {
     #[must_use]
     #[stable(feature = "fmt_flags", since = "1.5.0")]
     pub fn sign_plus(&self) -> bool {
-        self.flags & (1 << FlagV1::SignPlus as u32) != 0
-    }
+}
 
     /// Determines if the `-` flag was specified.
     ///
@@ -77845,8 +76316,7 @@ impl<'a> Formatter<'a> {
     #[must_use]
     #[stable(feature = "fmt_flags", since = "1.5.0")]
     pub fn sign_minus(&self) -> bool {
-        self.flags & (1 << FlagV1::SignMinus as u32) != 0
-    }
+}
 
     /// Determines if the `#` flag was specified.
     ///
@@ -77873,8 +76343,7 @@ impl<'a> Formatter<'a> {
     #[must_use]
     #[stable(feature = "fmt_flags", since = "1.5.0")]
     pub fn alternate(&self) -> bool {
-        self.flags & (1 << FlagV1::Alternate as u32) != 0
-    }
+}
 
     /// Determines if the `0` flag was specified.
     ///
@@ -77899,18 +76368,15 @@ impl<'a> Formatter<'a> {
     #[must_use]
     #[stable(feature = "fmt_flags", since = "1.5.0")]
     pub fn sign_aware_zero_pad(&self) -> bool {
-        self.flags & (1 << FlagV1::SignAwareZeroPad as u32) != 0
-    }
+}
 
     // FIXME: Decide what public API we want for these two flags.
     // https://github.com/rust-lang/rust/issues/48584
     fn debug_lower_hex(&self) -> bool {
-        self.flags & (1 << FlagV1::DebugLowerHex as u32) != 0
-    }
+}
 
     fn debug_upper_hex(&self) -> bool {
-        self.flags & (1 << FlagV1::DebugUpperHex as u32) != 0
-    }
+}
 
     /// Creates a [`DebugStruct`] builder designed to assist with creation of
     /// [`fmt::Debug`] implementations for structs.
@@ -77950,8 +76416,7 @@ impl<'a> Formatter<'a> {
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
     pub fn debug_struct<'b>(&'b mut self, name: &str) -> DebugStruct<'b, 'a> {
-        builders::debug_struct_new(self, name)
-    }
+}
 
     /// Used to shrink `derive(Debug)` code, for faster compilation and smaller binaries.
     /// `debug_struct_fields_finish` is more general, but this is faster for 1 field.
@@ -78073,8 +76538,7 @@ impl<'a> Formatter<'a> {
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
     pub fn debug_tuple<'b>(&'b mut self, name: &str) -> DebugTuple<'b, 'a> {
-        builders::debug_tuple_new(self, name)
-    }
+}
 
     /// Used to shrink `derive(Debug)` code, for faster compilation and smaller binaries.
     /// `debug_tuple_fields_finish` is more general, but this is faster for 1 field.
@@ -78168,8 +76632,7 @@ impl<'a> Formatter<'a> {
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
     pub fn debug_list<'b>(&'b mut self) -> DebugList<'b, 'a> {
-        builders::debug_list_new(self)
-    }
+}
 
     /// Creates a `DebugSet` builder designed to assist with creation of
     /// `fmt::Debug` implementations for set-like structures.
@@ -78226,8 +76689,7 @@ impl<'a> Formatter<'a> {
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
     pub fn debug_set<'b>(&'b mut self) -> DebugSet<'b, 'a> {
-        builders::debug_set_new(self)
-    }
+}
 
     /// Creates a `DebugMap` builder designed to assist with creation of
     /// `fmt::Debug` implementations for map-like structures.
@@ -78252,30 +76714,25 @@ impl<'a> Formatter<'a> {
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
     pub fn debug_map<'b>(&'b mut self) -> DebugMap<'b, 'a> {
-        builders::debug_map_new(self)
-    }
+}
 }
 
 #[stable(since = "1.2.0", feature = "formatter_write")]
 impl Write for Formatter<'_> {
     fn write_str(&mut self, s: &str) -> Result {
-        self.buf.write_str(s)
-    }
+}
 
     fn write_char(&mut self, c: char) -> Result {
-        self.buf.write_char(c)
-    }
+}
 
     fn write_fmt(&mut self, args: Arguments<'_>) -> Result {
-        write(self.buf, args)
-    }
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        Display::fmt("an error occurred when formatting an argument", f)
-    }
+}
 }
 
 // Implementations of the core formatting traits
@@ -78285,11 +76742,11 @@ macro_rules! fmt_refs {
         $(
         #[stable(feature = "rust1", since = "1.0.0")]
         impl<T: ?Sized + $tr> $tr for &T {
-            fn fmt(&self, f: &mut Formatter<'_>) -> Result { $tr::fmt(&**self, f) }
+            fn fmt(&self, f: &mut Formatter<'_>) -> Result { }
         }
         #[stable(feature = "rust1", since = "1.0.0")]
         impl<T: ?Sized + $tr> $tr for &mut T {
-            fn fmt(&self, f: &mut Formatter<'_>) -> Result { $tr::fmt(&**self, f) }
+            fn fmt(&self, f: &mut Formatter<'_>) -> Result { }
         }
         )*
     }
@@ -78309,81 +76766,43 @@ impl Display for ! {
 impl Debug for bool {
     #[inline]
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        Display::fmt(self, f)
-    }
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Display for bool {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        Display::fmt(if *self { "true" } else { "false" }, f)
-    }
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Debug for str {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        f.write_char('"')?;
-        let mut from = 0;
-        for (i, c) in self.char_indices() {
-            let esc = c.escape_debug_ext(EscapeDebugExtArgs {
-                escape_grapheme_extended: true,
-                escape_single_quote: false,
-                escape_double_quote: true,
-            });
-            // If char needs escaping, flush backlog so far and write, else skip
-            if esc.len() != 1 {
-                f.write_str(&self[from..i])?;
-                for c in esc {
-                    f.write_char(c)?;
-                }
-                from = i + c.len_utf8();
-            }
-        }
-        f.write_str(&self[from..])?;
-        f.write_char('"')
-    }
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Display for str {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        f.pad(self)
-    }
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Debug for char {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        f.write_char('\'')?;
-        for c in self.escape_debug_ext(EscapeDebugExtArgs {
-            escape_grapheme_extended: true,
-            escape_single_quote: true,
-            escape_double_quote: false,
-        }) {
-            f.write_char(c)?
-        }
-        f.write_char('\'')
-    }
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Display for char {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        if f.width.is_none() && f.precision.is_none() {
-            f.write_char(*self)
-        } else {
-            f.pad(self.encode_utf8(&mut [0; 4]))
-        }
-    }
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Pointer for *const T {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        // Cast is needed here because `.addr()` requires `T: Sized`.
-        pointer_fmt_inner((*self as *const ()).addr(), f)
-    }
+}
 }
 
 /// Since the formatting will be identical for all pointer types, use a non-monomorphized
@@ -78394,49 +76813,24 @@ impl<T: ?Sized> Pointer for *const T {
 ///
 /// [problematic]: https://github.com/rust-lang/rust/issues/95489
 pub(crate) fn pointer_fmt_inner(ptr_addr: usize, f: &mut Formatter<'_>) -> Result {
-    let old_width = f.width;
-    let old_flags = f.flags;
-
-    // The alternate flag is already treated by LowerHex as being special-
-    // it denotes whether to prefix with 0x. We use it to work out whether
-    // or not to zero extend, and then unconditionally set it to get the
-    // prefix.
-    if f.alternate() {
-        f.flags |= 1 << (FlagV1::SignAwareZeroPad as u32);
-
-        if f.width.is_none() {
-            f.width = Some((usize::BITS / 4) as usize + 2);
-        }
-    }
-    f.flags |= 1 << (FlagV1::Alternate as u32);
-
-    let ret = LowerHex::fmt(&ptr_addr, f);
-
-    f.width = old_width;
-    f.flags = old_flags;
-
-    ret
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Pointer for *mut T {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        Pointer::fmt(&(*self as *const T), f)
-    }
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Pointer for &T {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        Pointer::fmt(&(*self as *const T), f)
-    }
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Pointer for &mut T {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        Pointer::fmt(&(&**self as *const T), f)
-    }
+}
 }
 
 // Implementation of Display/Debug for various core types
@@ -78444,14 +76838,12 @@ impl<T: ?Sized> Pointer for &mut T {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Debug for *const T {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        Pointer::fmt(self, f)
-    }
+}
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Debug for *mut T {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        Pointer::fmt(self, f)
-    }
+}
 }
 
 macro_rules! peel {
@@ -78467,14 +76859,7 @@ macro_rules! tuple {
             impl<$($name:Debug),+> Debug for ($($name,)+) where last_type!($($name,)+): ?Sized {
                 #[allow(non_snake_case, unused_assignments)]
                 fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-                    let mut builder = f.debug_tuple("");
-                    let ($(ref $name,)+) = *self;
-                    $(
-                        builder.field(&$name);
-                    )+
-
-                    builder.finish()
-                }
+}
             }
         }
         peel! { $($name,)+ }
@@ -78505,72 +76890,49 @@ tuple! { E, D, C, B, A, Z, Y, X, W, V, U, T, }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Debug> Debug for [T] {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        f.debug_list().entries(self.iter()).finish()
-    }
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Debug for () {
     #[inline]
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        f.pad("()")
-    }
+}
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Debug for PhantomData<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        f.debug_struct("PhantomData").finish()
-    }
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Copy + Debug> Debug for Cell<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        f.debug_struct("Cell").field("value", &self.get()).finish()
-    }
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + Debug> Debug for RefCell<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        match self.try_borrow() {
-            Ok(borrow) => f.debug_struct("RefCell").field("value", &borrow).finish(),
-            Err(_) => {
-                // The RefCell is mutably borrowed so we can't look at its value
-                // here. Show a placeholder instead.
-                struct BorrowedPlaceholder;
-
-                impl Debug for BorrowedPlaceholder {
-                    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-                        f.write_str("<borrowed>")
-                    }
-                }
-
-                f.debug_struct("RefCell").field("value", &BorrowedPlaceholder).finish()
-            }
-        }
-    }
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + Debug> Debug for Ref<'_, T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        Debug::fmt(&**self, f)
-    }
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + Debug> Debug for RefMut<'_, T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        Debug::fmt(&*(self.deref()), f)
-    }
+}
 }
 
 #[stable(feature = "core_impl_debug", since = "1.9.0")]
 impl<T: ?Sized> Debug for UnsafeCell<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        f.debug_struct("UnsafeCell").finish_non_exhaustive()
-    }
+}
 }
 
 #[unstable(feature = "sync_unsafe_cell", issue = "95439")]
@@ -78801,27 +77163,6 @@ macro_rules! load_int_le {
 /// that must be in-bounds.
 #[inline]
 unsafe fn u8to64_le(buf: &[u8], start: usize, len: usize) -> u64 {
-    debug_assert!(len < 8);
-    let mut i = 0; // current byte index (from LSB) in the output u64
-    let mut out = 0;
-    if i + 3 < len {
-        // SAFETY: `i` cannot be greater than `len`, and the caller must guarantee
-        // that the index start..start+len is in bounds.
-        out = unsafe { load_int_le!(buf, start + i, u32) } as u64;
-        i += 4;
-    }
-    if i + 1 < len {
-        // SAFETY: same as above.
-        out |= (unsafe { load_int_le!(buf, start + i, u16) } as u64) << (i * 8);
-        i += 2
-    }
-    if i < len {
-        // SAFETY: same as above.
-        out |= (unsafe { *buf.get_unchecked(start + i) } as u64) << (i * 8);
-        i += 1;
-    }
-    debug_assert_eq!(i, len);
-    out
 }
 
 impl SipHasher {
@@ -78834,8 +77175,7 @@ impl SipHasher {
     )]
     #[must_use]
     pub fn new() -> SipHasher {
-        SipHasher::new_with_keys(0, 0)
-    }
+}
 
     /// Creates a `SipHasher` that is keyed off the provided keys.
     #[inline]
@@ -78846,8 +77186,7 @@ impl SipHasher {
     )]
     #[must_use]
     pub fn new_with_keys(key0: u64, key1: u64) -> SipHasher {
-        SipHasher(SipHasher24 { hasher: Hasher::new_with_keys(key0, key1) })
-    }
+}
 }
 
 impl SipHasher13 {
@@ -78875,46 +77214,26 @@ impl SipHasher13 {
 impl<S: Sip> Hasher<S> {
     #[inline]
     fn new_with_keys(key0: u64, key1: u64) -> Hasher<S> {
-        let mut state = Hasher {
-            k0: key0,
-            k1: key1,
-            length: 0,
-            state: State { v0: 0, v1: 0, v2: 0, v3: 0 },
-            tail: 0,
-            ntail: 0,
-            _marker: PhantomData,
-        };
-        state.reset();
-        state
-    }
+}
 
     #[inline]
     fn reset(&mut self) {
-        self.length = 0;
-        self.state.v0 = self.k0 ^ 0x736f6d6570736575;
-        self.state.v1 = self.k1 ^ 0x646f72616e646f6d;
-        self.state.v2 = self.k0 ^ 0x6c7967656e657261;
-        self.state.v3 = self.k1 ^ 0x7465646279746573;
-        self.ntail = 0;
-    }
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl super::Hasher for SipHasher {
     #[inline]
     fn write(&mut self, msg: &[u8]) {
-        self.0.hasher.write(msg)
-    }
+}
 
     #[inline]
     fn write_str(&mut self, s: &str) {
-        self.0.hasher.write_str(s);
-    }
+}
 
     #[inline]
     fn finish(&self) -> u64 {
-        self.0.hasher.finish()
-    }
+}
 }
 
 #[unstable(feature = "hashmap_internals", issue = "none")]
@@ -78931,97 +77250,28 @@ impl<S: Sip> super::Hasher for Hasher<S> {
     // details.
     #[inline]
     fn write(&mut self, msg: &[u8]) {
-        let length = msg.len();
-        self.length += length;
-
-        let mut needed = 0;
-
-        if self.ntail != 0 {
-            needed = 8 - self.ntail;
-            // SAFETY: `cmp::min(length, needed)` is guaranteed to not be over `length`
-            self.tail |= unsafe { u8to64_le(msg, 0, cmp::min(length, needed)) } << (8 * self.ntail);
-            if length < needed {
-                self.ntail += length;
-                return;
-            } else {
-                self.state.v3 ^= self.tail;
-                S::c_rounds(&mut self.state);
-                self.state.v0 ^= self.tail;
-                self.ntail = 0;
-            }
-        }
-
-        // Buffered tail is now flushed, process new input.
-        let len = length - needed;
-        let left = len & 0x7; // len % 8
-
-        let mut i = needed;
-        while i < len - left {
-            // SAFETY: because `len - left` is the biggest multiple of 8 under
-            // `len`, and because `i` starts at `needed` where `len` is `length - needed`,
-            // `i + 8` is guaranteed to be less than or equal to `length`.
-            let mi = unsafe { load_int_le!(msg, i, u64) };
-
-            self.state.v3 ^= mi;
-            S::c_rounds(&mut self.state);
-            self.state.v0 ^= mi;
-
-            i += 8;
-        }
-
-        // SAFETY: `i` is now `needed + len.div_euclid(8) * 8`,
-        // so `i + left` = `needed + len` = `length`, which is by
-        // definition equal to `msg.len()`.
-        self.tail = unsafe { u8to64_le(msg, i, left) };
-        self.ntail = left;
-    }
+}
 
     #[inline]
     fn write_str(&mut self, s: &str) {
-        // This hasher works byte-wise, and `0xFF` cannot show up in a `str`,
-        // so just hashing the one extra byte is enough to be prefix-free.
-        self.write(s.as_bytes());
-        self.write_u8(0xFF);
-    }
+}
 
     #[inline]
     fn finish(&self) -> u64 {
-        let mut state = self.state;
-
-        let b: u64 = ((self.length as u64 & 0xff) << 56) | self.tail;
-
-        state.v3 ^= b;
-        S::c_rounds(&mut state);
-        state.v0 ^= b;
-
-        state.v2 ^= 0xff;
-        S::d_rounds(&mut state);
-
-        state.v0 ^ state.v1 ^ state.v2 ^ state.v3
-    }
+}
 }
 
 impl<S: Sip> Clone for Hasher<S> {
     #[inline]
     fn clone(&self) -> Hasher<S> {
-        Hasher {
-            k0: self.k0,
-            k1: self.k1,
-            length: self.length,
-            state: self.state,
-            tail: self.tail,
-            ntail: self.ntail,
-            _marker: self._marker,
-        }
-    }
+}
 }
 
 impl<S: Sip> Default for Hasher<S> {
     /// Creates a `Hasher<S>` with the two initial keys set to 0.
     #[inline]
     fn default() -> Hasher<S> {
-        Hasher::new_with_keys(0, 0)
-    }
+}
 }
 
 #[doc(hidden)]
@@ -79036,15 +77286,11 @@ struct Sip13Rounds;
 impl Sip for Sip13Rounds {
     #[inline]
     fn c_rounds(state: &mut State) {
-        compress!(state);
-    }
+}
 
     #[inline]
     fn d_rounds(state: &mut State) {
-        compress!(state);
-        compress!(state);
-        compress!(state);
-    }
+}
 }
 
 #[derive(Debug, Clone, Default)]
@@ -79053,17 +77299,11 @@ struct Sip24Rounds;
 impl Sip for Sip24Rounds {
     #[inline]
     fn c_rounds(state: &mut State) {
-        compress!(state);
-        compress!(state);
-    }
+}
 
     #[inline]
     fn d_rounds(state: &mut State) {
-        compress!(state);
-        compress!(state);
-        compress!(state);
-        compress!(state);
-    }
+}
 }
 }
 
@@ -79206,10 +77446,7 @@ pub trait Hash {
     where
         Self: Sized,
     {
-        for piece in data {
-            piece.hash(state);
-        }
-    }
+}
 }
 
 // Separate module to reexport the macro `Hash` from prelude without the trait `Hash`.
@@ -79339,69 +77576,58 @@ pub trait Hasher {
     #[inline]
     #[stable(feature = "hasher_write", since = "1.3.0")]
     fn write_u16(&mut self, i: u16) {
-        self.write(&i.to_ne_bytes())
-    }
+}
     /// Writes a single `u32` into this hasher.
     #[inline]
     #[stable(feature = "hasher_write", since = "1.3.0")]
     fn write_u32(&mut self, i: u32) {
-        self.write(&i.to_ne_bytes())
-    }
+}
     /// Writes a single `u64` into this hasher.
     #[inline]
     #[stable(feature = "hasher_write", since = "1.3.0")]
     fn write_u64(&mut self, i: u64) {
-        self.write(&i.to_ne_bytes())
-    }
+}
     /// Writes a single `u128` into this hasher.
     #[inline]
     #[stable(feature = "i128", since = "1.26.0")]
     fn write_u128(&mut self, i: u128) {
-        self.write(&i.to_ne_bytes())
-    }
+}
     /// Writes a single `usize` into this hasher.
     #[inline]
     #[stable(feature = "hasher_write", since = "1.3.0")]
     fn write_usize(&mut self, i: usize) {
-        self.write(&i.to_ne_bytes())
-    }
+}
 
     /// Writes a single `i8` into this hasher.
     #[inline]
     #[stable(feature = "hasher_write", since = "1.3.0")]
     fn write_i8(&mut self, i: i8) {
-        self.write_u8(i as u8)
-    }
+}
     /// Writes a single `i16` into this hasher.
     #[inline]
     #[stable(feature = "hasher_write", since = "1.3.0")]
     fn write_i16(&mut self, i: i16) {
-        self.write_u16(i as u16)
-    }
+}
     /// Writes a single `i32` into this hasher.
     #[inline]
     #[stable(feature = "hasher_write", since = "1.3.0")]
     fn write_i32(&mut self, i: i32) {
-        self.write_u32(i as u32)
-    }
+}
     /// Writes a single `i64` into this hasher.
     #[inline]
     #[stable(feature = "hasher_write", since = "1.3.0")]
     fn write_i64(&mut self, i: i64) {
-        self.write_u64(i as u64)
-    }
+}
     /// Writes a single `i128` into this hasher.
     #[inline]
     #[stable(feature = "i128", since = "1.26.0")]
     fn write_i128(&mut self, i: i128) {
-        self.write_u128(i as u128)
-    }
+}
     /// Writes a single `isize` into this hasher.
     #[inline]
     #[stable(feature = "hasher_write", since = "1.3.0")]
     fn write_isize(&mut self, i: isize) {
-        self.write_usize(i as usize)
-    }
+}
 
     /// Writes a length prefix into this hasher, as part of being prefix-free.
     ///
@@ -79525,53 +77751,37 @@ pub trait Hasher {
 #[stable(feature = "indirect_hasher_impl", since = "1.22.0")]
 impl<H: Hasher + ?Sized> Hasher for &mut H {
     fn finish(&self) -> u64 {
-        (**self).finish()
-    }
+}
     fn write(&mut self, bytes: &[u8]) {
-        (**self).write(bytes)
-    }
+}
     fn write_u8(&mut self, i: u8) {
-        (**self).write_u8(i)
-    }
+}
     fn write_u16(&mut self, i: u16) {
-        (**self).write_u16(i)
-    }
+}
     fn write_u32(&mut self, i: u32) {
-        (**self).write_u32(i)
-    }
+}
     fn write_u64(&mut self, i: u64) {
-        (**self).write_u64(i)
-    }
+}
     fn write_u128(&mut self, i: u128) {
-        (**self).write_u128(i)
-    }
+}
     fn write_usize(&mut self, i: usize) {
-        (**self).write_usize(i)
-    }
+}
     fn write_i8(&mut self, i: i8) {
-        (**self).write_i8(i)
-    }
+}
     fn write_i16(&mut self, i: i16) {
-        (**self).write_i16(i)
-    }
+}
     fn write_i32(&mut self, i: i32) {
-        (**self).write_i32(i)
-    }
+}
     fn write_i64(&mut self, i: i64) {
-        (**self).write_i64(i)
-    }
+}
     fn write_i128(&mut self, i: i128) {
-        (**self).write_i128(i)
-    }
+}
     fn write_isize(&mut self, i: isize) {
-        (**self).write_isize(i)
-    }
+}
     fn write_length_prefix(&mut self, len: usize) {
-        (**self).write_length_prefix(len)
-    }
+}
     fn write_str(&mut self, s: &str) {
-        (**self).write_str(s)
-    }
+}
 }
 
 /// A trait for creating instances of [`Hasher`].
@@ -79721,8 +77931,7 @@ pub struct BuildHasherDefault<H>(marker::PhantomData<fn() -> H>);
 #[stable(since = "1.9.0", feature = "core_impl_debug")]
 impl<H> fmt::Debug for BuildHasherDefault<H> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("BuildHasherDefault").finish()
-    }
+}
 }
 
 #[stable(since = "1.7.0", feature = "build_hasher")]
@@ -79730,30 +77939,26 @@ impl<H: Default + Hasher> BuildHasher for BuildHasherDefault<H> {
     type Hasher = H;
 
     fn build_hasher(&self) -> H {
-        H::default()
-    }
+}
 }
 
 #[stable(since = "1.7.0", feature = "build_hasher")]
 impl<H> Clone for BuildHasherDefault<H> {
     fn clone(&self) -> BuildHasherDefault<H> {
-        BuildHasherDefault(marker::PhantomData)
-    }
+}
 }
 
 #[stable(since = "1.7.0", feature = "build_hasher")]
 #[rustc_const_unstable(feature = "const_default_impls", issue = "87864")]
 impl<H> const Default for BuildHasherDefault<H> {
     fn default() -> BuildHasherDefault<H> {
-        BuildHasherDefault(marker::PhantomData)
-    }
+}
 }
 
 #[stable(since = "1.29.0", feature = "build_hasher_eq")]
 impl<H> PartialEq for BuildHasherDefault<H> {
     fn eq(&self, _other: &BuildHasherDefault<H>) -> bool {
-        true
-    }
+}
 }
 
 #[stable(since = "1.29.0", feature = "build_hasher_eq")]
@@ -79771,19 +77976,11 @@ mod impls {
             impl Hash for $ty {
                 #[inline]
                 fn hash<H: Hasher>(&self, state: &mut H) {
-                    state.$meth(*self)
-                }
+}
 
                 #[inline]
                 fn hash_slice<H: Hasher>(data: &[$ty], state: &mut H) {
-                    let newlen = data.len() * mem::size_of::<$ty>();
-                    let ptr = data.as_ptr() as *const u8;
-                    // SAFETY: `ptr` is valid and aligned, as this macro is only used
-                    // for numeric primitives which have no padding. The new slice only
-                    // spans across `data` and is never mutated, and its total size is the
-                    // same as the original `data` so it can't be over `isize::MAX`.
-                    state.write(unsafe { slice::from_raw_parts(ptr, newlen) })
-                }
+}
             }
         )*}
     }
@@ -79807,32 +78004,28 @@ mod impls {
     impl Hash for bool {
         #[inline]
         fn hash<H: Hasher>(&self, state: &mut H) {
-            state.write_u8(*self as u8)
-        }
+}
     }
 
     #[stable(feature = "rust1", since = "1.0.0")]
     impl Hash for char {
         #[inline]
         fn hash<H: Hasher>(&self, state: &mut H) {
-            state.write_u32(*self as u32)
-        }
+}
     }
 
     #[stable(feature = "rust1", since = "1.0.0")]
     impl Hash for str {
         #[inline]
         fn hash<H: Hasher>(&self, state: &mut H) {
-            state.write_str(self);
-        }
+}
     }
 
     #[stable(feature = "never_hash", since = "1.29.0")]
     impl Hash for ! {
         #[inline]
         fn hash<H: Hasher>(&self, _: &mut H) {
-            *self
-        }
+}
     }
 
     macro_rules! impl_hash_tuple {
@@ -79840,8 +78033,7 @@ mod impls {
             #[stable(feature = "rust1", since = "1.0.0")]
             impl Hash for () {
                 #[inline]
-                fn hash<H: Hasher>(&self, _state: &mut H) {}
-            }
+                fn hash<H: Hasher>(&self, _state: &mut H) {}}
         );
 
         ( $($name:ident)+) => (
@@ -79852,9 +78044,7 @@ mod impls {
                     #[allow(non_snake_case)]
                     #[inline]
                     fn hash<S: Hasher>(&self, state: &mut S) {
-                        let ($(ref $name,)+) = *self;
-                        $($name.hash(state);)+
-                    }
+}
                 }
             }
         );
@@ -79897,45 +78087,35 @@ mod impls {
     impl<T: Hash> Hash for [T] {
         #[inline]
         fn hash<H: Hasher>(&self, state: &mut H) {
-            state.write_length_prefix(self.len());
-            Hash::hash_slice(self, state)
-        }
+}
     }
 
     #[stable(feature = "rust1", since = "1.0.0")]
     impl<T: ?Sized + Hash> Hash for &T {
         #[inline]
         fn hash<H: Hasher>(&self, state: &mut H) {
-            (**self).hash(state);
-        }
+}
     }
 
     #[stable(feature = "rust1", since = "1.0.0")]
     impl<T: ?Sized + Hash> Hash for &mut T {
         #[inline]
         fn hash<H: Hasher>(&self, state: &mut H) {
-            (**self).hash(state);
-        }
+}
     }
 
     #[stable(feature = "rust1", since = "1.0.0")]
     impl<T: ?Sized> Hash for *const T {
         #[inline]
         fn hash<H: Hasher>(&self, state: &mut H) {
-            let (address, metadata) = self.to_raw_parts();
-            state.write_usize(address.addr());
-            metadata.hash(state);
-        }
+}
     }
 
     #[stable(feature = "rust1", since = "1.0.0")]
     impl<T: ?Sized> Hash for *mut T {
         #[inline]
         fn hash<H: Hasher>(&self, state: &mut H) {
-            let (address, metadata) = self.to_raw_parts();
-            state.write_usize(address.addr());
-            metadata.hash(state);
-        }
+}
     }
 }
 }
@@ -79988,128 +78168,30 @@ const USIZE_BYTES: usize = mem::size_of::<usize>();
 /// bit."
 #[inline]
 fn contains_zero_byte(x: usize) -> bool {
-    x.wrapping_sub(LO_USIZE) & !x & HI_USIZE != 0
 }
 
 #[cfg(target_pointer_width = "16")]
 #[inline]
 fn repeat_byte(b: u8) -> usize {
-    (b as usize) << 8 | b as usize
 }
 
 #[cfg(not(target_pointer_width = "16"))]
 #[inline]
 fn repeat_byte(b: u8) -> usize {
-    (b as usize) * (usize::MAX / 255)
 }
 
 /// Returns the first index matching the byte `x` in `text`.
 #[must_use]
 #[inline]
 pub fn memchr(x: u8, text: &[u8]) -> Option<usize> {
-    // Fast path for small slices
-    if text.len() < 2 * USIZE_BYTES {
-        return text.iter().position(|elt| *elt == x);
-    }
-
-    memchr_general_case(x, text)
 }
 
 fn memchr_general_case(x: u8, text: &[u8]) -> Option<usize> {
-    // Scan for a single byte value by reading two `usize` words at a time.
-    //
-    // Split `text` in three parts
-    // - unaligned initial part, before the first word aligned address in text
-    // - body, scan by 2 words at a time
-    // - the last remaining part, < 2 word size
-
-    // search up to an aligned boundary
-    let len = text.len();
-    let ptr = text.as_ptr();
-    let mut offset = ptr.align_offset(USIZE_BYTES);
-
-    if offset > 0 {
-        offset = cmp::min(offset, len);
-        if let Some(index) = text[..offset].iter().position(|elt| *elt == x) {
-            return Some(index);
-        }
-    }
-
-    // search the body of the text
-    let repeated_x = repeat_byte(x);
-    while offset <= len - 2 * USIZE_BYTES {
-        // SAFETY: the while's predicate guarantees a distance of at least 2 * usize_bytes
-        // between the offset and the end of the slice.
-        unsafe {
-            let u = *(ptr.add(offset) as *const usize);
-            let v = *(ptr.add(offset + USIZE_BYTES) as *const usize);
-
-            // break if there is a matching byte
-            let zu = contains_zero_byte(u ^ repeated_x);
-            let zv = contains_zero_byte(v ^ repeated_x);
-            if zu || zv {
-                break;
-            }
-        }
-        offset += USIZE_BYTES * 2;
-    }
-
-    // Find the byte after the point the body loop stopped.
-    text[offset..].iter().position(|elt| *elt == x).map(|i| offset + i)
 }
 
 /// Returns the last index matching the byte `x` in `text`.
 #[must_use]
 pub fn memrchr(x: u8, text: &[u8]) -> Option<usize> {
-    // Scan for a single byte value by reading two `usize` words at a time.
-    //
-    // Split `text` in three parts:
-    // - unaligned tail, after the last word aligned address in text,
-    // - body, scanned by 2 words at a time,
-    // - the first remaining bytes, < 2 word size.
-    let len = text.len();
-    let ptr = text.as_ptr();
-    type Chunk = usize;
-
-    let (min_aligned_offset, max_aligned_offset) = {
-        // We call this just to obtain the length of the prefix and suffix.
-        // In the middle we always process two chunks at once.
-        // SAFETY: transmuting `[u8]` to `[usize]` is safe except for size differences
-        // which are handled by `align_to`.
-        let (prefix, _, suffix) = unsafe { text.align_to::<(Chunk, Chunk)>() };
-        (prefix.len(), len - suffix.len())
-    };
-
-    let mut offset = max_aligned_offset;
-    if let Some(index) = text[offset..].iter().rposition(|elt| *elt == x) {
-        return Some(offset + index);
-    }
-
-    // Search the body of the text, make sure we don't cross min_aligned_offset.
-    // offset is always aligned, so just testing `>` is sufficient and avoids possible
-    // overflow.
-    let repeated_x = repeat_byte(x);
-    let chunk_bytes = mem::size_of::<Chunk>();
-
-    while offset > min_aligned_offset {
-        // SAFETY: offset starts at len - suffix.len(), as long as it is greater than
-        // min_aligned_offset (prefix.len()) the remaining distance is at least 2 * chunk_bytes.
-        unsafe {
-            let u = *(ptr.offset(offset as isize - 2 * chunk_bytes as isize) as *const Chunk);
-            let v = *(ptr.offset(offset as isize - chunk_bytes as isize) as *const Chunk);
-
-            // Break if there is a matching byte.
-            let zu = contains_zero_byte(u ^ repeated_x);
-            let zv = contains_zero_byte(v ^ repeated_x);
-            if zu || zv {
-                break;
-            }
-        }
-        offset -= 2 * chunk_bytes;
-    }
-
-    // Find the byte before the point the body loop stopped.
-    text[..offset].iter().rposition(|elt| *elt == x)
 }
 }
 
@@ -80129,8 +78211,7 @@ impl [u8] {
     #[must_use]
     #[inline]
     pub fn is_ascii(&self) -> bool {
-        is_ascii(self)
-    }
+}
 
     /// Checks that two slices are an ASCII case-insensitive match.
     ///
@@ -80140,8 +78221,7 @@ impl [u8] {
     #[must_use]
     #[inline]
     pub fn eq_ignore_ascii_case(&self, other: &[u8]) -> bool {
-        self.len() == other.len() && iter::zip(self, other).all(|(a, b)| a.eq_ignore_ascii_case(b))
-    }
+}
 
     /// Converts this slice to its ASCII upper case equivalent in-place.
     ///
@@ -80155,10 +78235,7 @@ impl [u8] {
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn make_ascii_uppercase(&mut self) {
-        for byte in self {
-            byte.make_ascii_uppercase();
-        }
-    }
+}
 
     /// Converts this slice to its ASCII lower case equivalent in-place.
     ///
@@ -80172,10 +78249,7 @@ impl [u8] {
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn make_ascii_lowercase(&mut self) {
-        for byte in self {
-            byte.make_ascii_lowercase();
-        }
-    }
+}
 
     /// Returns an iterator that produces an escaped version of this slice,
     /// treating it as an ASCII string.
@@ -80192,8 +78266,7 @@ impl [u8] {
                   without modifying the original"]
     #[stable(feature = "inherent_ascii_escape", since = "1.60.0")]
     pub fn escape_ascii(&self) -> EscapeAscii<'_> {
-        EscapeAscii { inner: self.iter().flat_map(EscapeByte) }
-    }
+}
 
     /// Returns a byte slice with leading ASCII whitespace bytes removed.
     ///
@@ -80254,8 +78327,7 @@ impl [u8] {
 impl_fn_for_zst! {
     #[derive(Clone)]
     struct EscapeByte impl Fn = |byte: &u8| -> ascii::EscapeDefault {
-        ascii::escape_default(*byte)
-    };
+};
 }
 
 /// An iterator over the escaped version of a byte slice.
@@ -80274,38 +78346,32 @@ impl<'a> iter::Iterator for EscapeAscii<'a> {
     type Item = u8;
     #[inline]
     fn next(&mut self) -> Option<u8> {
-        self.inner.next()
-    }
+}
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        self.inner.size_hint()
-    }
+}
     #[inline]
     fn try_fold<Acc, Fold, R>(&mut self, init: Acc, fold: Fold) -> R
     where
         Fold: FnMut(Acc, Self::Item) -> R,
         R: ops::Try<Output = Acc>,
     {
-        self.inner.try_fold(init, fold)
-    }
+}
     #[inline]
     fn fold<Acc, Fold>(self, init: Acc, fold: Fold) -> Acc
     where
         Fold: FnMut(Acc, Self::Item) -> Acc,
     {
-        self.inner.fold(init, fold)
-    }
+}
     #[inline]
     fn last(mut self) -> Option<u8> {
-        self.next_back()
-    }
+}
 }
 
 #[stable(feature = "inherent_ascii_escape", since = "1.60.0")]
 impl<'a> iter::DoubleEndedIterator for EscapeAscii<'a> {
     fn next_back(&mut self) -> Option<u8> {
-        self.inner.next_back()
-    }
+}
 }
 #[stable(feature = "inherent_ascii_escape", since = "1.60.0")]
 impl<'a> iter::ExactSizeIterator for EscapeAscii<'a> {}
@@ -80314,22 +78380,18 @@ impl<'a> iter::FusedIterator for EscapeAscii<'a> {}
 #[stable(feature = "inherent_ascii_escape", since = "1.60.0")]
 impl<'a> fmt::Display for EscapeAscii<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.clone().try_for_each(|b| f.write_char(b as char))
-    }
+}
 }
 #[stable(feature = "inherent_ascii_escape", since = "1.60.0")]
 impl<'a> fmt::Debug for EscapeAscii<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("EscapeAscii").finish_non_exhaustive()
-    }
+}
 }
 
 /// Returns `true` if any byte in the word `v` is nonascii (>= 128). Snarfed
 /// from `../str/mod.rs`, which does something similar for utf8 validation.
 #[inline]
 fn contains_nonascii(v: usize) -> bool {
-    const NONASCII_MASK: usize = usize::repeat_u8(0x80);
-    (NONASCII_MASK & v) != 0
 }
 
 /// Optimized ASCII test that will use usize-at-a-time operations instead of
@@ -80346,80 +78408,6 @@ fn contains_nonascii(v: usize) -> bool {
 /// (above) returns true, then we know the answer is false.
 #[inline]
 fn is_ascii(s: &[u8]) -> bool {
-    const USIZE_SIZE: usize = mem::size_of::<usize>();
-
-    let len = s.len();
-    let align_offset = s.as_ptr().align_offset(USIZE_SIZE);
-
-    // If we wouldn't gain anything from the word-at-a-time implementation, fall
-    // back to a scalar loop.
-    //
-    // We also do this for architectures where `size_of::<usize>()` isn't
-    // sufficient alignment for `usize`, because it's a weird edge case.
-    if len < USIZE_SIZE || len < align_offset || USIZE_SIZE < mem::align_of::<usize>() {
-        return s.iter().all(|b| b.is_ascii());
-    }
-
-    // We always read the first word unaligned, which means `align_offset` is
-    // 0, we'd read the same value again for the aligned read.
-    let offset_to_aligned = if align_offset == 0 { USIZE_SIZE } else { align_offset };
-
-    let start = s.as_ptr();
-    // SAFETY: We verify `len < USIZE_SIZE` above.
-    let first_word = unsafe { (start as *const usize).read_unaligned() };
-
-    if contains_nonascii(first_word) {
-        return false;
-    }
-    // We checked this above, somewhat implicitly. Note that `offset_to_aligned`
-    // is either `align_offset` or `USIZE_SIZE`, both of are explicitly checked
-    // above.
-    debug_assert!(offset_to_aligned <= len);
-
-    // SAFETY: word_ptr is the (properly aligned) usize ptr we use to read the
-    // middle chunk of the slice.
-    let mut word_ptr = unsafe { start.add(offset_to_aligned) as *const usize };
-
-    // `byte_pos` is the byte index of `word_ptr`, used for loop end checks.
-    let mut byte_pos = offset_to_aligned;
-
-    // Paranoia check about alignment, since we're about to do a bunch of
-    // unaligned loads. In practice this should be impossible barring a bug in
-    // `align_offset` though.
-    debug_assert_eq!(word_ptr.addr() % mem::align_of::<usize>(), 0);
-
-    // Read subsequent words until the last aligned word, excluding the last
-    // aligned word by itself to be done in tail check later, to ensure that
-    // tail is always one `usize` at most to extra branch `byte_pos == len`.
-    while byte_pos < len - USIZE_SIZE {
-        debug_assert!(
-            // Sanity check that the read is in bounds
-            (word_ptr.addr() + USIZE_SIZE) <= start.addr().wrapping_add(len) &&
-            // And that our assumptions about `byte_pos` hold.
-            (word_ptr.addr() - start.addr()) == byte_pos
-        );
-
-        // SAFETY: We know `word_ptr` is properly aligned (because of
-        // `align_offset`), and we know that we have enough bytes between `word_ptr` and the end
-        let word = unsafe { word_ptr.read() };
-        if contains_nonascii(word) {
-            return false;
-        }
-
-        byte_pos += USIZE_SIZE;
-        // SAFETY: We know that `byte_pos <= len - USIZE_SIZE`, which means that
-        // after this `add`, `word_ptr` will be at most one-past-the-end.
-        word_ptr = unsafe { word_ptr.add(1) };
-    }
-
-    // Sanity check to ensure there really is only one `usize` left. This should
-    // be guaranteed by our loop condition.
-    debug_assert!(byte_pos <= len && len - byte_pos <= USIZE_SIZE);
-
-    // SAFETY: This relies on `len >= USIZE_SIZE`, which we check at the start.
-    let last_word = unsafe { (start.add(len - USIZE_SIZE) as *const usize).read_unaligned() };
-
-    !contains_nonascii(last_word)
 }
 }
 mod cmp {
@@ -80441,12 +78429,10 @@ where
     A: PartialEq<B>,
 {
     fn eq(&self, other: &[B]) -> bool {
-        SlicePartialEq::equal(self, other)
-    }
+}
 
     fn ne(&self, other: &[B]) -> bool {
-        SlicePartialEq::not_equal(self, other)
-    }
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -80456,16 +78442,14 @@ impl<T: Eq> Eq for [T] {}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Ord> Ord for [T] {
     fn cmp(&self, other: &[T]) -> Ordering {
-        SliceOrd::compare(self, other)
-    }
+}
 }
 
 /// Implements comparison of vectors [lexicographically](Ord#lexicographical-comparison).
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: PartialOrd> PartialOrd for [T] {
     fn partial_cmp(&self, other: &[T]) -> Option<Ordering> {
-        SlicePartialOrd::partial_compare(self, other)
-    }
+}
 }
 
 #[doc(hidden)]
@@ -80484,12 +78468,7 @@ where
     A: PartialEq<B>,
 {
     default fn equal(&self, other: &[B]) -> bool {
-        if self.len() != other.len() {
-            return false;
-        }
-
-        self.iter().zip(other.iter()).all(|(x, y)| x == y)
-    }
+}
 }
 
 // Use memcmp for bytewise equality when the types allow
@@ -80498,17 +78477,7 @@ where
     A: BytewiseEquality<B>,
 {
     fn equal(&self, other: &[B]) -> bool {
-        if self.len() != other.len() {
-            return false;
-        }
-
-        // SAFETY: `self` and `other` are references and are thus guaranteed to be valid.
-        // The two slices have been checked to have the same size above.
-        unsafe {
-            let size = mem::size_of_val(self);
-            memcmp(self.as_ptr() as *const u8, other.as_ptr() as *const u8, size) == 0
-        }
-    }
+}
 }
 
 #[doc(hidden)]
@@ -80519,22 +78488,7 @@ trait SlicePartialOrd: Sized {
 
 impl<A: PartialOrd> SlicePartialOrd for A {
     default fn partial_compare(left: &[A], right: &[A]) -> Option<Ordering> {
-        let l = cmp::min(left.len(), right.len());
-
-        // Slice to the loop iteration range to enable bound check
-        // elimination in the compiler
-        let lhs = &left[..l];
-        let rhs = &right[..l];
-
-        for i in 0..l {
-            match lhs[i].partial_cmp(&rhs[i]) {
-                Some(Ordering::Equal) => (),
-                non_eq => return non_eq,
-            }
-        }
-
-        left.len().partial_cmp(&right.len())
-    }
+}
 }
 
 // This is the impl that we would like to have. Unfortunately it's not sound.
@@ -80545,15 +78499,13 @@ where
     A: Ord,
 {
     default fn partial_compare(left: &[A], right: &[A]) -> Option<Ordering> {
-        Some(SliceOrd::compare(left, right))
-    }
+}
 }
 */
 
 impl<A: AlwaysApplicableOrd> SlicePartialOrd for A {
     fn partial_compare(left: &[A], right: &[A]) -> Option<Ordering> {
-        Some(SliceOrd::compare(left, right))
-    }
+}
 }
 
 #[rustc_specialization_trait]
@@ -80583,22 +78535,7 @@ trait SliceOrd: Sized {
 
 impl<A: Ord> SliceOrd for A {
     default fn compare(left: &[Self], right: &[Self]) -> Ordering {
-        let l = cmp::min(left.len(), right.len());
-
-        // Slice to the loop iteration range to enable bound check
-        // elimination in the compiler
-        let lhs = &left[..l];
-        let rhs = &right[..l];
-
-        for i in 0..l {
-            match lhs[i].cmp(&rhs[i]) {
-                Ordering::Equal => (),
-                non_eq => return non_eq,
-            }
-        }
-
-        left.len().cmp(&right.len())
-    }
+}
 }
 
 // memcmp compares a sequence of unsigned bytes lexicographically.
@@ -80606,19 +78543,7 @@ impl<A: Ord> SliceOrd for A {
 impl SliceOrd for u8 {
     #[inline]
     fn compare(left: &[Self], right: &[Self]) -> Ordering {
-        // Since the length of a slice is always less than or equal to isize::MAX, this never underflows.
-        let diff = left.len() as isize - right.len() as isize;
-        // This comparison gets optimized away (on x86_64 and ARM) because the subtraction updates flags.
-        let len = if left.len() < right.len() { left.len() } else { right.len() };
-        // SAFETY: `left` and `right` are references and are thus guaranteed to be valid.
-        // We use the minimum of both lengths which guarantees that both regions are
-        // valid for reads in that interval.
-        let mut order = unsafe { memcmp(left.as_ptr(), right.as_ptr(), len) as isize };
-        if order == 0 {
-            order = diff;
-        }
-        order.cmp(&0)
-    }
+}
 }
 
 // Hack to allow specializing on `Eq` even though `Eq` has a method.
@@ -80653,28 +78578,19 @@ where
     T: PartialEq,
 {
     default fn slice_contains(&self, x: &[Self]) -> bool {
-        x.iter().any(|y| *y == *self)
-    }
+}
 }
 
 impl SliceContains for u8 {
     #[inline]
     fn slice_contains(&self, x: &[Self]) -> bool {
-        memchr::memchr(*self, x).is_some()
-    }
+}
 }
 
 impl SliceContains for i8 {
     #[inline]
     fn slice_contains(&self, x: &[Self]) -> bool {
-        let byte = *self as u8;
-        // SAFETY: `i8` and `u8` have the same memory layout, thus casting `x.as_ptr()`
-        // as `*const u8` is safe. The `x.as_ptr()` comes from a reference and is thus guaranteed
-        // to be valid for reads for the length of the slice `x.len()`, which cannot be larger
-        // than `isize::MAX`. The returned slice is never mutated.
-        let bytes: &[u8] = unsafe { from_raw_parts(x.as_ptr() as *const u8, x.len()) };
-        memchr::memchr(byte, bytes).is_some()
-    }
+}
 }
 }
 mod index {
@@ -80695,8 +78611,7 @@ where
 
     #[inline]
     fn index(&self, index: I) -> &I::Output {
-        index.index(self)
-    }
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -80707,8 +78622,7 @@ where
 {
     #[inline]
     fn index_mut(&mut self, index: I) -> &mut I::Output {
-        index.index_mut(self)
-    }
+}
 }
 
 #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
@@ -80717,23 +78631,13 @@ where
 #[track_caller]
 #[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
 const fn slice_start_index_len_fail(index: usize, len: usize) -> ! {
-    // SAFETY: we are just panicking here
-    unsafe {
-        const_eval_select(
-            (index, len),
-            slice_start_index_len_fail_ct,
-            slice_start_index_len_fail_rt,
-        )
-    }
 }
 
 // FIXME const-hack
 fn slice_start_index_len_fail_rt(index: usize, len: usize) -> ! {
-    panic!("range start index {index} out of range for slice of length {len}");
 }
 
 const fn slice_start_index_len_fail_ct(_: usize, _: usize) -> ! {
-    panic!("slice start index is out of range for slice");
 }
 
 #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
@@ -80742,19 +78646,13 @@ const fn slice_start_index_len_fail_ct(_: usize, _: usize) -> ! {
 #[track_caller]
 #[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
 const fn slice_end_index_len_fail(index: usize, len: usize) -> ! {
-    // SAFETY: we are just panicking here
-    unsafe {
-        const_eval_select((index, len), slice_end_index_len_fail_ct, slice_end_index_len_fail_rt)
-    }
 }
 
 // FIXME const-hack
 fn slice_end_index_len_fail_rt(index: usize, len: usize) -> ! {
-    panic!("range end index {index} out of range for slice of length {len}");
 }
 
 const fn slice_end_index_len_fail_ct(_: usize, _: usize) -> ! {
-    panic!("slice end index is out of range for slice");
 }
 
 #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
@@ -80763,17 +78661,13 @@ const fn slice_end_index_len_fail_ct(_: usize, _: usize) -> ! {
 #[track_caller]
 #[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
 const fn slice_index_order_fail(index: usize, end: usize) -> ! {
-    // SAFETY: we are just panicking here
-    unsafe { const_eval_select((index, end), slice_index_order_fail_ct, slice_index_order_fail_rt) }
 }
 
 // FIXME const-hack
 fn slice_index_order_fail_rt(index: usize, end: usize) -> ! {
-    panic!("slice index starts at {index} but ends at {end}");
 }
 
 const fn slice_index_order_fail_ct(_: usize, _: usize) -> ! {
-    panic!("slice index start is larger than end");
 }
 
 #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
@@ -80781,7 +78675,6 @@ const fn slice_index_order_fail_ct(_: usize, _: usize) -> ! {
 #[cold]
 #[track_caller]
 const fn slice_start_index_overflow_fail() -> ! {
-    panic!("attempted to index slice from after maximum usize");
 }
 
 #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
@@ -80789,7 +78682,6 @@ const fn slice_start_index_overflow_fail() -> ! {
 #[cold]
 #[track_caller]
 const fn slice_end_index_overflow_fail() -> ! {
-    panic!("attempted to index slice up to maximum usize");
 }
 
 mod private_slice_index {
@@ -80885,48 +78777,27 @@ unsafe impl<T> const SliceIndex<[T]> for usize {
 
     #[inline]
     fn get(self, slice: &[T]) -> Option<&T> {
-        // SAFETY: `self` is checked to be in bounds.
-        if self < slice.len() { unsafe { Some(&*self.get_unchecked(slice)) } } else { None }
-    }
+}
 
     #[inline]
     fn get_mut(self, slice: &mut [T]) -> Option<&mut T> {
-        // SAFETY: `self` is checked to be in bounds.
-        if self < slice.len() { unsafe { Some(&mut *self.get_unchecked_mut(slice)) } } else { None }
-    }
+}
 
     #[inline]
     unsafe fn get_unchecked(self, slice: *const [T]) -> *const T {
-        // SAFETY: the caller guarantees that `slice` is not dangling, so it
-        // cannot be longer than `isize::MAX`. They also guarantee that
-        // `self` is in bounds of `slice` so `self` cannot overflow an `isize`,
-        // so the call to `add` is safe.
-        unsafe {
-            assert_unsafe_precondition!(self < slice.len());
-            slice.as_ptr().add(self)
-        }
-    }
+}
 
     #[inline]
     unsafe fn get_unchecked_mut(self, slice: *mut [T]) -> *mut T {
-        // SAFETY: see comments for `get_unchecked` above.
-        unsafe {
-            assert_unsafe_precondition!(self < slice.len());
-            slice.as_mut_ptr().add(self)
-        }
-    }
+}
 
     #[inline]
     fn index(self, slice: &[T]) -> &T {
-        // N.B., use intrinsic indexing
-        &(*slice)[self]
-    }
+}
 
     #[inline]
     fn index_mut(self, slice: &mut [T]) -> &mut T {
-        // N.B., use intrinsic indexing
-        &mut (*slice)[self]
-    }
+}
 }
 
 #[stable(feature = "slice_get_slice_impls", since = "1.15.0")]
@@ -80936,67 +78807,27 @@ unsafe impl<T> const SliceIndex<[T]> for ops::Range<usize> {
 
     #[inline]
     fn get(self, slice: &[T]) -> Option<&[T]> {
-        if self.start > self.end || self.end > slice.len() {
-            None
-        } else {
-            // SAFETY: `self` is checked to be valid and in bounds above.
-            unsafe { Some(&*self.get_unchecked(slice)) }
-        }
-    }
+}
 
     #[inline]
     fn get_mut(self, slice: &mut [T]) -> Option<&mut [T]> {
-        if self.start > self.end || self.end > slice.len() {
-            None
-        } else {
-            // SAFETY: `self` is checked to be valid and in bounds above.
-            unsafe { Some(&mut *self.get_unchecked_mut(slice)) }
-        }
-    }
+}
 
     #[inline]
     unsafe fn get_unchecked(self, slice: *const [T]) -> *const [T] {
-        // SAFETY: the caller guarantees that `slice` is not dangling, so it
-        // cannot be longer than `isize::MAX`. They also guarantee that
-        // `self` is in bounds of `slice` so `self` cannot overflow an `isize`,
-        // so the call to `add` is safe.
-
-        unsafe {
-            assert_unsafe_precondition!(self.end >= self.start && self.end <= slice.len());
-            ptr::slice_from_raw_parts(slice.as_ptr().add(self.start), self.end - self.start)
-        }
-    }
+}
 
     #[inline]
     unsafe fn get_unchecked_mut(self, slice: *mut [T]) -> *mut [T] {
-        // SAFETY: see comments for `get_unchecked` above.
-        unsafe {
-            assert_unsafe_precondition!(self.end >= self.start && self.end <= slice.len());
-            ptr::slice_from_raw_parts_mut(slice.as_mut_ptr().add(self.start), self.end - self.start)
-        }
-    }
+}
 
     #[inline]
     fn index(self, slice: &[T]) -> &[T] {
-        if self.start > self.end {
-            slice_index_order_fail(self.start, self.end);
-        } else if self.end > slice.len() {
-            slice_end_index_len_fail(self.end, slice.len());
-        }
-        // SAFETY: `self` is checked to be valid and in bounds above.
-        unsafe { &*self.get_unchecked(slice) }
-    }
+}
 
     #[inline]
     fn index_mut(self, slice: &mut [T]) -> &mut [T] {
-        if self.start > self.end {
-            slice_index_order_fail(self.start, self.end);
-        } else if self.end > slice.len() {
-            slice_end_index_len_fail(self.end, slice.len());
-        }
-        // SAFETY: `self` is checked to be valid and in bounds above.
-        unsafe { &mut *self.get_unchecked_mut(slice) }
-    }
+}
 }
 
 #[stable(feature = "slice_get_slice_impls", since = "1.15.0")]
@@ -81006,35 +78837,27 @@ unsafe impl<T> const SliceIndex<[T]> for ops::RangeTo<usize> {
 
     #[inline]
     fn get(self, slice: &[T]) -> Option<&[T]> {
-        (0..self.end).get(slice)
-    }
+}
 
     #[inline]
     fn get_mut(self, slice: &mut [T]) -> Option<&mut [T]> {
-        (0..self.end).get_mut(slice)
-    }
+}
 
     #[inline]
     unsafe fn get_unchecked(self, slice: *const [T]) -> *const [T] {
-        // SAFETY: the caller has to uphold the safety contract for `get_unchecked`.
-        unsafe { (0..self.end).get_unchecked(slice) }
-    }
+}
 
     #[inline]
     unsafe fn get_unchecked_mut(self, slice: *mut [T]) -> *mut [T] {
-        // SAFETY: the caller has to uphold the safety contract for `get_unchecked_mut`.
-        unsafe { (0..self.end).get_unchecked_mut(slice) }
-    }
+}
 
     #[inline]
     fn index(self, slice: &[T]) -> &[T] {
-        (0..self.end).index(slice)
-    }
+}
 
     #[inline]
     fn index_mut(self, slice: &mut [T]) -> &mut [T] {
-        (0..self.end).index_mut(slice)
-    }
+}
 }
 
 #[stable(feature = "slice_get_slice_impls", since = "1.15.0")]
@@ -81044,43 +78867,27 @@ unsafe impl<T> const SliceIndex<[T]> for ops::RangeFrom<usize> {
 
     #[inline]
     fn get(self, slice: &[T]) -> Option<&[T]> {
-        (self.start..slice.len()).get(slice)
-    }
+}
 
     #[inline]
     fn get_mut(self, slice: &mut [T]) -> Option<&mut [T]> {
-        (self.start..slice.len()).get_mut(slice)
-    }
+}
 
     #[inline]
     unsafe fn get_unchecked(self, slice: *const [T]) -> *const [T] {
-        // SAFETY: the caller has to uphold the safety contract for `get_unchecked`.
-        unsafe { (self.start..slice.len()).get_unchecked(slice) }
-    }
+}
 
     #[inline]
     unsafe fn get_unchecked_mut(self, slice: *mut [T]) -> *mut [T] {
-        // SAFETY: the caller has to uphold the safety contract for `get_unchecked_mut`.
-        unsafe { (self.start..slice.len()).get_unchecked_mut(slice) }
-    }
+}
 
     #[inline]
     fn index(self, slice: &[T]) -> &[T] {
-        if self.start > slice.len() {
-            slice_start_index_len_fail(self.start, slice.len());
-        }
-        // SAFETY: `self` is checked to be valid and in bounds above.
-        unsafe { &*self.get_unchecked(slice) }
-    }
+}
 
     #[inline]
     fn index_mut(self, slice: &mut [T]) -> &mut [T] {
-        if self.start > slice.len() {
-            slice_start_index_len_fail(self.start, slice.len());
-        }
-        // SAFETY: `self` is checked to be valid and in bounds above.
-        unsafe { &mut *self.get_unchecked_mut(slice) }
-    }
+}
 }
 
 #[stable(feature = "slice_get_slice_impls", since = "1.15.0")]
@@ -81090,33 +78897,27 @@ unsafe impl<T> const SliceIndex<[T]> for ops::RangeFull {
 
     #[inline]
     fn get(self, slice: &[T]) -> Option<&[T]> {
-        Some(slice)
-    }
+}
 
     #[inline]
     fn get_mut(self, slice: &mut [T]) -> Option<&mut [T]> {
-        Some(slice)
-    }
+}
 
     #[inline]
     unsafe fn get_unchecked(self, slice: *const [T]) -> *const [T] {
-        slice
-    }
+}
 
     #[inline]
     unsafe fn get_unchecked_mut(self, slice: *mut [T]) -> *mut [T] {
-        slice
-    }
+}
 
     #[inline]
     fn index(self, slice: &[T]) -> &[T] {
-        slice
-    }
+}
 
     #[inline]
     fn index_mut(self, slice: &mut [T]) -> &mut [T] {
-        slice
-    }
+}
 }
 
 #[stable(feature = "inclusive_range", since = "1.26.0")]
@@ -81126,41 +78927,27 @@ unsafe impl<T> const SliceIndex<[T]> for ops::RangeInclusive<usize> {
 
     #[inline]
     fn get(self, slice: &[T]) -> Option<&[T]> {
-        if *self.end() == usize::MAX { None } else { self.into_slice_range().get(slice) }
-    }
+}
 
     #[inline]
     fn get_mut(self, slice: &mut [T]) -> Option<&mut [T]> {
-        if *self.end() == usize::MAX { None } else { self.into_slice_range().get_mut(slice) }
-    }
+}
 
     #[inline]
     unsafe fn get_unchecked(self, slice: *const [T]) -> *const [T] {
-        // SAFETY: the caller has to uphold the safety contract for `get_unchecked`.
-        unsafe { self.into_slice_range().get_unchecked(slice) }
-    }
+}
 
     #[inline]
     unsafe fn get_unchecked_mut(self, slice: *mut [T]) -> *mut [T] {
-        // SAFETY: the caller has to uphold the safety contract for `get_unchecked_mut`.
-        unsafe { self.into_slice_range().get_unchecked_mut(slice) }
-    }
+}
 
     #[inline]
     fn index(self, slice: &[T]) -> &[T] {
-        if *self.end() == usize::MAX {
-            slice_end_index_overflow_fail();
-        }
-        self.into_slice_range().index(slice)
-    }
+}
 
     #[inline]
     fn index_mut(self, slice: &mut [T]) -> &mut [T] {
-        if *self.end() == usize::MAX {
-            slice_end_index_overflow_fail();
-        }
-        self.into_slice_range().index_mut(slice)
-    }
+}
 }
 
 #[stable(feature = "inclusive_range", since = "1.26.0")]
@@ -81170,35 +78957,27 @@ unsafe impl<T> const SliceIndex<[T]> for ops::RangeToInclusive<usize> {
 
     #[inline]
     fn get(self, slice: &[T]) -> Option<&[T]> {
-        (0..=self.end).get(slice)
-    }
+}
 
     #[inline]
     fn get_mut(self, slice: &mut [T]) -> Option<&mut [T]> {
-        (0..=self.end).get_mut(slice)
-    }
+}
 
     #[inline]
     unsafe fn get_unchecked(self, slice: *const [T]) -> *const [T] {
-        // SAFETY: the caller has to uphold the safety contract for `get_unchecked`.
-        unsafe { (0..=self.end).get_unchecked(slice) }
-    }
+}
 
     #[inline]
     unsafe fn get_unchecked_mut(self, slice: *mut [T]) -> *mut [T] {
-        // SAFETY: the caller has to uphold the safety contract for `get_unchecked_mut`.
-        unsafe { (0..=self.end).get_unchecked_mut(slice) }
-    }
+}
 
     #[inline]
     fn index(self, slice: &[T]) -> &[T] {
-        (0..=self.end).index(slice)
-    }
+}
 
     #[inline]
     fn index_mut(self, slice: &mut [T]) -> &mut [T] {
-        (0..=self.end).index_mut(slice)
-    }
+}
 }
 
 /// Performs bounds-checking of a range.
@@ -81276,18 +79055,6 @@ fn into_range_unchecked(
     len: usize,
     (start, end): (ops::Bound<usize>, ops::Bound<usize>),
 ) -> ops::Range<usize> {
-    use ops::Bound;
-    let start = match start {
-        Bound::Included(i) => i,
-        Bound::Excluded(i) => i + 1,
-        Bound::Unbounded => 0,
-    };
-    let end = match end {
-        Bound::Included(i) => i + 1,
-        Bound::Excluded(i) => i,
-        Bound::Unbounded => len,
-    };
-    start..end
 }
 
 /// Convert pair of `ops::Bound`s into `ops::Range`.
@@ -81296,23 +79063,6 @@ fn into_range(
     len: usize,
     (start, end): (ops::Bound<usize>, ops::Bound<usize>),
 ) -> Option<ops::Range<usize>> {
-    use ops::Bound;
-    let start = match start {
-        Bound::Included(start) => start,
-        Bound::Excluded(start) => start.checked_add(1)?,
-        Bound::Unbounded => 0,
-    };
-
-    let end = match end {
-        Bound::Included(end) => end.checked_add(1)?,
-        Bound::Excluded(end) => end,
-        Bound::Unbounded => len,
-    };
-
-    // Don't bother with checking `start < end` and `end <= len`
-    // since these checks are handled by `Range` impls
-
-    Some(start..end)
 }
 
 /// Convert pair of `ops::Bound`s into `ops::Range`.
@@ -81321,27 +79071,6 @@ fn into_slice_range(
     len: usize,
     (start, end): (ops::Bound<usize>, ops::Bound<usize>),
 ) -> ops::Range<usize> {
-    use ops::Bound;
-    let start = match start {
-        Bound::Included(start) => start,
-        Bound::Excluded(start) => {
-            start.checked_add(1).unwrap_or_else(|| slice_start_index_overflow_fail())
-        }
-        Bound::Unbounded => 0,
-    };
-
-    let end = match end {
-        Bound::Included(end) => {
-            end.checked_add(1).unwrap_or_else(|| slice_end_index_overflow_fail())
-        }
-        Bound::Excluded(end) => end,
-        Bound::Unbounded => len,
-    };
-
-    // Don't bother with checking `start < end` and `end <= len`
-    // since these checks are handled by `Range` impls
-
-    start..end
 }
 
 #[stable(feature = "slice_index_with_ops_bound_pair", since = "1.53.0")]
@@ -81350,35 +79079,27 @@ unsafe impl<T> SliceIndex<[T]> for (ops::Bound<usize>, ops::Bound<usize>) {
 
     #[inline]
     fn get(self, slice: &[T]) -> Option<&Self::Output> {
-        into_range(slice.len(), self)?.get(slice)
-    }
+}
 
     #[inline]
     fn get_mut(self, slice: &mut [T]) -> Option<&mut Self::Output> {
-        into_range(slice.len(), self)?.get_mut(slice)
-    }
+}
 
     #[inline]
     unsafe fn get_unchecked(self, slice: *const [T]) -> *const Self::Output {
-        // SAFETY: the caller has to uphold the safety contract for `get_unchecked`.
-        unsafe { into_range_unchecked(slice.len(), self).get_unchecked(slice) }
-    }
+}
 
     #[inline]
     unsafe fn get_unchecked_mut(self, slice: *mut [T]) -> *mut Self::Output {
-        // SAFETY: the caller has to uphold the safety contract for `get_unchecked_mut`.
-        unsafe { into_range_unchecked(slice.len(), self).get_unchecked_mut(slice) }
-    }
+}
 
     #[inline]
     fn index(self, slice: &[T]) -> &Self::Output {
-        into_slice_range(slice.len(), self).index(slice)
-    }
+}
 
     #[inline]
     fn index_mut(self, slice: &mut [T]) -> &mut Self::Output {
-        into_slice_range(slice.len(), self).index_mut(slice)
-    }
+}
 }
 }
 mod iter {
@@ -81460,58 +79181,32 @@ macro_rules! iterator {
             // Helper function for creating a slice from the iterator.
             #[inline(always)]
             fn make_slice(&self) -> &'a [T] {
-                // SAFETY: the iterator was created from a slice with pointer
-                // `self.ptr` and length `len!(self)`. This guarantees that all
-                // the prerequisites for `from_raw_parts` are fulfilled.
-                unsafe { from_raw_parts(self.ptr.as_ptr(), len!(self)) }
-            }
+}
 
             // Helper function for moving the start of the iterator forwards by `offset` elements,
             // returning the old start.
             // Unsafe because the offset must not exceed `self.len()`.
             #[inline(always)]
             unsafe fn post_inc_start(&mut self, offset: isize) -> * $raw_mut T {
-                if mem::size_of::<T>() == 0 {
-                    zst_shrink!(self, offset);
-                    self.ptr.as_ptr()
-                } else {
-                    let old = self.ptr.as_ptr();
-                    // SAFETY: the caller guarantees that `offset` doesn't exceed `self.len()`,
-                    // so this new pointer is inside `self` and thus guaranteed to be non-null.
-                    self.ptr = unsafe { NonNull::new_unchecked(self.ptr.as_ptr().offset(offset)) };
-                    old
-                }
-            }
+}
 
             // Helper function for moving the end of the iterator backwards by `offset` elements,
             // returning the new end.
             // Unsafe because the offset must not exceed `self.len()`.
             #[inline(always)]
             unsafe fn pre_dec_end(&mut self, offset: isize) -> * $raw_mut T {
-                if mem::size_of::<T>() == 0 {
-                    zst_shrink!(self, offset);
-                    self.ptr.as_ptr()
-                } else {
-                    // SAFETY: the caller guarantees that `offset` doesn't exceed `self.len()`,
-                    // which is guaranteed to not overflow an `isize`. Also, the resulting pointer
-                    // is in bounds of `slice`, which fulfills the other requirements for `offset`.
-                    self.end = unsafe { self.end.offset(-offset) };
-                    self.end
-                }
-            }
+}
         }
 
         #[stable(feature = "rust1", since = "1.0.0")]
         impl<T> ExactSizeIterator for $name<'_, T> {
             #[inline(always)]
             fn len(&self) -> usize {
-                len!(self)
-            }
+}
 
             #[inline(always)]
             fn is_empty(&self) -> bool {
-                is_empty!(self)
-            }
+}
         }
 
         #[stable(feature = "rust1", since = "1.0.0")]
@@ -81520,71 +79215,27 @@ macro_rules! iterator {
 
             #[inline]
             fn next(&mut self) -> Option<$elem> {
-                // could be implemented with slices, but this avoids bounds checks
-
-                // SAFETY: `assume` calls are safe since a slice's start pointer
-                // must be non-null, and slices over non-ZSTs must also have a
-                // non-null end pointer. The call to `next_unchecked!` is safe
-                // since we check if the iterator is empty first.
-                unsafe {
-                    assume(!self.ptr.as_ptr().is_null());
-                    if mem::size_of::<T>() != 0 {
-                        assume(!self.end.is_null());
-                    }
-                    if is_empty!(self) {
-                        None
-                    } else {
-                        Some(next_unchecked!(self))
-                    }
-                }
-            }
+}
 
             #[inline]
             fn size_hint(&self) -> (usize, Option<usize>) {
-                let exact = len!(self);
-                (exact, Some(exact))
-            }
+}
 
             #[inline]
             fn count(self) -> usize {
-                len!(self)
-            }
+}
 
             #[inline]
             fn nth(&mut self, n: usize) -> Option<$elem> {
-                if n >= len!(self) {
-                    // This iterator is now empty.
-                    if mem::size_of::<T>() == 0 {
-                        // We have to do it this way as `ptr` may never be 0, but `end`
-                        // could be (due to wrapping).
-                        self.end = self.ptr.as_ptr();
-                    } else {
-                        // SAFETY: end can't be 0 if T isn't ZST because ptr isn't 0 and end >= ptr
-                        unsafe {
-                            self.ptr = NonNull::new_unchecked(self.end as *mut T);
-                        }
-                    }
-                    return None;
-                }
-                // SAFETY: We are in bounds. `post_inc_start` does the right thing even for ZSTs.
-                unsafe {
-                    self.post_inc_start(n as isize);
-                    Some(next_unchecked!(self))
-                }
-            }
+}
 
             #[inline]
             fn advance_by(&mut self, n: usize) -> Result<(), usize> {
-                let advance = cmp::min(len!(self), n);
-                // SAFETY: By construction, `advance` does not exceed `self.len()`.
-                unsafe { self.post_inc_start(advance as isize) };
-                if advance == n { Ok(()) } else { Err(advance) }
-            }
+}
 
             #[inline]
             fn last(mut self) -> Option<$elem> {
-                self.next_back()
-            }
+}
 
             // We override the default implementation, which uses `try_fold`,
             // because this simple implementation generates less LLVM IR and is
@@ -81595,10 +79246,7 @@ macro_rules! iterator {
                 Self: Sized,
                 F: FnMut(Self::Item),
             {
-                while let Some(x) = self.next() {
-                    f(x);
-                }
-            }
+}
 
             // We override the default implementation, which uses `try_fold`,
             // because this simple implementation generates less LLVM IR and is
@@ -81609,13 +79257,7 @@ macro_rules! iterator {
                 Self: Sized,
                 F: FnMut(Self::Item) -> bool,
             {
-                while let Some(x) = self.next() {
-                    if !f(x) {
-                        return false;
-                    }
-                }
-                true
-            }
+}
 
             // We override the default implementation, which uses `try_fold`,
             // because this simple implementation generates less LLVM IR and is
@@ -81626,13 +79268,7 @@ macro_rules! iterator {
                 Self: Sized,
                 F: FnMut(Self::Item) -> bool,
             {
-                while let Some(x) = self.next() {
-                    if f(x) {
-                        return true;
-                    }
-                }
-                false
-            }
+}
 
             // We override the default implementation, which uses `try_fold`,
             // because this simple implementation generates less LLVM IR and is
@@ -81643,13 +79279,7 @@ macro_rules! iterator {
                 Self: Sized,
                 P: FnMut(&Self::Item) -> bool,
             {
-                while let Some(x) = self.next() {
-                    if predicate(&x) {
-                        return Some(x);
-                    }
-                }
-                None
-            }
+}
 
             // We override the default implementation, which uses `try_fold`,
             // because this simple implementation generates less LLVM IR and is
@@ -81660,13 +79290,7 @@ macro_rules! iterator {
                 Self: Sized,
                 F: FnMut(Self::Item) -> Option<B>,
             {
-                while let Some(x) = self.next() {
-                    if let Some(y) = f(x) {
-                        return Some(y);
-                    }
-                }
-                None
-            }
+}
 
             // We override the default implementation, which uses `try_fold`,
             // because this simple implementation generates less LLVM IR and is
@@ -81677,19 +79301,7 @@ macro_rules! iterator {
                 Self: Sized,
                 P: FnMut(Self::Item) -> bool,
             {
-                let n = len!(self);
-                let mut i = 0;
-                while let Some(x) = self.next() {
-                    if predicate(x) {
-                        // SAFETY: we are guaranteed to be in bounds by the loop invariant:
-                        // when `i >= n`, `self.next()` returns `None` and the loop breaks.
-                        unsafe { assume(i < n) };
-                        return Some(i);
-                    }
-                    i += 1;
-                }
-                None
-            }
+}
 
             // We override the default implementation, which uses `try_fold`,
             // because this simple implementation generates less LLVM IR and is
@@ -81699,34 +79311,11 @@ macro_rules! iterator {
                 P: FnMut(Self::Item) -> bool,
                 Self: Sized + ExactSizeIterator + DoubleEndedIterator
             {
-                let n = len!(self);
-                let mut i = n;
-                while let Some(x) = self.next_back() {
-                    i -= 1;
-                    if predicate(x) {
-                        // SAFETY: `i` must be lower than `n` since it starts at `n`
-                        // and is only decreasing.
-                        unsafe { assume(i < n) };
-                        return Some(i);
-                    }
-                }
-                None
-            }
+}
 
             #[inline]
             unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item {
-                // SAFETY: the caller must guarantee that `i` is in bounds of
-                // the underlying slice, so `i` cannot overflow an `isize`, and
-                // the returned references is guaranteed to refer to an element
-                // of the slice and thus guaranteed to be valid.
-                //
-                // Also note that the caller also guarantees that we're never
-                // called with the same index again, and that no other methods
-                // that will access this subslice are called, so it is valid
-                // for the returned reference to be mutable in the case of
-                // `IterMut`
-                unsafe { & $( $mut_ )? * self.ptr.as_ptr().add(idx) }
-            }
+}
 
             $($extra)*
         }
@@ -81735,46 +79324,15 @@ macro_rules! iterator {
         impl<'a, T> DoubleEndedIterator for $name<'a, T> {
             #[inline]
             fn next_back(&mut self) -> Option<$elem> {
-                // could be implemented with slices, but this avoids bounds checks
-
-                // SAFETY: `assume` calls are safe since a slice's start pointer must be non-null,
-                // and slices over non-ZSTs must also have a non-null end pointer.
-                // The call to `next_back_unchecked!` is safe since we check if the iterator is
-                // empty first.
-                unsafe {
-                    assume(!self.ptr.as_ptr().is_null());
-                    if mem::size_of::<T>() != 0 {
-                        assume(!self.end.is_null());
-                    }
-                    if is_empty!(self) {
-                        None
-                    } else {
-                        Some(next_back_unchecked!(self))
-                    }
-                }
-            }
+}
 
             #[inline]
             fn nth_back(&mut self, n: usize) -> Option<$elem> {
-                if n >= len!(self) {
-                    // This iterator is now empty.
-                    self.end = self.ptr.as_ptr();
-                    return None;
-                }
-                // SAFETY: We are in bounds. `pre_dec_end` does the right thing even for ZSTs.
-                unsafe {
-                    self.pre_dec_end(n as isize);
-                    Some(next_back_unchecked!(self))
-                }
-            }
+}
 
             #[inline]
             fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {
-                let advance = cmp::min(len!(self), n);
-                // SAFETY: By construction, `advance` does not exceed `self.len()`.
-                unsafe { self.pre_dec_end(advance as isize) };
-                if advance == n { Ok(()) } else { Err(advance) }
-            }
+}
         }
 
         #[stable(feature = "fused", since = "1.26.0")]
@@ -81795,13 +79353,11 @@ macro_rules! forward_iterator {
 
             #[inline]
             fn next(&mut self) -> Option<$iter_of> {
-                self.inner.next()
-            }
+}
 
             #[inline]
             fn size_hint(&self) -> (usize, Option<usize>) {
-                self.inner.size_hint()
-            }
+}
         }
 
         #[stable(feature = "fused", since = "1.26.0")]
@@ -81828,8 +79384,7 @@ impl<'a, T> IntoIterator for &'a [T] {
     type IntoIter = Iter<'a, T>;
 
     fn into_iter(self) -> Iter<'a, T> {
-        self.iter()
-    }
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -81838,14 +79393,12 @@ impl<'a, T> IntoIterator for &'a mut [T] {
     type IntoIter = IterMut<'a, T>;
 
     fn into_iter(self) -> IterMut<'a, T> {
-        self.iter_mut()
-    }
+}
 }
 
 // Macro helper functions
 #[inline(always)]
 fn size_from_ptr<T>(_: *const T) -> usize {
-    mem::size_of::<T>()
 }
 
 /// Immutable slice iterator
@@ -81881,8 +79434,7 @@ pub struct Iter<'a, T: 'a> {
 #[stable(feature = "core_impl_debug", since = "1.9.0")]
 impl<T: fmt::Debug> fmt::Debug for Iter<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("Iter").field(&self.as_slice()).finish()
-    }
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -81893,20 +79445,7 @@ unsafe impl<T: Sync> Send for Iter<'_, T> {}
 impl<'a, T> Iter<'a, T> {
     #[inline]
     pub(super) fn new(slice: &'a [T]) -> Self {
-        let ptr = slice.as_ptr();
-        // SAFETY: Similar to `IterMut::new`.
-        unsafe {
-            assume(!ptr.is_null());
-
-            let end = if mem::size_of::<T>() == 0 {
-                (ptr as *const u8).wrapping_add(slice.len()) as *const T
-            } else {
-                ptr.add(slice.len())
-            };
-
-            Self { ptr: NonNull::new_unchecked(ptr as *mut T), end, _marker: PhantomData }
-        }
-    }
+}
 
     /// Views the underlying data as a subslice of the original data.
     ///
@@ -81935,8 +79474,7 @@ impl<'a, T> Iter<'a, T> {
     #[must_use]
     #[stable(feature = "iter_to_slice", since = "1.4.0")]
     pub fn as_slice(&self) -> &'a [T] {
-        self.make_slice()
-    }
+}
 }
 
 iterator! {struct Iter -> *const T, &'a T, const, {/* no mut */}, {
@@ -81945,24 +79483,19 @@ iterator! {struct Iter -> *const T, &'a T, const, {/* no mut */}, {
         Self: Sized,
         F: FnMut(&Self::Item, &Self::Item) -> Option<Ordering>,
     {
-        self.as_slice().windows(2).all(|w| {
-            compare(&&w[0], &&w[1]).map(|o| o != Ordering::Greater).unwrap_or(false)
-        })
-    }
+}
 }}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Clone for Iter<'_, T> {
     fn clone(&self) -> Self {
-        Iter { ptr: self.ptr, end: self.end, _marker: self._marker }
-    }
+}
 }
 
 #[stable(feature = "slice_iter_as_ref", since = "1.13.0")]
 impl<T> AsRef<[T]> for Iter<'_, T> {
     fn as_ref(&self) -> &[T] {
-        self.as_slice()
-    }
+}
 }
 
 /// Mutable slice iterator.
@@ -82002,8 +79535,7 @@ pub struct IterMut<'a, T: 'a> {
 #[stable(feature = "core_impl_debug", since = "1.9.0")]
 impl<T: fmt::Debug> fmt::Debug for IterMut<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("IterMut").field(&self.make_slice()).finish()
-    }
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -82014,35 +79546,7 @@ unsafe impl<T: Send> Send for IterMut<'_, T> {}
 impl<'a, T> IterMut<'a, T> {
     #[inline]
     pub(super) fn new(slice: &'a mut [T]) -> Self {
-        let ptr = slice.as_mut_ptr();
-        // SAFETY: There are several things here:
-        //
-        // `ptr` has been obtained by `slice.as_ptr()` where `slice` is a valid
-        // reference thus it is non-NUL and safe to use and pass to
-        // `NonNull::new_unchecked` .
-        //
-        // Adding `slice.len()` to the starting pointer gives a pointer
-        // at the end of `slice`. `end` will never be dereferenced, only checked
-        // for direct pointer equality with `ptr` to check if the iterator is
-        // done.
-        //
-        // In the case of a ZST, the end pointer is just the start pointer plus
-        // the length, to also allows for the fast `ptr == end` check.
-        //
-        // See the `next_unchecked!` and `is_empty!` macros as well as the
-        // `post_inc_start` method for more information.
-        unsafe {
-            assume(!ptr.is_null());
-
-            let end = if mem::size_of::<T>() == 0 {
-                (ptr as *mut u8).wrapping_add(slice.len()) as *mut T
-            } else {
-                ptr.add(slice.len())
-            };
-
-            Self { ptr: NonNull::new_unchecked(ptr), end, _marker: PhantomData }
-        }
-    }
+}
 
     /// Views the underlying data as a subslice of the original data.
     ///
@@ -82080,11 +79584,7 @@ impl<'a, T> IterMut<'a, T> {
     #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "iter_to_slice", since = "1.4.0")]
     pub fn into_slice(self) -> &'a mut [T] {
-        // SAFETY: the iterator was created from a mutable slice with pointer
-        // `self.ptr` and length `len!(self)`. This guarantees that all the prerequisites
-        // for `from_raw_parts_mut` are fulfilled.
-        unsafe { from_raw_parts_mut(self.ptr.as_ptr(), len!(self)) }
-    }
+}
 
     /// Views the underlying data as a subslice of the original data.
     ///
@@ -82111,8 +79611,7 @@ impl<'a, T> IterMut<'a, T> {
     #[must_use]
     #[stable(feature = "slice_iter_mut_as_slice", since = "1.53.0")]
     pub fn as_slice(&self) -> &[T] {
-        self.make_slice()
-    }
+}
 
     /// Views the underlying data as a mutable subslice of the original data.
     ///
@@ -82155,8 +79654,7 @@ impl<'a, T> IterMut<'a, T> {
 #[stable(feature = "slice_iter_mut_as_slice", since = "1.53.0")]
 impl<T> AsRef<[T]> for IterMut<'_, T> {
     fn as_ref(&self) -> &[T] {
-        self.as_slice()
-    }
+}
 }
 
 // #[stable(feature = "slice_iter_mut_as_mut_slice", since = "FIXME")]
@@ -82207,8 +79705,7 @@ where
 impl<'a, T: 'a, P: FnMut(&T) -> bool> Split<'a, T, P> {
     #[inline]
     pub(super) fn new(slice: &'a [T], pred: P) -> Self {
-        Self { v: slice, pred, finished: false }
-    }
+}
     /// Returns a slice which contains items not yet handled by split.
     /// # Example
     ///
@@ -82230,8 +79727,7 @@ where
     P: FnMut(&T) -> bool,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Split").field("v", &self.v).field("finished", &self.finished).finish()
-    }
+}
 }
 
 // FIXME(#26925) Remove in favor of `#[derive(Clone)]`
@@ -82241,8 +79737,7 @@ where
     P: Clone + FnMut(&T) -> bool,
 {
     fn clone(&self) -> Self {
-        Split { v: self.v, pred: self.pred.clone(), finished: self.finished }
-    }
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -82254,30 +79749,11 @@ where
 
     #[inline]
     fn next(&mut self) -> Option<&'a [T]> {
-        if self.finished {
-            return None;
-        }
-
-        match self.v.iter().position(|x| (self.pred)(x)) {
-            None => self.finish(),
-            Some(idx) => {
-                let ret = Some(&self.v[..idx]);
-                self.v = &self.v[idx + 1..];
-                ret
-            }
-        }
-    }
+}
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        if self.finished {
-            (0, Some(0))
-        } else {
-            // If the predicate doesn't match anything, we yield one slice.
-            // If it matches every element, we yield `len() + 1` empty slices.
-            (1, Some(self.v.len() + 1))
-        }
-    }
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -82287,19 +79763,7 @@ where
 {
     #[inline]
     fn next_back(&mut self) -> Option<&'a [T]> {
-        if self.finished {
-            return None;
-        }
-
-        match self.v.iter().rposition(|x| (self.pred)(x)) {
-            None => self.finish(),
-            Some(idx) => {
-                let ret = Some(&self.v[idx + 1..]);
-                self.v = &self.v[..idx];
-                ret
-            }
-        }
-    }
+}
 }
 
 impl<'a, T, P> SplitIter for Split<'a, T, P>
@@ -82308,13 +79772,7 @@ where
 {
     #[inline]
     fn finish(&mut self) -> Option<&'a [T]> {
-        if self.finished {
-            None
-        } else {
-            self.finished = true;
-            Some(self.v)
-        }
-    }
+}
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -82349,9 +79807,7 @@ where
 impl<'a, T: 'a, P: FnMut(&T) -> bool> SplitInclusive<'a, T, P> {
     #[inline]
     pub(super) fn new(slice: &'a [T], pred: P) -> Self {
-        let finished = slice.is_empty();
-        Self { v: slice, pred, finished }
-    }
+}
 }
 
 #[stable(feature = "split_inclusive", since = "1.51.0")]
@@ -82360,11 +79816,7 @@ where
     P: FnMut(&T) -> bool,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("SplitInclusive")
-            .field("v", &self.v)
-            .field("finished", &self.finished)
-            .finish()
-    }
+}
 }
 
 // FIXME(#26925) Remove in favor of `#[derive(Clone)]`
@@ -82374,8 +79826,7 @@ where
     P: Clone + FnMut(&T) -> bool,
 {
     fn clone(&self) -> Self {
-        SplitInclusive { v: self.v, pred: self.pred.clone(), finished: self.finished }
-    }
+}
 }
 
 #[stable(feature = "split_inclusive", since = "1.51.0")]
@@ -82387,31 +79838,11 @@ where
 
     #[inline]
     fn next(&mut self) -> Option<&'a [T]> {
-        if self.finished {
-            return None;
-        }
-
-        let idx =
-            self.v.iter().position(|x| (self.pred)(x)).map(|idx| idx + 1).unwrap_or(self.v.len());
-        if idx == self.v.len() {
-            self.finished = true;
-        }
-        let ret = Some(&self.v[..idx]);
-        self.v = &self.v[idx..];
-        ret
-    }
+}
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        if self.finished {
-            (0, Some(0))
-        } else {
-            // If the predicate doesn't match anything, we yield one slice.
-            // If it matches every element, we yield `len()` one-element slices,
-            // or a single empty slice.
-            (1, Some(cmp::max(1, self.v.len())))
-        }
-    }
+}
 }
 
 #[stable(feature = "split_inclusive", since = "1.51.0")]
@@ -82421,22 +79852,7 @@ where
 {
     #[inline]
     fn next_back(&mut self) -> Option<&'a [T]> {
-        if self.finished {
-            return None;
-        }
-
-        // The last index of self.v is already checked and found to match
-        // by the last iteration, so we start searching a new match
-        // one index to the left.
-        let remainder = if self.v.is_empty() { &[] } else { &self.v[..(self.v.len() - 1)] };
-        let idx = remainder.iter().rposition(|x| (self.pred)(x)).map(|idx| idx + 1).unwrap_or(0);
-        if idx == 0 {
-            self.finished = true;
-        }
-        let ret = Some(&self.v[idx..]);
-        self.v = &self.v[..idx];
-        ret
-    }
+}
 }
 
 #[stable(feature = "split_inclusive", since = "1.51.0")]
@@ -82470,8 +79886,7 @@ where
 impl<'a, T: 'a, P: FnMut(&T) -> bool> SplitMut<'a, T, P> {
     #[inline]
     pub(super) fn new(slice: &'a mut [T], pred: P) -> Self {
-        Self { v: slice, pred, finished: false }
-    }
+}
 }
 
 #[stable(feature = "core_impl_debug", since = "1.9.0")]
@@ -82480,8 +79895,7 @@ where
     P: FnMut(&T) -> bool,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("SplitMut").field("v", &self.v).field("finished", &self.finished).finish()
-    }
+}
 }
 
 impl<'a, T, P> SplitIter for SplitMut<'a, T, P>
@@ -82490,13 +79904,7 @@ where
 {
     #[inline]
     fn finish(&mut self) -> Option<&'a mut [T]> {
-        if self.finished {
-            None
-        } else {
-            self.finished = true;
-            Some(mem::replace(&mut self.v, &mut []))
-        }
-    }
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -82508,35 +79916,11 @@ where
 
     #[inline]
     fn next(&mut self) -> Option<&'a mut [T]> {
-        if self.finished {
-            return None;
-        }
-
-        match self.v.iter().position(|x| (self.pred)(x)) {
-            None => self.finish(),
-            Some(idx) => {
-                let tmp = mem::take(&mut self.v);
-                // idx is the index of the element we are splitting on. We want to set self to the
-                // region after idx, and return the subslice before and not including idx.
-                // So first we split after idx
-                let (head, tail) = tmp.split_at_mut(idx + 1);
-                self.v = tail;
-                // Then return the subslice up to but not including the found element
-                Some(&mut head[..idx])
-            }
-        }
-    }
+}
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        if self.finished {
-            (0, Some(0))
-        } else {
-            // If the predicate doesn't match anything, we yield one slice.
-            // If it matches every element, we yield `len() + 1` empty slices.
-            (1, Some(self.v.len() + 1))
-        }
-    }
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -82546,25 +79930,7 @@ where
 {
     #[inline]
     fn next_back(&mut self) -> Option<&'a mut [T]> {
-        if self.finished {
-            return None;
-        }
-
-        let idx_opt = {
-            // work around borrowck limitations
-            let pred = &mut self.pred;
-            self.v.iter().rposition(|x| (*pred)(x))
-        };
-        match idx_opt {
-            None => self.finish(),
-            Some(idx) => {
-                let tmp = mem::replace(&mut self.v, &mut []);
-                let (head, tail) = tmp.split_at_mut(idx);
-                self.v = head;
-                Some(&mut tail[1..])
-            }
-        }
-    }
+}
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -82599,9 +79965,7 @@ where
 impl<'a, T: 'a, P: FnMut(&T) -> bool> SplitInclusiveMut<'a, T, P> {
     #[inline]
     pub(super) fn new(slice: &'a mut [T], pred: P) -> Self {
-        let finished = slice.is_empty();
-        Self { v: slice, pred, finished }
-    }
+}
 }
 
 #[stable(feature = "split_inclusive", since = "1.51.0")]
@@ -82610,11 +79974,7 @@ where
     P: FnMut(&T) -> bool,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("SplitInclusiveMut")
-            .field("v", &self.v)
-            .field("finished", &self.finished)
-            .finish()
-    }
+}
 }
 
 #[stable(feature = "split_inclusive", since = "1.51.0")]
@@ -82626,36 +79986,11 @@ where
 
     #[inline]
     fn next(&mut self) -> Option<&'a mut [T]> {
-        if self.finished {
-            return None;
-        }
-
-        let idx_opt = {
-            // work around borrowck limitations
-            let pred = &mut self.pred;
-            self.v.iter().position(|x| (*pred)(x))
-        };
-        let idx = idx_opt.map(|idx| idx + 1).unwrap_or(self.v.len());
-        if idx == self.v.len() {
-            self.finished = true;
-        }
-        let tmp = mem::replace(&mut self.v, &mut []);
-        let (head, tail) = tmp.split_at_mut(idx);
-        self.v = tail;
-        Some(head)
-    }
+}
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        if self.finished {
-            (0, Some(0))
-        } else {
-            // If the predicate doesn't match anything, we yield one slice.
-            // If it matches every element, we yield `len()` one-element slices,
-            // or a single empty slice.
-            (1, Some(cmp::max(1, self.v.len())))
-        }
-    }
+}
 }
 
 #[stable(feature = "split_inclusive", since = "1.51.0")]
@@ -82665,31 +80000,7 @@ where
 {
     #[inline]
     fn next_back(&mut self) -> Option<&'a mut [T]> {
-        if self.finished {
-            return None;
-        }
-
-        let idx_opt = if self.v.is_empty() {
-            None
-        } else {
-            // work around borrowck limitations
-            let pred = &mut self.pred;
-
-            // The last index of self.v is already checked and found to match
-            // by the last iteration, so we start searching a new match
-            // one index to the left.
-            let remainder = &self.v[..(self.v.len() - 1)];
-            remainder.iter().rposition(|x| (*pred)(x))
-        };
-        let idx = idx_opt.map(|idx| idx + 1).unwrap_or(0);
-        if idx == 0 {
-            self.finished = true;
-        }
-        let tmp = mem::replace(&mut self.v, &mut []);
-        let (head, tail) = tmp.split_at_mut(idx);
-        self.v = head;
-        Some(tail)
-    }
+}
 }
 
 #[stable(feature = "split_inclusive", since = "1.51.0")]
@@ -82721,8 +80032,7 @@ where
 impl<'a, T: 'a, P: FnMut(&T) -> bool> RSplit<'a, T, P> {
     #[inline]
     pub(super) fn new(slice: &'a [T], pred: P) -> Self {
-        Self { inner: Split::new(slice, pred) }
-    }
+}
 }
 
 #[stable(feature = "slice_rsplit", since = "1.27.0")]
@@ -82731,11 +80041,7 @@ where
     P: FnMut(&T) -> bool,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("RSplit")
-            .field("v", &self.inner.v)
-            .field("finished", &self.inner.finished)
-            .finish()
-    }
+}
 }
 
 // FIXME(#26925) Remove in favor of `#[derive(Clone)]`
@@ -82745,8 +80051,7 @@ where
     P: Clone + FnMut(&T) -> bool,
 {
     fn clone(&self) -> Self {
-        RSplit { inner: self.inner.clone() }
-    }
+}
 }
 
 #[stable(feature = "slice_rsplit", since = "1.27.0")]
@@ -82758,13 +80063,11 @@ where
 
     #[inline]
     fn next(&mut self) -> Option<&'a [T]> {
-        self.inner.next_back()
-    }
+}
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        self.inner.size_hint()
-    }
+}
 }
 
 #[stable(feature = "slice_rsplit", since = "1.27.0")]
@@ -82774,8 +80077,7 @@ where
 {
     #[inline]
     fn next_back(&mut self) -> Option<&'a [T]> {
-        self.inner.next()
-    }
+}
 }
 
 #[stable(feature = "slice_rsplit", since = "1.27.0")]
@@ -82785,8 +80087,7 @@ where
 {
     #[inline]
     fn finish(&mut self) -> Option<&'a [T]> {
-        self.inner.finish()
-    }
+}
 }
 
 #[stable(feature = "slice_rsplit", since = "1.27.0")]
@@ -82818,8 +80119,7 @@ where
 impl<'a, T: 'a, P: FnMut(&T) -> bool> RSplitMut<'a, T, P> {
     #[inline]
     pub(super) fn new(slice: &'a mut [T], pred: P) -> Self {
-        Self { inner: SplitMut::new(slice, pred) }
-    }
+}
 }
 
 #[stable(feature = "slice_rsplit", since = "1.27.0")]
@@ -82828,11 +80128,7 @@ where
     P: FnMut(&T) -> bool,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("RSplitMut")
-            .field("v", &self.inner.v)
-            .field("finished", &self.inner.finished)
-            .finish()
-    }
+}
 }
 
 #[stable(feature = "slice_rsplit", since = "1.27.0")]
@@ -82842,8 +80138,7 @@ where
 {
     #[inline]
     fn finish(&mut self) -> Option<&'a mut [T]> {
-        self.inner.finish()
-    }
+}
 }
 
 #[stable(feature = "slice_rsplit", since = "1.27.0")]
@@ -82855,13 +80150,11 @@ where
 
     #[inline]
     fn next(&mut self) -> Option<&'a mut [T]> {
-        self.inner.next_back()
-    }
+}
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        self.inner.size_hint()
-    }
+}
 }
 
 #[stable(feature = "slice_rsplit", since = "1.27.0")]
@@ -82871,8 +80164,7 @@ where
 {
     #[inline]
     fn next_back(&mut self) -> Option<&'a mut [T]> {
-        self.inner.next()
-    }
+}
 }
 
 #[stable(feature = "slice_rsplit", since = "1.27.0")]
@@ -82892,27 +80184,11 @@ impl<T, I: SplitIter<Item = T>> Iterator for GenericSplitN<I> {
 
     #[inline]
     fn next(&mut self) -> Option<T> {
-        match self.count {
-            0 => None,
-            1 => {
-                self.count -= 1;
-                self.iter.finish()
-            }
-            _ => {
-                self.count -= 1;
-                self.iter.next()
-            }
-        }
-    }
+}
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let (lower, upper_opt) = self.iter.size_hint();
-        (
-            cmp::min(self.count, lower),
-            Some(upper_opt.map_or(self.count, |upper| cmp::min(self.count, upper))),
-        )
-    }
+}
 }
 
 /// An iterator over subslices separated by elements that match a predicate
@@ -82941,8 +80217,7 @@ where
 impl<'a, T: 'a, P: FnMut(&T) -> bool> SplitN<'a, T, P> {
     #[inline]
     pub(super) fn new(s: Split<'a, T, P>, n: usize) -> Self {
-        Self { inner: GenericSplitN { iter: s, count: n } }
-    }
+}
 }
 
 #[stable(feature = "core_impl_debug", since = "1.9.0")]
@@ -82951,8 +80226,7 @@ where
     P: FnMut(&T) -> bool,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("SplitN").field("inner", &self.inner).finish()
-    }
+}
 }
 
 /// An iterator over subslices separated by elements that match a
@@ -82982,8 +80256,7 @@ where
 impl<'a, T: 'a, P: FnMut(&T) -> bool> RSplitN<'a, T, P> {
     #[inline]
     pub(super) fn new(s: RSplit<'a, T, P>, n: usize) -> Self {
-        Self { inner: GenericSplitN { iter: s, count: n } }
-    }
+}
 }
 
 #[stable(feature = "core_impl_debug", since = "1.9.0")]
@@ -82992,8 +80265,7 @@ where
     P: FnMut(&T) -> bool,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("RSplitN").field("inner", &self.inner).finish()
-    }
+}
 }
 
 /// An iterator over subslices separated by elements that match a predicate
@@ -83022,8 +80294,7 @@ where
 impl<'a, T: 'a, P: FnMut(&T) -> bool> SplitNMut<'a, T, P> {
     #[inline]
     pub(super) fn new(s: SplitMut<'a, T, P>, n: usize) -> Self {
-        Self { inner: GenericSplitN { iter: s, count: n } }
-    }
+}
 }
 
 #[stable(feature = "core_impl_debug", since = "1.9.0")]
@@ -83032,8 +80303,7 @@ where
     P: FnMut(&T) -> bool,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("SplitNMut").field("inner", &self.inner).finish()
-    }
+}
 }
 
 /// An iterator over subslices separated by elements that match a
@@ -83063,8 +80333,7 @@ where
 impl<'a, T: 'a, P: FnMut(&T) -> bool> RSplitNMut<'a, T, P> {
     #[inline]
     pub(super) fn new(s: RSplitMut<'a, T, P>, n: usize) -> Self {
-        Self { inner: GenericSplitN { iter: s, count: n } }
-    }
+}
 }
 
 #[stable(feature = "core_impl_debug", since = "1.9.0")]
@@ -83073,8 +80342,7 @@ where
     P: FnMut(&T) -> bool,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("RSplitNMut").field("inner", &self.inner).finish()
-    }
+}
 }
 
 forward_iterator! { SplitN: T, &'a [T] }
@@ -83106,16 +80374,14 @@ pub struct Windows<'a, T: 'a> {
 impl<'a, T: 'a> Windows<'a, T> {
     #[inline]
     pub(super) fn new(slice: &'a [T], size: NonZeroUsize) -> Self {
-        Self { v: slice, size }
-    }
+}
 }
 
 // FIXME(#26925) Remove in favor of `#[derive(Clone)]`
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Clone for Windows<'_, T> {
     fn clone(&self) -> Self {
-        Windows { v: self.v, size: self.size }
-    }
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -83124,87 +80390,37 @@ impl<'a, T> Iterator for Windows<'a, T> {
 
     #[inline]
     fn next(&mut self) -> Option<&'a [T]> {
-        if self.size.get() > self.v.len() {
-            None
-        } else {
-            let ret = Some(&self.v[..self.size.get()]);
-            self.v = &self.v[1..];
-            ret
-        }
-    }
+}
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        if self.size.get() > self.v.len() {
-            (0, Some(0))
-        } else {
-            let size = self.v.len() - self.size.get() + 1;
-            (size, Some(size))
-        }
-    }
+}
 
     #[inline]
     fn count(self) -> usize {
-        self.len()
-    }
+}
 
     #[inline]
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
-        let (end, overflow) = self.size.get().overflowing_add(n);
-        if end > self.v.len() || overflow {
-            self.v = &[];
-            None
-        } else {
-            let nth = &self.v[n..end];
-            self.v = &self.v[n + 1..];
-            Some(nth)
-        }
-    }
+}
 
     #[inline]
     fn last(self) -> Option<Self::Item> {
-        if self.size.get() > self.v.len() {
-            None
-        } else {
-            let start = self.v.len() - self.size.get();
-            Some(&self.v[start..])
-        }
-    }
+}
 
     unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item {
-        // SAFETY: since the caller guarantees that `i` is in bounds,
-        // which means that `i` cannot overflow an `isize`, and the
-        // slice created by `from_raw_parts` is a subslice of `self.v`
-        // thus is guaranteed to be valid for the lifetime `'a` of `self.v`.
-        unsafe { from_raw_parts(self.v.as_ptr().add(idx), self.size.get()) }
-    }
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> DoubleEndedIterator for Windows<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a [T]> {
-        if self.size.get() > self.v.len() {
-            None
-        } else {
-            let ret = Some(&self.v[self.v.len() - self.size.get()..]);
-            self.v = &self.v[..self.v.len() - 1];
-            ret
-        }
-    }
+}
 
     #[inline]
     fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
-        let (end, overflow) = self.v.len().overflowing_sub(n);
-        if end < self.size.get() || overflow {
-            self.v = &[];
-            None
-        } else {
-            let ret = &self.v[end - self.size.get()..end];
-            self.v = &self.v[..end - 1];
-            Some(ret)
-        }
-    }
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -83303,14 +80519,6 @@ use crate::ptr;
 #[rustc_const_stable(feature = "const_slice_from_raw_parts", since = "1.64.0")]
 #[must_use]
 pub const unsafe fn from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T] {
-    // SAFETY: the caller must uphold the safety contract for `from_raw_parts`.
-    unsafe {
-        assert_unsafe_precondition!(
-            is_aligned_and_not_null(data)
-                && crate::mem::size_of::<T>().saturating_mul(len) <= isize::MAX as usize
-        );
-        &*ptr::slice_from_raw_parts(data, len)
-    }
 }
 
 /// Performs the same functionality as [`from_raw_parts`], except that a
@@ -83347,14 +80555,6 @@ pub const unsafe fn from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T]
 #[rustc_const_unstable(feature = "const_slice_from_raw_parts_mut", issue = "67456")]
 #[must_use]
 pub const unsafe fn from_raw_parts_mut<'a, T>(data: *mut T, len: usize) -> &'a mut [T] {
-    // SAFETY: the caller must uphold the safety contract for `from_raw_parts_mut`.
-    unsafe {
-        assert_unsafe_precondition!(
-            is_aligned_and_not_null(data)
-                && crate::mem::size_of::<T>().saturating_mul(len) <= isize::MAX as usize
-        );
-        &mut *ptr::slice_from_raw_parts_mut(data, len)
-    }
 }
 
 /// Converts a reference to T into a slice of length 1 (without copying).
@@ -83362,7 +80562,6 @@ pub const unsafe fn from_raw_parts_mut<'a, T>(data: *mut T, len: usize) -> &'a m
 #[rustc_const_stable(feature = "const_slice_from_ref_shared", since = "1.63.0")]
 #[must_use]
 pub const fn from_ref<T>(s: &T) -> &[T] {
-    array::from_ref(s)
 }
 
 /// Converts a reference to T into a slice of length 1 (without copying).
@@ -83370,7 +80569,6 @@ pub const fn from_ref<T>(s: &T) -> &[T] {
 #[rustc_const_unstable(feature = "const_slice_from_ref", issue = "90206")]
 #[must_use]
 pub const fn from_mut<T>(s: &mut T) -> &mut [T] {
-    array::from_mut(s)
 }
 
 /// Forms a slice from a pointer range.
@@ -83546,175 +80744,6 @@ use crate::ptr;
 /// ```
 /// when `left < right` the swapping happens from the left instead.
 pub unsafe fn ptr_rotate<T>(mut left: usize, mut mid: *mut T, mut right: usize) {
-    type BufType = [usize; 32];
-    if mem::size_of::<T>() == 0 {
-        return;
-    }
-    loop {
-        // N.B. the below algorithms can fail if these cases are not checked
-        if (right == 0) || (left == 0) {
-            return;
-        }
-        if (left + right < 24) || (mem::size_of::<T>() > mem::size_of::<[usize; 4]>()) {
-            // Algorithm 1
-            // Microbenchmarks indicate that the average performance for random shifts is better all
-            // the way until about `left + right == 32`, but the worst case performance breaks even
-            // around 16. 24 was chosen as middle ground. If the size of `T` is larger than 4
-            // `usize`s, this algorithm also outperforms other algorithms.
-            // SAFETY: callers must ensure `mid - left` is valid for reading and writing.
-            let x = unsafe { mid.sub(left) };
-            // beginning of first round
-            // SAFETY: see previous comment.
-            let mut tmp: T = unsafe { x.read() };
-            let mut i = right;
-            // `gcd` can be found before hand by calculating `gcd(left + right, right)`,
-            // but it is faster to do one loop which calculates the gcd as a side effect, then
-            // doing the rest of the chunk
-            let mut gcd = right;
-            // benchmarks reveal that it is faster to swap temporaries all the way through instead
-            // of reading one temporary once, copying backwards, and then writing that temporary at
-            // the very end. This is possibly due to the fact that swapping or replacing temporaries
-            // uses only one memory address in the loop instead of needing to manage two.
-            loop {
-                // [long-safety-expl]
-                // SAFETY: callers must ensure `[left, left+mid+right)` are all valid for reading and
-                // writing.
-                //
-                // - `i` start with `right` so `mid-left <= x+i = x+right = mid-left+right < mid+right`
-                // - `i <= left+right-1` is always true
-                //   - if `i < left`, `right` is added so `i < left+right` and on the next
-                //     iteration `left` is removed from `i` so it doesn't go further
-                //   - if `i >= left`, `left` is removed immediately and so it doesn't go further.
-                // - overflows cannot happen for `i` since the function's safety contract ask for
-                //   `mid+right-1 = x+left+right` to be valid for writing
-                // - underflows cannot happen because `i` must be bigger or equal to `left` for
-                //   a subtraction of `left` to happen.
-                //
-                // So `x+i` is valid for reading and writing if the caller respected the contract
-                tmp = unsafe { x.add(i).replace(tmp) };
-                // instead of incrementing `i` and then checking if it is outside the bounds, we
-                // check if `i` will go outside the bounds on the next increment. This prevents
-                // any wrapping of pointers or `usize`.
-                if i >= left {
-                    i -= left;
-                    if i == 0 {
-                        // end of first round
-                        // SAFETY: tmp has been read from a valid source and x is valid for writing
-                        // according to the caller.
-                        unsafe { x.write(tmp) };
-                        break;
-                    }
-                    // this conditional must be here if `left + right >= 15`
-                    if i < gcd {
-                        gcd = i;
-                    }
-                } else {
-                    i += right;
-                }
-            }
-            // finish the chunk with more rounds
-            for start in 1..gcd {
-                // SAFETY: `gcd` is at most equal to `right` so all values in `1..gcd` are valid for
-                // reading and writing as per the function's safety contract, see [long-safety-expl]
-                // above
-                tmp = unsafe { x.add(start).read() };
-                // [safety-expl-addition]
-                //
-                // Here `start < gcd` so `start < right` so `i < right+right`: `right` being the
-                // greatest common divisor of `(left+right, right)` means that `left = right` so
-                // `i < left+right` so `x+i = mid-left+i` is always valid for reading and writing
-                // according to the function's safety contract.
-                i = start + right;
-                loop {
-                    // SAFETY: see [long-safety-expl] and [safety-expl-addition]
-                    tmp = unsafe { x.add(i).replace(tmp) };
-                    if i >= left {
-                        i -= left;
-                        if i == start {
-                            // SAFETY: see [long-safety-expl] and [safety-expl-addition]
-                            unsafe { x.add(start).write(tmp) };
-                            break;
-                        }
-                    } else {
-                        i += right;
-                    }
-                }
-            }
-            return;
-        // `T` is not a zero-sized type, so it's okay to divide by its size.
-        } else if cmp::min(left, right) <= mem::size_of::<BufType>() / mem::size_of::<T>() {
-            // Algorithm 2
-            // The `[T; 0]` here is to ensure this is appropriately aligned for T
-            let mut rawarray = MaybeUninit::<(BufType, [T; 0])>::uninit();
-            let buf = rawarray.as_mut_ptr() as *mut T;
-            // SAFETY: `mid-left <= mid-left+right < mid+right`
-            let dim = unsafe { mid.sub(left).add(right) };
-            if left <= right {
-                // SAFETY:
-                //
-                // 1) The `else if` condition about the sizes ensures `[mid-left; left]` will fit in
-                //    `buf` without overflow and `buf` was created just above and so cannot be
-                //    overlapped with any value of `[mid-left; left]`
-                // 2) [mid-left, mid+right) are all valid for reading and writing and we don't care
-                //    about overlaps here.
-                // 3) The `if` condition about `left <= right` ensures writing `left` elements to
-                //    `dim = mid-left+right` is valid because:
-                //    - `buf` is valid and `left` elements were written in it in 1)
-                //    - `dim+left = mid-left+right+left = mid+right` and we write `[dim, dim+left)`
-                unsafe {
-                    // 1)
-                    ptr::copy_nonoverlapping(mid.sub(left), buf, left);
-                    // 2)
-                    ptr::copy(mid, mid.sub(left), right);
-                    // 3)
-                    ptr::copy_nonoverlapping(buf, dim, left);
-                }
-            } else {
-                // SAFETY: same reasoning as above but with `left` and `right` reversed
-                unsafe {
-                    ptr::copy_nonoverlapping(mid, buf, right);
-                    ptr::copy(mid.sub(left), dim, left);
-                    ptr::copy_nonoverlapping(buf, mid.sub(left), right);
-                }
-            }
-            return;
-        } else if left >= right {
-            // Algorithm 3
-            // There is an alternate way of swapping that involves finding where the last swap
-            // of this algorithm would be, and swapping using that last chunk instead of swapping
-            // adjacent chunks like this algorithm is doing, but this way is still faster.
-            loop {
-                // SAFETY:
-                // `left >= right` so `[mid-right, mid+right)` is valid for reading and writing
-                // Subtracting `right` from `mid` each turn is counterbalanced by the addition and
-                // check after it.
-                unsafe {
-                    ptr::swap_nonoverlapping(mid.sub(right), mid, right);
-                    mid = mid.sub(right);
-                }
-                left -= right;
-                if left < right {
-                    break;
-                }
-            }
-        } else {
-            // Algorithm 3, `left < right`
-            loop {
-                // SAFETY: `[mid-left, mid+left)` is valid for reading and writing because
-                // `left < right` so `mid+left < mid+right`.
-                // Adding `left` to `mid` each turn is counterbalanced by the subtraction and check
-                // after it.
-                unsafe {
-                    ptr::swap_nonoverlapping(mid.sub(left), mid, left);
-                    mid = mid.add(left);
-                }
-                right -= left;
-                if right < left {
-                    break;
-                }
-            }
-        }
-    }
 }
 }
 mod sort {
@@ -83738,13 +80767,7 @@ struct CopyOnDrop<T> {
 
 impl<T> Drop for CopyOnDrop<T> {
     fn drop(&mut self) {
-        // SAFETY:  This is a helper class.
-        //          Please refer to its usage for correctness.
-        //          Namely, one must be sure that `src` and `dst` does not overlap as required by `ptr::copy_nonoverlapping`.
-        unsafe {
-            ptr::copy_nonoverlapping(self.src, self.dest, 1);
-        }
-    }
+}
 }
 
 /// Shifts the first element to the right until it encounters a greater or equal element.
@@ -83752,45 +80775,6 @@ fn shift_head<T, F>(v: &mut [T], is_less: &mut F)
 where
     F: FnMut(&T, &T) -> bool,
 {
-    let len = v.len();
-    // SAFETY: The unsafe operations below involves indexing without a bounds check (by offsetting a
-    // pointer) and copying memory (`ptr::copy_nonoverlapping`).
-    //
-    // a. Indexing:
-    //  1. We checked the size of the array to >=2.
-    //  2. All the indexing that we will do is always between {0 <= index < len} at most.
-    //
-    // b. Memory copying
-    //  1. We are obtaining pointers to references which are guaranteed to be valid.
-    //  2. They cannot overlap because we obtain pointers to difference indices of the slice.
-    //     Namely, `i` and `i-1`.
-    //  3. If the slice is properly aligned, the elements are properly aligned.
-    //     It is the caller's responsibility to make sure the slice is properly aligned.
-    //
-    // See comments below for further detail.
-    unsafe {
-        // If the first two elements are out-of-order...
-        if len >= 2 && is_less(v.get_unchecked(1), v.get_unchecked(0)) {
-            // Read the first element into a stack-allocated variable. If a following comparison
-            // operation panics, `hole` will get dropped and automatically write the element back
-            // into the slice.
-            let tmp = mem::ManuallyDrop::new(ptr::read(v.get_unchecked(0)));
-            let v = v.as_mut_ptr();
-            let mut hole = CopyOnDrop { src: &*tmp, dest: v.add(1) };
-            ptr::copy_nonoverlapping(v.add(1), v.add(0), 1);
-
-            for i in 2..len {
-                if !is_less(&*v.add(i), &*tmp) {
-                    break;
-                }
-
-                // Move `i`-th element one place to the left, thus shifting the hole to the right.
-                ptr::copy_nonoverlapping(v.add(i), v.add(i - 1), 1);
-                hole.dest = v.add(i);
-            }
-            // `hole` gets dropped and thus copies `tmp` into the remaining hole in `v`.
-        }
-    }
 }
 
 /// Shifts the last element to the left until it encounters a smaller or equal element.
@@ -83798,45 +80782,6 @@ fn shift_tail<T, F>(v: &mut [T], is_less: &mut F)
 where
     F: FnMut(&T, &T) -> bool,
 {
-    let len = v.len();
-    // SAFETY: The unsafe operations below involves indexing without a bound check (by offsetting a
-    // pointer) and copying memory (`ptr::copy_nonoverlapping`).
-    //
-    // a. Indexing:
-    //  1. We checked the size of the array to >= 2.
-    //  2. All the indexing that we will do is always between `0 <= index < len-1` at most.
-    //
-    // b. Memory copying
-    //  1. We are obtaining pointers to references which are guaranteed to be valid.
-    //  2. They cannot overlap because we obtain pointers to difference indices of the slice.
-    //     Namely, `i` and `i+1`.
-    //  3. If the slice is properly aligned, the elements are properly aligned.
-    //     It is the caller's responsibility to make sure the slice is properly aligned.
-    //
-    // See comments below for further detail.
-    unsafe {
-        // If the last two elements are out-of-order...
-        if len >= 2 && is_less(v.get_unchecked(len - 1), v.get_unchecked(len - 2)) {
-            // Read the last element into a stack-allocated variable. If a following comparison
-            // operation panics, `hole` will get dropped and automatically write the element back
-            // into the slice.
-            let tmp = mem::ManuallyDrop::new(ptr::read(v.get_unchecked(len - 1)));
-            let v = v.as_mut_ptr();
-            let mut hole = CopyOnDrop { src: &*tmp, dest: v.add(len - 2) };
-            ptr::copy_nonoverlapping(v.add(len - 2), v.add(len - 1), 1);
-
-            for i in (0..len - 2).rev() {
-                if !is_less(&*tmp, &*v.add(i)) {
-                    break;
-                }
-
-                // Move `i`-th element one place to the right, thus shifting the hole to the left.
-                ptr::copy_nonoverlapping(v.add(i), v.add(i + 1), 1);
-                hole.dest = v.add(i);
-            }
-            // `hole` gets dropped and thus copies `tmp` into the remaining hole in `v`.
-        }
-    }
 }
 
 /// Partially sorts a slice by shifting several out-of-order elements around.
@@ -83847,45 +80792,6 @@ fn partial_insertion_sort<T, F>(v: &mut [T], is_less: &mut F) -> bool
 where
     F: FnMut(&T, &T) -> bool,
 {
-    // Maximum number of adjacent out-of-order pairs that will get shifted.
-    const MAX_STEPS: usize = 5;
-    // If the slice is shorter than this, don't shift any elements.
-    const SHORTEST_SHIFTING: usize = 50;
-
-    let len = v.len();
-    let mut i = 1;
-
-    for _ in 0..MAX_STEPS {
-        // SAFETY: We already explicitly did the bound checking with `i < len`.
-        // All our subsequent indexing is only in the range `0 <= index < len`
-        unsafe {
-            // Find the next pair of adjacent out-of-order elements.
-            while i < len && !is_less(v.get_unchecked(i), v.get_unchecked(i - 1)) {
-                i += 1;
-            }
-        }
-
-        // Are we done?
-        if i == len {
-            return true;
-        }
-
-        // Don't shift elements on short arrays, that has a performance cost.
-        if len < SHORTEST_SHIFTING {
-            return false;
-        }
-
-        // Swap the found pair of elements. This puts them in correct order.
-        v.swap(i - 1, i);
-
-        // Shift the smaller element to the left.
-        shift_tail(&mut v[..i], is_less);
-        // Shift the greater element to the right.
-        shift_head(&mut v[i..], is_less);
-    }
-
-    // Didn't manage to sort the slice in the limited number of steps.
-    false
 }
 
 /// Sorts a slice using insertion sort, which is *O*(*n*^2) worst-case.
@@ -83893,9 +80799,6 @@ fn insertion_sort<T, F>(v: &mut [T], is_less: &mut F)
 where
     F: FnMut(&T, &T) -> bool,
 {
-    for i in 1..v.len() {
-        shift_tail(&mut v[..i + 1], is_less);
-    }
 }
 
 /// Sorts `v` using heapsort, which guarantees *O*(*n* \* log(*n*)) worst-case.
@@ -83920,251 +80823,6 @@ fn partition_in_blocks<T, F>(v: &mut [T], pivot: &T, is_less: &mut F) -> usize
 where
     F: FnMut(&T, &T) -> bool,
 {
-    // Number of elements in a typical block.
-    const BLOCK: usize = 128;
-
-    // The partitioning algorithm repeats the following steps until completion:
-    //
-    // 1. Trace a block from the left side to identify elements greater than or equal to the pivot.
-    // 2. Trace a block from the right side to identify elements smaller than the pivot.
-    // 3. Exchange the identified elements between the left and right side.
-    //
-    // We keep the following variables for a block of elements:
-    //
-    // 1. `block` - Number of elements in the block.
-    // 2. `start` - Start pointer into the `offsets` array.
-    // 3. `end` - End pointer into the `offsets` array.
-    // 4. `offsets - Indices of out-of-order elements within the block.
-
-    // The current block on the left side (from `l` to `l.add(block_l)`).
-    let mut l = v.as_mut_ptr();
-    let mut block_l = BLOCK;
-    let mut start_l = ptr::null_mut();
-    let mut end_l = ptr::null_mut();
-    let mut offsets_l = [MaybeUninit::<u8>::uninit(); BLOCK];
-
-    // The current block on the right side (from `r.sub(block_r)` to `r`).
-    // SAFETY: The documentation for .add() specifically mention that `vec.as_ptr().add(vec.len())` is always safe`
-    let mut r = unsafe { l.add(v.len()) };
-    let mut block_r = BLOCK;
-    let mut start_r = ptr::null_mut();
-    let mut end_r = ptr::null_mut();
-    let mut offsets_r = [MaybeUninit::<u8>::uninit(); BLOCK];
-
-    // FIXME: When we get VLAs, try creating one array of length `min(v.len(), 2 * BLOCK)` rather
-    // than two fixed-size arrays of length `BLOCK`. VLAs might be more cache-efficient.
-
-    // Returns the number of elements between pointers `l` (inclusive) and `r` (exclusive).
-    fn width<T>(l: *mut T, r: *mut T) -> usize {
-        assert!(mem::size_of::<T>() > 0);
-        // FIXME: this should *likely* use `offset_from`, but more
-        // investigation is needed (including running tests in miri).
-        (r.addr() - l.addr()) / mem::size_of::<T>()
-    }
-
-    loop {
-        // We are done with partitioning block-by-block when `l` and `r` get very close. Then we do
-        // some patch-up work in order to partition the remaining elements in between.
-        let is_done = width(l, r) <= 2 * BLOCK;
-
-        if is_done {
-            // Number of remaining elements (still not compared to the pivot).
-            let mut rem = width(l, r);
-            if start_l < end_l || start_r < end_r {
-                rem -= BLOCK;
-            }
-
-            // Adjust block sizes so that the left and right block don't overlap, but get perfectly
-            // aligned to cover the whole remaining gap.
-            if start_l < end_l {
-                block_r = rem;
-            } else if start_r < end_r {
-                block_l = rem;
-            } else {
-                // There were the same number of elements to switch on both blocks during the last
-                // iteration, so there are no remaining elements on either block. Cover the remaining
-                // items with roughly equally-sized blocks.
-                block_l = rem / 2;
-                block_r = rem - block_l;
-            }
-            debug_assert!(block_l <= BLOCK && block_r <= BLOCK);
-            debug_assert!(width(l, r) == block_l + block_r);
-        }
-
-        if start_l == end_l {
-            // Trace `block_l` elements from the left side.
-            start_l = MaybeUninit::slice_as_mut_ptr(&mut offsets_l);
-            end_l = start_l;
-            let mut elem = l;
-
-            for i in 0..block_l {
-                // SAFETY: The unsafety operations below involve the usage of the `offset`.
-                //         According to the conditions required by the function, we satisfy them because:
-                //         1. `offsets_l` is stack-allocated, and thus considered separate allocated object.
-                //         2. The function `is_less` returns a `bool`.
-                //            Casting a `bool` will never overflow `isize`.
-                //         3. We have guaranteed that `block_l` will be `<= BLOCK`.
-                //            Plus, `end_l` was initially set to the begin pointer of `offsets_` which was declared on the stack.
-                //            Thus, we know that even in the worst case (all invocations of `is_less` returns false) we will only be at most 1 byte pass the end.
-                //        Another unsafety operation here is dereferencing `elem`.
-                //        However, `elem` was initially the begin pointer to the slice which is always valid.
-                unsafe {
-                    // Branchless comparison.
-                    *end_l = i as u8;
-                    end_l = end_l.offset(!is_less(&*elem, pivot) as isize);
-                    elem = elem.offset(1);
-                }
-            }
-        }
-
-        if start_r == end_r {
-            // Trace `block_r` elements from the right side.
-            start_r = MaybeUninit::slice_as_mut_ptr(&mut offsets_r);
-            end_r = start_r;
-            let mut elem = r;
-
-            for i in 0..block_r {
-                // SAFETY: The unsafety operations below involve the usage of the `offset`.
-                //         According to the conditions required by the function, we satisfy them because:
-                //         1. `offsets_r` is stack-allocated, and thus considered separate allocated object.
-                //         2. The function `is_less` returns a `bool`.
-                //            Casting a `bool` will never overflow `isize`.
-                //         3. We have guaranteed that `block_r` will be `<= BLOCK`.
-                //            Plus, `end_r` was initially set to the begin pointer of `offsets_` which was declared on the stack.
-                //            Thus, we know that even in the worst case (all invocations of `is_less` returns true) we will only be at most 1 byte pass the end.
-                //        Another unsafety operation here is dereferencing `elem`.
-                //        However, `elem` was initially `1 * sizeof(T)` past the end and we decrement it by `1 * sizeof(T)` before accessing it.
-                //        Plus, `block_r` was asserted to be less than `BLOCK` and `elem` will therefore at most be pointing to the beginning of the slice.
-                unsafe {
-                    // Branchless comparison.
-                    elem = elem.offset(-1);
-                    *end_r = i as u8;
-                    end_r = end_r.offset(is_less(&*elem, pivot) as isize);
-                }
-            }
-        }
-
-        // Number of out-of-order elements to swap between the left and right side.
-        let count = cmp::min(width(start_l, end_l), width(start_r, end_r));
-
-        if count > 0 {
-            macro_rules! left {
-                () => {
-                    l.offset(*start_l as isize)
-                };
-            }
-            macro_rules! right {
-                () => {
-                    r.offset(-(*start_r as isize) - 1)
-                };
-            }
-
-            // Instead of swapping one pair at the time, it is more efficient to perform a cyclic
-            // permutation. This is not strictly equivalent to swapping, but produces a similar
-            // result using fewer memory operations.
-
-            // SAFETY: The use of `ptr::read` is valid because there is at least one element in
-            // both `offsets_l` and `offsets_r`, so `left!` is a valid pointer to read from.
-            //
-            // The uses of `left!` involve calls to `offset` on `l`, which points to the
-            // beginning of `v`. All the offsets pointed-to by `start_l` are at most `block_l`, so
-            // these `offset` calls are safe as all reads are within the block. The same argument
-            // applies for the uses of `right!`.
-            //
-            // The calls to `start_l.offset` are valid because there are at most `count-1` of them,
-            // plus the final one at the end of the unsafe block, where `count` is the minimum number
-            // of collected offsets in `offsets_l` and `offsets_r`, so there is no risk of there not
-            // being enough elements. The same reasoning applies to the calls to `start_r.offset`.
-            //
-            // The calls to `copy_nonoverlapping` are safe because `left!` and `right!` are guaranteed
-            // not to overlap, and are valid because of the reasoning above.
-            unsafe {
-                let tmp = ptr::read(left!());
-                ptr::copy_nonoverlapping(right!(), left!(), 1);
-
-                for _ in 1..count {
-                    start_l = start_l.offset(1);
-                    ptr::copy_nonoverlapping(left!(), right!(), 1);
-                    start_r = start_r.offset(1);
-                    ptr::copy_nonoverlapping(right!(), left!(), 1);
-                }
-
-                ptr::copy_nonoverlapping(&tmp, right!(), 1);
-                mem::forget(tmp);
-                start_l = start_l.offset(1);
-                start_r = start_r.offset(1);
-            }
-        }
-
-        if start_l == end_l {
-            // All out-of-order elements in the left block were moved. Move to the next block.
-
-            // block-width-guarantee
-            // SAFETY: if `!is_done` then the slice width is guaranteed to be at least `2*BLOCK` wide. There
-            // are at most `BLOCK` elements in `offsets_l` because of its size, so the `offset` operation is
-            // safe. Otherwise, the debug assertions in the `is_done` case guarantee that
-            // `width(l, r) == block_l + block_r`, namely, that the block sizes have been adjusted to account
-            // for the smaller number of remaining elements.
-            l = unsafe { l.offset(block_l as isize) };
-        }
-
-        if start_r == end_r {
-            // All out-of-order elements in the right block were moved. Move to the previous block.
-
-            // SAFETY: Same argument as [block-width-guarantee]. Either this is a full block `2*BLOCK`-wide,
-            // or `block_r` has been adjusted for the last handful of elements.
-            r = unsafe { r.offset(-(block_r as isize)) };
-        }
-
-        if is_done {
-            break;
-        }
-    }
-
-    // All that remains now is at most one block (either the left or the right) with out-of-order
-    // elements that need to be moved. Such remaining elements can be simply shifted to the end
-    // within their block.
-
-    if start_l < end_l {
-        // The left block remains.
-        // Move its remaining out-of-order elements to the far right.
-        debug_assert_eq!(width(l, r), block_l);
-        while start_l < end_l {
-            // remaining-elements-safety
-            // SAFETY: while the loop condition holds there are still elements in `offsets_l`, so it
-            // is safe to point `end_l` to the previous element.
-            //
-            // The `ptr::swap` is safe if both its arguments are valid for reads and writes:
-            //  - Per the debug assert above, the distance between `l` and `r` is `block_l`
-            //    elements, so there can be at most `block_l` remaining offsets between `start_l`
-            //    and `end_l`. This means `r` will be moved at most `block_l` steps back, which
-            //    makes the `r.offset` calls valid (at that point `l == r`).
-            //  - `offsets_l` contains valid offsets into `v` collected during the partitioning of
-            //    the last block, so the `l.offset` calls are valid.
-            unsafe {
-                end_l = end_l.offset(-1);
-                ptr::swap(l.offset(*end_l as isize), r.offset(-1));
-                r = r.offset(-1);
-            }
-        }
-        width(v.as_mut_ptr(), r)
-    } else if start_r < end_r {
-        // The right block remains.
-        // Move its remaining out-of-order elements to the far left.
-        debug_assert_eq!(width(l, r), block_r);
-        while start_r < end_r {
-            // SAFETY: See the reasoning in [remaining-elements-safety].
-            unsafe {
-                end_r = end_r.offset(-1);
-                ptr::swap(l, r.offset(-(*end_r as isize) - 1));
-                l = l.offset(1);
-            }
-        }
-        width(v.as_mut_ptr(), l)
-    } else {
-        // Nothing else to do, we're done.
-        width(v.as_mut_ptr(), l)
-    }
 }
 
 /// Partitions `v` into elements smaller than `v[pivot]`, followed by elements greater than or
@@ -84178,51 +80836,6 @@ fn partition<T, F>(v: &mut [T], pivot: usize, is_less: &mut F) -> (usize, bool)
 where
     F: FnMut(&T, &T) -> bool,
 {
-    let (mid, was_partitioned) = {
-        // Place the pivot at the beginning of slice.
-        v.swap(0, pivot);
-        let (pivot, v) = v.split_at_mut(1);
-        let pivot = &mut pivot[0];
-
-        // Read the pivot into a stack-allocated variable for efficiency. If a following comparison
-        // operation panics, the pivot will be automatically written back into the slice.
-
-        // SAFETY: `pivot` is a reference to the first element of `v`, so `ptr::read` is safe.
-        let tmp = mem::ManuallyDrop::new(unsafe { ptr::read(pivot) });
-        let _pivot_guard = CopyOnDrop { src: &*tmp, dest: pivot };
-        let pivot = &*tmp;
-
-        // Find the first pair of out-of-order elements.
-        let mut l = 0;
-        let mut r = v.len();
-
-        // SAFETY: The unsafety below involves indexing an array.
-        // For the first one: We already do the bounds checking here with `l < r`.
-        // For the second one: We initially have `l == 0` and `r == v.len()` and we checked that `l < r` at every indexing operation.
-        //                     From here we know that `r` must be at least `r == l` which was shown to be valid from the first one.
-        unsafe {
-            // Find the first element greater than or equal to the pivot.
-            while l < r && is_less(v.get_unchecked(l), pivot) {
-                l += 1;
-            }
-
-            // Find the last element smaller that the pivot.
-            while l < r && !is_less(v.get_unchecked(r - 1), pivot) {
-                r -= 1;
-            }
-        }
-
-        (l + partition_in_blocks(&mut v[l..r], pivot, is_less), l >= r)
-
-        // `_pivot_guard` goes out of scope and writes the pivot (which is a stack-allocated
-        // variable) back into the slice where it originally was. This step is critical in ensuring
-        // safety!
-    };
-
-    // Place the pivot between the two partitions.
-    v.swap(0, mid);
-
-    (mid, was_partitioned)
 }
 
 /// Partitions `v` into elements equal to `v[pivot]` followed by elements greater than `v[pivot]`.
@@ -84233,100 +80846,12 @@ fn partition_equal<T, F>(v: &mut [T], pivot: usize, is_less: &mut F) -> usize
 where
     F: FnMut(&T, &T) -> bool,
 {
-    // Place the pivot at the beginning of slice.
-    v.swap(0, pivot);
-    let (pivot, v) = v.split_at_mut(1);
-    let pivot = &mut pivot[0];
-
-    // Read the pivot into a stack-allocated variable for efficiency. If a following comparison
-    // operation panics, the pivot will be automatically written back into the slice.
-    // SAFETY: The pointer here is valid because it is obtained from a reference to a slice.
-    let tmp = mem::ManuallyDrop::new(unsafe { ptr::read(pivot) });
-    let _pivot_guard = CopyOnDrop { src: &*tmp, dest: pivot };
-    let pivot = &*tmp;
-
-    // Now partition the slice.
-    let mut l = 0;
-    let mut r = v.len();
-    loop {
-        // SAFETY: The unsafety below involves indexing an array.
-        // For the first one: We already do the bounds checking here with `l < r`.
-        // For the second one: We initially have `l == 0` and `r == v.len()` and we checked that `l < r` at every indexing operation.
-        //                     From here we know that `r` must be at least `r == l` which was shown to be valid from the first one.
-        unsafe {
-            // Find the first element greater than the pivot.
-            while l < r && !is_less(pivot, v.get_unchecked(l)) {
-                l += 1;
-            }
-
-            // Find the last element equal to the pivot.
-            while l < r && is_less(pivot, v.get_unchecked(r - 1)) {
-                r -= 1;
-            }
-
-            // Are we done?
-            if l >= r {
-                break;
-            }
-
-            // Swap the found pair of out-of-order elements.
-            r -= 1;
-            let ptr = v.as_mut_ptr();
-            ptr::swap(ptr.add(l), ptr.add(r));
-            l += 1;
-        }
-    }
-
-    // We found `l` elements equal to the pivot. Add 1 to account for the pivot itself.
-    l + 1
-
-    // `_pivot_guard` goes out of scope and writes the pivot (which is a stack-allocated variable)
-    // back into the slice where it originally was. This step is critical in ensuring safety!
 }
 
 /// Scatters some elements around in an attempt to break patterns that might cause imbalanced
 /// partitions in quicksort.
 #[cold]
 fn break_patterns<T>(v: &mut [T]) {
-    let len = v.len();
-    if len >= 8 {
-        // Pseudorandom number generator from the "Xorshift RNGs" paper by George Marsaglia.
-        let mut random = len as u32;
-        let mut gen_u32 = || {
-            random ^= random << 13;
-            random ^= random >> 17;
-            random ^= random << 5;
-            random
-        };
-        let mut gen_usize = || {
-            if usize::BITS <= 32 {
-                gen_u32() as usize
-            } else {
-                (((gen_u32() as u64) << 32) | (gen_u32() as u64)) as usize
-            }
-        };
-
-        // Take random numbers modulo this number.
-        // The number fits into `usize` because `len` is not greater than `isize::MAX`.
-        let modulus = len.next_power_of_two();
-
-        // Some pivot candidates will be in the nearby of this index. Let's randomize them.
-        let pos = len / 4 * 2;
-
-        for i in 0..3 {
-            // Generate a random number modulo `len`. However, in order to avoid costly operations
-            // we first take it modulo a power of two, and then decrease by `len` until it fits
-            // into the range `[0, len - 1]`.
-            let mut other = gen_usize() & (modulus - 1);
-
-            // `other` is guaranteed to be less than `2 * len`.
-            if other >= len {
-                other -= len;
-            }
-
-            v.swap(pos - 1 + i, other);
-        }
-    }
 }
 
 /// Chooses a pivot in `v` and returns the index and `true` if the slice is likely already sorted.
@@ -84336,69 +80861,6 @@ fn choose_pivot<T, F>(v: &mut [T], is_less: &mut F) -> (usize, bool)
 where
     F: FnMut(&T, &T) -> bool,
 {
-    // Minimum length to choose the median-of-medians method.
-    // Shorter slices use the simple median-of-three method.
-    const SHORTEST_MEDIAN_OF_MEDIANS: usize = 50;
-    // Maximum number of swaps that can be performed in this function.
-    const MAX_SWAPS: usize = 4 * 3;
-
-    let len = v.len();
-
-    // Three indices near which we are going to choose a pivot.
-    let mut a = len / 4 * 1;
-    let mut b = len / 4 * 2;
-    let mut c = len / 4 * 3;
-
-    // Counts the total number of swaps we are about to perform while sorting indices.
-    let mut swaps = 0;
-
-    if len >= 8 {
-        // Swaps indices so that `v[a] <= v[b]`.
-        // SAFETY: `len >= 8` so there are at least two elements in the neighborhoods of
-        // `a`, `b` and `c`. This means the three calls to `sort_adjacent` result in
-        // corresponding calls to `sort3` with valid 3-item neighborhoods around each
-        // pointer, which in turn means the calls to `sort2` are done with valid
-        // references. Thus the `v.get_unchecked` calls are safe, as is the `ptr::swap`
-        // call.
-        let mut sort2 = |a: &mut usize, b: &mut usize| unsafe {
-            if is_less(v.get_unchecked(*b), v.get_unchecked(*a)) {
-                ptr::swap(a, b);
-                swaps += 1;
-            }
-        };
-
-        // Swaps indices so that `v[a] <= v[b] <= v[c]`.
-        let mut sort3 = |a: &mut usize, b: &mut usize, c: &mut usize| {
-            sort2(a, b);
-            sort2(b, c);
-            sort2(a, b);
-        };
-
-        if len >= SHORTEST_MEDIAN_OF_MEDIANS {
-            // Finds the median of `v[a - 1], v[a], v[a + 1]` and stores the index into `a`.
-            let mut sort_adjacent = |a: &mut usize| {
-                let tmp = *a;
-                sort3(&mut (tmp - 1), a, &mut (tmp + 1));
-            };
-
-            // Find medians in the neighborhoods of `a`, `b`, and `c`.
-            sort_adjacent(&mut a);
-            sort_adjacent(&mut b);
-            sort_adjacent(&mut c);
-        }
-
-        // Find the median among `a`, `b`, and `c`.
-        sort3(&mut a, &mut b, &mut c);
-    }
-
-    if swaps < MAX_SWAPS {
-        (b, swaps == 0)
-    } else {
-        // The maximum number of swaps was performed. Chances are the slice is descending or mostly
-        // descending, so reversing will probably help sort it faster.
-        v.reverse();
-        (len - 1 - b, true)
-    }
 }
 
 /// Sorts `v` recursively.
@@ -84411,85 +80873,6 @@ fn recurse<'a, T, F>(mut v: &'a mut [T], is_less: &mut F, mut pred: Option<&'a T
 where
     F: FnMut(&T, &T) -> bool,
 {
-    // Slices of up to this length get sorted using insertion sort.
-    const MAX_INSERTION: usize = 20;
-
-    // True if the last partitioning was reasonably balanced.
-    let mut was_balanced = true;
-    // True if the last partitioning didn't shuffle elements (the slice was already partitioned).
-    let mut was_partitioned = true;
-
-    loop {
-        let len = v.len();
-
-        // Very short slices get sorted using insertion sort.
-        if len <= MAX_INSERTION {
-            insertion_sort(v, is_less);
-            return;
-        }
-
-        // If too many bad pivot choices were made, simply fall back to heapsort in order to
-        // guarantee `O(n * log(n))` worst-case.
-        if limit == 0 {
-            heapsort(v, is_less);
-            return;
-        }
-
-        // If the last partitioning was imbalanced, try breaking patterns in the slice by shuffling
-        // some elements around. Hopefully we'll choose a better pivot this time.
-        if !was_balanced {
-            break_patterns(v);
-            limit -= 1;
-        }
-
-        // Choose a pivot and try guessing whether the slice is already sorted.
-        let (pivot, likely_sorted) = choose_pivot(v, is_less);
-
-        // If the last partitioning was decently balanced and didn't shuffle elements, and if pivot
-        // selection predicts the slice is likely already sorted...
-        if was_balanced && was_partitioned && likely_sorted {
-            // Try identifying several out-of-order elements and shifting them to correct
-            // positions. If the slice ends up being completely sorted, we're done.
-            if partial_insertion_sort(v, is_less) {
-                return;
-            }
-        }
-
-        // If the chosen pivot is equal to the predecessor, then it's the smallest element in the
-        // slice. Partition the slice into elements equal to and elements greater than the pivot.
-        // This case is usually hit when the slice contains many duplicate elements.
-        if let Some(p) = pred {
-            if !is_less(p, &v[pivot]) {
-                let mid = partition_equal(v, pivot, is_less);
-
-                // Continue sorting elements greater than the pivot.
-                v = &mut v[mid..];
-                continue;
-            }
-        }
-
-        // Partition the slice.
-        let (mid, was_p) = partition(v, pivot, is_less);
-        was_balanced = cmp::min(mid, len - mid) >= len / 8;
-        was_partitioned = was_p;
-
-        // Split the slice into `left`, `pivot`, and `right`.
-        let (left, right) = v.split_at_mut(mid);
-        let (pivot, right) = right.split_at_mut(1);
-        let pivot = &pivot[0];
-
-        // Recurse into the shorter side only in order to minimize the total number of recursive
-        // calls and consume less stack space. Then just continue with the longer side (this is
-        // akin to tail recursion).
-        if left.len() < right.len() {
-            recurse(left, is_less, pred, limit);
-            v = right;
-            pred = Some(pivot);
-        } else {
-            recurse(right, is_less, Some(pivot), limit);
-            v = left;
-        }
-    }
 }
 
 /// Sorts `v` using pattern-defeating quicksort, which is *O*(*n* \* log(*n*)) worst-case.
@@ -84497,15 +80880,6 @@ pub fn quicksort<T, F>(v: &mut [T], mut is_less: F)
 where
     F: FnMut(&T, &T) -> bool,
 {
-    // Sorting has no meaningful behavior on zero-sized types.
-    if mem::size_of::<T>() == 0 {
-        return;
-    }
-
-    // Limit the number of imbalanced partitions to `floor(log2(len)) + 1`.
-    let limit = usize::BITS - v.len().leading_zeros();
-
-    recurse(v, &mut is_less, None, limit);
 }
 
 fn partition_at_index_loop<'a, T, F>(
@@ -84516,56 +80890,6 @@ fn partition_at_index_loop<'a, T, F>(
 ) where
     F: FnMut(&T, &T) -> bool,
 {
-    loop {
-        // For slices of up to this length it's probably faster to simply sort them.
-        const MAX_INSERTION: usize = 10;
-        if v.len() <= MAX_INSERTION {
-            insertion_sort(v, is_less);
-            return;
-        }
-
-        // Choose a pivot
-        let (pivot, _) = choose_pivot(v, is_less);
-
-        // If the chosen pivot is equal to the predecessor, then it's the smallest element in the
-        // slice. Partition the slice into elements equal to and elements greater than the pivot.
-        // This case is usually hit when the slice contains many duplicate elements.
-        if let Some(p) = pred {
-            if !is_less(p, &v[pivot]) {
-                let mid = partition_equal(v, pivot, is_less);
-
-                // If we've passed our index, then we're good.
-                if mid > index {
-                    return;
-                }
-
-                // Otherwise, continue sorting elements greater than the pivot.
-                v = &mut v[mid..];
-                index = index - mid;
-                pred = None;
-                continue;
-            }
-        }
-
-        let (mid, _) = partition(v, pivot, is_less);
-
-        // Split the slice into `left`, `pivot`, and `right`.
-        let (left, right) = v.split_at_mut(mid);
-        let (pivot, right) = right.split_at_mut(1);
-        let pivot = &pivot[0];
-
-        if mid < index {
-            v = right;
-            index = index - mid - 1;
-            pred = Some(pivot);
-        } else if mid > index {
-            v = left;
-        } else {
-            // If mid == index, then we're done, since partition() guaranteed that all elements
-            // after mid are greater than or equal to mid.
-            return;
-        }
-    }
 }
 
 pub fn partition_at_index<T, F>(
@@ -84576,41 +80900,6 @@ pub fn partition_at_index<T, F>(
 where
     F: FnMut(&T, &T) -> bool,
 {
-    use cmp::Ordering::Greater;
-    use cmp::Ordering::Less;
-
-    if index >= v.len() {
-        panic!("partition_at_index index {} greater than length of slice {}", index, v.len());
-    }
-
-    if mem::size_of::<T>() == 0 {
-        // Sorting has no meaningful behavior on zero-sized types. Do nothing.
-    } else if index == v.len() - 1 {
-        // Find max element and place it in the last position of the array. We're free to use
-        // `unwrap()` here because we know v must not be empty.
-        let (max_index, _) = v
-            .iter()
-            .enumerate()
-            .max_by(|&(_, x), &(_, y)| if is_less(x, y) { Less } else { Greater })
-            .unwrap();
-        v.swap(max_index, index);
-    } else if index == 0 {
-        // Find min element and place it in the first position of the array. We're free to use
-        // `unwrap()` here because we know v must not be empty.
-        let (min_index, _) = v
-            .iter()
-            .enumerate()
-            .min_by(|&(_, x), &(_, y)| if is_less(x, y) { Less } else { Greater })
-            .unwrap();
-        v.swap(min_index, index);
-    } else {
-        partition_at_index_loop(v, index, &mut is_less, None);
-    }
-
-    let (left, right) = v.split_at_mut(index);
-    let (pivot, right) = right.split_at_mut(1);
-    let pivot = &mut pivot[0];
-    (left, pivot, right)
 }
 }
 mod specialize {
@@ -84620,22 +80909,12 @@ pub(super) trait SpecFill<T> {
 
 impl<T: Clone> SpecFill<T> for [T] {
     default fn spec_fill(&mut self, value: T) {
-        if let Some((last, elems)) = self.split_last_mut() {
-            for el in elems {
-                el.clone_from(&value);
-            }
-
-            *last = value
-        }
-    }
+}
 }
 
 impl<T: Copy> SpecFill<T> for [T] {
     fn spec_fill(&mut self, value: T) {
-        for item in self.iter_mut() {
-            *item = value;
-        }
-    }
+}
 }
 }
 
@@ -84696,15 +80975,6 @@ pub use ascii::EscapeAscii;
 /// which to split. Returns `None` if the split index would overflow.
 #[inline]
 fn split_point_of(range: impl OneSidedRange<usize>) -> Option<(Direction, usize)> {
-    use Bound::*;
-
-    Some(match (range.start_bound(), range.end_bound()) {
-        (Unbounded, Excluded(i)) => (Direction::Front, *i),
-        (Unbounded, Included(i)) => (Direction::Front, i.checked_add(1)?),
-        (Excluded(i), Unbounded) => (Direction::Back, i.checked_add(1)?),
-        (Included(i), Unbounded) => (Direction::Back, *i),
-        _ => unreachable!(),
-    })
 }
 
 enum Direction {
@@ -84729,15 +80999,7 @@ impl<T> [T] {
     #[must_use]
     // SAFETY: const sound because we transmute out the length field as a usize (which it must be)
     pub const fn len(&self) -> usize {
-        // FIXME: Replace with `crate::ptr::metadata(self)` when that is const-stable.
-        // As of this writing this causes a "Const-stable functions can only call other
-        // const-stable functions" error.
-
-        // SAFETY: Accessing the value from the `PtrRepr` union is safe since *const T
-        // and PtrComponents<T> have the same memory layouts. Only std can make this
-        // guarantee.
-        unsafe { crate::ptr::PtrRepr { const_ptr: self }.components.metadata }
-    }
+}
 
     /// Returns `true` if the slice has a length of 0.
     ///
@@ -84752,8 +81014,7 @@ impl<T> [T] {
     #[inline]
     #[must_use]
     pub const fn is_empty(&self) -> bool {
-        self.len() == 0
-    }
+}
 
     /// Returns the first element of the slice, or `None` if it is empty.
     ///
@@ -84771,8 +81032,7 @@ impl<T> [T] {
     #[inline]
     #[must_use]
     pub const fn first(&self) -> Option<&T> {
-        if let [first, ..] = self { Some(first) } else { None }
-    }
+}
 
     /// Returns a mutable pointer to the first element of the slice, or `None` if it is empty.
     ///
@@ -84791,8 +81051,7 @@ impl<T> [T] {
     #[inline]
     #[must_use]
     pub const fn first_mut(&mut self) -> Option<&mut T> {
-        if let [first, ..] = self { Some(first) } else { None }
-    }
+}
 
     /// Returns the first and all the rest of the elements of the slice, or `None` if it is empty.
     ///
@@ -84811,8 +81070,7 @@ impl<T> [T] {
     #[inline]
     #[must_use]
     pub const fn split_first(&self) -> Option<(&T, &[T])> {
-        if let [first, tail @ ..] = self { Some((first, tail)) } else { None }
-    }
+}
 
     /// Returns the first and all the rest of the elements of the slice, or `None` if it is empty.
     ///
@@ -84833,8 +81091,7 @@ impl<T> [T] {
     #[inline]
     #[must_use]
     pub const fn split_first_mut(&mut self) -> Option<(&mut T, &mut [T])> {
-        if let [first, tail @ ..] = self { Some((first, tail)) } else { None }
-    }
+}
 
     /// Returns the last and all the rest of the elements of the slice, or `None` if it is empty.
     ///
@@ -84853,8 +81110,7 @@ impl<T> [T] {
     #[inline]
     #[must_use]
     pub const fn split_last(&self) -> Option<(&T, &[T])> {
-        if let [init @ .., last] = self { Some((last, init)) } else { None }
-    }
+}
 
     /// Returns the last and all the rest of the elements of the slice, or `None` if it is empty.
     ///
@@ -84875,8 +81131,7 @@ impl<T> [T] {
     #[inline]
     #[must_use]
     pub const fn split_last_mut(&mut self) -> Option<(&mut T, &mut [T])> {
-        if let [init @ .., last] = self { Some((last, init)) } else { None }
-    }
+}
 
     /// Returns the last element of the slice, or `None` if it is empty.
     ///
@@ -84894,8 +81149,7 @@ impl<T> [T] {
     #[inline]
     #[must_use]
     pub const fn last(&self) -> Option<&T> {
-        if let [.., last] = self { Some(last) } else { None }
-    }
+}
 
     /// Returns a mutable pointer to the last item in the slice.
     ///
@@ -84914,8 +81168,7 @@ impl<T> [T] {
     #[inline]
     #[must_use]
     pub const fn last_mut(&mut self) -> Option<&mut T> {
-        if let [.., last] = self { Some(last) } else { None }
-    }
+}
 
     /// Returns a reference to an element or subslice depending on the type of
     /// index.
@@ -84942,8 +81195,7 @@ impl<T> [T] {
     where
         I: ~const SliceIndex<Self>,
     {
-        index.get(self)
-    }
+}
 
     /// Returns a mutable reference to an element or subslice depending on the
     /// type of index (see [`get`]) or `None` if the index is out of bounds.
@@ -84968,8 +81220,7 @@ impl<T> [T] {
     where
         I: ~const SliceIndex<Self>,
     {
-        index.get_mut(self)
-    }
+}
 
     /// Returns a reference to an element or subslice, without doing bounds
     /// checking.
@@ -85001,11 +81252,7 @@ impl<T> [T] {
     where
         I: ~const SliceIndex<Self>,
     {
-        // SAFETY: the caller must uphold most of the safety requirements for `get_unchecked`;
-        // the slice is dereferenceable because `self` is a safe reference.
-        // The returned pointer is safe because impls of `SliceIndex` have to guarantee that it is.
-        unsafe { &*index.get_unchecked(self) }
-    }
+}
 
     /// Returns a mutable reference to an element or subslice, without doing
     /// bounds checking.
@@ -85039,11 +81286,7 @@ impl<T> [T] {
     where
         I: ~const SliceIndex<Self>,
     {
-        // SAFETY: the caller must uphold the safety requirements for `get_unchecked_mut`;
-        // the slice is dereferenceable because `self` is a safe reference.
-        // The returned pointer is safe because impls of `SliceIndex` have to guarantee that it is.
-        unsafe { &mut *index.get_unchecked_mut(self) }
-    }
+}
 
     /// Returns a raw pointer to the slice's buffer.
     ///
@@ -85076,8 +81319,7 @@ impl<T> [T] {
     #[inline]
     #[must_use]
     pub const fn as_ptr(&self) -> *const T {
-        self as *const [T] as *const T
-    }
+}
 
     /// Returns an unsafe mutable pointer to the slice's buffer.
     ///
@@ -85106,8 +81348,7 @@ impl<T> [T] {
     #[inline]
     #[must_use]
     pub const fn as_mut_ptr(&mut self) -> *mut T {
-        self as *mut [T] as *mut T
-    }
+}
 
     /// Returns the two raw pointers spanning the slice.
     ///
@@ -85142,27 +81383,7 @@ impl<T> [T] {
     #[inline]
     #[must_use]
     pub const fn as_ptr_range(&self) -> Range<*const T> {
-        let start = self.as_ptr();
-        // SAFETY: The `add` here is safe, because:
-        //
-        //   - Both pointers are part of the same object, as pointing directly
-        //     past the object also counts.
-        //
-        //   - The size of the slice is never larger than isize::MAX bytes, as
-        //     noted here:
-        //       - https://github.com/rust-lang/unsafe-code-guidelines/issues/102#issuecomment-473340447
-        //       - https://doc.rust-lang.org/reference/behavior-considered-undefined.html
-        //       - https://doc.rust-lang.org/core/slice/fn.from_raw_parts.html#safety
-        //     (This doesn't seem normative yet, but the very same assumption is
-        //     made in many places, including the Index implementation of slices.)
-        //
-        //   - There is no wrapping around involved, as slices do not wrap past
-        //     the end of the address space.
-        //
-        // See the documentation of pointer::add.
-        let end = unsafe { start.add(self.len()) };
-        start..end
-    }
+}
 
     /// Returns the two unsafe mutable pointers spanning the slice.
     ///
@@ -85186,11 +81407,7 @@ impl<T> [T] {
     #[inline]
     #[must_use]
     pub const fn as_mut_ptr_range(&mut self) -> Range<*mut T> {
-        let start = self.as_mut_ptr();
-        // SAFETY: See as_ptr_range() above for why `add` here is safe.
-        let end = unsafe { start.add(self.len()) };
-        start..end
-    }
+}
 
     /// Swaps two elements in the slice.
     ///
@@ -85215,18 +81432,7 @@ impl<T> [T] {
     #[inline]
     #[track_caller]
     pub const fn swap(&mut self, a: usize, b: usize) {
-        // FIXME: use swap_unchecked here (https://github.com/rust-lang/rust/pull/88540#issuecomment-944344343)
-        // Can't take two mutable loans from one vector, so instead use raw pointers.
-        let pa = ptr::addr_of_mut!(self[a]);
-        let pb = ptr::addr_of_mut!(self[b]);
-        // SAFETY: `pa` and `pb` have been created from safe mutable references and refer
-        // to elements in the slice and therefore are guaranteed to be valid and aligned.
-        // Note that accessing the elements behind `a` and `b` is checked and will
-        // panic when out of bounds.
-        unsafe {
-            ptr::swap(pa, pb);
-        }
-    }
+}
 
     /// Swaps two elements in the slice, without doing bounds checking.
     ///
@@ -85272,43 +81478,7 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn reverse(&mut self) {
-        let half_len = self.len() / 2;
-        let Range { start, end } = self.as_mut_ptr_range();
-
-        // These slices will skip the middle item for an odd length,
-        // since that one doesn't need to move.
-        let (front_half, back_half) =
-            // SAFETY: Both are subparts of the original slice, so the memory
-            // range is valid, and they don't overlap because they're each only
-            // half (or less) of the original slice.
-            unsafe {
-                (
-                    slice::from_raw_parts_mut(start, half_len),
-                    slice::from_raw_parts_mut(end.sub(half_len), half_len),
-                )
-            };
-
-        // Introducing a function boundary here means that the two halves
-        // get `noalias` markers, allowing better optimization as LLVM
-        // knows that they're disjoint, unlike in the original slice.
-        revswap(front_half, back_half, half_len);
-
-        #[inline]
-        fn revswap<T>(a: &mut [T], b: &mut [T], n: usize) {
-            debug_assert_eq!(a.len(), n);
-            debug_assert_eq!(b.len(), n);
-
-            // Because this function is first compiled in isolation,
-            // this check tells LLVM that the indexing below is
-            // in-bounds.  Then after inlining -- once the actual
-            // lengths of the slices are known -- it's removed.
-            let (a, b) = (&mut a[..n], &mut b[..n]);
-
-            for i in 0..n {
-                mem::swap(&mut a[i], &mut b[n - 1 - i]);
-            }
-        }
-    }
+}
 
     /// Returns an iterator over the slice.
     ///
@@ -85328,8 +81498,7 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn iter(&self) -> Iter<'_, T> {
-        Iter::new(self)
-    }
+}
 
     /// Returns an iterator that allows modifying each value.
     ///
@@ -85347,8 +81516,7 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn iter_mut(&mut self) -> IterMut<'_, T> {
-        IterMut::new(self)
-    }
+}
 
     /// Returns an iterator over all contiguous windows of length
     /// `size`. The windows overlap. If the slice is shorter than
@@ -85379,9 +81547,7 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn windows(&self, size: usize) -> Windows<'_, T> {
-        let size = NonZeroUsize::new(size).expect("size is zero");
-        Windows::new(self, size)
-    }
+}
 
     /// Returns an iterator over `chunk_size` elements of the slice at a time, starting at the
     /// beginning of the slice.
@@ -85413,9 +81579,7 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn chunks(&self, chunk_size: usize) -> Chunks<'_, T> {
-        assert_ne!(chunk_size, 0, "chunks cannot have a size of zero");
-        Chunks::new(self, chunk_size)
-    }
+}
 
     /// Returns an iterator over `chunk_size` elements of the slice at a time, starting at the
     /// beginning of the slice.
@@ -85451,9 +81615,7 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn chunks_mut(&mut self, chunk_size: usize) -> ChunksMut<'_, T> {
-        assert_ne!(chunk_size, 0, "chunks cannot have a size of zero");
-        ChunksMut::new(self, chunk_size)
-    }
+}
 
     /// Returns an iterator over `chunk_size` elements of the slice at a time, starting at the
     /// beginning of the slice.
@@ -85488,9 +81650,7 @@ impl<T> [T] {
     #[stable(feature = "chunks_exact", since = "1.31.0")]
     #[inline]
     pub fn chunks_exact(&self, chunk_size: usize) -> ChunksExact<'_, T> {
-        assert_ne!(chunk_size, 0);
-        ChunksExact::new(self, chunk_size)
-    }
+}
 
     /// Returns an iterator over `chunk_size` elements of the slice at a time, starting at the
     /// beginning of the slice.
@@ -85530,9 +81690,7 @@ impl<T> [T] {
     #[stable(feature = "chunks_exact", since = "1.31.0")]
     #[inline]
     pub fn chunks_exact_mut(&mut self, chunk_size: usize) -> ChunksExactMut<'_, T> {
-        assert_ne!(chunk_size, 0);
-        ChunksExactMut::new(self, chunk_size)
-    }
+}
 
     /// Splits the slice into a slice of `N`-element arrays,
     /// assuming that there's no remainder.
@@ -85836,9 +81994,7 @@ impl<T> [T] {
     #[stable(feature = "rchunks", since = "1.31.0")]
     #[inline]
     pub fn rchunks(&self, chunk_size: usize) -> RChunks<'_, T> {
-        assert!(chunk_size != 0);
-        RChunks::new(self, chunk_size)
-    }
+}
 
     /// Returns an iterator over `chunk_size` elements of the slice at a time, starting at the end
     /// of the slice.
@@ -85874,9 +82030,7 @@ impl<T> [T] {
     #[stable(feature = "rchunks", since = "1.31.0")]
     #[inline]
     pub fn rchunks_mut(&mut self, chunk_size: usize) -> RChunksMut<'_, T> {
-        assert!(chunk_size != 0);
-        RChunksMut::new(self, chunk_size)
-    }
+}
 
     /// Returns an iterator over `chunk_size` elements of the slice at a time, starting at the
     /// end of the slice.
@@ -85913,9 +82067,7 @@ impl<T> [T] {
     #[stable(feature = "rchunks", since = "1.31.0")]
     #[inline]
     pub fn rchunks_exact(&self, chunk_size: usize) -> RChunksExact<'_, T> {
-        assert!(chunk_size != 0);
-        RChunksExact::new(self, chunk_size)
-    }
+}
 
     /// Returns an iterator over `chunk_size` elements of the slice at a time, starting at the end
     /// of the slice.
@@ -85956,9 +82108,7 @@ impl<T> [T] {
     #[stable(feature = "rchunks", since = "1.31.0")]
     #[inline]
     pub fn rchunks_exact_mut(&mut self, chunk_size: usize) -> RChunksExactMut<'_, T> {
-        assert!(chunk_size != 0);
-        RChunksExactMut::new(self, chunk_size)
-    }
+}
 
     /// Returns an iterator over the slice producing non-overlapping runs
     /// of elements using the predicate to separate them.
@@ -86086,11 +82236,7 @@ impl<T> [T] {
     #[track_caller]
     #[must_use]
     pub fn split_at(&self, mid: usize) -> (&[T], &[T]) {
-        assert!(mid <= self.len());
-        // SAFETY: `[ptr; mid]` and `[mid; len]` are inside `self`, which
-        // fulfills the requirements of `from_raw_parts_mut`.
-        unsafe { self.split_at_unchecked(mid) }
-    }
+}
 
     /// Divides one mutable slice into two at an index.
     ///
@@ -86118,11 +82264,7 @@ impl<T> [T] {
     #[track_caller]
     #[must_use]
     pub fn split_at_mut(&mut self, mid: usize) -> (&mut [T], &mut [T]) {
-        assert!(mid <= self.len());
-        // SAFETY: `[ptr; mid]` and `[mid; len]` are inside `self`, which
-        // fulfills the requirements of `from_raw_parts_mut`.
-        unsafe { self.split_at_mut_unchecked(mid) }
-    }
+}
 
     /// Divides one slice into two at an index, without doing bounds checking.
     ///
@@ -86401,8 +82543,7 @@ impl<T> [T] {
     where
         F: FnMut(&T) -> bool,
     {
-        Split::new(self, pred)
-    }
+}
 
     /// Returns an iterator over mutable subslices separated by elements that
     /// match `pred`. The matched element is not contained in the subslices.
@@ -86423,8 +82564,7 @@ impl<T> [T] {
     where
         F: FnMut(&T) -> bool,
     {
-        SplitMut::new(self, pred)
-    }
+}
 
     /// Returns an iterator over subslices separated by elements that match
     /// `pred`. The matched element is contained in the end of the previous
@@ -86459,8 +82599,7 @@ impl<T> [T] {
     where
         F: FnMut(&T) -> bool,
     {
-        SplitInclusive::new(self, pred)
-    }
+}
 
     /// Returns an iterator over mutable subslices separated by elements that
     /// match `pred`. The matched element is contained in the previous
@@ -86483,8 +82622,7 @@ impl<T> [T] {
     where
         F: FnMut(&T) -> bool,
     {
-        SplitInclusiveMut::new(self, pred)
-    }
+}
 
     /// Returns an iterator over subslices separated by elements that match
     /// `pred`, starting at the end of the slice and working backwards.
@@ -86519,8 +82657,7 @@ impl<T> [T] {
     where
         F: FnMut(&T) -> bool,
     {
-        RSplit::new(self, pred)
-    }
+}
 
     /// Returns an iterator over mutable subslices separated by elements that
     /// match `pred`, starting at the end of the slice and working
@@ -86545,8 +82682,7 @@ impl<T> [T] {
     where
         F: FnMut(&T) -> bool,
     {
-        RSplitMut::new(self, pred)
-    }
+}
 
     /// Returns an iterator over subslices separated by elements that match
     /// `pred`, limited to returning at most `n` items. The matched element is
@@ -86573,8 +82709,7 @@ impl<T> [T] {
     where
         F: FnMut(&T) -> bool,
     {
-        SplitN::new(self.split(pred), n)
-    }
+}
 
     /// Returns an iterator over subslices separated by elements that match
     /// `pred`, limited to returning at most `n` items. The matched element is
@@ -86599,8 +82734,7 @@ impl<T> [T] {
     where
         F: FnMut(&T) -> bool,
     {
-        SplitNMut::new(self.split_mut(pred), n)
-    }
+}
 
     /// Returns an iterator over subslices separated by elements that match
     /// `pred` limited to returning at most `n` items. This starts at the end of
@@ -86628,8 +82762,7 @@ impl<T> [T] {
     where
         F: FnMut(&T) -> bool,
     {
-        RSplitN::new(self.rsplit(pred), n)
-    }
+}
 
     /// Returns an iterator over subslices separated by elements that match
     /// `pred` limited to returning at most `n` items. This starts at the end of
@@ -86655,8 +82788,7 @@ impl<T> [T] {
     where
         F: FnMut(&T) -> bool,
     {
-        RSplitNMut::new(self.rsplit_mut(pred), n)
-    }
+}
 
     /// Returns `true` if the slice contains an element with the given value.
     ///
@@ -86690,8 +82822,7 @@ impl<T> [T] {
     where
         T: PartialEq,
     {
-        cmp::SliceContains::slice_contains(x, self)
-    }
+}
 
     /// Returns `true` if `needle` is a prefix of the slice.
     ///
@@ -86719,9 +82850,7 @@ impl<T> [T] {
     where
         T: PartialEq,
     {
-        let n = needle.len();
-        self.len() >= n && needle == &self[..n]
-    }
+}
 
     /// Returns `true` if `needle` is a suffix of the slice.
     ///
@@ -86749,9 +82878,7 @@ impl<T> [T] {
     where
         T: PartialEq,
     {
-        let (m, n) = (self.len(), needle.len());
-        m >= n && needle == &self[m - n..]
-    }
+}
 
     /// Returns a subslice with the prefix removed.
     ///
@@ -86779,17 +82906,7 @@ impl<T> [T] {
     where
         T: PartialEq,
     {
-        // This function will need rewriting if and when SlicePattern becomes more sophisticated.
-        let prefix = prefix.as_slice();
-        let n = prefix.len();
-        if n <= self.len() {
-            let (head, tail) = self.split_at(n);
-            if head == prefix {
-                return Some(tail);
-            }
-        }
-        None
-    }
+}
 
     /// Returns a subslice with the suffix removed.
     ///
@@ -86813,17 +82930,7 @@ impl<T> [T] {
     where
         T: PartialEq,
     {
-        // This function will need rewriting if and when SlicePattern becomes more sophisticated.
-        let suffix = suffix.as_slice();
-        let (len, n) = (self.len(), suffix.len());
-        if n <= len {
-            let (head, tail) = self.split_at(len - n);
-            if tail == suffix {
-                return Some(head);
-            }
-        }
-        None
-    }
+}
 
     /// Binary searches this slice for a given element.
     /// This behaves similary to [`contains`] if this slice is sorted.
@@ -86875,8 +82982,7 @@ impl<T> [T] {
     where
         T: Ord,
     {
-        self.binary_search_by(|p| p.cmp(x))
-    }
+}
 
     /// Binary searches this slice with a comparator function.
     /// This behaves similarly to [`contains`] if this slice is sorted.
@@ -86926,34 +83032,7 @@ impl<T> [T] {
     where
         F: FnMut(&'a T) -> Ordering,
     {
-        let mut size = self.len();
-        let mut left = 0;
-        let mut right = size;
-        while left < right {
-            let mid = left + size / 2;
-
-            // SAFETY: the call is made safe by the following invariants:
-            // - `mid >= 0`
-            // - `mid < size`: `mid` is limited by `[left; right)` bound.
-            let cmp = f(unsafe { self.get_unchecked(mid) });
-
-            // The reason why we use if/else control flow rather than match
-            // is because match reorders comparison operations, which is perf sensitive.
-            // This is x86 asm for u8: https://rust.godbolt.org/z/8Y8Pra.
-            if cmp == Less {
-                left = mid + 1;
-            } else if cmp == Greater {
-                right = mid;
-            } else {
-                // SAFETY: same as the `get_unchecked` above
-                unsafe { crate::intrinsics::assume(mid < self.len()) };
-                return Ok(mid);
-            }
-
-            size = right - left;
-        }
-        Err(left)
-    }
+}
 
     /// Binary searches this slice with a key extraction function.
     /// This behaves similarly to [`contains`] if this slice is sorted.
@@ -87007,8 +83086,7 @@ impl<T> [T] {
         F: FnMut(&'a T) -> B,
         B: Ord,
     {
-        self.binary_search_by(|k| f(k).cmp(b))
-    }
+}
 
     /// Sorts the slice, but might not preserve the order of equal elements.
     ///
@@ -87042,8 +83120,7 @@ impl<T> [T] {
     where
         T: Ord,
     {
-        sort::quicksort(self, |a, b| a.lt(b));
-    }
+}
 
     /// Sorts the slice with a comparator function, but might not preserve the order of equal
     /// elements.
@@ -87097,8 +83174,7 @@ impl<T> [T] {
     where
         F: FnMut(&T, &T) -> Ordering,
     {
-        sort::quicksort(self, |a, b| compare(a, b) == Ordering::Less);
-    }
+}
 
     /// Sorts the slice with a key extraction function, but might not preserve the order of equal
     /// elements.
@@ -87136,8 +83212,7 @@ impl<T> [T] {
         F: FnMut(&T) -> K,
         K: Ord,
     {
-        sort::quicksort(self, |a, b| f(a).lt(&f(b)));
-    }
+}
 
     /// Reorder the slice such that the element at `index` is at its final sorted position.
     ///
@@ -87181,9 +83256,7 @@ impl<T> [T] {
     where
         T: Ord,
     {
-        let mut f = |a: &T, b: &T| a.lt(b);
-        sort::partition_at_index(self, index, &mut f)
-    }
+}
 
     /// Reorder the slice with a comparator function such that the element at `index` is at its
     /// final sorted position.
@@ -87233,9 +83306,7 @@ impl<T> [T] {
     where
         F: FnMut(&T, &T) -> Ordering,
     {
-        let mut f = |a: &T, b: &T| compare(a, b) == Less;
-        sort::partition_at_index(self, index, &mut f)
-    }
+}
 
     /// Reorder the slice with a key extraction function such that the element at `index` is at its
     /// final sorted position.
@@ -87286,9 +83357,7 @@ impl<T> [T] {
         F: FnMut(&T) -> K,
         K: Ord,
     {
-        let mut g = |a: &T, b: &T| f(a).lt(&f(b));
-        sort::partition_at_index(self, index, &mut g)
-    }
+}
 
     /// Moves all consecutive repeated elements to the end of the slice according to the
     /// [`PartialEq`] trait implementation.
@@ -87412,16 +83481,7 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "slice_rotate", since = "1.26.0")]
     pub fn rotate_left(&mut self, mid: usize) {
-        assert!(mid <= self.len());
-        let k = self.len() - mid;
-        let p = self.as_mut_ptr();
-
-        // SAFETY: The range `[p.add(mid) - mid, p.add(mid) + k)` is trivially
-        // valid for reading and writing, as required by `ptr_rotate`.
-        unsafe {
-            rotate::ptr_rotate(mid, p.add(mid), k);
-        }
-    }
+}
 
     /// Rotates the slice in-place such that the first `self.len() - k`
     /// elements of the slice move to the end while the last `k` elements move
@@ -87455,16 +83515,7 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "slice_rotate", since = "1.26.0")]
     pub fn rotate_right(&mut self, k: usize) {
-        assert!(k <= self.len());
-        let mid = self.len() - k;
-        let p = self.as_mut_ptr();
-
-        // SAFETY: The range `[p.add(mid) - mid, p.add(mid) + k)` is trivially
-        // valid for reading and writing, as required by `ptr_rotate`.
-        unsafe {
-            rotate::ptr_rotate(mid, p.add(mid), k);
-        }
-    }
+}
 
     /// Fills `self` with elements by cloning `value`.
     ///
@@ -87481,8 +83532,7 @@ impl<T> [T] {
     where
         T: Clone,
     {
-        specialize::SpecFill::spec_fill(self, value);
-    }
+}
 
     /// Fills `self` with elements returned by calling a closure repeatedly.
     ///
@@ -87505,10 +83555,7 @@ impl<T> [T] {
     where
         F: FnMut() -> T,
     {
-        for el in self {
-            *el = f();
-        }
-    }
+}
 
     /// Copies the elements from `src` into `self`.
     ///
@@ -87568,8 +83615,7 @@ impl<T> [T] {
     where
         T: Clone,
     {
-        self.spec_clone_from(src);
-    }
+}
 
     /// Copies all elements from `src` into `self`, using a memcpy.
     ///
@@ -87632,29 +83678,7 @@ impl<T> [T] {
     where
         T: Copy,
     {
-        // The panic code path was put into a cold function to not bloat the
-        // call site.
-        #[inline(never)]
-        #[cold]
-        #[track_caller]
-        fn len_mismatch_fail(dst_len: usize, src_len: usize) -> ! {
-            panic!(
-                "source slice length ({}) does not match destination slice length ({})",
-                src_len, dst_len,
-            );
-        }
-
-        if self.len() != src.len() {
-            len_mismatch_fail(self.len(), src.len());
-        }
-
-        // SAFETY: `self` is valid for `self.len()` elements by definition, and `src` was
-        // checked to have the same length. The slices cannot overlap because
-        // mutable references are exclusive.
-        unsafe {
-            ptr::copy_nonoverlapping(src.as_ptr(), self.as_mut_ptr(), self.len());
-        }
-    }
+}
 
     /// Copies elements from one part of the slice to another part of itself,
     /// using a memmove.
@@ -87686,19 +83710,7 @@ impl<T> [T] {
     where
         T: Copy,
     {
-        let Range { start: src_start, end: src_end } = slice::range(src, ..self.len());
-        let count = src_end - src_start;
-        assert!(dest <= self.len() - count, "dest is out of bounds");
-        // SAFETY: the conditions for `ptr::copy` have all been checked above,
-        // as have those for `ptr::add`.
-        unsafe {
-            // Derive both `src_ptr` and `dest_ptr` from the same loan
-            let ptr = self.as_mut_ptr();
-            let src_ptr = ptr.add(src_start);
-            let dest_ptr = ptr.add(dest);
-            ptr::copy(src_ptr, dest_ptr, count);
-        }
-    }
+}
 
     /// Swaps all elements in `self` with those in `other`.
     ///
@@ -87750,82 +83762,11 @@ impl<T> [T] {
     #[stable(feature = "swap_with_slice", since = "1.27.0")]
     #[track_caller]
     pub fn swap_with_slice(&mut self, other: &mut [T]) {
-        assert!(self.len() == other.len(), "destination and source slices have different lengths");
-        // SAFETY: `self` is valid for `self.len()` elements by definition, and `src` was
-        // checked to have the same length. The slices cannot overlap because
-        // mutable references are exclusive.
-        unsafe {
-            ptr::swap_nonoverlapping(self.as_mut_ptr(), other.as_mut_ptr(), self.len());
-        }
-    }
+}
 
     /// Function to calculate lengths of the middle and trailing slice for `align_to{,_mut}`.
     fn align_to_offsets<U>(&self) -> (usize, usize) {
-        // What we gonna do about `rest` is figure out what multiple of `U`s we can put in a
-        // lowest number of `T`s. And how many `T`s we need for each such "multiple".
-        //
-        // Consider for example T=u8 U=u16. Then we can put 1 U in 2 Ts. Simple. Now, consider
-        // for example a case where size_of::<T> = 16, size_of::<U> = 24. We can put 2 Us in
-        // place of every 3 Ts in the `rest` slice. A bit more complicated.
-        //
-        // Formula to calculate this is:
-        //
-        // Us = lcm(size_of::<T>, size_of::<U>) / size_of::<U>
-        // Ts = lcm(size_of::<T>, size_of::<U>) / size_of::<T>
-        //
-        // Expanded and simplified:
-        //
-        // Us = size_of::<T> / gcd(size_of::<T>, size_of::<U>)
-        // Ts = size_of::<U> / gcd(size_of::<T>, size_of::<U>)
-        //
-        // Luckily since all this is constant-evaluated... performance here matters not!
-        #[inline]
-        fn gcd(a: usize, b: usize) -> usize {
-            use crate::intrinsics;
-            // iterative stein’s algorithm
-            // We should still make this `const fn` (and revert to recursive algorithm if we do)
-            // because relying on llvm to consteval all this is… well, it makes me uncomfortable.
-
-            // SAFETY: `a` and `b` are checked to be non-zero values.
-            let (ctz_a, mut ctz_b) = unsafe {
-                if a == 0 {
-                    return b;
-                }
-                if b == 0 {
-                    return a;
-                }
-                (intrinsics::cttz_nonzero(a), intrinsics::cttz_nonzero(b))
-            };
-            let k = ctz_a.min(ctz_b);
-            let mut a = a >> ctz_a;
-            let mut b = b;
-            loop {
-                // remove all factors of 2 from b
-                b >>= ctz_b;
-                if a > b {
-                    mem::swap(&mut a, &mut b);
-                }
-                b = b - a;
-                // SAFETY: `b` is checked to be non-zero.
-                unsafe {
-                    if b == 0 {
-                        break;
-                    }
-                    ctz_b = intrinsics::cttz_nonzero(b);
-                }
-            }
-            a << k
-        }
-        let gcd: usize = gcd(mem::size_of::<T>(), mem::size_of::<U>());
-        let ts: usize = mem::size_of::<U>() / gcd;
-        let us: usize = mem::size_of::<T>() / gcd;
-
-        // Armed with this knowledge, we can find how many `U`s we can fit!
-        let us_len = self.len() / ts * us;
-        // And how many `T`s will be in the trailing slice!
-        let ts_len = self.len() % ts;
-        (us_len, ts_len)
-    }
+}
 
     /// Transmute the slice to a slice of another type, ensuring alignment of the types is
     /// maintained.
@@ -87860,33 +83801,7 @@ impl<T> [T] {
     #[stable(feature = "slice_align_to", since = "1.30.0")]
     #[must_use]
     pub unsafe fn align_to<U>(&self) -> (&[T], &[U], &[T]) {
-        // Note that most of this function will be constant-evaluated,
-        if mem::size_of::<U>() == 0 || mem::size_of::<T>() == 0 {
-            // handle ZSTs specially, which is – don't handle them at all.
-            return (self, &[], &[]);
-        }
-
-        // First, find at what point do we split between the first and 2nd slice. Easy with
-        // ptr.align_offset.
-        let ptr = self.as_ptr();
-        // SAFETY: See the `align_to_mut` method for the detailed safety comment.
-        let offset = unsafe { crate::ptr::align_offset(ptr, mem::align_of::<U>()) };
-        if offset > self.len() {
-            (self, &[], &[])
-        } else {
-            let (left, rest) = self.split_at(offset);
-            let (us_len, ts_len) = rest.align_to_offsets::<U>();
-            // SAFETY: now `rest` is definitely aligned, so `from_raw_parts` below is okay,
-            // since the caller guarantees that we can transmute `T` to `U` safely.
-            unsafe {
-                (
-                    left,
-                    from_raw_parts(rest.as_ptr() as *const U, us_len),
-                    from_raw_parts(rest.as_ptr().add(rest.len() - ts_len), ts_len),
-                )
-            }
-        }
-    }
+}
 
     /// Transmute the slice to a slice of another type, ensuring alignment of the types is
     /// maintained.
@@ -87921,41 +83836,7 @@ impl<T> [T] {
     #[stable(feature = "slice_align_to", since = "1.30.0")]
     #[must_use]
     pub unsafe fn align_to_mut<U>(&mut self) -> (&mut [T], &mut [U], &mut [T]) {
-        // Note that most of this function will be constant-evaluated,
-        if mem::size_of::<U>() == 0 || mem::size_of::<T>() == 0 {
-            // handle ZSTs specially, which is – don't handle them at all.
-            return (self, &mut [], &mut []);
-        }
-
-        // First, find at what point do we split between the first and 2nd slice. Easy with
-        // ptr.align_offset.
-        let ptr = self.as_ptr();
-        // SAFETY: Here we are ensuring we will use aligned pointers for U for the
-        // rest of the method. This is done by passing a pointer to &[T] with an
-        // alignment targeted for U.
-        // `crate::ptr::align_offset` is called with a correctly aligned and
-        // valid pointer `ptr` (it comes from a reference to `self`) and with
-        // a size that is a power of two (since it comes from the alignement for U),
-        // satisfying its safety constraints.
-        let offset = unsafe { crate::ptr::align_offset(ptr, mem::align_of::<U>()) };
-        if offset > self.len() {
-            (self, &mut [], &mut [])
-        } else {
-            let (left, rest) = self.split_at_mut(offset);
-            let (us_len, ts_len) = rest.align_to_offsets::<U>();
-            let rest_len = rest.len();
-            let mut_ptr = rest.as_mut_ptr();
-            // We can't use `rest` again after this, that would invalidate its alias `mut_ptr`!
-            // SAFETY: see comments for `align_to`.
-            unsafe {
-                (
-                    left,
-                    from_raw_parts_mut(mut_ptr as *mut U, us_len),
-                    from_raw_parts_mut(mut_ptr.add(rest_len - ts_len), ts_len),
-                )
-            }
-        }
-    }
+}
 
     /// Split a slice into a prefix, a middle of aligned SIMD types, and a suffix.
     ///
@@ -88175,8 +84056,7 @@ impl<T> [T] {
     where
         P: FnMut(&T) -> bool,
     {
-        self.binary_search_by(|x| if pred(x) { Less } else { Greater }).unwrap_or_else(|i| i)
-    }
+}
 
     /// Removes the subslice corresponding to the given range
     /// and returns a reference to it.
@@ -88507,16 +84387,7 @@ where
 {
     #[track_caller]
     default fn spec_clone_from(&mut self, src: &[T]) {
-        assert!(self.len() == src.len(), "destination and source slices have different lengths");
-        // NOTE: We need to explicitly slice them to the same length
-        // to make it easier for the optimizer to elide bounds checking.
-        // But since it can't be relied on we also have an explicit specialization for T: Copy.
-        let len = self.len();
-        let src = &src[..len];
-        for i in 0..len {
-            self[i].clone_from(&src[i]);
-        }
-    }
+}
 }
 
 impl<T> CloneFromSpec<T> for [T]
@@ -88525,8 +84396,7 @@ where
 {
     #[track_caller]
     fn spec_clone_from(&mut self, src: &[T]) {
-        self.copy_from_slice(src);
-    }
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -88534,8 +84404,7 @@ where
 impl<T> const Default for &[T] {
     /// Creates an empty slice.
     fn default() -> Self {
-        &[]
-    }
+}
 }
 
 #[stable(feature = "mut_slice_default", since = "1.5.0")]
@@ -88543,8 +84412,7 @@ impl<T> const Default for &[T] {
 impl<T> const Default for &mut [T] {
     /// Creates a mutable empty slice.
     fn default() -> Self {
-        &mut []
-    }
+}
 }
 
 #[unstable(feature = "slice_pattern", reason = "stopgap trait for slice patterns", issue = "56345")]
@@ -88560,8 +84428,7 @@ impl<T> SlicePattern for [T] {
 
     #[inline]
     fn as_slice(&self) -> &[Self::Item] {
-        self
-    }
+}
 }
 
 #[stable(feature = "slice_strip", since = "1.51.0")]
@@ -88570,8 +84437,7 @@ impl<T, const N: usize> SlicePattern for [T; N] {
 
     #[inline]
     fn as_slice(&self) -> &[Self::Item] {
-        self
-    }
+}
 }
 }
 pub mod str {
@@ -88671,14 +84537,6 @@ use super::Utf8Error;
 #[rustc_const_stable(feature = "const_str_from_utf8_shared", since = "1.63.0")]
 #[rustc_allow_const_fn_unstable(str_internals)]
 pub const fn from_utf8(v: &[u8]) -> Result<&str, Utf8Error> {
-    // FIXME: This should use `?` again, once it's `const`
-    match run_utf8_validation(v) {
-        Ok(_) => {
-            // SAFETY: validation succeeded.
-            Ok(unsafe { from_utf8_unchecked(v) })
-        }
-        Err(err) => Err(err),
-    }
 }
 
 /// Converts a mutable slice of bytes to a mutable string slice.
@@ -88714,14 +84572,6 @@ pub const fn from_utf8(v: &[u8]) -> Result<&str, Utf8Error> {
 #[stable(feature = "str_mut_extras", since = "1.20.0")]
 #[rustc_const_unstable(feature = "const_str_from_utf8", issue = "91006")]
 pub const fn from_utf8_mut(v: &mut [u8]) -> Result<&mut str, Utf8Error> {
-    // This should use `?` again, once it's `const`
-    match run_utf8_validation(v) {
-        Ok(_) => {
-            // SAFETY: validation succeeded.
-            Ok(unsafe { from_utf8_unchecked_mut(v) })
-        }
-        Err(err) => Err(err),
-    }
 }
 
 /// Converts a slice of bytes to a string slice without checking
@@ -88754,9 +84604,6 @@ pub const fn from_utf8_mut(v: &mut [u8]) -> Result<&mut str, Utf8Error> {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_stable(feature = "const_str_from_utf8_unchecked", since = "1.55.0")]
 pub const unsafe fn from_utf8_unchecked(v: &[u8]) -> &str {
-    // SAFETY: the caller must guarantee that the bytes `v` are valid UTF-8.
-    // Also relies on `&str` and `&[u8]` having the same layout.
-    unsafe { mem::transmute(v) }
 }
 
 /// Converts a slice of bytes to a string slice without checking
@@ -88781,11 +84628,6 @@ pub const unsafe fn from_utf8_unchecked(v: &[u8]) -> &str {
 #[stable(feature = "str_mut_extras", since = "1.20.0")]
 #[rustc_const_unstable(feature = "const_str_from_utf8_unchecked_mut", issue = "91005")]
 pub const unsafe fn from_utf8_unchecked_mut(v: &mut [u8]) -> &mut str {
-    // SAFETY: the caller must guarantee that the bytes `v`
-    // are valid UTF-8, thus the cast to `*mut str` is safe.
-    // Also, the pointer dereference is safe because that pointer
-    // comes from a reference which is guaranteed to be valid for writes.
-    unsafe { &mut *(v as *mut [u8] as *mut str) }
 }
 }
 mod count {
@@ -88815,86 +84657,9 @@ const UNROLL_INNER: usize = 4;
 
 #[inline]
 pub(super) fn count_chars(s: &str) -> usize {
-    if s.len() < USIZE_SIZE * UNROLL_INNER {
-        // Avoid entering the optimized implementation for strings where the
-        // difference is not likely to matter, or where it might even be slower.
-        // That said, a ton of thought was not spent on the particular threshold
-        // here, beyond "this value seems to make sense".
-        char_count_general_case(s.as_bytes())
-    } else {
-        do_count_chars(s)
-    }
 }
 
 fn do_count_chars(s: &str) -> usize {
-    // For correctness, `CHUNK_SIZE` must be:
-    //
-    // - Less than or equal to 255, otherwise we'll overflow bytes in `counts`.
-    // - A multiple of `UNROLL_INNER`, otherwise our `break` inside the
-    //   `body.chunks(CHUNK_SIZE)` loop is incorrect.
-    //
-    // For performance, `CHUNK_SIZE` should be:
-    // - Relatively cheap to `/` against (so some simple sum of powers of two).
-    // - Large enough to avoid paying for the cost of the `sum_bytes_in_usize`
-    //   too often.
-    const CHUNK_SIZE: usize = 192;
-
-    // Check the properties of `CHUNK_SIZE` and `UNROLL_INNER` that are required
-    // for correctness.
-    const _: () = assert!(CHUNK_SIZE < 256);
-    const _: () = assert!(CHUNK_SIZE % UNROLL_INNER == 0);
-
-    // SAFETY: transmuting `[u8]` to `[usize]` is safe except for size
-    // differences which are handled by `align_to`.
-    let (head, body, tail) = unsafe { s.as_bytes().align_to::<usize>() };
-
-    // This should be quite rare, and basically exists to handle the degenerate
-    // cases where align_to fails (as well as miri under symbolic alignment
-    // mode).
-    //
-    // The `unlikely` helps discourage LLVM from inlining the body, which is
-    // nice, as we would rather not mark the `char_count_general_case` function
-    // as cold.
-    if unlikely(body.is_empty() || head.len() > USIZE_SIZE || tail.len() > USIZE_SIZE) {
-        return char_count_general_case(s.as_bytes());
-    }
-
-    let mut total = char_count_general_case(head) + char_count_general_case(tail);
-    // Split `body` into `CHUNK_SIZE` chunks to reduce the frequency with which
-    // we call `sum_bytes_in_usize`.
-    for chunk in body.chunks(CHUNK_SIZE) {
-        // We accumulate intermediate sums in `counts`, where each byte contains
-        // a subset of the sum of this chunk, like a `[u8; size_of::<usize>()]`.
-        let mut counts = 0;
-
-        let (unrolled_chunks, remainder) = chunk.as_chunks::<UNROLL_INNER>();
-        for unrolled in unrolled_chunks {
-            for &word in unrolled {
-                // Because `CHUNK_SIZE` is < 256, this addition can't cause the
-                // count in any of the bytes to overflow into a subsequent byte.
-                counts += contains_non_continuation_byte(word);
-            }
-        }
-
-        // Sum the values in `counts` (which, again, is conceptually a `[u8;
-        // size_of::<usize>()]`), and accumulate the result into `total`.
-        total += sum_bytes_in_usize(counts);
-
-        // If there's any data in `remainder`, then handle it. This will only
-        // happen for the last `chunk` in `body.chunks()` (because `CHUNK_SIZE`
-        // is divisible by `UNROLL_INNER`), so we explicitly break at the end
-        // (which seems to help LLVM out).
-        if !remainder.is_empty() {
-            // Accumulate all the data in the remainder.
-            let mut counts = 0;
-            for &word in remainder {
-                counts += contains_non_continuation_byte(word);
-            }
-            total += sum_bytes_in_usize(counts);
-            break;
-        }
-    }
-    total
 }
 
 // Checks each byte of `w` to see if it contains the first byte in a UTF-8
@@ -88903,19 +84668,12 @@ fn do_count_chars(s: &str) -> usize {
 // true)
 #[inline]
 fn contains_non_continuation_byte(w: usize) -> usize {
-    const LSB: usize = usize::repeat_u8(0x01);
-    ((!w >> 7) | (w >> 6)) & LSB
 }
 
 // Morally equivalent to `values.to_ne_bytes().into_iter().sum::<usize>()`, but
 // more efficient.
 #[inline]
 fn sum_bytes_in_usize(values: usize) -> usize {
-    const LSB_SHORTS: usize = usize::repeat_u16(0x0001);
-    const SKIP_BYTES: usize = usize::repeat_u16(0x00ff);
-
-    let pair_sum: usize = (values & SKIP_BYTES) + ((values >> 8) & SKIP_BYTES);
-    pair_sum.wrapping_mul(LSB_SHORTS) >> ((USIZE_SIZE - 2) * 8)
 }
 
 // This is the most direct implementation of the concept of "count the number of
@@ -88923,7 +84681,6 @@ fn sum_bytes_in_usize(values: usize) -> usize {
 // head and tail of the input string (the first and last item in the tuple
 // returned by `slice::align_to`).
 fn char_count_general_case(s: &[u8]) -> usize {
-    s.iter().filter(|&&byte| !super::validations::utf8_is_cont_byte(byte)).count()
 }
 }
 mod error {
@@ -89005,8 +84762,7 @@ impl Utf8Error {
     #[must_use]
     #[inline]
     pub const fn valid_up_to(&self) -> usize {
-        self.valid_up_to
-    }
+}
 
     /// Provides more information about the failure:
     ///
@@ -89028,27 +84784,13 @@ impl Utf8Error {
     #[must_use]
     #[inline]
     pub const fn error_len(&self) -> Option<usize> {
-        // FIXME: This should become `map` again, once it's `const`
-        match self.error_len {
-            Some(len) => Some(len as usize),
-            None => None,
-        }
-    }
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for Utf8Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if let Some(error_len) = self.error_len {
-            write!(
-                f,
-                "invalid utf-8 sequence of {} bytes from index {}",
-                error_len, self.valid_up_to
-            )
-        } else {
-            write!(f, "incomplete utf-8 byte sequence from index {}", self.valid_up_to)
-        }
-    }
+}
 }
 
 /// An error returned when parsing a `bool` using [`from_str`] fails
@@ -89062,8 +84804,7 @@ pub struct ParseBoolError;
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for ParseBoolError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        "provided string was not `true` or `false`".fmt(f)
-    }
+}
 }
 }
 mod iter {
@@ -89108,50 +84849,32 @@ impl<'a> Iterator for Chars<'a> {
 
     #[inline]
     fn next(&mut self) -> Option<char> {
-        // SAFETY: `str` invariant says `self.iter` is a valid UTF-8 string and
-        // the resulting `ch` is a valid Unicode Scalar Value.
-        unsafe { next_code_point(&mut self.iter).map(|ch| char::from_u32_unchecked(ch)) }
-    }
+}
 
     #[inline]
     fn count(self) -> usize {
-        super::count::count_chars(self.as_str())
-    }
+}
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let len = self.iter.len();
-        // `(len + 3)` can't overflow, because we know that the `slice::Iter`
-        // belongs to a slice in memory which has a maximum length of
-        // `isize::MAX` (that's well below `usize::MAX`).
-        ((len + 3) / 4, Some(len))
-    }
+}
 
     #[inline]
     fn last(mut self) -> Option<char> {
-        // No need to go through the entire string.
-        self.next_back()
-    }
+}
 }
 
 #[stable(feature = "chars_debug_impl", since = "1.38.0")]
 impl fmt::Debug for Chars<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Chars(")?;
-        f.debug_list().entries(self.clone()).finish()?;
-        write!(f, ")")?;
-        Ok(())
-    }
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> DoubleEndedIterator for Chars<'a> {
     #[inline]
     fn next_back(&mut self) -> Option<char> {
-        // SAFETY: `str` invariant says `self.iter` is a valid UTF-8 string and
-        // the resulting `ch` is a valid Unicode Scalar Value.
-        unsafe { next_code_point_reverse(&mut self.iter).map(|ch| char::from_u32_unchecked(ch)) }
-    }
+}
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -89179,9 +84902,7 @@ impl<'a> Chars<'a> {
     #[must_use]
     #[inline]
     pub fn as_str(&self) -> &'a str {
-        // SAFETY: `Chars` is only made from a str, which guarantees the iter is valid UTF-8.
-        unsafe { from_utf8_unchecked(self.iter.as_slice()) }
-    }
+}
 }
 
 /// An iterator over the [`char`]s of a string slice, and their positions.
@@ -89205,44 +84926,26 @@ impl<'a> Iterator for CharIndices<'a> {
 
     #[inline]
     fn next(&mut self) -> Option<(usize, char)> {
-        let pre_len = self.iter.iter.len();
-        match self.iter.next() {
-            None => None,
-            Some(ch) => {
-                let index = self.front_offset;
-                let len = self.iter.iter.len();
-                self.front_offset += pre_len - len;
-                Some((index, ch))
-            }
-        }
-    }
+}
 
     #[inline]
     fn count(self) -> usize {
-        self.iter.count()
-    }
+}
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        self.iter.size_hint()
-    }
+}
 
     #[inline]
     fn last(mut self) -> Option<(usize, char)> {
-        // No need to go through the entire string.
-        self.next_back()
-    }
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> DoubleEndedIterator for CharIndices<'a> {
     #[inline]
     fn next_back(&mut self) -> Option<(usize, char)> {
-        self.iter.next_back().map(|ch| {
-            let index = self.front_offset + self.iter.iter.len();
-            (index, ch)
-        })
-    }
+}
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -89257,8 +84960,7 @@ impl<'a> CharIndices<'a> {
     #[must_use]
     #[inline]
     pub fn as_str(&self) -> &'a str {
-        self.iter.as_str()
-    }
+}
 
     /// Returns the byte position of the next character, or the length
     /// of the underlying string if there are no more characters.
@@ -89302,109 +85004,91 @@ impl Iterator for Bytes<'_> {
 
     #[inline]
     fn next(&mut self) -> Option<u8> {
-        self.0.next()
-    }
+}
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        self.0.size_hint()
-    }
+}
 
     #[inline]
     fn count(self) -> usize {
-        self.0.count()
-    }
+}
 
     #[inline]
     fn last(self) -> Option<Self::Item> {
-        self.0.last()
-    }
+}
 
     #[inline]
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
-        self.0.nth(n)
-    }
+}
 
     #[inline]
     fn all<F>(&mut self, f: F) -> bool
     where
         F: FnMut(Self::Item) -> bool,
     {
-        self.0.all(f)
-    }
+}
 
     #[inline]
     fn any<F>(&mut self, f: F) -> bool
     where
         F: FnMut(Self::Item) -> bool,
     {
-        self.0.any(f)
-    }
+}
 
     #[inline]
     fn find<P>(&mut self, predicate: P) -> Option<Self::Item>
     where
         P: FnMut(&Self::Item) -> bool,
     {
-        self.0.find(predicate)
-    }
+}
 
     #[inline]
     fn position<P>(&mut self, predicate: P) -> Option<usize>
     where
         P: FnMut(Self::Item) -> bool,
     {
-        self.0.position(predicate)
-    }
+}
 
     #[inline]
     fn rposition<P>(&mut self, predicate: P) -> Option<usize>
     where
         P: FnMut(Self::Item) -> bool,
     {
-        self.0.rposition(predicate)
-    }
+}
 
     #[inline]
     unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> u8 {
-        // SAFETY: the caller must uphold the safety contract
-        // for `Iterator::__iterator_get_unchecked`.
-        unsafe { self.0.__iterator_get_unchecked(idx) }
-    }
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl DoubleEndedIterator for Bytes<'_> {
     #[inline]
     fn next_back(&mut self) -> Option<u8> {
-        self.0.next_back()
-    }
+}
 
     #[inline]
     fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
-        self.0.nth_back(n)
-    }
+}
 
     #[inline]
     fn rfind<P>(&mut self, predicate: P) -> Option<Self::Item>
     where
         P: FnMut(&Self::Item) -> bool,
     {
-        self.0.rfind(predicate)
-    }
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl ExactSizeIterator for Bytes<'_> {
     #[inline]
     fn len(&self) -> usize {
-        self.0.len()
-    }
+}
 
     #[inline]
     fn is_empty(&self) -> bool {
-        self.0.is_empty()
-    }
+}
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -89433,20 +85117,17 @@ use super::ParseBoolError;
 impl Ord for str {
     #[inline]
     fn cmp(&self, other: &str) -> Ordering {
-        self.as_bytes().cmp(other.as_bytes())
-    }
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl PartialEq for str {
     #[inline]
     fn eq(&self, other: &str) -> bool {
-        self.as_bytes() == other.as_bytes()
-    }
+}
     #[inline]
     fn ne(&self, other: &str) -> bool {
-        !(*self).eq(other)
-    }
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -89463,8 +85144,7 @@ impl Eq for str {}
 impl PartialOrd for str {
     #[inline]
     fn partial_cmp(&self, other: &str) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -89477,8 +85157,7 @@ where
 
     #[inline]
     fn index(&self, index: I) -> &I::Output {
-        index.index(self)
-    }
+}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -89489,15 +85168,13 @@ where
 {
     #[inline]
     fn index_mut(&mut self, index: I) -> &mut I::Output {
-        index.index_mut(self)
-    }
+}
 }
 
 #[inline(never)]
 #[cold]
 #[track_caller]
 const fn str_index_overflow_fail() -> ! {
-    panic!("attempted to index str up to maximum usize");
 }
 
 /// Implements substring slicing with syntax `&self[..]` or `&mut self[..]`.
@@ -89518,28 +85195,22 @@ unsafe impl const SliceIndex<str> for ops::RangeFull {
     type Output = str;
     #[inline]
     fn get(self, slice: &str) -> Option<&Self::Output> {
-        Some(slice)
-    }
+}
     #[inline]
     fn get_mut(self, slice: &mut str) -> Option<&mut Self::Output> {
-        Some(slice)
-    }
+}
     #[inline]
     unsafe fn get_unchecked(self, slice: *const str) -> *const Self::Output {
-        slice
-    }
+}
     #[inline]
     unsafe fn get_unchecked_mut(self, slice: *mut str) -> *mut Self::Output {
-        slice
-    }
+}
     #[inline]
     fn index(self, slice: &str) -> &Self::Output {
-        slice
-    }
+}
     #[inline]
     fn index_mut(self, slice: &mut str) -> &mut Self::Output {
-        slice
-    }
+}
 }
 
 /// Implements substring slicing with syntax `&self[begin .. end]` or `&mut
@@ -89583,71 +85254,22 @@ unsafe impl const SliceIndex<str> for ops::Range<usize> {
     type Output = str;
     #[inline]
     fn get(self, slice: &str) -> Option<&Self::Output> {
-        if self.start <= self.end
-            && slice.is_char_boundary(self.start)
-            && slice.is_char_boundary(self.end)
-        {
-            // SAFETY: just checked that `start` and `end` are on a char boundary,
-            // and we are passing in a safe reference, so the return value will also be one.
-            // We also checked char boundaries, so this is valid UTF-8.
-            Some(unsafe { &*self.get_unchecked(slice) })
-        } else {
-            None
-        }
-    }
+}
     #[inline]
     fn get_mut(self, slice: &mut str) -> Option<&mut Self::Output> {
-        if self.start <= self.end
-            && slice.is_char_boundary(self.start)
-            && slice.is_char_boundary(self.end)
-        {
-            // SAFETY: just checked that `start` and `end` are on a char boundary.
-            // We know the pointer is unique because we got it from `slice`.
-            Some(unsafe { &mut *self.get_unchecked_mut(slice) })
-        } else {
-            None
-        }
-    }
+}
     #[inline]
     unsafe fn get_unchecked(self, slice: *const str) -> *const Self::Output {
-        let slice = slice as *const [u8];
-        // SAFETY: the caller guarantees that `self` is in bounds of `slice`
-        // which satisfies all the conditions for `add`.
-        let ptr = unsafe { slice.as_ptr().add(self.start) };
-        let len = self.end - self.start;
-        ptr::slice_from_raw_parts(ptr, len) as *const str
-    }
+}
     #[inline]
     unsafe fn get_unchecked_mut(self, slice: *mut str) -> *mut Self::Output {
-        let slice = slice as *mut [u8];
-        // SAFETY: see comments for `get_unchecked`.
-        let ptr = unsafe { slice.as_mut_ptr().add(self.start) };
-        let len = self.end - self.start;
-        ptr::slice_from_raw_parts_mut(ptr, len) as *mut str
-    }
+}
     #[inline]
     fn index(self, slice: &str) -> &Self::Output {
-        let (start, end) = (self.start, self.end);
-        match self.get(slice) {
-            Some(s) => s,
-            None => super::slice_error_fail(slice, start, end),
-        }
-    }
+}
     #[inline]
     fn index_mut(self, slice: &mut str) -> &mut Self::Output {
-        // is_char_boundary checks that the index is in [0, .len()]
-        // cannot reuse `get` as above, because of NLL trouble
-        if self.start <= self.end
-            && slice.is_char_boundary(self.start)
-            && slice.is_char_boundary(self.end)
-        {
-            // SAFETY: just checked that `start` and `end` are on a char boundary,
-            // and we are passing in a safe reference, so the return value will also be one.
-            unsafe { &mut *self.get_unchecked_mut(slice) }
-        } else {
-            super::slice_error_fail(slice, self.start, self.end)
-        }
-    }
+}
 }
 
 /// Implements substring slicing with syntax `&self[.. end]` or `&mut
@@ -89671,54 +85293,22 @@ unsafe impl const SliceIndex<str> for ops::RangeTo<usize> {
     type Output = str;
     #[inline]
     fn get(self, slice: &str) -> Option<&Self::Output> {
-        if slice.is_char_boundary(self.end) {
-            // SAFETY: just checked that `end` is on a char boundary,
-            // and we are passing in a safe reference, so the return value will also be one.
-            Some(unsafe { &*self.get_unchecked(slice) })
-        } else {
-            None
-        }
-    }
+}
     #[inline]
     fn get_mut(self, slice: &mut str) -> Option<&mut Self::Output> {
-        if slice.is_char_boundary(self.end) {
-            // SAFETY: just checked that `end` is on a char boundary,
-            // and we are passing in a safe reference, so the return value will also be one.
-            Some(unsafe { &mut *self.get_unchecked_mut(slice) })
-        } else {
-            None
-        }
-    }
+}
     #[inline]
     unsafe fn get_unchecked(self, slice: *const str) -> *const Self::Output {
-        let slice = slice as *const [u8];
-        let ptr = slice.as_ptr();
-        ptr::slice_from_raw_parts(ptr, self.end) as *const str
-    }
+}
     #[inline]
     unsafe fn get_unchecked_mut(self, slice: *mut str) -> *mut Self::Output {
-        let slice = slice as *mut [u8];
-        let ptr = slice.as_mut_ptr();
-        ptr::slice_from_raw_parts_mut(ptr, self.end) as *mut str
-    }
+}
     #[inline]
     fn index(self, slice: &str) -> &Self::Output {
-        let end = self.end;
-        match self.get(slice) {
-            Some(s) => s,
-            None => super::slice_error_fail(slice, 0, end),
-        }
-    }
+}
     #[inline]
     fn index_mut(self, slice: &mut str) -> &mut Self::Output {
-        if slice.is_char_boundary(self.end) {
-            // SAFETY: just checked that `end` is on a char boundary,
-            // and we are passing in a safe reference, so the return value will also be one.
-            unsafe { &mut *self.get_unchecked_mut(slice) }
-        } else {
-            super::slice_error_fail(slice, 0, self.end)
-        }
-    }
+}
 }
 
 /// Implements substring slicing with syntax `&self[begin ..]` or `&mut
@@ -89742,59 +85332,22 @@ unsafe impl const SliceIndex<str> for ops::RangeFrom<usize> {
     type Output = str;
     #[inline]
     fn get(self, slice: &str) -> Option<&Self::Output> {
-        if slice.is_char_boundary(self.start) {
-            // SAFETY: just checked that `start` is on a char boundary,
-            // and we are passing in a safe reference, so the return value will also be one.
-            Some(unsafe { &*self.get_unchecked(slice) })
-        } else {
-            None
-        }
-    }
+}
     #[inline]
     fn get_mut(self, slice: &mut str) -> Option<&mut Self::Output> {
-        if slice.is_char_boundary(self.start) {
-            // SAFETY: just checked that `start` is on a char boundary,
-            // and we are passing in a safe reference, so the return value will also be one.
-            Some(unsafe { &mut *self.get_unchecked_mut(slice) })
-        } else {
-            None
-        }
-    }
+}
     #[inline]
     unsafe fn get_unchecked(self, slice: *const str) -> *const Self::Output {
-        let slice = slice as *const [u8];
-        // SAFETY: the caller guarantees that `self` is in bounds of `slice`
-        // which satisfies all the conditions for `add`.
-        let ptr = unsafe { slice.as_ptr().add(self.start) };
-        let len = slice.len() - self.start;
-        ptr::slice_from_raw_parts(ptr, len) as *const str
-    }
+}
     #[inline]
     unsafe fn get_unchecked_mut(self, slice: *mut str) -> *mut Self::Output {
-        let slice = slice as *mut [u8];
-        // SAFETY: identical to `get_unchecked`.
-        let ptr = unsafe { slice.as_mut_ptr().add(self.start) };
-        let len = slice.len() - self.start;
-        ptr::slice_from_raw_parts_mut(ptr, len) as *mut str
-    }
+}
     #[inline]
     fn index(self, slice: &str) -> &Self::Output {
-        let (start, end) = (self.start, slice.len());
-        match self.get(slice) {
-            Some(s) => s,
-            None => super::slice_error_fail(slice, start, end),
-        }
-    }
+}
     #[inline]
     fn index_mut(self, slice: &mut str) -> &mut Self::Output {
-        if slice.is_char_boundary(self.start) {
-            // SAFETY: just checked that `start` is on a char boundary,
-            // and we are passing in a safe reference, so the return value will also be one.
-            unsafe { &mut *self.get_unchecked_mut(slice) }
-        } else {
-            super::slice_error_fail(slice, self.start, slice.len())
-        }
-    }
+}
 }
 
 /// Implements substring slicing with syntax `&self[begin ..= end]` or `&mut
@@ -89819,36 +85372,22 @@ unsafe impl const SliceIndex<str> for ops::RangeInclusive<usize> {
     type Output = str;
     #[inline]
     fn get(self, slice: &str) -> Option<&Self::Output> {
-        if *self.end() == usize::MAX { None } else { self.into_slice_range().get(slice) }
-    }
+}
     #[inline]
     fn get_mut(self, slice: &mut str) -> Option<&mut Self::Output> {
-        if *self.end() == usize::MAX { None } else { self.into_slice_range().get_mut(slice) }
-    }
+}
     #[inline]
     unsafe fn get_unchecked(self, slice: *const str) -> *const Self::Output {
-        // SAFETY: the caller must uphold the safety contract for `get_unchecked`.
-        unsafe { self.into_slice_range().get_unchecked(slice) }
-    }
+}
     #[inline]
     unsafe fn get_unchecked_mut(self, slice: *mut str) -> *mut Self::Output {
-        // SAFETY: the caller must uphold the safety contract for `get_unchecked_mut`.
-        unsafe { self.into_slice_range().get_unchecked_mut(slice) }
-    }
+}
     #[inline]
     fn index(self, slice: &str) -> &Self::Output {
-        if *self.end() == usize::MAX {
-            str_index_overflow_fail();
-        }
-        self.into_slice_range().index(slice)
-    }
+}
     #[inline]
     fn index_mut(self, slice: &mut str) -> &mut Self::Output {
-        if *self.end() == usize::MAX {
-            str_index_overflow_fail();
-        }
-        self.into_slice_range().index_mut(slice)
-    }
+}
 }
 
 /// Implements substring slicing with syntax `&self[..= end]` or `&mut
@@ -89871,36 +85410,22 @@ unsafe impl const SliceIndex<str> for ops::RangeToInclusive<usize> {
     type Output = str;
     #[inline]
     fn get(self, slice: &str) -> Option<&Self::Output> {
-        if self.end == usize::MAX { None } else { (..self.end + 1).get(slice) }
-    }
+}
     #[inline]
     fn get_mut(self, slice: &mut str) -> Option<&mut Self::Output> {
-        if self.end == usize::MAX { None } else { (..self.end + 1).get_mut(slice) }
-    }
+}
     #[inline]
     unsafe fn get_unchecked(self, slice: *const str) -> *const Self::Output {
-        // SAFETY: the caller must uphold the safety contract for `get_unchecked`.
-        unsafe { (..self.end + 1).get_unchecked(slice) }
-    }
+}
     #[inline]
     unsafe fn get_unchecked_mut(self, slice: *mut str) -> *mut Self::Output {
-        // SAFETY: the caller must uphold the safety contract for `get_unchecked_mut`.
-        unsafe { (..self.end + 1).get_unchecked_mut(slice) }
-    }
+}
     #[inline]
     fn index(self, slice: &str) -> &Self::Output {
-        if self.end == usize::MAX {
-            str_index_overflow_fail();
-        }
-        (..self.end + 1).index(slice)
-    }
+}
     #[inline]
     fn index_mut(self, slice: &mut str) -> &mut Self::Output {
-        if self.end == usize::MAX {
-            str_index_overflow_fail();
-        }
-        (..self.end + 1).index_mut(slice)
-    }
+}
 }
 
 /// Parse a value from a string
@@ -90010,12 +85535,7 @@ impl FromStr for bool {
     /// ```
     #[inline]
     fn from_str(s: &str) -> Result<bool, ParseBoolError> {
-        match s {
-            "true" => Ok(true),
-            "false" => Ok(false),
-            _ => Err(ParseBoolError),
-        }
-    }
+}
 }
 }
 mod validations {
@@ -90030,20 +85550,17 @@ use super::Utf8Error;
 /// for width 3, and 3 bits for width 4.
 #[inline]
 const fn utf8_first_byte(byte: u8, width: u32) -> u32 {
-    (byte & (0x7F >> width)) as u32
 }
 
 /// Returns the value of `ch` updated with continuation byte `byte`.
 #[inline]
 const fn utf8_acc_cont_byte(ch: u32, byte: u8) -> u32 {
-    (ch << 6) | (byte & CONT_MASK) as u32
 }
 
 /// Checks whether the byte is a UTF-8 continuation byte (i.e., starts with the
 /// bits `10`).
 #[inline]
 pub(super) const fn utf8_is_cont_byte(byte: u8) -> bool {
-    (byte as i8) < -64
 }
 
 /// Reads the next code point out of a byte iterator (assuming a
@@ -90068,36 +85585,6 @@ pub(super) unsafe fn next_code_point_reverse<'a, I>(bytes: &mut I) -> Option<u32
 where
     I: DoubleEndedIterator<Item = &'a u8>,
 {
-    // Decode UTF-8
-    let w = match *bytes.next_back()? {
-        next_byte if next_byte < 128 => return Some(next_byte as u32),
-        back_byte => back_byte,
-    };
-
-    // Multibyte case follows
-    // Decode from a byte combination out of: [x [y [z w]]]
-    let mut ch;
-    // SAFETY: `bytes` produces an UTF-8-like string,
-    // so the iterator must produce a value here.
-    let z = unsafe { *bytes.next_back().unwrap_unchecked() };
-    ch = utf8_first_byte(z, 2);
-    if utf8_is_cont_byte(z) {
-        // SAFETY: `bytes` produces an UTF-8-like string,
-        // so the iterator must produce a value here.
-        let y = unsafe { *bytes.next_back().unwrap_unchecked() };
-        ch = utf8_first_byte(y, 3);
-        if utf8_is_cont_byte(y) {
-            // SAFETY: `bytes` produces an UTF-8-like string,
-            // so the iterator must produce a value here.
-            let x = unsafe { *bytes.next_back().unwrap_unchecked() };
-            ch = utf8_first_byte(x, 4);
-            ch = utf8_acc_cont_byte(ch, y);
-        }
-        ch = utf8_acc_cont_byte(ch, z);
-    }
-    ch = utf8_acc_cont_byte(ch, w);
-
-    Some(ch)
 }
 
 const NONASCII_MASK: usize = usize::repeat_u8(0x80);
@@ -90105,7 +85592,6 @@ const NONASCII_MASK: usize = usize::repeat_u8(0x80);
 /// Returns `true` if any byte in the word `x` is nonascii (>= 128).
 #[inline]
 const fn contains_nonascii(x: usize) -> bool {
-    (x & NONASCII_MASK) != 0
 }
 
 /// Walks through `v` checking that it's a valid UTF-8 sequence,
@@ -90113,120 +85599,6 @@ const fn contains_nonascii(x: usize) -> bool {
 #[inline(always)]
 #[rustc_const_unstable(feature = "str_internals", issue = "none")]
 pub(super) const fn run_utf8_validation(v: &[u8]) -> Result<(), Utf8Error> {
-    let mut index = 0;
-    let len = v.len();
-
-    let usize_bytes = mem::size_of::<usize>();
-    let ascii_block_size = 2 * usize_bytes;
-    let blocks_end = if len >= ascii_block_size { len - ascii_block_size + 1 } else { 0 };
-    let align = v.as_ptr().align_offset(usize_bytes);
-
-    while index < len {
-        let old_offset = index;
-        macro_rules! err {
-            ($error_len: expr) => {
-                return Err(Utf8Error { valid_up_to: old_offset, error_len: $error_len })
-            };
-        }
-
-        macro_rules! next {
-            () => {{
-                index += 1;
-                // we needed data, but there was none: error!
-                if index >= len {
-                    err!(None)
-                }
-                v[index]
-            }};
-        }
-
-        let first = v[index];
-        if first >= 128 {
-            let w = utf8_char_width(first);
-            // 2-byte encoding is for codepoints  \u{0080} to  \u{07ff}
-            //        first  C2 80        last DF BF
-            // 3-byte encoding is for codepoints  \u{0800} to  \u{ffff}
-            //        first  E0 A0 80     last EF BF BF
-            //   excluding surrogates codepoints  \u{d800} to  \u{dfff}
-            //               ED A0 80 to       ED BF BF
-            // 4-byte encoding is for codepoints \u{1000}0 to \u{10ff}ff
-            //        first  F0 90 80 80  last F4 8F BF BF
-            //
-            // Use the UTF-8 syntax from the RFC
-            //
-            // https://tools.ietf.org/html/rfc3629
-            // UTF8-1      = %x00-7F
-            // UTF8-2      = %xC2-DF UTF8-tail
-            // UTF8-3      = %xE0 %xA0-BF UTF8-tail / %xE1-EC 2( UTF8-tail ) /
-            //               %xED %x80-9F UTF8-tail / %xEE-EF 2( UTF8-tail )
-            // UTF8-4      = %xF0 %x90-BF 2( UTF8-tail ) / %xF1-F3 3( UTF8-tail ) /
-            //               %xF4 %x80-8F 2( UTF8-tail )
-            match w {
-                2 => {
-                    if next!() as i8 >= -64 {
-                        err!(Some(1))
-                    }
-                }
-                3 => {
-                    match (first, next!()) {
-                        (0xE0, 0xA0..=0xBF)
-                        | (0xE1..=0xEC, 0x80..=0xBF)
-                        | (0xED, 0x80..=0x9F)
-                        | (0xEE..=0xEF, 0x80..=0xBF) => {}
-                        _ => err!(Some(1)),
-                    }
-                    if next!() as i8 >= -64 {
-                        err!(Some(2))
-                    }
-                }
-                4 => {
-                    match (first, next!()) {
-                        (0xF0, 0x90..=0xBF) | (0xF1..=0xF3, 0x80..=0xBF) | (0xF4, 0x80..=0x8F) => {}
-                        _ => err!(Some(1)),
-                    }
-                    if next!() as i8 >= -64 {
-                        err!(Some(2))
-                    }
-                    if next!() as i8 >= -64 {
-                        err!(Some(3))
-                    }
-                }
-                _ => err!(Some(1)),
-            }
-            index += 1;
-        } else {
-            // Ascii case, try to skip forward quickly.
-            // When the pointer is aligned, read 2 words of data per iteration
-            // until we find a word containing a non-ascii byte.
-            if align != usize::MAX && align.wrapping_sub(index) % usize_bytes == 0 {
-                let ptr = v.as_ptr();
-                while index < blocks_end {
-                    // SAFETY: since `align - index` and `ascii_block_size` are
-                    // multiples of `usize_bytes`, `block = ptr.add(index)` is
-                    // always aligned with a `usize` so it's safe to dereference
-                    // both `block` and `block.offset(1)`.
-                    unsafe {
-                        let block = ptr.add(index) as *const usize;
-                        // break if there is a nonascii byte
-                        let zu = contains_nonascii(*block);
-                        let zv = contains_nonascii(*block.offset(1));
-                        if zu || zv {
-                            break;
-                        }
-                    }
-                    index += ascii_block_size;
-                }
-                // step from the point where the wordwise loop stopped
-                while index < len && v[index] < 128 {
-                    index += 1;
-                }
-            } else {
-                index += 1;
-            }
-        }
-    }
-
-    Ok(())
 }
 
 // https://tools.ietf.org/html/rfc3629
@@ -90383,8 +85755,7 @@ pub trait Pattern<'a>: Sized {
     /// Checks whether the pattern matches at the front of the haystack
     #[inline]
     fn is_prefix_of(self, haystack: &'a str) -> bool {
-        matches!(self.into_searcher(haystack).next(), SearchStep::Match(0, _))
-    }
+}
 
     /// Checks whether the pattern matches at the back of the haystack
     #[inline]
@@ -90392,24 +85763,12 @@ pub trait Pattern<'a>: Sized {
     where
         Self::Searcher: ReverseSearcher<'a>,
     {
-        matches!(self.into_searcher(haystack).next_back(), SearchStep::Match(_, j) if haystack.len() == j)
-    }
+}
 
     /// Removes the pattern from the front of haystack, if it matches.
     #[inline]
     fn strip_prefix_of(self, haystack: &'a str) -> Option<&'a str> {
-        if let SearchStep::Match(start, len) = self.into_searcher(haystack).next() {
-            debug_assert_eq!(
-                start, 0,
-                "The first search step from Searcher \
-                 must include the first character"
-            );
-            // SAFETY: `Searcher` is known to return valid indices.
-            unsafe { Some(haystack.get_unchecked(len..)) }
-        } else {
-            None
-        }
-    }
+}
 
     /// Removes the pattern from the back of haystack, if it matches.
     #[inline]
@@ -90417,19 +85776,7 @@ pub trait Pattern<'a>: Sized {
     where
         Self::Searcher: ReverseSearcher<'a>,
     {
-        if let SearchStep::Match(start, end) = self.into_searcher(haystack).next_back() {
-            debug_assert_eq!(
-                end,
-                haystack.len(),
-                "The first search step from ReverseSearcher \
-                 must include the last character"
-            );
-            // SAFETY: `Searcher` is known to return valid indices.
-            unsafe { Some(haystack.get_unchecked(..start)) }
-        } else {
-            None
-        }
-    }
+}
 }
 
 // Searcher
@@ -90516,14 +85863,7 @@ pub unsafe trait Searcher<'a> {
     /// of this and [`next_match`][Searcher::next_match] will overlap.
     #[inline]
     fn next_reject(&mut self) -> Option<(usize, usize)> {
-        loop {
-            match self.next() {
-                SearchStep::Reject(a, b) => return Some((a, b)),
-                SearchStep::Done => return None,
-                _ => continue,
-            }
-        }
-    }
+}
 }
 
 /// A reverse searcher for a string pattern.
@@ -90581,14 +85921,7 @@ pub unsafe trait ReverseSearcher<'a>: Searcher<'a> {
     /// See [`next_back()`][ReverseSearcher::next_back].
     #[inline]
     fn next_reject_back(&mut self) -> Option<(usize, usize)> {
-        loop {
-            match self.next_back() {
-                SearchStep::Reject(a, b) => return Some((a, b)),
-                SearchStep::Done => return None,
-                _ => continue,
-            }
-        }
-    }
+}
 }
 
 /// A marker trait to express that a [`ReverseSearcher`]
@@ -90648,77 +85981,13 @@ pub struct CharSearcher<'a> {
 unsafe impl<'a> Searcher<'a> for CharSearcher<'a> {
     #[inline]
     fn haystack(&self) -> &'a str {
-        self.haystack
-    }
+}
     #[inline]
     fn next(&mut self) -> SearchStep {
-        let old_finger = self.finger;
-        // SAFETY: 1-4 guarantee safety of `get_unchecked`
-        // 1. `self.finger` and `self.finger_back` are kept on unicode boundaries
-        //    (this is invariant)
-        // 2. `self.finger >= 0` since it starts at 0 and only increases
-        // 3. `self.finger < self.finger_back` because otherwise the char `iter`
-        //    would return `SearchStep::Done`
-        // 4. `self.finger` comes before the end of the haystack because `self.finger_back`
-        //    starts at the end and only decreases
-        let slice = unsafe { self.haystack.get_unchecked(old_finger..self.finger_back) };
-        let mut iter = slice.chars();
-        let old_len = iter.iter.len();
-        if let Some(ch) = iter.next() {
-            // add byte offset of current character
-            // without re-encoding as utf-8
-            self.finger += old_len - iter.iter.len();
-            if ch == self.needle {
-                SearchStep::Match(old_finger, self.finger)
-            } else {
-                SearchStep::Reject(old_finger, self.finger)
-            }
-        } else {
-            SearchStep::Done
-        }
-    }
+}
     #[inline]
     fn next_match(&mut self) -> Option<(usize, usize)> {
-        loop {
-            // get the haystack after the last character found
-            let bytes = self.haystack.as_bytes().get(self.finger..self.finger_back)?;
-            // the last byte of the utf8 encoded needle
-            // SAFETY: we have an invariant that `utf8_size < 5`
-            let last_byte = unsafe { *self.utf8_encoded.get_unchecked(self.utf8_size - 1) };
-            if let Some(index) = memchr::memchr(last_byte, bytes) {
-                // The new finger is the index of the byte we found,
-                // plus one, since we memchr'd for the last byte of the character.
-                //
-                // Note that this doesn't always give us a finger on a UTF8 boundary.
-                // If we *didn't* find our character
-                // we may have indexed to the non-last byte of a 3-byte or 4-byte character.
-                // We can't just skip to the next valid starting byte because a character like
-                // ꁁ (U+A041 YI SYLLABLE PA), utf-8 `EA 81 81` will have us always find
-                // the second byte when searching for the third.
-                //
-                // However, this is totally okay. While we have the invariant that
-                // self.finger is on a UTF8 boundary, this invariant is not relied upon
-                // within this method (it is relied upon in CharSearcher::next()).
-                //
-                // We only exit this method when we reach the end of the string, or if we
-                // find something. When we find something the `finger` will be set
-                // to a UTF8 boundary.
-                self.finger += index + 1;
-                if self.finger >= self.utf8_size {
-                    let found_char = self.finger - self.utf8_size;
-                    if let Some(slice) = self.haystack.as_bytes().get(found_char..self.finger) {
-                        if slice == &self.utf8_encoded[0..self.utf8_size] {
-                            return Some((found_char, self.finger));
-                        }
-                    }
-                }
-            } else {
-                // found nothing, exit
-                self.finger = self.finger_back;
-                return None;
-            }
-        }
-    }
+}
 
     // let next_reject use the default implementation from the Searcher trait
 }
@@ -90726,73 +85995,10 @@ unsafe impl<'a> Searcher<'a> for CharSearcher<'a> {
 unsafe impl<'a> ReverseSearcher<'a> for CharSearcher<'a> {
     #[inline]
     fn next_back(&mut self) -> SearchStep {
-        let old_finger = self.finger_back;
-        // SAFETY: see the comment for next() above
-        let slice = unsafe { self.haystack.get_unchecked(self.finger..old_finger) };
-        let mut iter = slice.chars();
-        let old_len = iter.iter.len();
-        if let Some(ch) = iter.next_back() {
-            // subtract byte offset of current character
-            // without re-encoding as utf-8
-            self.finger_back -= old_len - iter.iter.len();
-            if ch == self.needle {
-                SearchStep::Match(self.finger_back, old_finger)
-            } else {
-                SearchStep::Reject(self.finger_back, old_finger)
-            }
-        } else {
-            SearchStep::Done
-        }
-    }
+}
     #[inline]
     fn next_match_back(&mut self) -> Option<(usize, usize)> {
-        let haystack = self.haystack.as_bytes();
-        loop {
-            // get the haystack up to but not including the last character searched
-            let bytes = haystack.get(self.finger..self.finger_back)?;
-            // the last byte of the utf8 encoded needle
-            // SAFETY: we have an invariant that `utf8_size < 5`
-            let last_byte = unsafe { *self.utf8_encoded.get_unchecked(self.utf8_size - 1) };
-            if let Some(index) = memchr::memrchr(last_byte, bytes) {
-                // we searched a slice that was offset by self.finger,
-                // add self.finger to recoup the original index
-                let index = self.finger + index;
-                // memrchr will return the index of the byte we wish to
-                // find. In case of an ASCII character, this is indeed
-                // were we wish our new finger to be ("after" the found
-                // char in the paradigm of reverse iteration). For
-                // multibyte chars we need to skip down by the number of more
-                // bytes they have than ASCII
-                let shift = self.utf8_size - 1;
-                if index >= shift {
-                    let found_char = index - shift;
-                    if let Some(slice) = haystack.get(found_char..(found_char + self.utf8_size)) {
-                        if slice == &self.utf8_encoded[0..self.utf8_size] {
-                            // move finger to before the character found (i.e., at its start index)
-                            self.finger_back = found_char;
-                            return Some((self.finger_back, self.finger_back + self.utf8_size));
-                        }
-                    }
-                }
-                // We can't use finger_back = index - size + 1 here. If we found the last char
-                // of a different-sized character (or the middle byte of a different character)
-                // we need to bump the finger_back down to `index`. This similarly makes
-                // `finger_back` have the potential to no longer be on a boundary,
-                // but this is OK since we only exit this function on a boundary
-                // or when the haystack has been searched completely.
-                //
-                // Unlike next_match this does not
-                // have the problem of repeated bytes in utf-8 because
-                // we're searching for the last byte, and we can only have
-                // found the last byte when searching in reverse.
-                self.finger_back = index;
-            } else {
-                self.finger_back = self.finger;
-                // found nothing, exit
-                return None;
-            }
-        }
-    }
+}
 
     // let next_reject_back use the default implementation from the Searcher trait
 }
@@ -90811,53 +86017,33 @@ impl<'a> Pattern<'a> for char {
 
     #[inline]
     fn into_searcher(self, haystack: &'a str) -> Self::Searcher {
-        let mut utf8_encoded = [0; 4];
-        let utf8_size = self.encode_utf8(&mut utf8_encoded).len();
-        CharSearcher {
-            haystack,
-            finger: 0,
-            finger_back: haystack.len(),
-            needle: self,
-            utf8_size,
-            utf8_encoded,
-        }
-    }
+}
 
     #[inline]
     fn is_contained_in(self, haystack: &'a str) -> bool {
-        if (self as u32) < 128 {
-            haystack.as_bytes().contains(&(self as u8))
-        } else {
-            let mut buffer = [0u8; 4];
-            self.encode_utf8(&mut buffer).is_contained_in(haystack)
-        }
-    }
+}
 
     #[inline]
     fn is_prefix_of(self, haystack: &'a str) -> bool {
-        self.encode_utf8(&mut [0u8; 4]).is_prefix_of(haystack)
-    }
+}
 
     #[inline]
     fn strip_prefix_of(self, haystack: &'a str) -> Option<&'a str> {
-        self.encode_utf8(&mut [0u8; 4]).strip_prefix_of(haystack)
-    }
+}
 
     #[inline]
     fn is_suffix_of(self, haystack: &'a str) -> bool
     where
         Self::Searcher: ReverseSearcher<'a>,
     {
-        self.encode_utf8(&mut [0u8; 4]).is_suffix_of(haystack)
-    }
+}
 
     #[inline]
     fn strip_suffix_of(self, haystack: &'a str) -> Option<&'a str>
     where
         Self::Searcher: ReverseSearcher<'a>,
     {
-        self.encode_utf8(&mut [0u8; 4]).strip_suffix_of(haystack)
-    }
+}
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -90875,29 +86061,25 @@ where
 {
     #[inline]
     fn matches(&mut self, c: char) -> bool {
-        (*self)(c)
-    }
+}
 }
 
 impl<const N: usize> MultiCharEq for [char; N] {
     #[inline]
     fn matches(&mut self, c: char) -> bool {
-        self.iter().any(|&m| m == c)
-    }
+}
 }
 
 impl<const N: usize> MultiCharEq for &[char; N] {
     #[inline]
     fn matches(&mut self, c: char) -> bool {
-        self.iter().any(|&m| m == c)
-    }
+}
 }
 
 impl MultiCharEq for &[char] {
     #[inline]
     fn matches(&mut self, c: char) -> bool {
-        self.iter().any(|&m| m == c)
-    }
+}
 }
 
 struct MultiCharEqPattern<C: MultiCharEq>(C);
@@ -90914,53 +86096,23 @@ impl<'a, C: MultiCharEq> Pattern<'a> for MultiCharEqPattern<C> {
 
     #[inline]
     fn into_searcher(self, haystack: &'a str) -> MultiCharEqSearcher<'a, C> {
-        MultiCharEqSearcher { haystack, char_eq: self.0, char_indices: haystack.char_indices() }
-    }
+}
 }
 
 unsafe impl<'a, C: MultiCharEq> Searcher<'a> for MultiCharEqSearcher<'a, C> {
     #[inline]
     fn haystack(&self) -> &'a str {
-        self.haystack
-    }
+}
 
     #[inline]
     fn next(&mut self) -> SearchStep {
-        let s = &mut self.char_indices;
-        // Compare lengths of the internal byte slice iterator
-        // to find length of current char
-        let pre_len = s.iter.iter.len();
-        if let Some((i, c)) = s.next() {
-            let len = s.iter.iter.len();
-            let char_len = pre_len - len;
-            if self.char_eq.matches(c) {
-                return SearchStep::Match(i, i + char_len);
-            } else {
-                return SearchStep::Reject(i, i + char_len);
-            }
-        }
-        SearchStep::Done
-    }
+}
 }
 
 unsafe impl<'a, C: MultiCharEq> ReverseSearcher<'a> for MultiCharEqSearcher<'a, C> {
     #[inline]
     fn next_back(&mut self) -> SearchStep {
-        let s = &mut self.char_indices;
-        // Compare lengths of the internal byte slice iterator
-        // to find length of current char
-        let pre_len = s.iter.iter.len();
-        if let Some((i, c)) = s.next_back() {
-            let len = s.iter.iter.len();
-            let char_len = pre_len - len;
-            if self.char_eq.matches(c) {
-                return SearchStep::Match(i, i + char_len);
-            } else {
-                return SearchStep::Reject(i, i + char_len);
-            }
-        }
-        SearchStep::Done
-    }
+}
 }
 
 impl<'a, C: MultiCharEq> DoubleEndedSearcher<'a> for MultiCharEqSearcher<'a, C> {}
@@ -90973,39 +86125,33 @@ macro_rules! pattern_methods {
 
         #[inline]
         fn into_searcher(self, haystack: &'a str) -> $t {
-            ($smap)(($pmap)(self).into_searcher(haystack))
-        }
+}
 
         #[inline]
         fn is_contained_in(self, haystack: &'a str) -> bool {
-            ($pmap)(self).is_contained_in(haystack)
-        }
+}
 
         #[inline]
         fn is_prefix_of(self, haystack: &'a str) -> bool {
-            ($pmap)(self).is_prefix_of(haystack)
-        }
+}
 
         #[inline]
         fn strip_prefix_of(self, haystack: &'a str) -> Option<&'a str> {
-            ($pmap)(self).strip_prefix_of(haystack)
-        }
+}
 
         #[inline]
         fn is_suffix_of(self, haystack: &'a str) -> bool
         where
             $t: ReverseSearcher<'a>,
         {
-            ($pmap)(self).is_suffix_of(haystack)
-        }
+}
 
         #[inline]
         fn strip_suffix_of(self, haystack: &'a str) -> Option<&'a str>
         where
             $t: ReverseSearcher<'a>,
         {
-            ($pmap)(self).strip_suffix_of(haystack)
-        }
+}
     };
 }
 
@@ -91013,34 +86159,27 @@ macro_rules! searcher_methods {
     (forward) => {
         #[inline]
         fn haystack(&self) -> &'a str {
-            self.0.haystack()
-        }
+}
         #[inline]
         fn next(&mut self) -> SearchStep {
-            self.0.next()
-        }
+}
         #[inline]
         fn next_match(&mut self) -> Option<(usize, usize)> {
-            self.0.next_match()
-        }
+}
         #[inline]
         fn next_reject(&mut self) -> Option<(usize, usize)> {
-            self.0.next_reject()
-        }
+}
     };
     (reverse) => {
         #[inline]
         fn next_back(&mut self) -> SearchStep {
-            self.0.next_back()
-        }
+}
         #[inline]
         fn next_match_back(&mut self) -> Option<(usize, usize)> {
-            self.0.next_match_back()
-        }
+}
         #[inline]
         fn next_reject_back(&mut self) -> Option<(usize, usize)> {
-            self.0.next_reject_back()
-        }
+}
     };
 }
 
@@ -91143,11 +86282,7 @@ where
     F: FnMut(char) -> bool,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("CharPredicateSearcher")
-            .field("haystack", &self.0.haystack)
-            .field("char_indices", &self.0.char_indices)
-            .finish()
-    }
+}
 }
 unsafe impl<'a, F> Searcher<'a> for CharPredicateSearcher<'a, F>
 where
@@ -91208,43 +86343,27 @@ impl<'a, 'b> Pattern<'a> for &'b str {
 
     #[inline]
     fn into_searcher(self, haystack: &'a str) -> StrSearcher<'a, 'b> {
-        StrSearcher::new(haystack, self)
-    }
+}
 
     /// Checks whether the pattern matches at the front of the haystack.
     #[inline]
     fn is_prefix_of(self, haystack: &'a str) -> bool {
-        haystack.as_bytes().starts_with(self.as_bytes())
-    }
+}
 
     /// Removes the pattern from the front of haystack, if it matches.
     #[inline]
     fn strip_prefix_of(self, haystack: &'a str) -> Option<&'a str> {
-        if self.is_prefix_of(haystack) {
-            // SAFETY: prefix was just verified to exist.
-            unsafe { Some(haystack.get_unchecked(self.as_bytes().len()..)) }
-        } else {
-            None
-        }
-    }
+}
 
     /// Checks whether the pattern matches at the back of the haystack.
     #[inline]
     fn is_suffix_of(self, haystack: &'a str) -> bool {
-        haystack.as_bytes().ends_with(self.as_bytes())
-    }
+}
 
     /// Removes the pattern from the back of haystack, if it matches.
     #[inline]
     fn strip_suffix_of(self, haystack: &'a str) -> Option<&'a str> {
-        if self.is_suffix_of(haystack) {
-            let i = haystack.len() - self.as_bytes().len();
-            // SAFETY: suffix was just verified to exist.
-            unsafe { Some(haystack.get_unchecked(..i)) }
-        } else {
-            None
-        }
-    }
+}
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -91278,197 +86397,31 @@ struct EmptyNeedle {
 
 impl<'a, 'b> StrSearcher<'a, 'b> {
     fn new(haystack: &'a str, needle: &'b str) -> StrSearcher<'a, 'b> {
-        if needle.is_empty() {
-            StrSearcher {
-                haystack,
-                needle,
-                searcher: StrSearcherImpl::Empty(EmptyNeedle {
-                    position: 0,
-                    end: haystack.len(),
-                    is_match_fw: true,
-                    is_match_bw: true,
-                    is_finished: false,
-                }),
-            }
-        } else {
-            StrSearcher {
-                haystack,
-                needle,
-                searcher: StrSearcherImpl::TwoWay(TwoWaySearcher::new(
-                    needle.as_bytes(),
-                    haystack.len(),
-                )),
-            }
-        }
-    }
+}
 }
 
 unsafe impl<'a, 'b> Searcher<'a> for StrSearcher<'a, 'b> {
     #[inline]
     fn haystack(&self) -> &'a str {
-        self.haystack
-    }
+}
 
     #[inline]
     fn next(&mut self) -> SearchStep {
-        match self.searcher {
-            StrSearcherImpl::Empty(ref mut searcher) => {
-                if searcher.is_finished {
-                    return SearchStep::Done;
-                }
-                // empty needle rejects every char and matches every empty string between them
-                let is_match = searcher.is_match_fw;
-                searcher.is_match_fw = !searcher.is_match_fw;
-                let pos = searcher.position;
-                match self.haystack[pos..].chars().next() {
-                    _ if is_match => SearchStep::Match(pos, pos),
-                    None => {
-                        searcher.is_finished = true;
-                        SearchStep::Done
-                    }
-                    Some(ch) => {
-                        searcher.position += ch.len_utf8();
-                        SearchStep::Reject(pos, searcher.position)
-                    }
-                }
-            }
-            StrSearcherImpl::TwoWay(ref mut searcher) => {
-                // TwoWaySearcher produces valid *Match* indices that split at char boundaries
-                // as long as it does correct matching and that haystack and needle are
-                // valid UTF-8
-                // *Rejects* from the algorithm can fall on any indices, but we will walk them
-                // manually to the next character boundary, so that they are utf-8 safe.
-                if searcher.position == self.haystack.len() {
-                    return SearchStep::Done;
-                }
-                let is_long = searcher.memory == usize::MAX;
-                match searcher.next::<RejectAndMatch>(
-                    self.haystack.as_bytes(),
-                    self.needle.as_bytes(),
-                    is_long,
-                ) {
-                    SearchStep::Reject(a, mut b) => {
-                        // skip to next char boundary
-                        while !self.haystack.is_char_boundary(b) {
-                            b += 1;
-                        }
-                        searcher.position = cmp::max(b, searcher.position);
-                        SearchStep::Reject(a, b)
-                    }
-                    otherwise => otherwise,
-                }
-            }
-        }
-    }
+}
 
     #[inline]
     fn next_match(&mut self) -> Option<(usize, usize)> {
-        match self.searcher {
-            StrSearcherImpl::Empty(..) => loop {
-                match self.next() {
-                    SearchStep::Match(a, b) => return Some((a, b)),
-                    SearchStep::Done => return None,
-                    SearchStep::Reject(..) => {}
-                }
-            },
-            StrSearcherImpl::TwoWay(ref mut searcher) => {
-                let is_long = searcher.memory == usize::MAX;
-                // write out `true` and `false` cases to encourage the compiler
-                // to specialize the two cases separately.
-                if is_long {
-                    searcher.next::<MatchOnly>(
-                        self.haystack.as_bytes(),
-                        self.needle.as_bytes(),
-                        true,
-                    )
-                } else {
-                    searcher.next::<MatchOnly>(
-                        self.haystack.as_bytes(),
-                        self.needle.as_bytes(),
-                        false,
-                    )
-                }
-            }
-        }
-    }
+}
 }
 
 unsafe impl<'a, 'b> ReverseSearcher<'a> for StrSearcher<'a, 'b> {
     #[inline]
     fn next_back(&mut self) -> SearchStep {
-        match self.searcher {
-            StrSearcherImpl::Empty(ref mut searcher) => {
-                if searcher.is_finished {
-                    return SearchStep::Done;
-                }
-                let is_match = searcher.is_match_bw;
-                searcher.is_match_bw = !searcher.is_match_bw;
-                let end = searcher.end;
-                match self.haystack[..end].chars().next_back() {
-                    _ if is_match => SearchStep::Match(end, end),
-                    None => {
-                        searcher.is_finished = true;
-                        SearchStep::Done
-                    }
-                    Some(ch) => {
-                        searcher.end -= ch.len_utf8();
-                        SearchStep::Reject(searcher.end, end)
-                    }
-                }
-            }
-            StrSearcherImpl::TwoWay(ref mut searcher) => {
-                if searcher.end == 0 {
-                    return SearchStep::Done;
-                }
-                let is_long = searcher.memory == usize::MAX;
-                match searcher.next_back::<RejectAndMatch>(
-                    self.haystack.as_bytes(),
-                    self.needle.as_bytes(),
-                    is_long,
-                ) {
-                    SearchStep::Reject(mut a, b) => {
-                        // skip to next char boundary
-                        while !self.haystack.is_char_boundary(a) {
-                            a -= 1;
-                        }
-                        searcher.end = cmp::min(a, searcher.end);
-                        SearchStep::Reject(a, b)
-                    }
-                    otherwise => otherwise,
-                }
-            }
-        }
-    }
+}
 
     #[inline]
     fn next_match_back(&mut self) -> Option<(usize, usize)> {
-        match self.searcher {
-            StrSearcherImpl::Empty(..) => loop {
-                match self.next_back() {
-                    SearchStep::Match(a, b) => return Some((a, b)),
-                    SearchStep::Done => return None,
-                    SearchStep::Reject(..) => {}
-                }
-            },
-            StrSearcherImpl::TwoWay(ref mut searcher) => {
-                let is_long = searcher.memory == usize::MAX;
-                // write out `true` and `false`, like `next_match`
-                if is_long {
-                    searcher.next_back::<MatchOnly>(
-                        self.haystack.as_bytes(),
-                        self.needle.as_bytes(),
-                        true,
-                    )
-                } else {
-                    searcher.next_back::<MatchOnly>(
-                        self.haystack.as_bytes(),
-                        self.needle.as_bytes(),
-                        false,
-                    )
-                }
-            }
-        }
-    }
+}
 }
 
 /// The internal state of the two-way substring search algorithm.
@@ -91569,82 +86522,15 @@ struct TwoWaySearcher {
 */
 impl TwoWaySearcher {
     fn new(needle: &[u8], end: usize) -> TwoWaySearcher {
-        let (crit_pos_false, period_false) = TwoWaySearcher::maximal_suffix(needle, false);
-        let (crit_pos_true, period_true) = TwoWaySearcher::maximal_suffix(needle, true);
-
-        let (crit_pos, period) = if crit_pos_false > crit_pos_true {
-            (crit_pos_false, period_false)
-        } else {
-            (crit_pos_true, period_true)
-        };
-
-        // A particularly readable explanation of what's going on here can be found
-        // in Crochemore and Rytter's book "Text Algorithms", ch 13. Specifically
-        // see the code for "Algorithm CP" on p. 323.
-        //
-        // What's going on is we have some critical factorization (u, v) of the
-        // needle, and we want to determine whether u is a suffix of
-        // &v[..period]. If it is, we use "Algorithm CP1". Otherwise we use
-        // "Algorithm CP2", which is optimized for when the period of the needle
-        // is large.
-        if needle[..crit_pos] == needle[period..period + crit_pos] {
-            // short period case -- the period is exact
-            // compute a separate critical factorization for the reversed needle
-            // x = u' v' where |v'| < period(x).
-            //
-            // This is sped up by the period being known already.
-            // Note that a case like x = "acba" may be factored exactly forwards
-            // (crit_pos = 1, period = 3) while being factored with approximate
-            // period in reverse (crit_pos = 2, period = 2). We use the given
-            // reverse factorization but keep the exact period.
-            let crit_pos_back = needle.len()
-                - cmp::max(
-                    TwoWaySearcher::reverse_maximal_suffix(needle, period, false),
-                    TwoWaySearcher::reverse_maximal_suffix(needle, period, true),
-                );
-
-            TwoWaySearcher {
-                crit_pos,
-                crit_pos_back,
-                period,
-                byteset: Self::byteset_create(&needle[..period]),
-
-                position: 0,
-                end,
-                memory: 0,
-                memory_back: needle.len(),
-            }
-        } else {
-            // long period case -- we have an approximation to the actual period,
-            // and don't use memorization.
-            //
-            // Approximate the period by lower bound max(|u|, |v|) + 1.
-            // The critical factorization is efficient to use for both forward and
-            // reverse search.
-
-            TwoWaySearcher {
-                crit_pos,
-                crit_pos_back: crit_pos,
-                period: cmp::max(crit_pos, needle.len() - crit_pos) + 1,
-                byteset: Self::byteset_create(needle),
-
-                position: 0,
-                end,
-                memory: usize::MAX, // Dummy value to signify that the period is long
-                memory_back: usize::MAX,
-            }
-        }
-    }
+}
 
     #[inline]
     fn byteset_create(bytes: &[u8]) -> u64 {
-        bytes.iter().fold(0, |a, &b| (1 << (b & 0x3f)) | a)
-    }
+}
 
     #[inline]
     fn byteset_contains(&self, byte: u8) -> bool {
-        (self.byteset >> ((byte & 0x3f) as usize)) & 1 != 0
-    }
+}
 
     // One of the main ideas of Two-Way is that we factorize the needle into
     // two halves, (u, v), and begin trying to find v in the haystack by scanning
@@ -91656,71 +86542,7 @@ impl TwoWaySearcher {
     where
         S: TwoWayStrategy,
     {
-        // `next()` uses `self.position` as its cursor
-        let old_pos = self.position;
-        let needle_last = needle.len() - 1;
-        'search: loop {
-            // Check that we have room to search in
-            // position + needle_last can not overflow if we assume slices
-            // are bounded by isize's range.
-            let tail_byte = match haystack.get(self.position + needle_last) {
-                Some(&b) => b,
-                None => {
-                    self.position = haystack.len();
-                    return S::rejecting(old_pos, self.position);
-                }
-            };
-
-            if S::use_early_reject() && old_pos != self.position {
-                return S::rejecting(old_pos, self.position);
-            }
-
-            // Quickly skip by large portions unrelated to our substring
-            if !self.byteset_contains(tail_byte) {
-                self.position += needle.len();
-                if !long_period {
-                    self.memory = 0;
-                }
-                continue 'search;
-            }
-
-            // See if the right part of the needle matches
-            let start =
-                if long_period { self.crit_pos } else { cmp::max(self.crit_pos, self.memory) };
-            for i in start..needle.len() {
-                if needle[i] != haystack[self.position + i] {
-                    self.position += i - self.crit_pos + 1;
-                    if !long_period {
-                        self.memory = 0;
-                    }
-                    continue 'search;
-                }
-            }
-
-            // See if the left part of the needle matches
-            let start = if long_period { 0 } else { self.memory };
-            for i in (start..self.crit_pos).rev() {
-                if needle[i] != haystack[self.position + i] {
-                    self.position += self.period;
-                    if !long_period {
-                        self.memory = needle.len() - self.period;
-                    }
-                    continue 'search;
-                }
-            }
-
-            // We have found a match!
-            let match_pos = self.position;
-
-            // Note: add self.period instead of needle.len() to have overlapping matches
-            self.position += needle.len();
-            if !long_period {
-                self.memory = 0; // set to needle.len() - self.period for overlapping matches
-            }
-
-            return S::matching(match_pos, match_pos + needle.len());
-        }
-    }
+}
 
     // Follows the ideas in `next()`.
     //
@@ -91739,74 +86561,7 @@ impl TwoWaySearcher {
     where
         S: TwoWayStrategy,
     {
-        // `next_back()` uses `self.end` as its cursor -- so that `next()` and `next_back()`
-        // are independent.
-        let old_end = self.end;
-        'search: loop {
-            // Check that we have room to search in
-            // end - needle.len() will wrap around when there is no more room,
-            // but due to slice length limits it can never wrap all the way back
-            // into the length of haystack.
-            let front_byte = match haystack.get(self.end.wrapping_sub(needle.len())) {
-                Some(&b) => b,
-                None => {
-                    self.end = 0;
-                    return S::rejecting(0, old_end);
-                }
-            };
-
-            if S::use_early_reject() && old_end != self.end {
-                return S::rejecting(self.end, old_end);
-            }
-
-            // Quickly skip by large portions unrelated to our substring
-            if !self.byteset_contains(front_byte) {
-                self.end -= needle.len();
-                if !long_period {
-                    self.memory_back = needle.len();
-                }
-                continue 'search;
-            }
-
-            // See if the left part of the needle matches
-            let crit = if long_period {
-                self.crit_pos_back
-            } else {
-                cmp::min(self.crit_pos_back, self.memory_back)
-            };
-            for i in (0..crit).rev() {
-                if needle[i] != haystack[self.end - needle.len() + i] {
-                    self.end -= self.crit_pos_back - i;
-                    if !long_period {
-                        self.memory_back = needle.len();
-                    }
-                    continue 'search;
-                }
-            }
-
-            // See if the right part of the needle matches
-            let needle_end = if long_period { needle.len() } else { self.memory_back };
-            for i in self.crit_pos_back..needle_end {
-                if needle[i] != haystack[self.end - needle.len() + i] {
-                    self.end -= self.period;
-                    if !long_period {
-                        self.memory_back = self.period;
-                    }
-                    continue 'search;
-                }
-            }
-
-            // We have found a match!
-            let match_pos = self.end - needle.len();
-            // Note: sub self.period instead of needle.len() to have overlapping matches
-            self.end -= needle.len();
-            if !long_period {
-                self.memory_back = needle.len();
-            }
-
-            return S::matching(match_pos, match_pos + needle.len());
-        }
-    }
+}
 
     // Compute the maximal suffix of `arr`.
     //
@@ -91822,38 +86577,7 @@ impl TwoWaySearcher {
     // For long period cases, the resulting period is not exact (it is too short).
     #[inline]
     fn maximal_suffix(arr: &[u8], order_greater: bool) -> (usize, usize) {
-        let mut left = 0; // Corresponds to i in the paper
-        let mut right = 1; // Corresponds to j in the paper
-        let mut offset = 0; // Corresponds to k in the paper, but starting at 0
-        // to match 0-based indexing.
-        let mut period = 1; // Corresponds to p in the paper
-
-        while let Some(&a) = arr.get(right + offset) {
-            // `left` will be inbounds when `right` is.
-            let b = arr[left + offset];
-            if (a < b && !order_greater) || (a > b && order_greater) {
-                // Suffix is smaller, period is entire prefix so far.
-                right += offset + 1;
-                offset = 0;
-                period = right - left;
-            } else if a == b {
-                // Advance through repetition of the current period.
-                if offset + 1 == period {
-                    right += offset + 1;
-                    offset = 0;
-                } else {
-                    offset += 1;
-                }
-            } else {
-                // Suffix is larger, start over from current location.
-                left = right;
-                right += 1;
-                offset = 0;
-                period = 1;
-            }
-        }
-        (left, period)
-    }
+}
 
     // Compute the maximal suffix of the reverse of `arr`.
     //
@@ -91868,43 +86592,7 @@ impl TwoWaySearcher {
     //
     // For long period cases, the resulting period is not exact (it is too short).
     fn reverse_maximal_suffix(arr: &[u8], known_period: usize, order_greater: bool) -> usize {
-        let mut left = 0; // Corresponds to i in the paper
-        let mut right = 1; // Corresponds to j in the paper
-        let mut offset = 0; // Corresponds to k in the paper, but starting at 0
-        // to match 0-based indexing.
-        let mut period = 1; // Corresponds to p in the paper
-        let n = arr.len();
-
-        while right + offset < n {
-            let a = arr[n - (1 + right + offset)];
-            let b = arr[n - (1 + left + offset)];
-            if (a < b && !order_greater) || (a > b && order_greater) {
-                // Suffix is smaller, period is entire prefix so far.
-                right += offset + 1;
-                offset = 0;
-                period = right - left;
-            } else if a == b {
-                // Advance through repetition of the current period.
-                if offset + 1 == period {
-                    right += offset + 1;
-                    offset = 0;
-                } else {
-                    offset += 1;
-                }
-            } else {
-                // Suffix is larger, start over from current location.
-                left = right;
-                right += 1;
-                offset = 0;
-                period = 1;
-            }
-            if period == known_period {
-                break;
-            }
-        }
-        debug_assert!(period <= known_period);
-        left
-    }
+}
 }
 
 // TwoWayStrategy allows the algorithm to either skip non-matches as quickly
@@ -91924,16 +86612,13 @@ impl TwoWayStrategy for MatchOnly {
 
     #[inline]
     fn use_early_reject() -> bool {
-        false
-    }
+}
     #[inline]
     fn rejecting(_a: usize, _b: usize) -> Self::Output {
-        None
-    }
+}
     #[inline]
     fn matching(a: usize, b: usize) -> Self::Output {
-        Some((a, b))
-    }
+}
 }
 
 /// Emit Rejects regularly
@@ -91944,16 +86629,13 @@ impl TwoWayStrategy for RejectAndMatch {
 
     #[inline]
     fn use_early_reject() -> bool {
-        true
-    }
+}
     #[inline]
     fn rejecting(a: usize, b: usize) -> Self::Output {
-        SearchStep::Reject(a, b)
-    }
+}
     #[inline]
     fn matching(a: usize, b: usize) -> Self::Output {
-        SearchStep::Match(a, b)
-    }
+}
 }
 }
 

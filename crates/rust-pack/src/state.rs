@@ -30,48 +30,18 @@ impl Default for LocalState {
 }
 
 impl LocalState {
+    pub fn apply_change(&mut self, change: Change) {
+        self.host.apply_change(change)
+    }
+
     // using snapshot to prevent thread lock
-    fn analysis(&self) -> Analysis {
+    pub fn analysis(&self) -> Analysis {
         self.host.analysis()
     }
 
     pub fn load(&mut self, json: Vec<u8>) {
         let json = String::from_utf8_lossy(&json);
         let change = extractor::load_change_from_json(&json);
-
-        // apply change
-        self.host.apply_change(change);
-    }
-
-    pub fn init(
-        &mut self,
-        rust_std: String,
-        rust_core: String,
-        rust_alloc: String,
-        rust_cosmwasm_derive: String,
-        rust_cosmwasm_schema_derive: String,
-        rust_cosmwasm_schema: String,
-        rust_cosmwasm_std: String,
-        rust_cosmwasm_crypto: String,
-        rust_cosmwasm_storage: String,
-        rust_thiserror: String,
-        rust_thiserror_impl: String,
-        rust_proc_macro2: String,
-    ) {
-        let change = extractor::load_change_from_files(
-            rust_std,
-            rust_core,
-            rust_alloc,
-            rust_cosmwasm_derive,
-            rust_cosmwasm_schema_derive,
-            rust_cosmwasm_schema,
-            rust_cosmwasm_std,
-            rust_cosmwasm_crypto,
-            rust_cosmwasm_storage,
-            rust_thiserror,
-            rust_thiserror_impl,
-            rust_proc_macro2,
-        );
 
         // apply change
         self.host.apply_change(change);

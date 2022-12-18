@@ -260,9 +260,8 @@ export class WorldState {
     * @param {string} rust_cosmwasm_storage
     * @param {string} rust_thiserror
     * @param {string} rust_thiserror_impl
-    * @param {string} rust_proc_macro2
     */
-    init(rust_std, rust_core, rust_alloc, rust_cosmwasm_derive, rust_cosmwasm_schema_derive, rust_cosmwasm_schema, rust_cosmwasm_std, rust_cosmwasm_crypto, rust_cosmwasm_storage, rust_thiserror, rust_thiserror_impl, rust_proc_macro2) {
+    init(rust_std, rust_core, rust_alloc, rust_cosmwasm_derive, rust_cosmwasm_schema_derive, rust_cosmwasm_schema, rust_cosmwasm_std, rust_cosmwasm_crypto, rust_cosmwasm_storage, rust_thiserror, rust_thiserror_impl) {
         const ptr0 = passStringToWasm0(rust_std, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len0 = WASM_VECTOR_LEN;
         const ptr1 = passStringToWasm0(rust_core, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
@@ -285,9 +284,7 @@ export class WorldState {
         const len9 = WASM_VECTOR_LEN;
         const ptr10 = passStringToWasm0(rust_thiserror_impl, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len10 = WASM_VECTOR_LEN;
-        const ptr11 = passStringToWasm0(rust_proc_macro2, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-        const len11 = WASM_VECTOR_LEN;
-        wasm.worldstate_init(this.ptr, ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3, ptr4, len4, ptr5, len5, ptr6, len6, ptr7, len7, ptr8, len8, ptr9, len9, ptr10, len10, ptr11, len11);
+        wasm.worldstate_init(this.ptr, ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3, ptr4, len4, ptr5, len5, ptr6, len6, ptr7, len7, ptr8, len8, ptr9, len9, ptr10, len10);
     }
     /**
     * @param {number} file_ind

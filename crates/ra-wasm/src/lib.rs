@@ -2,7 +2,7 @@
 
 use wasm_bindgen::prelude::*;
 
-use rust_pack::state::LocalState;
+use rust_pack::{extractor, state::LocalState};
 
 pub use wasm_bindgen_rayon::init_thread_pool;
 
@@ -41,9 +41,9 @@ impl WorldState {
         rust_cosmwasm_storage: String,
         rust_thiserror: String,
         rust_thiserror_impl: String,
-        rust_proc_macro2: String,
+        // rust_proc_macro2: String,
     ) {
-        self.state.init(
+        let change = extractor::load_change_from_files(
             rust_std,
             rust_core,
             rust_alloc,
@@ -55,8 +55,11 @@ impl WorldState {
             rust_cosmwasm_storage,
             rust_thiserror,
             rust_thiserror_impl,
-            rust_proc_macro2,
+            // rust_proc_macro2,
         );
+
+        // apply change
+        self.state.apply_change(change)
     }
 
     pub fn update(&mut self, file_ind: u32, code: String, with_highlight: Option<bool>) -> JsValue {

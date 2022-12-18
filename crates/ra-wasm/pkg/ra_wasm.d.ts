@@ -35,9 +35,8 @@ export class WorldState {
 * @param {string} rust_cosmwasm_storage
 * @param {string} rust_thiserror
 * @param {string} rust_thiserror_impl
-* @param {string} rust_proc_macro2
 */
-  init(rust_std: string, rust_core: string, rust_alloc: string, rust_cosmwasm_derive: string, rust_cosmwasm_schema_derive: string, rust_cosmwasm_schema: string, rust_cosmwasm_std: string, rust_cosmwasm_crypto: string, rust_cosmwasm_storage: string, rust_thiserror: string, rust_thiserror_impl: string, rust_proc_macro2: string): void;
+  init(rust_std: string, rust_core: string, rust_alloc: string, rust_cosmwasm_derive: string, rust_cosmwasm_schema_derive: string, rust_cosmwasm_schema: string, rust_cosmwasm_std: string, rust_cosmwasm_crypto: string, rust_cosmwasm_storage: string, rust_thiserror: string, rust_thiserror_impl: string): void;
 /**
 * @param {number} file_ind
 * @param {string} code
@@ -163,7 +162,7 @@ export interface InitOutput {
   readonly __wbg_worldstate_free: (a: number) => void;
   readonly worldstate_new: () => number;
   readonly worldstate_load: (a: number, b: number, c: number) => void;
-  readonly worldstate_init: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number, l: number, m: number, n: number, o: number, p: number, q: number, r: number, s: number, t: number, u: number, v: number, w: number, x: number, y: number) => void;
+  readonly worldstate_init: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number, l: number, m: number, n: number, o: number, p: number, q: number, r: number, s: number, t: number, u: number, v: number, w: number) => void;
   readonly worldstate_update: (a: number, b: number, c: number, d: number, e: number) => number;
   readonly worldstate_inlay_hints: (a: number, b: number) => number;
   readonly worldstate_completions: (a: number, b: number, c: number, d: number) => number;

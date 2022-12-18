@@ -52,7 +52,7 @@ pub fn load_change_from_files(
     rust_cosmwasm_storage: String,
     rust_thiserror: String,
     rust_thiserror_impl: String,
-    rust_proc_macro2: String,
+    // rust_proc_macro2: String,
 ) -> Change {
     // use 10 items for contract files
     let mut file_set = FileSet::default();
@@ -75,7 +75,7 @@ pub fn load_change_from_files(
     let cosmwasm_storage_id = FileId(19);
     let thiserror_id = FileId(20);
     let thiserror_impl_id = FileId(21);
-    let proc_macro2_id = FileId(22);
+    // let proc_macro2_id = FileId(22);
 
     let mut change = Change::new();
     change.set_roots(vec![
@@ -91,7 +91,7 @@ pub fn load_change_from_files(
         create_source_root("cosmwasm_storage", cosmwasm_storage_id),
         create_source_root("thiserror", thiserror_id),
         create_source_root("thiserror_impl", thiserror_impl_id),
-        create_source_root("proc_macro2", proc_macro2_id),
+        // create_source_root("proc_macro2", proc_macro2_id),
     ]);
     let mut crate_graph = CrateGraph::default();
     let contract_crate = create_crate(&mut crate_graph, FileId(0)); // /src/lib.rs is root with file_id == 0
@@ -106,7 +106,7 @@ pub fn load_change_from_files(
     let cosmwasm_storage_crate = create_crate(&mut crate_graph, cosmwasm_storage_id);
     let thiserror_crate = create_crate(&mut crate_graph, thiserror_id);
     let thiserror_impl_crate = create_crate(&mut crate_graph, thiserror_impl_id);
-    let proc_macro2_crate = create_crate(&mut crate_graph, proc_macro2_id);
+    // let proc_macro2_crate = create_crate(&mut crate_graph, proc_macro2_id);
 
     let core_dep = Dependency::new(CrateName::new("core").unwrap(), core_crate);
     let alloc_dep = Dependency::new(CrateName::new("alloc").unwrap(), alloc_crate);
@@ -128,8 +128,8 @@ pub fn load_change_from_files(
     let thiserror_dep = Dependency::new(CrateName::new("thiserror").unwrap(), thiserror_crate);
     let thiserror_impl_dep =
         Dependency::new(CrateName::new("thiserror_impl").unwrap(), thiserror_impl_crate);
-    let proc_macro2_dep =
-        Dependency::new(CrateName::new("proc_macro2").unwrap(), proc_macro2_crate);
+    // let proc_macro2_dep =
+    //     Dependency::new(CrateName::new("proc_macro2").unwrap(), proc_macro2_crate);
 
     // dependencies
     crate_graph.add_dep(std_crate, core_dep.clone()).unwrap();
@@ -138,14 +138,14 @@ pub fn load_change_from_files(
     crate_graph.add_dep(cosmwasm_std_crate, core_dep.clone()).unwrap();
     crate_graph.add_dep(cosmwasm_std_crate, cosmwasm_derive_dep.clone()).unwrap();
     crate_graph.add_dep(cosmwasm_storage_crate, cosmwasm_std_dep.clone()).unwrap();
-    crate_graph.add_dep(cosmwasm_schema_derive_crate, proc_macro2_dep.clone()).unwrap();
+    // crate_graph.add_dep(cosmwasm_schema_derive_crate, proc_macro2_dep.clone()).unwrap();
     crate_graph.add_dep(cosmwasm_schema_crate, cosmwasm_schema_derive_dep.clone()).unwrap();
     crate_graph.add_dep(thiserror_crate, thiserror_impl_dep.clone()).unwrap();
-    crate_graph.add_dep(thiserror_impl_crate, proc_macro2_dep.clone()).unwrap();
+    // crate_graph.add_dep(thiserror_impl_crate, proc_macro2_dep.clone()).unwrap();
 
     // comment out indirect depedencies
-    crate_graph.add_dep(contract_crate, core_dep).unwrap();
-    crate_graph.add_dep(contract_crate, alloc_dep).unwrap();
+    // crate_graph.add_dep(contract_crate, core_dep).unwrap();
+    // crate_graph.add_dep(contract_crate, alloc_dep).unwrap();
     crate_graph.add_dep(contract_crate, std_dep).unwrap();
     // crate_graph.add_dep(contract_crate, cosmwasm_derive_dep).unwrap();
     // crate_graph.add_dep(contract_crate, cosmwasm_schema_derive_dep).unwrap();
@@ -168,7 +168,7 @@ pub fn load_change_from_files(
     change.change_file(cosmwasm_storage_id, Some(Arc::new(rust_cosmwasm_storage)));
     change.change_file(thiserror_id, Some(Arc::new(rust_thiserror)));
     change.change_file(thiserror_impl_id, Some(Arc::new(rust_thiserror_impl)));
-    change.change_file(proc_macro2_id, Some(Arc::new(rust_proc_macro2)));
+    // change.change_file(proc_macro2_id, Some(Arc::new(rust_proc_macro2)));
 
     // init empty code
     for file_ind in 0..CONTRACT_FILES.len() {

@@ -72,8 +72,8 @@ export class LanguageUpdater {
         import('../rust/cosmwasm-crypto.rs'), // @ts-ignore
         import('../rust/cosmwasm-storage.rs'), // @ts-ignore
         import('../rust/thiserror-1.0.23.rs'), // @ts-ignore
-        import('../rust/thiserror-impl-1.0.23.rs'), // @ts-ignore
-        import('../rust/proc-macro2-1.0.6.rs')
+        import('../rust/thiserror-impl-1.0.23.rs') // @ts-ignore
+        // import('../rust/proc-macro2-1.0.6.rs')
       ]);
 
       // @ts-ignore
