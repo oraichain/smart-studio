@@ -101,7 +101,7 @@ export class ControlCenter extends React.Component<
     this.outputViewEditor.revealLastLine();
   }
   createPane() {
-    const projectName = appStore.getProject().getModel().name;
+    // const projectName = appStore.getProject().getModel().name;
     switch (this.state.visible) {
       case 'output':
         return (
