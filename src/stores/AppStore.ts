@@ -95,15 +95,18 @@ export class AppStore {
     this.project.onChange.register(() => this.onChange.dispatch());
     this.project.onDirtyFileUsed.register((file: File) => this.onDirtyFileUsed.dispatch(file));
     this.project.onDidChangeBuffer.register(() => this.onDidChangeBuffer.dispatch());
-    this.project.onDidChangeData.register(() => {
-      this.setContentModified(true);
-      this.onDidChangeData.dispatch();
-    });
+
+    // this.project.onDidChangeData.register(() => {
+    //   this.setContentModified(true);
+    //   this.onDidChangeData.dispatch();
+    // });
+
     this.project.onDidChangeDirty.register((file: File) => this.onDidChangeDirty.dispatch(file));
-    this.project.onDidChangeChildren.register(() => {
-      this.setContentModified(true);
-      this.onDidChangeChildren.dispatch();
-    });
+    // children is loaded from server so skip notifying
+    // this.project.onDidChangeChildren.register(() => {
+    //   this.setContentModified(true);
+    //   this.onDidChangeChildren.dispatch();
+    // });
   }
 
   private setContentModified(modified: boolean) {

@@ -88,6 +88,7 @@ export class File {
     });
     this.parent = null;
   }
+
   setNameAndDescription(name: string, description: string) {
     this.name = name;
     this.description = description;
@@ -102,6 +103,7 @@ export class File {
       file = file.parent;
     }
   }
+
   notifyDidChangeData() {
     let file: File = this;
     while (file) {
@@ -109,6 +111,7 @@ export class File {
       file = file.parent;
     }
   }
+
   notifyDidChangeDirty() {
     let file: File = this;
     while (file) {
@@ -116,12 +119,14 @@ export class File {
       file = file.parent;
     }
   }
+
   private resetDirty() {
     if (this.isDirty) {
       this.isDirty = false;
       this.notifyDidChangeDirty();
     }
   }
+
   private async updateBuffer(status?: IStatusProvider) {
     if (this.type === FileType.Wasm) {
       this.buffer.setValue('');
@@ -132,6 +137,7 @@ export class File {
       this.notifyDidChangeBuffer();
     }
   }
+
   setProblems(problems: Problem[]) {
     this.problems = problems;
     let file: File = this;
@@ -149,12 +155,13 @@ export class File {
   //   const client = await worker(model.uri);
   //   return client.getEmitOutput(model.uri.toString());
   // }
-  setData(data: string | ArrayBuffer, status?: IStatusProvider) {
+  setData(data: string | ArrayBuffer, status?: IStatusProvider, skipNotify?: boolean) {
     assert(data != null);
     this.data = data;
-    this.notifyDidChangeData();
+    if (!skipNotify) this.notifyDidChangeData();
     this.updateBuffer(status);
   }
+
   getData(): string | ArrayBuffer {
     if (this.isDirty && !this.isBufferReadOnly) {
       const project = this.getProject();

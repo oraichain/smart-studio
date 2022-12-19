@@ -389,7 +389,8 @@ export class Service {
   static async loadFilesIntoProject(files: IFiddleFile[], project: Project, base: URL = null): Promise<any> {
     for (const f of files) {
       const type = fileTypeFromFileName(f.name);
-      const file = project.newFile(f.name, type, false);
+      // update or create file
+      const file = project.getFile(f.name) || project.newFile(f.name, type, false);
       let data: string | ArrayBuffer;
       if (f.data) {
         if (f.type === 'binary') {
@@ -405,7 +406,10 @@ export class Service {
           data = await request.text();
         }
       }
-      file.setData(data);
+
+      // skip show file changed because we load from server
+      file.setData(data, undefined, true);
+
       // update when load Projects
       LanguageUpdater.instance.addFile(file);
     }

@@ -297,10 +297,10 @@ export async function runTask(name: string, optional: boolean = false, externals
       fiddle = await Service.buildProject(project.name);
       logLn(fiddle.message);
 
-      // load wasm file to show
-      if (fiddle.success) {
-        await Service.loadFilesIntoProject(fiddle.files.filter((file) => file.name.endsWith(FileType.Wasm)), project);
-      }
+      // load wasm file to show? no show because can not view it
+      // if (fiddle.success) {
+      //   await Service.loadFilesIntoProject(fiddle.files.filter((file) => file.name.endsWith(FileType.Wasm)), project);
+      // }
 
       break;
     case 'schema':

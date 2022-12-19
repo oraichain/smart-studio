@@ -33,6 +33,7 @@ export class Directory extends File {
     super(name, FileType.Directory);
     this.name = name;
   }
+
   notifyDidChangeChildren(file: File) {
     let directory: Directory = this;
     while (directory) {
@@ -40,6 +41,7 @@ export class Directory extends File {
       directory = directory.parent;
     }
   }
+
   forEachFile(fn: (file: File) => void, excludeTransientFiles = false, recurse = false) {
     if (recurse) {
       this.children.forEach((file: File) => {
@@ -56,6 +58,7 @@ export class Directory extends File {
       this.children.forEach(fn);
     }
   }
+
   mapEachFile<T>(fn: (file: File) => T, excludeTransientFiles = false): T[] {
     return this.children
       .filter((file: File) => {
@@ -66,6 +69,7 @@ export class Directory extends File {
       })
       .map(fn);
   }
+
   handleNameCollision(name: string, isDirectory?: boolean) {
     if (!name) return;
     for (let i = 1; i <= this.children.length; i++) {
@@ -83,6 +87,7 @@ export class Directory extends File {
     }
     throw new Error('Name collision not handled');
   }
+
   addFile(file: File) {
     assert(file.parent === null);
     if (this.getImmediateChild(file.name)) {
@@ -92,6 +97,7 @@ export class Directory extends File {
     file.parent = this;
     this.notifyDidChangeChildren(file);
   }
+
   removeFile(file: File) {
     assert(file.parent === this);
     const i = this.children.indexOf(file);
@@ -100,6 +106,7 @@ export class Directory extends File {
     file.parent = null;
     this.notifyDidChangeChildren(file);
   }
+
   newDirectory(path: string | string[]): Directory {
     if (typeof path === 'string') {
       path = path.split('/');
@@ -119,6 +126,7 @@ export class Directory extends File {
     assert(directory instanceof Directory);
     return directory;
   }
+
   newFile(path: string | string[], type: FileType, isTransient = false, handleNameCollision = false): File {
     if (typeof path === 'string') {
       path = path.split('/');
@@ -138,12 +146,14 @@ export class Directory extends File {
     file.isTransient = isTransient;
     return file;
   }
-  getImmediateChild(name: string): File {
+
+  getImmediateChild(name: string): File | undefined {
     return this.children.find((file: File) => {
       return file.name === name;
     });
   }
-  getFile(path: string | string[]): File {
+
+  getFile(path: string | string[]): File | undefined {
     if (typeof path === 'string') {
       path = path.split('/');
     }
@@ -152,11 +162,12 @@ export class Directory extends File {
       if (file && file.type === FileType.Directory) {
         return (file as Directory).getFile(path.slice(1));
       } else {
-        return null;
+        return;
       }
     }
     return file;
   }
+
   list(): string[] {
     const list: string[] = [];
     function recurse(prefix: string, x: Directory) {
@@ -175,13 +186,16 @@ export class Directory extends File {
     recurse('', this);
     return list;
   }
+
   glob(pattern: string): string[] {
     const mm = new Minimatch(pattern);
     return this.list().filter((path) => mm.match(path));
   }
+
   globFiles(pattern: string): File[] {
     return this.glob(pattern).map((path) => this.getFile(path));
   }
+
   hasChildren() {
     return this.children.length > 0;
   }

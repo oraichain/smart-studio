@@ -575,7 +575,7 @@ export class App extends React.Component<AppProps, AppState> {
                 history.replaceState({}, fiddle, `?f=${fiddle}`);
 
                 // open new project and hide dialog
-                await openProject(newProject);
+                openProject(newProject);
                 this.setState({ newProjectDialog: false });
               }}
               onOpenProject={async (file) => {
