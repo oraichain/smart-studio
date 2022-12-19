@@ -145,8 +145,8 @@
 //! abstracting over differences in common platforms, most notably Windows and
 //! Unix derivatives.
 //!
-//! Common types of I/O, including [files], [TCP], [UDP], are defined in the
-//! [`io`], [`fs`], and [`net`] modules.
+//! Common types of I/O, including [files], [TCP], and [UDP], are defined in
+//! the [`io`], [`fs`], and [`net`] modules.
 //!
 //! The [`thread`] module contains Rust's threading abstractions. [`sync`]
 //! contains further primitive shared memory types, including [`atomic`] and
@@ -187,6 +187,7 @@
 //! [rust-discord]: https://discord.gg/rust-lang
 //! [array]: prim@array
 //! [slice]: prim@slice
+
 #![cfg_attr(not(feature = "restricted-std"), stable(feature = "rust1", since = "1.0.0"))]
 #![cfg_attr(feature = "restricted-std", unstable(feature = "restricted_std", issue = "none"))]
 #![doc(
@@ -201,25 +202,35 @@
     no_global_oom_handling,
     not(no_global_oom_handling)
 ))]
+// To run libstd tests without x.py without ending up with two copies of libstd, Miri needs to be
+// able to "empty" this crate. See <https://github.com/rust-lang/miri-test-libstd/issues/4>.
+// rustc itself never sets the feature, so this line has no affect there.
+#![cfg(any(not(feature = "miri-test-libstd"), test, doctest))]
+// miri-test-libstd also prefers to make std use the sysroot versions of the dependencies.
+#![cfg_attr(feature = "miri-test-libstd", feature(rustc_private))]
 // Don't link to std. We are std.
 #![no_std]
+// Tell the compiler to link to either panic_abort or panic_unwind
+#![needs_panic_runtime]
+//
+// Lints:
 #![warn(deprecated_in_future)]
 #![warn(missing_docs)]
 #![warn(missing_debug_implementations)]
 #![allow(explicit_outlives_requirements)]
 #![allow(unused_lifetimes)]
-// Tell the compiler to link to either panic_abort or panic_unwind
-#![needs_panic_runtime]
+#![deny(rustc::existing_doc_keyword)]
 // Ensure that std can be linked against panic_abort despite compiled with `-C panic=unwind`
-#![cfg_attr(not(bootstrap), deny(ffi_unwind_calls))]
+#![deny(ffi_unwind_calls)]
 // std may use features in a platform-specific way
 #![allow(unused_features)]
+//
+// Features:
 #![cfg_attr(test, feature(internal_output_capture, print_internals, update_panic_count, rt))]
 #![cfg_attr(
     all(target_vendor = "fortanix", target_env = "sgx"),
     feature(slice_index_methods, coerce_unsized, sgx_platform)
 )]
-#![deny(rustc::existing_doc_keyword)]
 //
 // Language features:
 #![feature(alloc_error_handler)]
@@ -240,12 +251,13 @@
 #![feature(doc_notable_trait)]
 #![feature(dropck_eyepatch)]
 #![feature(exhaustive_patterns)]
+#![feature(if_let_guard)]
 #![feature(intra_doc_pointers)]
-#![feature(label_break_value)]
+#![feature(is_terminal)]
 #![feature(lang_items)]
 #![feature(let_chains)]
-#![feature(let_else)]
 #![feature(linkage)]
+#![feature(link_cfg)]
 #![feature(min_specialization)]
 #![feature(must_not_suspend)]
 #![feature(needs_panic_runtime)]
@@ -258,6 +270,7 @@
 #![feature(staged_api)]
 #![feature(thread_local)]
 #![feature(try_blocks)]
+#![feature(utf8_chunks)]
 //
 // Library features (core):
 #![feature(array_error_internals)]
@@ -267,23 +280,27 @@
 #![feature(core_intrinsics)]
 #![feature(cstr_from_bytes_until_nul)]
 #![feature(cstr_internals)]
-#![feature(duration_checked_float)]
 #![feature(duration_constants)]
+#![feature(error_generic_member_access)]
+#![feature(error_in_core)]
+#![feature(error_iter)]
 #![feature(exact_size_is_empty)]
 #![feature(exclusive_wrapper)]
 #![feature(extend_one)]
 #![feature(float_minimum_maximum)]
+#![feature(float_next_up_down)]
 #![feature(hasher_prefixfree_extras)]
 #![feature(hashmap_internals)]
 #![feature(int_error_internals)]
-#![feature(is_some_with)]
+#![feature(is_some_and)]
 #![feature(maybe_uninit_slice)]
 #![feature(maybe_uninit_write_slice)]
-#![feature(mixed_integer_ops)]
 #![feature(nonnull_slice_from_raw_parts)]
 #![feature(panic_can_unwind)]
 #![feature(panic_info_message)]
 #![feature(panic_internals)]
+#![feature(pointer_byte_offsets)]
+#![feature(pointer_is_aligned)]
 #![feature(portable_simd)]
 #![feature(prelude_2024)]
 #![feature(provide_any)]
@@ -294,6 +311,9 @@
 #![feature(std_internals)]
 #![feature(str_internals)]
 #![feature(strict_provenance)]
+#![feature(maybe_uninit_uninit_array)]
+#![feature(const_maybe_uninit_uninit_array)]
+#![feature(const_waker)]
 //
 // Library features (alloc):
 #![feature(alloc_layout_extra)]
@@ -329,9 +349,9 @@
 #![feature(trace_macros)]
 //
 // Only used in tests/benchmarks:
-#![feature(bench_black_box)]
 //
 // Only for const-ness:
+#![feature(const_collections_with_hasher)]
 #![feature(const_io_structs)]
 #![feature(const_ip)]
 #![feature(const_ipv4)]
@@ -409,16 +429,30 @@ macro_rules! panic {
 /// necessary to use [`io::stdout().flush()`][flush] to ensure the output is emitted
 /// immediately.
 ///
+/// The `print!` macro will lock the standard output on each call. If you call
+/// `print!` within a hot loop, this behavior may be the bottleneck of the loop.
+/// To avoid this, lock stdout with [`io::stdout().lock()`][lock]:
+/// ```
+/// use std::io::{stdout, Write};
+///
+/// let mut lock = stdout().lock();
+/// write!(lock, "hello world").unwrap();
+/// ```
+///
 /// Use `print!` only for the primary output of your program. Use
 /// [`eprint!`] instead to print error and progress messages.
 ///
 /// [flush]: crate::io::Write::flush
 /// [`println!`]: crate::println
 /// [`eprint!`]: crate::eprint
+/// [lock]: crate::io::Stdout
 ///
 /// # Panics
 ///
 /// Panics if writing to `io::stdout()` fails.
+///
+/// Writing to non-blocking stdout can cause an error, which will lead
+/// this macro to panic.
 ///
 /// # Examples
 ///
@@ -457,15 +491,29 @@ macro_rules! print {
 /// This macro uses the same syntax as [`format!`], but writes to the standard output instead.
 /// See [`std::fmt`] for more information.
 ///
+/// The `println!` macro will lock the standard output on each call. If you call
+/// `println!` within a hot loop, this behavior may be the bottleneck of the loop.
+/// To avoid this, lock stdout with [`io::stdout().lock()`][lock]:
+/// ```
+/// use std::io::{stdout, Write};
+///
+/// let mut lock = stdout().lock();
+/// writeln!(lock, "hello world").unwrap();
+/// ```
+///
 /// Use `println!` only for the primary output of your program. Use
 /// [`eprintln!`] instead to print error and progress messages.
 ///
 /// [`std::fmt`]: crate::fmt
 /// [`eprintln!`]: crate::eprintln
+/// [lock]: crate::io::Stdout
 ///
 /// # Panics
 ///
 /// Panics if writing to [`io::stdout`] fails.
+///
+/// Writing to non-blocking stdout can cause an error, which will lead
+/// this macro to panic.
 ///
 /// [`io::stdout`]: crate::io::stdout
 ///
@@ -475,6 +523,8 @@ macro_rules! print {
 /// println!(); // prints just a newline
 /// println!("hello there!");
 /// println!("format {} arguments", "some");
+/// let local_variable = "some";
+/// println!("format {local_variable} arguments");
 /// ```
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -504,6 +554,9 @@ macro_rules! println {
 /// # Panics
 ///
 /// Panics if writing to `io::stderr` fails.
+///
+/// Writing to non-blocking stdout can cause an error, which will lead
+/// this macro to panic.
 ///
 /// # Examples
 ///
@@ -536,6 +589,9 @@ macro_rules! eprint {
 /// # Panics
 ///
 /// Panics if writing to `io::stderr` fails.
+///
+/// Writing to non-blocking stdout can cause an error, which will lead
+/// this macro to panic.
 ///
 /// # Examples
 ///
@@ -789,8 +845,27 @@ macro_rules! rtunwrap {
 // Runs before `main`.
 // SAFETY: must be called only once during runtime initialization.
 // NOTE: this is not guaranteed to run, for example when Rust code is called externally.
+//
+// # The `sigpipe` parameter
+//
+// Since 2014, the Rust runtime on Unix has set the `SIGPIPE` handler to
+// `SIG_IGN`. Applications have good reasons to want a different behavior
+// though, so there is a `#[unix_sigpipe = "..."]` attribute on `fn main()` that
+// can be used to select how `SIGPIPE` shall be setup (if changed at all) before
+// `fn main()` is called. See <https://github.com/rust-lang/rust/issues/97889>
+// for more info.
+//
+// The `sigpipe` parameter to this function gets its value via the code that
+// rustc generates to invoke `fn lang_start()`. The reason we have `sigpipe` for
+// all platforms and not only Unix, is because std is not allowed to have `cfg`
+// directives as this high level. See the module docs in
+// `src/tools/tidy/src/pal.rs` for more info. On all other platforms, `sigpipe`
+// has a value, but its value is ignored.
+//
+// Even though it is an `u8`, it only ever has 4 values. These are documented in
+// `compiler/rustc_session/src/config/sigpipe.rs`.
 #[cfg_attr(test, allow(dead_code))]
-unsafe fn init(argc: isize, argv: *const *const u8) {
+unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
 }
 
 // One-time runtime cleanup.
@@ -806,6 +881,7 @@ fn lang_start_internal(
     main: &(dyn Fn() -> i32 + Sync + crate::panic::RefUnwindSafe),
     argc: isize,
     argv: *const *const u8,
+    sigpipe: u8,
 ) -> Result<isize, !> {
 }
 
@@ -815,6 +891,7 @@ fn lang_start<T: crate::process::Termination + 'static>(
     main: fn() -> T,
     argc: isize,
     argv: *const *const u8,
+    sigpipe: u8,
 ) -> isize {
 }
 }
@@ -1161,7 +1238,7 @@ pub use core::u8;
 pub use core::usize;
 
 pub mod f32 {
-//! Constants specific to the `f32` single-precision floating point type.
+//! Constants for the `f32` single-precision floating point type.
 //!
 //! *[See also the `f32` primitive type](primitive@f32).*
 //!
@@ -2040,7 +2117,7 @@ impl f32 {
 }
 }
 pub mod f64 {
-//! Constants specific to the `f64` double-precision floating point type.
+//! Constants for the `f64` double-precision floating point type.
 //!
 //! *[See also the `f64` primitive type](primitive@f64).*
 //!
@@ -3046,7 +3123,7 @@ pub mod thread {
 //! Threads are able to have associated names for identification purposes. By default, spawned
 //! threads are unnamed. To specify a name for a thread, build the thread with [`Builder`] and pass
 //! the desired thread name to [`Builder::name`]. To retrieve the thread name from within the
-//! thread, use [`Thread::name`]. A couple examples of where the name of a thread gets used:
+//! thread, use [`Thread::name`]. A couple of examples where the name of a thread gets used:
 //!
 //! * If a panic occurs in a named thread, the thread name will be printed in the panic message.
 //! * The thread name is provided to the OS where applicable (e.g., `pthread_setname_np` in
@@ -3080,6 +3157,8 @@ pub mod thread {
 
 #![stable(feature = "rust1", since = "1.0.0")]
 #![deny(unsafe_op_in_unsafe_fn)]
+// Under `test`, `__FastLocalKeyInner` seems unused.
+#![cfg_attr(test, allow(dead_code))]
 
 #[cfg(all(test, not(target_os = "emscripten")))]
 mod tests {
@@ -3106,6 +3185,17 @@ fn test_unnamed_thread() {
 
 #[test]
 fn test_named_thread() {
+}
+
+#[cfg(any(
+    // Note: musl didn't add pthread_getname_np until 1.2.3
+    all(target_os = "linux", target_env = "gnu"),
+    target_os = "macos",
+    target_os = "ios",
+    target_os = "watchos"
+))]
+#[test]
+fn test_named_thread_truncation() {
 }
 
 #[test]
@@ -3176,6 +3266,14 @@ fn test_try_panic_any_message_unit_struct() {
 }
 
 #[test]
+fn test_park_unpark_before() {
+}
+
+#[test]
+fn test_park_unpark_called_other_thread() {
+}
+
+#[test]
 fn test_park_timeout_unpark_before() {
 }
 
@@ -3210,6 +3308,12 @@ fn test_scoped_threads_drop_result_before_join() {
 #[test]
 fn test_scoped_threads_nll() {
 }
+
+// Regression test for https://github.com/rust-lang/rust/issues/98498.
+#[test]
+#[cfg(miri)] // relies on Miri's data race detector
+fn scope_join_race() {
+}
 }
 
 use crate::any::Any;
@@ -3218,7 +3322,7 @@ use crate::ffi::{CStr, CString};
 use crate::fmt;
 use crate::io;
 use crate::marker::PhantomData;
-use crate::mem;
+use crate::mem::{self, forget};
 use crate::num::NonZeroU64;
 use crate::num::NonZeroUsize;
 use crate::panic;
@@ -3228,7 +3332,6 @@ use crate::ptr::addr_of_mut;
 use crate::str;
 use crate::sync::Arc;
 use crate::sys::thread as imp;
-use crate::sys_common::mutex;
 use crate::sys_common::thread;
 use crate::sys_common::thread_info;
 use crate::sys_common::thread_parker::Parker;
@@ -3392,6 +3495,7 @@ use crate::fmt;
 /// [loader lock]: https://docs.microsoft.com/en-us/windows/win32/dlls/dynamic-link-library-best-practices
 /// [`JoinHandle::join`]: crate::thread::JoinHandle::join
 /// [`with`]: LocalKey::with
+#[cfg_attr(not(test), rustc_diagnostic_item = "LocalKey")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct LocalKey<T: 'static> {
     // This outer `LocalKey<T>` type is what's going to be stored in statics,
@@ -3906,7 +4010,7 @@ pub mod statik {
 }
 
 #[doc(hidden)]
-#[cfg(target_thread_local)]
+#[cfg(all(target_thread_local, not(all(target_family = "wasm", not(target_feature = "atomics"))),))]
 pub mod fast {
     use super::lazy::LazyKeyInner;
     use crate::cell::Cell;
@@ -3983,6 +4087,10 @@ pub mod fast {
 }
 
 #[doc(hidden)]
+#[cfg(all(
+    not(target_thread_local),
+    not(all(target_family = "wasm", not(target_feature = "atomics"))),
+))]
 pub mod os {
     use super::lazy::LazyKeyInner;
     use crate::cell::Cell;
@@ -3991,6 +4099,8 @@ pub mod os {
     use crate::ptr;
     use crate::sys_common::thread_local_key::StaticKey as OsStaticKey;
 
+    /// Use a regular global static to store this key; the state provided will then be
+    /// thread-local.
     pub struct Key<T> {
         // OS-TLS key that we'll use to key off.
         os: OsStaticKey,
@@ -4332,22 +4442,40 @@ pub use scoped::{scope, Scope, ScopedJoinHandle};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::local::{AccessError, LocalKey};
 
-// The types used by the thread_local! macro to access TLS keys. Note that there
-// are two types, the "OS" type and the "fast" type. The OS thread local key
-// type is accessed via platform-specific API calls and is slow, while the fast
+// Provide the type used by the thread_local! macro to access TLS keys. This
+// needs to be kept in sync with the macro itself (in `local.rs`).
+// There are three types: "static", "fast", "OS". The "OS" thread local key
+// type is accessed via platform-specific API calls and is slow, while the "fast"
 // key type is accessed via code generated via LLVM, where TLS keys are set up
-// by the elf linker. Note that the OS TLS type is always available: on macOS
-// the standard library is compiled with support for older platform versions
-// where fast TLS was not available; end-user code is compiled with fast TLS
-// where available, but both are needed.
+// by the elf linker. "static" is for single-threaded platforms where a global
+// static is sufficient.
 
 #[unstable(feature = "libstd_thread_internals", issue = "none")]
-#[cfg(target_thread_local)]
+#[cfg(not(test))]
+#[cfg(all(
+    target_thread_local,
+    not(all(target_family = "wasm", not(target_feature = "atomics"))),
+))]
 #[doc(hidden)]
 pub use self::local::fast::Key as __FastLocalKeyInner;
+
+// when building for tests, use real std's type
 #[unstable(feature = "libstd_thread_internals", issue = "none")]
+#[cfg(test)]
+#[cfg(all(
+    target_thread_local,
+    not(all(target_family = "wasm", not(target_feature = "atomics"))),
+))]
+pub use realstd::thread::__FastLocalKeyInner;
+
+#[unstable(feature = "libstd_thread_internals", issue = "none")]
+#[cfg(all(
+    not(target_thread_local),
+    not(all(target_family = "wasm", not(target_feature = "atomics"))),
+))]
 #[doc(hidden)]
 pub use self::local::os::Key as __OsLocalKeyInner;
+
 #[unstable(feature = "libstd_thread_internals", issue = "none")]
 #[cfg(all(target_family = "wasm", not(target_feature = "atomics")))]
 #[doc(hidden)]
@@ -4826,6 +4954,8 @@ pub fn yield_now() {
 pub fn panicking() -> bool {
 }
 
+/// Use [`sleep`].
+///
 /// Puts the current thread to sleep for at least the specified amount of time.
 ///
 /// The thread may sleep longer than the duration specified due to scheduling
@@ -4894,10 +5024,21 @@ pub fn sleep_ms(ms: u32) {
 pub fn sleep(dur: Duration) {
 }
 
+/// Used to ensure that `park` and `park_timeout` do not unwind, as that can
+/// cause undefined behaviour if not handled correctly (see #102398 for context).
+struct PanicGuard;
+
+impl Drop for PanicGuard {
+    fn drop(&mut self) {
+}
+}
+
 /// Blocks unless or until the current thread's token is made available.
 ///
 /// A call to `park` does not guarantee that the thread will remain parked
-/// forever, and callers should be prepared for this possibility.
+/// forever, and callers should be prepared for this possibility. However,
+/// it is guaranteed that this function will not panic (it may abort the
+/// process if the implementation encounters some rare errors).
 ///
 /// # park and unpark
 ///
@@ -5798,19 +5939,13 @@ pub mod backtrace {
 //! implementing `std::error::Error`) to get a causal chain of where an error
 //! was generated.
 //!
-//! > **Note**: this module is unstable and is designed in [RFC 2504], and you
-//! > can learn more about its status in the [tracking issue].
-//!
-//! [RFC 2504]: https://github.com/rust-lang/rfcs/blob/master/text/2504-fix-error.md
-//! [tracking issue]: https://github.com/rust-lang/rust/issues/53487
-//!
 //! ## Accuracy
 //!
 //! Backtraces are attempted to be as accurate as possible, but no guarantees
 //! are provided about the exact accuracy of a backtrace. Instruction pointers,
 //! symbol names, filenames, line numbers, etc, may all be incorrect when
-//! reported. Accuracy is attempted on a best-effort basis, however, and bugs
-//! are always welcome to indicate areas of improvement!
+//! reported. Accuracy is attempted on a best-effort basis, however, any bug
+//! reports are always welcome to indicate areas of improvement!
 //!
 //! For most platforms a backtrace with a filename/line number requires that
 //! programs be compiled with debug information. Without debug information
@@ -5834,7 +5969,7 @@ pub mod backtrace {
 //! default. Its behavior is governed by two environment variables:
 //!
 //! * `RUST_LIB_BACKTRACE` - if this is set to `0` then `Backtrace::capture`
-//!   will never capture a backtrace. Any other value this is set to will enable
+//!   will never capture a backtrace. Any other value set will enable
 //!   `Backtrace::capture`.
 //!
 //! * `RUST_BACKTRACE` - if `RUST_LIB_BACKTRACE` is not set, then this variable
@@ -5853,7 +5988,7 @@ pub mod backtrace {
 //! `RUST_LIB_BACKTRACE` or `RUST_BACKTRACE` at runtime might not actually change
 //! how backtraces are captured.
 
-#![unstable(feature = "backtrace", issue = "53487")]
+#![stable(feature = "backtrace", since = "1.65.0")]
 
 #[cfg(test)]
 mod tests {
@@ -5900,6 +6035,7 @@ use crate::vec::Vec;
 /// previous point in time. In some instances the `Backtrace` type may
 /// internally be empty due to configuration. For more information see
 /// `Backtrace::capture`.
+#[stable(feature = "backtrace", since = "1.65.0")]
 #[must_use]
 pub struct Backtrace {
     inner: Inner,
@@ -5907,17 +6043,21 @@ pub struct Backtrace {
 
 /// The current status of a backtrace, indicating whether it was captured or
 /// whether it is empty for some other reason.
+#[stable(feature = "backtrace", since = "1.65.0")]
 #[non_exhaustive]
 #[derive(Debug, PartialEq, Eq)]
 pub enum BacktraceStatus {
     /// Capturing a backtrace is not supported, likely because it's not
     /// implemented for the current platform.
+    #[stable(feature = "backtrace", since = "1.65.0")]
     Unsupported,
     /// Capturing a backtrace has been disabled through either the
     /// `RUST_LIB_BACKTRACE` or `RUST_BACKTRACE` environment variables.
+    #[stable(feature = "backtrace", since = "1.65.0")]
     Disabled,
     /// A backtrace has been captured and the `Backtrace` should print
     /// reasonable information when rendered.
+    #[stable(feature = "backtrace", since = "1.65.0")]
     Captured,
 }
 
@@ -5956,14 +6096,14 @@ enum BytesOrWide {
     Wide(Vec<u16>),
 }
 
+#[stable(feature = "backtrace", since = "1.65.0")]
 impl fmt::Debug for Backtrace {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
 }
 }
 
+#[unstable(feature = "backtrace_frames", issue = "79676")]
 impl fmt::Debug for BacktraceFrame {
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-}
 }
 
 impl fmt::Debug for BacktraceSymbol {
@@ -5998,6 +6138,7 @@ impl Backtrace {
     ///
     /// To forcibly capture a backtrace regardless of environment variables, use
     /// the `Backtrace::force_capture` function.
+    #[stable(feature = "backtrace", since = "1.65.0")]
     #[inline(never)] // want to make sure there's a frame here to remove
     pub fn capture() -> Backtrace {
 }
@@ -6012,12 +6153,15 @@ impl Backtrace {
     /// Note that capturing a backtrace can be an expensive operation on some
     /// platforms, so this should be used with caution in performance-sensitive
     /// parts of code.
+    #[stable(feature = "backtrace", since = "1.65.0")]
     #[inline(never)] // want to make sure there's a frame here to remove
     pub fn force_capture() -> Backtrace {
 }
 
     /// Forcibly captures a disabled backtrace, regardless of environment
     /// variable configuration.
+    #[stable(feature = "backtrace", since = "1.65.0")]
+    #[rustc_const_stable(feature = "backtrace", since = "1.65.0")]
     pub const fn disabled() -> Backtrace {
 }
 
@@ -6029,6 +6173,7 @@ impl Backtrace {
     /// Returns the status of this backtrace, indicating whether this backtrace
     /// request was unsupported, disabled, or a stack trace was actually
     /// captured.
+    #[stable(feature = "backtrace", since = "1.65.0")]
     #[must_use]
     pub fn status(&self) -> BacktraceStatus {
 }
@@ -6042,6 +6187,7 @@ impl<'a> Backtrace {
 }
 }
 
+#[stable(feature = "backtrace", since = "1.65.0")]
 impl fmt::Display for Backtrace {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
 }
@@ -6522,6 +6668,7 @@ use crate::borrow::Borrow;
 use crate::cell::Cell;
 use crate::collections::TryReserveError;
 use crate::collections::TryReserveErrorKind;
+use crate::error::Error;
 use crate::fmt::{self, Debug};
 #[allow(deprecated)]
 use crate::hash::{BuildHasher, Hash, Hasher, SipHasher13};
@@ -6790,7 +6937,8 @@ impl<K, V, S> HashMap<K, V, S> {
     /// ```
     #[inline]
     #[stable(feature = "hashmap_build_hasher", since = "1.7.0")]
-    pub fn with_hasher(hash_builder: S) -> HashMap<K, V, S> {
+    #[rustc_const_unstable(feature = "const_collections_with_hasher", issue = "102575")]
+    pub const fn with_hasher(hash_builder: S) -> HashMap<K, V, S> {
 }
 
     /// Creates an empty `HashMap` with at least the specified capacity, using
@@ -7250,7 +7398,7 @@ where
 
     /// Tries to reserve capacity for at least `additional` more elements to be inserted
     /// in the `HashMap`. The collection may reserve more space to speculatively
-    /// avoid frequent reallocations. After calling `reserve`,
+    /// avoid frequent reallocations. After calling `try_reserve`,
     /// capacity will be greater than or equal to `self.len() + additional` if
     /// it returns `Ok(())`.
     /// Does nothing if capacity is already sufficient.
@@ -8511,6 +8659,10 @@ impl<K: Debug, V: Debug> Debug for OccupiedError<'_, K, V> {
 impl<'a, K: Debug, V: Debug> fmt::Display for OccupiedError<'a, K, V> {
 }
 
+#[unstable(feature = "map_try_insert", issue = "82766")]
+impl<'a, K: fmt::Debug, V: fmt::Debug> Error for OccupiedError<'a, K, V> {
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K, V, S> IntoIterator for &'a HashMap<K, V, S> {
     type Item = (&'a K, &'a V);
@@ -9033,7 +9185,7 @@ impl<T, S> HashSet<T, S> {
     ///
     /// If the returned iterator is dropped before being fully consumed, it
     /// drops the remaining elements. The returned iterator keeps a mutable
-    /// borrow on the vector to optimize its implementation.
+    /// borrow on the set to optimize its implementation.
     ///
     /// # Examples
     ///
@@ -9166,7 +9318,8 @@ impl<T, S> HashSet<T, S> {
     /// ```
     #[inline]
     #[stable(feature = "hashmap_build_hasher", since = "1.7.0")]
-    pub fn with_hasher(hasher: S) -> HashSet<T, S> {
+    #[rustc_const_unstable(feature = "const_collections_with_hasher", issue = "102575")]
+    pub const fn with_hasher(hasher: S) -> HashSet<T, S> {
 }
 
     /// Creates an empty `HashSet` with at least the specified capacity, using
@@ -9247,7 +9400,7 @@ where
 
     /// Tries to reserve capacity for at least `additional` more elements to be inserted
     /// in the `HashSet`. The collection may reserve more space to speculatively
-    /// avoid frequent reallocations. After calling `reserve`,
+    /// avoid frequent reallocations. After calling `try_reserve`,
     /// capacity will be greater than or equal to `self.len() + additional` if
     /// it returns `Ok(())`.
     /// Does nothing if capacity is already sufficient.
@@ -10883,7 +11036,7 @@ pub fn home_dir() -> Option<PathBuf> {
 /// # Platform-specific behavior
 ///
 /// On Unix, returns the value of the `TMPDIR` environment variable if it is
-/// set, otherwise for non-Android it returns `/tmp`. If Android, since there
+/// set, otherwise for non-Android it returns `/tmp`. On Android, since there
 /// is no global temporary folder (it is usually allocated per-app), it returns
 /// `/data/local/tmp`.
 /// On Windows, the behavior is equivalent to that of [`GetTempPath2`][GetTempPath2] /
@@ -11246,362 +11399,18 @@ pub mod consts {
 }
 }
 pub mod error {
-//! Interfaces for working with Errors.
-//!
-//! # Error Handling In Rust
-//!
-//! The Rust language provides two complementary systems for constructing /
-//! representing, reporting, propagating, reacting to, and discarding errors.
-//! These responsibilities are collectively known as "error handling." The
-//! components of the first system, the panic runtime and interfaces, are most
-//! commonly used to represent bugs that have been detected in your program. The
-//! components of the second system, `Result`, the error traits, and user
-//! defined types, are used to represent anticipated runtime failure modes of
-//! your program.
-//!
-//! ## The Panic Interfaces
-//!
-//! The following are the primary interfaces of the panic system and the
-//! responsibilities they cover:
-//!
-//! * [`panic!`] and [`panic_any`] (Constructing, Propagated automatically)
-//! * [`PanicInfo`] (Reporting)
-//! * [`set_hook`], [`take_hook`], and [`#[panic_handler]`][panic-handler] (Reporting)
-//! * [`catch_unwind`] and [`resume_unwind`] (Discarding, Propagating)
-//!
-//! The following are the primary interfaces of the error system and the
-//! responsibilities they cover:
-//!
-//! * [`Result`] (Propagating, Reacting)
-//! * The [`Error`] trait (Reporting)
-//! * User defined types (Constructing / Representing)
-//! * [`match`] and [`downcast`] (Reacting)
-//! * The question mark operator ([`?`]) (Propagating)
-//! * The partially stable [`Try`] traits (Propagating, Constructing)
-//! * [`Termination`] (Reporting)
-//!
-//! ## Converting Errors into Panics
-//!
-//! The panic and error systems are not entirely distinct. Often times errors
-//! that are anticipated runtime failures in an API might instead represent bugs
-//! to a caller. For these situations the standard library provides APIs for
-//! constructing panics with an `Error` as it's source.
-//!
-//! * [`Result::unwrap`]
-//! * [`Result::expect`]
-//!
-//! These functions are equivalent, they either return the inner value if the
-//! `Result` is `Ok` or panic if the `Result` is `Err` printing the inner error
-//! as the source. The only difference between them is that with `expect` you
-//! provide a panic error message to be printed alongside the source, whereas
-//! `unwrap` has a default message indicating only that you unwraped an `Err`.
-//!
-//! Of the two, `expect` is generally preferred since its `msg` field allows you
-//! to convey your intent and assumptions which makes tracking down the source
-//! of a panic easier. `unwrap` on the other hand can still be a good fit in
-//! situations where you can trivially show that a piece of code will never
-//! panic, such as `"127.0.0.1".parse::<std::net::IpAddr>().unwrap()` or early
-//! prototyping.
-//!
-//! # Common Message Styles
-//!
-//! There are two common styles for how people word `expect` messages. Using
-//! the message to present information to users encountering a panic
-//! ("expect as error message") or using the message to present information
-//! to developers debugging the panic ("expect as precondition").
-//!
-//! In the former case the expect message is used to describe the error that
-//! has occurred which is considered a bug. Consider the following example:
-//!
-//! ```should_panic
-//! // Read environment variable, panic if it is not present
-//! let path = std::env::var("IMPORTANT_PATH").unwrap();
-//! ```
-//!
-//! In the "expect as error message" style we would use expect to describe
-//! that the environment variable was not set when it should have been:
-//!
-//! ```should_panic
-//! let path = std::env::var("IMPORTANT_PATH")
-//!     .expect("env variable `IMPORTANT_PATH` is not set");
-//! ```
-//!
-//! In the "expect as precondition" style, we would instead describe the
-//! reason we _expect_ the `Result` should be `Ok`. With this style we would
-//! prefer to write:
-//!
-//! ```should_panic
-//! let path = std::env::var("IMPORTANT_PATH")
-//!     .expect("env variable `IMPORTANT_PATH` should be set by `wrapper_script.sh`");
-//! ```
-//!
-//! The "expect as error message" style does not work as well with the
-//! default output of the std panic hooks, and often ends up repeating
-//! information that is already communicated by the source error being
-//! unwrapped:
-//!
-//! ```text
-//! thread 'main' panicked at 'env variable `IMPORTANT_PATH` is not set: NotPresent', src/main.rs:4:6
-//! ```
-//!
-//! In this example we end up mentioning that an env variable is not set,
-//! followed by our source message that says the env is not present, the
-//! only additional information we're communicating is the name of the
-//! environment variable being checked.
-//!
-//! The "expect as precondition" style instead focuses on source code
-//! readability, making it easier to understand what must have gone wrong in
-//! situations where panics are being used to represent bugs exclusively.
-//! Also, by framing our expect in terms of what "SHOULD" have happened to
-//! prevent the source error, we end up introducing new information that is
-//! independent from our source error.
-//!
-//! ```text
-//! thread 'main' panicked at 'env variable `IMPORTANT_PATH` should be set by `wrapper_script.sh`: NotPresent', src/main.rs:4:6
-//! ```
-//!
-//! In this example we are communicating not only the name of the
-//! environment variable that should have been set, but also an explanation
-//! for why it should have been set, and we let the source error display as
-//! a clear contradiction to our expectation.
-//!
-//! **Hint**: If you're having trouble remembering how to phrase
-//! expect-as-precondition style error messages remember to focus on the word
-//! "should" as in "env variable should be set by blah" or "the given binary
-//! should be available and executable by the current user".
-//!
-//! [`panic_any`]: crate::panic::panic_any
-//! [`PanicInfo`]: crate::panic::PanicInfo
-//! [`catch_unwind`]: crate::panic::catch_unwind
-//! [`resume_unwind`]: crate::panic::resume_unwind
-//! [`downcast`]: crate::error::Error
-//! [`Termination`]: crate::process::Termination
-//! [`Try`]: crate::ops::Try
-//! [panic hook]: crate::panic::set_hook
-//! [`set_hook`]: crate::panic::set_hook
-//! [`take_hook`]: crate::panic::take_hook
-//! [panic-handler]: <https://doc.rust-lang.org/nomicon/panic-handler.html>
-//! [`match`]: ../../std/keyword.match.html
-//! [`?`]: ../../std/result/index.html#the-question-mark-operator-
-
+#![doc = include_str!("../../core/src/error.md")]
 #![stable(feature = "rust1", since = "1.0.0")]
-
-// A note about crates and the facade:
-//
-// Originally, the `Error` trait was defined in libcore, and the impls
-// were scattered about. However, coherence objected to this
-// arrangement, because to create the blanket impls for `Box` required
-// knowing that `&str: !Error`, and we have no means to deal with that
-// sort of conflict just now. Therefore, for the time being, we have
-// moved the `Error` trait into libstd. As we evolve a sol'n to the
-// coherence challenge (e.g., specialization, neg impls, etc) we can
-// reconsider what crate these items belong in.
 
 #[cfg(test)]
 mod tests {
 }
 
-use core::array;
-use core::convert::Infallible;
-
-use crate::alloc::{AllocError, LayoutError};
-use crate::any::{Demand, Provider, TypeId};
 use crate::backtrace::Backtrace;
-use crate::borrow::Cow;
-use crate::cell;
-use crate::char;
-use crate::fmt::{self, Debug, Display, Write};
-use crate::io;
-use crate::mem::transmute;
-use crate::num;
-use crate::str;
-use crate::string;
-use crate::sync::Arc;
-use crate::time;
+use crate::fmt::{self, Write};
 
-/// `Error` is a trait representing the basic expectations for error values,
-/// i.e., values of type `E` in [`Result<T, E>`].
-///
-/// Errors must describe themselves through the [`Display`] and [`Debug`]
-/// traits. Error messages are typically concise lowercase sentences without
-/// trailing punctuation:
-///
-/// ```
-/// let err = "NaN".parse::<u32>().unwrap_err();
-/// assert_eq!(err.to_string(), "invalid digit found in string");
-/// ```
-///
-/// Errors may provide cause chain information. [`Error::source()`] is generally
-/// used when errors cross "abstraction boundaries". If one module must report
-/// an error that is caused by an error from a lower-level module, it can allow
-/// accessing that error via [`Error::source()`]. This makes it possible for the
-/// high-level module to provide its own errors while also revealing some of the
-/// implementation for debugging via `source` chains.
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "Error")]
-pub trait Error: Debug + Display {
-    /// The lower-level source of this error, if any.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::error::Error;
-    /// use std::fmt;
-    ///
-    /// #[derive(Debug)]
-    /// struct SuperError {
-    ///     source: SuperErrorSideKick,
-    /// }
-    ///
-    /// impl fmt::Display for SuperError {
-    ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    ///         write!(f, "SuperError is here!")
-    ///     }
-    /// }
-    ///
-    /// impl Error for SuperError {
-    ///     fn source(&self) -> Option<&(dyn Error + 'static)> {
-    ///         Some(&self.source)
-    ///     }
-    /// }
-    ///
-    /// #[derive(Debug)]
-    /// struct SuperErrorSideKick;
-    ///
-    /// impl fmt::Display for SuperErrorSideKick {
-    ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    ///         write!(f, "SuperErrorSideKick is here!")
-    ///     }
-    /// }
-    ///
-    /// impl Error for SuperErrorSideKick {}
-    ///
-    /// fn get_super_error() -> Result<(), SuperError> {
-    ///     Err(SuperError { source: SuperErrorSideKick })
-    /// }
-    ///
-    /// fn main() {
-    ///     match get_super_error() {
-    ///         Err(e) => {
-    ///             println!("Error: {e}");
-    ///             println!("Caused by: {}", e.source().unwrap());
-    ///         }
-    ///         _ => println!("No error"),
-    ///     }
-    /// }
-    /// ```
-    #[stable(feature = "error_source", since = "1.30.0")]
-    fn source(&self) -> Option<&(dyn Error + 'static)> {
-}
-
-    /// Gets the `TypeId` of `self`.
-    #[doc(hidden)]
-    #[unstable(
-        feature = "error_type_id",
-        reason = "this is memory-unsafe to override in user code",
-        issue = "60784"
-    )]
-    fn type_id(&self, _: private::Internal) -> TypeId
-    where
-        Self: 'static,
-    {
-}
-
-    /// ```
-    /// if let Err(e) = "xc".parse::<u32>() {
-    ///     // Print `e` itself, no need for description().
-    ///     eprintln!("Error: {e}");
-    /// }
-    /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[deprecated(since = "1.42.0", note = "use the Display impl or to_string()")]
-    fn description(&self) -> &str {
-}
-
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[deprecated(
-        since = "1.33.0",
-        note = "replaced by Error::source, which can support downcasting"
-    )]
-    #[allow(missing_docs)]
-    fn cause(&self) -> Option<&dyn Error> {
-}
-
-    /// Provides type based access to context intended for error reports.
-    ///
-    /// Used in conjunction with [`Demand::provide_value`] and [`Demand::provide_ref`] to extract
-    /// references to member variables from `dyn Error` trait objects.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// #![feature(provide_any)]
-    /// #![feature(error_generic_member_access)]
-    /// use core::fmt;
-    /// use core::any::Demand;
-    ///
-    /// #[derive(Debug)]
-    /// struct MyBacktrace {
-    ///     // ...
-    /// }
-    ///
-    /// impl MyBacktrace {
-    ///     fn new() -> MyBacktrace {
-    ///         // ...
-    ///         # MyBacktrace {}
-    ///     }
-    /// }
-    ///
-    /// #[derive(Debug)]
-    /// struct SourceError {
-    ///     // ...
-    /// }
-    ///
-    /// impl fmt::Display for SourceError {
-    ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    ///         write!(f, "Example Source Error")
-    ///     }
-    /// }
-    ///
-    /// impl std::error::Error for SourceError {}
-    ///
-    /// #[derive(Debug)]
-    /// struct Error {
-    ///     source: SourceError,
-    ///     backtrace: MyBacktrace,
-    /// }
-    ///
-    /// impl fmt::Display for Error {
-    ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    ///         write!(f, "Example Error")
-    ///     }
-    /// }
-    ///
-    /// impl std::error::Error for Error {
-    ///     fn provide<'a>(&'a self, req: &mut Demand<'a>) {
-    ///         req
-    ///             .provide_ref::<MyBacktrace>(&self.backtrace)
-    ///             .provide_ref::<dyn std::error::Error + 'static>(&self.source);
-    ///     }
-    /// }
-    ///
-    /// fn main() {
-    ///     let backtrace = MyBacktrace::new();
-    ///     let source = SourceError {};
-    ///     let error = Error { source, backtrace };
-    ///     let dyn_error = &error as &dyn std::error::Error;
-    ///     let backtrace_ref = dyn_error.request_ref::<MyBacktrace>().unwrap();
-    ///
-    ///     assert!(core::ptr::eq(&error.backtrace, backtrace_ref));
-    /// }
-    /// ```
-    #[unstable(feature = "error_generic_member_access", issue = "99301")]
-    #[allow(unused_variables)]
-    fn provide<'a>(&'a self, req: &mut Demand<'a>) {}}
-
-#[unstable(feature = "error_generic_member_access", issue = "99301")]
-impl<'b> Provider for dyn Error + 'b {
-}
+pub use core::error::Error;
 
 mod private {
     // This is a hack to prevent `type_id` from being overridden by `Error`
@@ -11611,195 +11420,482 @@ mod private {
     pub struct Internal;
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, E: Error + 'a> From<E> for Box<dyn Error + 'a> {
-    /// Converts a type of [`Error`] into a box of dyn [`Error`].
+/// An error reporter that prints an error and its sources.
+///
+/// Report also exposes configuration options for formatting the error sources, either entirely on a
+/// single line, or in multi-line format with each source on a new line.
+///
+/// `Report` only requires that the wrapped error implement `Error`. It doesn't require that the
+/// wrapped error be `Send`, `Sync`, or `'static`.
+///
+/// # Examples
+///
+/// ```rust
+/// #![feature(error_reporter)]
+/// use std::error::{Error, Report};
+/// use std::fmt;
+///
+/// #[derive(Debug)]
+/// struct SuperError {
+///     source: SuperErrorSideKick,
+/// }
+///
+/// impl fmt::Display for SuperError {
+///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+///         write!(f, "SuperError is here!")
+///     }
+/// }
+///
+/// impl Error for SuperError {
+///     fn source(&self) -> Option<&(dyn Error + 'static)> {
+///         Some(&self.source)
+///     }
+/// }
+///
+/// #[derive(Debug)]
+/// struct SuperErrorSideKick;
+///
+/// impl fmt::Display for SuperErrorSideKick {
+///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+///         write!(f, "SuperErrorSideKick is here!")
+///     }
+/// }
+///
+/// impl Error for SuperErrorSideKick {}
+///
+/// fn get_super_error() -> Result<(), SuperError> {
+///     Err(SuperError { source: SuperErrorSideKick })
+/// }
+///
+/// fn main() {
+///     match get_super_error() {
+///         Err(e) => println!("Error: {}", Report::new(e)),
+///         _ => println!("No error"),
+///     }
+/// }
+/// ```
+///
+/// This example produces the following output:
+///
+/// ```console
+/// Error: SuperError is here!: SuperErrorSideKick is here!
+/// ```
+///
+/// ## Output consistency
+///
+/// Report prints the same output via `Display` and `Debug`, so it works well with
+/// [`Result::unwrap`]/[`Result::expect`] which print their `Err` variant via `Debug`:
+///
+/// ```should_panic
+/// #![feature(error_reporter)]
+/// use std::error::Report;
+/// # use std::error::Error;
+/// # use std::fmt;
+/// # #[derive(Debug)]
+/// # struct SuperError {
+/// #     source: SuperErrorSideKick,
+/// # }
+/// # impl fmt::Display for SuperError {
+/// #     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+/// #         write!(f, "SuperError is here!")
+/// #     }
+/// # }
+/// # impl Error for SuperError {
+/// #     fn source(&self) -> Option<&(dyn Error + 'static)> {
+/// #         Some(&self.source)
+/// #     }
+/// # }
+/// # #[derive(Debug)]
+/// # struct SuperErrorSideKick;
+/// # impl fmt::Display for SuperErrorSideKick {
+/// #     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+/// #         write!(f, "SuperErrorSideKick is here!")
+/// #     }
+/// # }
+/// # impl Error for SuperErrorSideKick {}
+/// # fn get_super_error() -> Result<(), SuperError> {
+/// #     Err(SuperError { source: SuperErrorSideKick })
+/// # }
+///
+/// get_super_error().map_err(Report::new).unwrap();
+/// ```
+///
+/// This example produces the following output:
+///
+/// ```console
+/// thread 'main' panicked at 'called `Result::unwrap()` on an `Err` value: SuperError is here!: SuperErrorSideKick is here!', src/error.rs:34:40
+/// note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+/// ```
+///
+/// ## Return from `main`
+///
+/// `Report` also implements `From` for all types that implement [`Error`]; this when combined with
+/// the `Debug` output means `Report` is an ideal starting place for formatting errors returned
+/// from `main`.
+///
+/// ```should_panic
+/// #![feature(error_reporter)]
+/// use std::error::Report;
+/// # use std::error::Error;
+/// # use std::fmt;
+/// # #[derive(Debug)]
+/// # struct SuperError {
+/// #     source: SuperErrorSideKick,
+/// # }
+/// # impl fmt::Display for SuperError {
+/// #     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+/// #         write!(f, "SuperError is here!")
+/// #     }
+/// # }
+/// # impl Error for SuperError {
+/// #     fn source(&self) -> Option<&(dyn Error + 'static)> {
+/// #         Some(&self.source)
+/// #     }
+/// # }
+/// # #[derive(Debug)]
+/// # struct SuperErrorSideKick;
+/// # impl fmt::Display for SuperErrorSideKick {
+/// #     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+/// #         write!(f, "SuperErrorSideKick is here!")
+/// #     }
+/// # }
+/// # impl Error for SuperErrorSideKick {}
+/// # fn get_super_error() -> Result<(), SuperError> {
+/// #     Err(SuperError { source: SuperErrorSideKick })
+/// # }
+///
+/// fn main() -> Result<(), Report<SuperError>> {
+///     get_super_error()?;
+///     Ok(())
+/// }
+/// ```
+///
+/// This example produces the following output:
+///
+/// ```console
+/// Error: SuperError is here!: SuperErrorSideKick is here!
+/// ```
+///
+/// **Note**: `Report`s constructed via `?` and `From` will be configured to use the single line
+/// output format. If you want to make sure your `Report`s are pretty printed and include backtrace
+/// you will need to manually convert and enable those flags.
+///
+/// ```should_panic
+/// #![feature(error_reporter)]
+/// use std::error::Report;
+/// # use std::error::Error;
+/// # use std::fmt;
+/// # #[derive(Debug)]
+/// # struct SuperError {
+/// #     source: SuperErrorSideKick,
+/// # }
+/// # impl fmt::Display for SuperError {
+/// #     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+/// #         write!(f, "SuperError is here!")
+/// #     }
+/// # }
+/// # impl Error for SuperError {
+/// #     fn source(&self) -> Option<&(dyn Error + 'static)> {
+/// #         Some(&self.source)
+/// #     }
+/// # }
+/// # #[derive(Debug)]
+/// # struct SuperErrorSideKick;
+/// # impl fmt::Display for SuperErrorSideKick {
+/// #     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+/// #         write!(f, "SuperErrorSideKick is here!")
+/// #     }
+/// # }
+/// # impl Error for SuperErrorSideKick {}
+/// # fn get_super_error() -> Result<(), SuperError> {
+/// #     Err(SuperError { source: SuperErrorSideKick })
+/// # }
+///
+/// fn main() -> Result<(), Report<SuperError>> {
+///     get_super_error()
+///         .map_err(Report::from)
+///         .map_err(|r| r.pretty(true).show_backtrace(true))?;
+///     Ok(())
+/// }
+/// ```
+///
+/// This example produces the following output:
+///
+/// ```console
+/// Error: SuperError is here!
+///
+/// Caused by:
+///       SuperErrorSideKick is here!
+/// ```
+#[unstable(feature = "error_reporter", issue = "90172")]
+pub struct Report<E = Box<dyn Error>> {
+}
+
+impl<E> Report<E>
+where
+    Report<E>: From<E>,
+{
+    /// Create a new `Report` from an input error.
+    #[unstable(feature = "error_reporter", issue = "90172")]
+    pub fn new(error: E) -> Report<E> {
+}
+}
+
+impl<E> Report<E> {
+    /// Enable pretty-printing the report across multiple lines.
     ///
     /// # Examples
     ///
+    /// ```rust
+    /// #![feature(error_reporter)]
+    /// use std::error::Report;
+    /// # use std::error::Error;
+    /// # use std::fmt;
+    /// # #[derive(Debug)]
+    /// # struct SuperError {
+    /// #     source: SuperErrorSideKick,
+    /// # }
+    /// # impl fmt::Display for SuperError {
+    /// #     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    /// #         write!(f, "SuperError is here!")
+    /// #     }
+    /// # }
+    /// # impl Error for SuperError {
+    /// #     fn source(&self) -> Option<&(dyn Error + 'static)> {
+    /// #         Some(&self.source)
+    /// #     }
+    /// # }
+    /// # #[derive(Debug)]
+    /// # struct SuperErrorSideKick;
+    /// # impl fmt::Display for SuperErrorSideKick {
+    /// #     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    /// #         write!(f, "SuperErrorSideKick is here!")
+    /// #     }
+    /// # }
+    /// # impl Error for SuperErrorSideKick {}
+    ///
+    /// let error = SuperError { source: SuperErrorSideKick };
+    /// let report = Report::new(error).pretty(true);
+    /// eprintln!("Error: {report:?}");
     /// ```
-    /// use std::error::Error;
-    /// use std::fmt;
-    /// use std::mem;
     ///
+    /// This example produces the following output:
+    ///
+    /// ```console
+    /// Error: SuperError is here!
+    ///
+    /// Caused by:
+    ///       SuperErrorSideKick is here!
+    /// ```
+    ///
+    /// When there are multiple source errors the causes will be numbered in order of iteration
+    /// starting from the outermost error.
+    ///
+    /// ```rust
+    /// #![feature(error_reporter)]
+    /// use std::error::Report;
+    /// # use std::error::Error;
+    /// # use std::fmt;
+    /// # #[derive(Debug)]
+    /// # struct SuperError {
+    /// #     source: SuperErrorSideKick,
+    /// # }
+    /// # impl fmt::Display for SuperError {
+    /// #     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    /// #         write!(f, "SuperError is here!")
+    /// #     }
+    /// # }
+    /// # impl Error for SuperError {
+    /// #     fn source(&self) -> Option<&(dyn Error + 'static)> {
+    /// #         Some(&self.source)
+    /// #     }
+    /// # }
+    /// # #[derive(Debug)]
+    /// # struct SuperErrorSideKick {
+    /// #     source: SuperErrorSideKickSideKick,
+    /// # }
+    /// # impl fmt::Display for SuperErrorSideKick {
+    /// #     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    /// #         write!(f, "SuperErrorSideKick is here!")
+    /// #     }
+    /// # }
+    /// # impl Error for SuperErrorSideKick {
+    /// #     fn source(&self) -> Option<&(dyn Error + 'static)> {
+    /// #         Some(&self.source)
+    /// #     }
+    /// # }
+    /// # #[derive(Debug)]
+    /// # struct SuperErrorSideKickSideKick;
+    /// # impl fmt::Display for SuperErrorSideKickSideKick {
+    /// #     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    /// #         write!(f, "SuperErrorSideKickSideKick is here!")
+    /// #     }
+    /// # }
+    /// # impl Error for SuperErrorSideKickSideKick { }
+    ///
+    /// let source = SuperErrorSideKickSideKick;
+    /// let source = SuperErrorSideKick { source };
+    /// let error = SuperError { source };
+    /// let report = Report::new(error).pretty(true);
+    /// eprintln!("Error: {report:?}");
+    /// ```
+    ///
+    /// This example produces the following output:
+    ///
+    /// ```console
+    /// Error: SuperError is here!
+    ///
+    /// Caused by:
+    ///    0: SuperErrorSideKick is here!
+    ///    1: SuperErrorSideKickSideKick is here!
+    /// ```
+    #[unstable(feature = "error_reporter", issue = "90172")]
+    pub fn pretty(mut self, pretty: bool) -> Self {
+}
+
+    /// Display backtrace if available when using pretty output format.
+    ///
+    /// # Examples
+    ///
+    /// **Note**: Report will search for the first `Backtrace` it can find starting from the
+    /// outermost error. In this example it will display the backtrace from the second error in the
+    /// sources, `SuperErrorSideKick`.
+    ///
+    /// ```rust
+    /// #![feature(error_reporter)]
+    /// #![feature(provide_any)]
+    /// #![feature(error_generic_member_access)]
+    /// # use std::error::Error;
+    /// # use std::fmt;
+    /// use std::any::Demand;
+    /// use std::error::Report;
+    /// use std::backtrace::Backtrace;
+    ///
+    /// # #[derive(Debug)]
+    /// # struct SuperError {
+    /// #     source: SuperErrorSideKick,
+    /// # }
+    /// # impl fmt::Display for SuperError {
+    /// #     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    /// #         write!(f, "SuperError is here!")
+    /// #     }
+    /// # }
+    /// # impl Error for SuperError {
+    /// #     fn source(&self) -> Option<&(dyn Error + 'static)> {
+    /// #         Some(&self.source)
+    /// #     }
+    /// # }
     /// #[derive(Debug)]
-    /// struct AnError;
+    /// struct SuperErrorSideKick {
+    ///     backtrace: Backtrace,
+    /// }
     ///
-    /// impl fmt::Display for AnError {
-    ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    ///         write!(f, "An error")
+    /// impl SuperErrorSideKick {
+    ///     fn new() -> SuperErrorSideKick {
+    ///         SuperErrorSideKick { backtrace: Backtrace::force_capture() }
     ///     }
     /// }
     ///
-    /// impl Error for AnError {}
-    ///
-    /// let an_error = AnError;
-    /// assert!(0 == mem::size_of_val(&an_error));
-    /// let a_boxed_error = Box::<dyn Error>::from(an_error);
-    /// assert!(mem::size_of::<Box<dyn Error>>() == mem::size_of_val(&a_boxed_error))
-    /// ```
-    fn from(err: E) -> Box<dyn Error + 'a> {
-}
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, E: Error + Send + Sync + 'a> From<E> for Box<dyn Error + Send + Sync + 'a> {
-    /// Converts a type of [`Error`] + [`Send`] + [`Sync`] into a box of
-    /// dyn [`Error`] + [`Send`] + [`Sync`].
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::error::Error;
-    /// use std::fmt;
-    /// use std::mem;
-    ///
-    /// #[derive(Debug)]
-    /// struct AnError;
-    ///
-    /// impl fmt::Display for AnError {
-    ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    ///         write!(f, "An error")
+    /// impl Error for SuperErrorSideKick {
+    ///     fn provide<'a>(&'a self, demand: &mut Demand<'a>) {
+    ///         demand.provide_ref::<Backtrace>(&self.backtrace);
     ///     }
     /// }
     ///
-    /// impl Error for AnError {}
+    /// // The rest of the example is unchanged ...
+    /// # impl fmt::Display for SuperErrorSideKick {
+    /// #     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    /// #         write!(f, "SuperErrorSideKick is here!")
+    /// #     }
+    /// # }
     ///
-    /// unsafe impl Send for AnError {}
-    ///
-    /// unsafe impl Sync for AnError {}
-    ///
-    /// let an_error = AnError;
-    /// assert!(0 == mem::size_of_val(&an_error));
-    /// let a_boxed_error = Box::<dyn Error + Send + Sync>::from(an_error);
-    /// assert!(
-    ///     mem::size_of::<Box<dyn Error + Send + Sync>>() == mem::size_of_val(&a_boxed_error))
+    /// let source = SuperErrorSideKick::new();
+    /// let error = SuperError { source };
+    /// let report = Report::new(error).pretty(true).show_backtrace(true);
+    /// eprintln!("Error: {report:?}");
     /// ```
-    fn from(err: E) -> Box<dyn Error + Send + Sync + 'a> {
+    ///
+    /// This example produces something similar to the following output:
+    ///
+    /// ```console
+    /// Error: SuperError is here!
+    ///
+    /// Caused by:
+    ///       SuperErrorSideKick is here!
+    ///
+    /// Stack backtrace:
+    ///    0: rust_out::main::_doctest_main_src_error_rs_1158_0::SuperErrorSideKick::new
+    ///    1: rust_out::main::_doctest_main_src_error_rs_1158_0
+    ///    2: rust_out::main
+    ///    3: core::ops::function::FnOnce::call_once
+    ///    4: std::sys_common::backtrace::__rust_begin_short_backtrace
+    ///    5: std::rt::lang_start::{{closure}}
+    ///    6: std::panicking::try
+    ///    7: std::rt::lang_start_internal
+    ///    8: std::rt::lang_start
+    ///    9: main
+    ///   10: __libc_start_main
+    ///   11: _start
+    /// ```
+    #[unstable(feature = "error_reporter", issue = "90172")]
+    pub fn show_backtrace(mut self, show_backtrace: bool) -> Self {
 }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
-impl From<String> for Box<dyn Error + Send + Sync> {
-    /// Converts a [`String`] into a box of dyn [`Error`] + [`Send`] + [`Sync`].
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::error::Error;
-    /// use std::mem;
-    ///
-    /// let a_string_error = "a string error".to_string();
-    /// let a_boxed_error = Box::<dyn Error + Send + Sync>::from(a_string_error);
-    /// assert!(
-    ///     mem::size_of::<Box<dyn Error + Send + Sync>>() == mem::size_of_val(&a_boxed_error))
-    /// ```
-    #[inline]
-    fn from(err: String) -> Box<dyn Error + Send + Sync> {
+impl<E> Report<E>
+where
+    E: Error,
+{
+    fn backtrace(&self) -> Option<&Backtrace> {
+}
+
+    /// Format the report as a single line.
+    #[unstable(feature = "error_reporter", issue = "90172")]
+    fn fmt_singleline(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
+
+    /// Format the report as multiple lines, with each error cause on its own line.
+    #[unstable(feature = "error_reporter", issue = "90172")]
+    fn fmt_multiline(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 }
 }
 
-#[stable(feature = "string_box_error", since = "1.6.0")]
-impl From<String> for Box<dyn Error> {
-    /// Converts a [`String`] into a box of dyn [`Error`].
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::error::Error;
-    /// use std::mem;
-    ///
-    /// let a_string_error = "a string error".to_string();
-    /// let a_boxed_error = Box::<dyn Error>::from(a_string_error);
-    /// assert!(mem::size_of::<Box<dyn Error>>() == mem::size_of_val(&a_boxed_error))
-    /// ```
-    fn from(str_err: String) -> Box<dyn Error> {
-}
+#[unstable(feature = "error_reporter", issue = "90172")]
+impl<E> From<E> for Report<E>
+where
+    E: Error,
+{
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> From<&str> for Box<dyn Error + Send + Sync + 'a> {
-    /// Converts a [`str`] into a box of dyn [`Error`] + [`Send`] + [`Sync`].
-    ///
-    /// [`str`]: prim@str
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::error::Error;
-    /// use std::mem;
-    ///
-    /// let a_str_error = "a str error";
-    /// let a_boxed_error = Box::<dyn Error + Send + Sync>::from(a_str_error);
-    /// assert!(
-    ///     mem::size_of::<Box<dyn Error + Send + Sync>>() == mem::size_of_val(&a_boxed_error))
-    /// ```
-    #[inline]
-    fn from(err: &str) -> Box<dyn Error + Send + Sync + 'a> {
-}
+#[unstable(feature = "error_reporter", issue = "90172")]
+impl<E> fmt::Display for Report<E>
+where
+    E: Error,
+{
 }
 
-#[stable(feature = "string_box_error", since = "1.6.0")]
-impl From<&str> for Box<dyn Error> {
-    /// Converts a [`str`] into a box of dyn [`Error`].
-    ///
-    /// [`str`]: prim@str
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::error::Error;
-    /// use std::mem;
-    ///
-    /// let a_str_error = "a str error";
-    /// let a_boxed_error = Box::<dyn Error>::from(a_str_error);
-    /// assert!(mem::size_of::<Box<dyn Error>>() == mem::size_of_val(&a_boxed_error))
-    /// ```
-    fn from(err: &str) -> Box<dyn Error> {
-}
+// This type intentionally outputs the same format for `Display` and `Debug`for
+// situations where you unwrap a `Report` or return it from main.
+#[unstable(feature = "error_reporter", issue = "90172")]
+impl<E> fmt::Debug for Report<E>
+where
+    Report<E>: fmt::Display,
+{
 }
 
-#[stable(feature = "cow_box_error", since = "1.22.0")]
-impl<'a, 'b> From<Cow<'b, str>> for Box<dyn Error + Send + Sync + 'a> {
-    /// Converts a [`Cow`] into a box of dyn [`Error`] + [`Send`] + [`Sync`].
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::error::Error;
-    /// use std::mem;
-    /// use std::borrow::Cow;
-    ///
-    /// let a_cow_str_error = Cow::from("a str error");
-    /// let a_boxed_error = Box::<dyn Error + Send + Sync>::from(a_cow_str_error);
-    /// assert!(
-    ///     mem::size_of::<Box<dyn Error + Send + Sync>>() == mem::size_of_val(&a_boxed_error))
-    /// ```
-    fn from(err: Cow<'b, str>) -> Box<dyn Error + Send + Sync + 'a> {
-}
+/// Wrapper type for indenting the inner source.
+struct Indented<'a, D> {
+    inner: &'a mut D,
 }
 
-#[stable(feature = "cow_box_error", since = "1.22.0")]
-impl<'a> From<Cow<'a, str>> for Box<dyn Error> {
-    /// Converts a [`Cow`] into a box of dyn [`Error`].
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::error::Error;
-    /// use std::mem;
-    /// use std::borrow::Cow;
-    ///
-    /// let a_cow_str_error = Cow::from("a str error");
-    /// let a_boxed_error = Box::<dyn Error>::from(a_cow_str_error);
-    /// assert!(mem::size_of::<Box<dyn Error>>() == mem::size_of_val(&a_boxed_error))
-    /// ```
-    fn from(err: Cow<'a, str>) -> Box<dyn Error> {
+impl<T> Write for Indented<'_, T>
+where
+    T: Write,
+{
+    fn write_str(&mut self, s: &str) -> fmt::Result {
 }
 }
-
-#[unstable(feature = "never_type", issue = "35121")]
-impl Error for ! {}}
+}
 pub mod ffi {
 //! Utilities related to FFI bindings.
 //!
@@ -12481,13 +12577,13 @@ fn hiberfil_sys() {
 
 use crate::ffi::OsString;
 use crate::fmt;
-use crate::io::{self, IoSlice, IoSliceMut, Read, ReadBuf, Seek, SeekFrom, Write};
+use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, Read, Seek, SeekFrom, Write};
 use crate::path::{Path, PathBuf};
 use crate::sys::fs as fs_imp;
 use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
 use crate::time::SystemTime;
 
-/// A reference to an open file on the filesystem.
+/// An object providing access to an open file on the filesystem.
 ///
 /// An instance of a `File` can be read and/or written depending on what options
 /// it was opened with. Files also implement [`Seek`] to alter the logical cursor
@@ -12825,6 +12921,34 @@ impl File {
     pub fn create<P: AsRef<Path>>(path: P) -> io::Result<File> {
 }
 
+    /// Creates a new file in read-write mode; error if the file exists.
+    ///
+    /// This function will create a file if it does not exist, or return an error if it does. This
+    /// way, if the call succeeds, the file returned is guaranteed to be new.
+    ///
+    /// This option is useful because it is atomic. Otherwise between checking whether a file
+    /// exists and creating a new one, the file may have been created by another process (a TOCTOU
+    /// race condition / attack).
+    ///
+    /// This can also be written using
+    /// `File::options().read(true).write(true).create_new(true).open(...)`.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(file_create_new)]
+    ///
+    /// use std::fs::File;
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let mut f = File::create_new("foo.txt")?;
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "file_create_new", issue = "none")]
+    pub fn create_new<P: AsRef<Path>>(path: P) -> io::Result<File> {
+}
+
     /// Returns a new OpenOptions object.
     ///
     /// This function returns a new OpenOptions object that you can use to
@@ -13131,7 +13255,7 @@ impl Read for File {
     fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
 }
 
-    fn read_buf(&mut self, buf: &mut ReadBuf<'_>) -> io::Result<()> {
+    fn read_buf(&mut self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
 }
 
     #[inline]
@@ -13171,7 +13295,7 @@ impl Read for &File {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
 }
 
-    fn read_buf(&mut self, buf: &mut ReadBuf<'_>) -> io::Result<()> {
+    fn read_buf(&mut self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
 }
 
     fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
@@ -13698,6 +13822,34 @@ impl FileTimes {
 impl Permissions {
     /// Returns `true` if these permissions describe a readonly (unwritable) file.
     ///
+    /// # Note
+    ///
+    /// This function does not take Access Control Lists (ACLs) or Unix group
+    /// membership into account.
+    ///
+    /// # Windows
+    ///
+    /// On Windows this returns [`FILE_ATTRIBUTE_READONLY`](https://docs.microsoft.com/en-us/windows/win32/fileio/file-attribute-constants).
+    /// If `FILE_ATTRIBUTE_READONLY` is set then writes to the file will fail
+    /// but the user may still have permission to change this flag. If
+    /// `FILE_ATTRIBUTE_READONLY` is *not* set then writes may still fail due
+    /// to lack of write permission.
+    /// The behavior of this attribute for directories depends on the Windows
+    /// version.
+    ///
+    /// # Unix (including macOS)
+    ///
+    /// On Unix-based platforms this checks if *any* of the owner, group or others
+    /// write permission bits are set. It does not check if the current
+    /// user is in the file's assigned group. It also does not check ACLs.
+    /// Therefore even if this returns true you may not be able to write to the
+    /// file, and vice versa. The [`PermissionsExt`] trait gives direct access
+    /// to the permission bits but also does not read ACLs. If you need to
+    /// accurately know whether or not a file is writable use the `access()`
+    /// function from libc.
+    ///
+    /// [`PermissionsExt`]: crate::os::unix::fs::PermissionsExt
+    ///
     /// # Examples
     ///
     /// ```no_run
@@ -13722,8 +13874,40 @@ impl Permissions {
     /// using the resulting `Permission` will update file permissions to allow
     /// writing.
     ///
-    /// This operation does **not** modify the filesystem. To modify the
-    /// filesystem use the [`set_permissions`] function.
+    /// This operation does **not** modify the files attributes. This only
+    /// changes the in-memory value of these attributes for this `Permissions`
+    /// instance. To modify the files attributes use the [`set_permissions`]
+    /// function which commits these attribute changes to the file.
+    ///
+    /// # Note
+    ///
+    /// `set_readonly(false)` makes the file *world-writable* on Unix.
+    /// You can use the [`PermissionsExt`] trait on Unix to avoid this issue.
+    ///
+    /// It also does not take Access Control Lists (ACLs) or Unix group
+    /// membership into account.
+    ///
+    /// # Windows
+    ///
+    /// On Windows this sets or clears [`FILE_ATTRIBUTE_READONLY`](https://docs.microsoft.com/en-us/windows/win32/fileio/file-attribute-constants).
+    /// If `FILE_ATTRIBUTE_READONLY` is set then writes to the file will fail
+    /// but the user may still have permission to change this flag. If
+    /// `FILE_ATTRIBUTE_READONLY` is *not* set then the write may still fail if
+    /// the user does not have permission to write to the file.
+    ///
+    /// In Windows 7 and earlier this attribute prevents deleting empty
+    /// directories. It does not prevent modifying the directory contents.
+    /// On later versions of Windows this attribute is ignored for directories.
+    ///
+    /// # Unix (including macOS)
+    ///
+    /// On Unix-based platforms this sets or clears the write access bit for
+    /// the owner, group *and* others, equivalent to `chmod a+w <file>`
+    /// or `chmod a-w <file>` respectively. The latter will grant write access
+    /// to all users! You can use the [`PermissionsExt`] trait on Unix
+    /// to avoid this issue.
+    ///
+    /// [`PermissionsExt`]: crate::os::unix::fs::PermissionsExt
     ///
     /// # Examples
     ///
@@ -13737,7 +13921,8 @@ impl Permissions {
     ///
     ///     permissions.set_readonly(true);
     ///
-    ///     // filesystem doesn't change
+    ///     // filesystem doesn't change, only the in memory state of the
+    ///     // readonly permission
     ///     assert_eq!(false, metadata.permissions().readonly());
     ///
     ///     // just this particular `permissions`.
@@ -14994,9 +15179,12 @@ use crate::sys_common::memchr;
 
 #[stable(feature = "bufwriter_into_parts", since = "1.56.0")]
 pub use self::buffered::WriterPanicked;
+pub(crate) use self::stdio::attempt_print_to_stderr;
 #[unstable(feature = "internal_output_capture", issue = "none")]
 #[doc(no_inline, hidden)]
 pub use self::stdio::set_output_capture;
+#[unstable(feature = "is_terminal", issue = "98070")]
+pub use self::stdio::IsTerminal;
 #[unstable(feature = "print_internals", issue = "none")]
 pub use self::stdio::{_eprint, _print};
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -15010,7 +15198,7 @@ pub use self::{
 };
 
 #[unstable(feature = "read_buf", issue = "78485")]
-pub use self::readbuf::ReadBuf;
+pub use self::readbuf::{B};
 pub(crate) use error::const_io_error;
 
 mod buffered {
@@ -15029,7 +15217,7 @@ mod buffer {
 /// that user code which wants to do reads from a `BufReader` via `buffer` + `consume` can do so
 /// without encountering any runtime bounds checks.
 use crate::cmp;
-use crate::io::{self, Read, ReadBuf};
+use crate::io::{self, BorrowedBuf, Read};
 use crate::mem::MaybeUninit;
 
 pub struct Buffer {
@@ -15040,6 +15228,12 @@ pub struct Buffer {
     // Each call to `fill_buf` sets `filled` to indicate how many bytes at the start of `buf` are
     // initialized with bytes from a read.
     filled: usize,
+    // This is the max number of bytes returned across all `fill_buf` calls. We track this so that we
+    // can accurately tell `read_buf` how many bytes of buf are initialized, to bypass as much of its
+    // defensive initialization as possible. Note that while this often the same as `filled`, it
+    // doesn't need to be. Calls to `fill_buf` are not required to actually fill the buffer, and
+    // omitting this is a huge perf regression for `Read` impls that do not.
+    initialized: usize,
 }
 
 impl Buffer {
@@ -15061,6 +15255,11 @@ impl Buffer {
 
     #[inline]
     pub fn pos(&self) -> usize {
+}
+
+    // This is only used by a test which asserts that the initialization-tracking is correct.
+    #[cfg(test)]
+    pub fn initialized(&self) -> usize {
 }
 
     #[inline]
@@ -15092,7 +15291,7 @@ impl Buffer {
 
 use crate::fmt;
 use crate::io::{
-    self, BufRead, IoSliceMut, Read, ReadBuf, Seek, SeekFrom, SizeHint, DEFAULT_BUF_SIZE,
+    self, BorrowedCursor, BufRead, IoSliceMut, Read, Seek, SeekFrom, SizeHint, DEFAULT_BUF_SIZE,
 };
 use buffer::Buffer;
 
@@ -15306,6 +15505,11 @@ impl<R> BufReader<R> {
 }
 }
 
+// This is only used by a test which asserts that the initialization-tracking is correct.
+#[cfg(test)]
+impl<R> BufReader<R> {
+}
+
 impl<R: Seek> BufReader<R> {
     /// Seeks relative to the current position. If the new position lies within the buffer,
     /// the buffer will not be flushed, allowing for more efficient seeks.
@@ -15321,7 +15525,7 @@ impl<R: Read> Read for BufReader<R> {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
 }
 
-    fn read_buf(&mut self, buf: &mut ReadBuf<'_>) -> io::Result<()> {
+    fn read_buf(&mut self, mut cursor: BorrowedCursor<'_>) -> io::Result<()> {
 }
 
     // Small read_exacts from a BufReader are extremely common when used with a deserializer.
@@ -16349,7 +16553,7 @@ impl<W> fmt::Display for IntoInnerError<W> {
 }
 }
 pub(crate) mod copy {
-use super::{BufWriter, ErrorKind, Read, ReadBuf, Result, Write, DEFAULT_BUF_SIZE};
+use super::{BorrowedBuf, BufWriter, ErrorKind, Read, Result, Write, DEFAULT_BUF_SIZE};
 use crate::mem::MaybeUninit;
 
 /// Copies the entire contents of a reader into a writer.
@@ -16448,7 +16652,7 @@ use crate::io::prelude::*;
 
 use crate::alloc::Allocator;
 use crate::cmp;
-use crate::io::{self, ErrorKind, IoSlice, IoSliceMut, ReadBuf, SeekFrom};
+use crate::io::{self, BorrowedCursor, ErrorKind, IoSlice, IoSliceMut, SeekFrom};
 
 /// A `Cursor` wraps an in-memory buffer and provides it with a
 /// [`Seek`] implementation.
@@ -16731,7 +16935,7 @@ where
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
 }
 
-    fn read_buf(&mut self, buf: &mut ReadBuf<'_>) -> io::Result<()> {
+    fn read_buf(&mut self, mut cursor: BorrowedCursor<'_>) -> io::Result<()> {
 }
 
     fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
@@ -17287,6 +17491,13 @@ impl fmt::Debug for Error {
 }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
+impl From<alloc::ffi::NulError> for Error {
+    /// Converts a [`alloc::ffi::NulError`] into a [`Error`].
+    fn from(_: alloc::ffi::NulError) -> Error {
+}
+}
+
 // Only derive debug in tests, to make sure it
 // doesn't accidentally get printed.
 #[cfg_attr(test, derive(Debug))]
@@ -17634,6 +17845,7 @@ impl Error {
     /// originate from the OS itself. The `error` argument is an arbitrary
     /// payload which will be contained in this [`Error`].
     ///
+    /// Note that this function allocates memory on the heap.
     /// If no extra payload is required, use the `From` conversion from
     /// `ErrorKind`.
     ///
@@ -17648,7 +17860,7 @@ impl Error {
     /// // errors can also be created from other errors
     /// let custom_error2 = Error::new(ErrorKind::Interrupted, custom_error);
     ///
-    /// // creating an error without payload
+    /// // creating an error without payload (and without memory allocation)
     /// let eof_error = Error::from(ErrorKind::UnexpectedEof);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -17721,6 +17933,8 @@ impl Error {
     /// println!("last OS error: {os_error:?}");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[doc(alias = "GetLastError")]
+    #[doc(alias = "errno")]
     #[must_use]
     #[inline]
     pub fn last_os_error() -> Error {
@@ -18037,7 +18251,7 @@ use crate::cmp;
 use crate::collections::VecDeque;
 use crate::fmt;
 use crate::io::{
-    self, BufRead, ErrorKind, IoSlice, IoSliceMut, Read, ReadBuf, Seek, SeekFrom, Write,
+    self, BorrowedCursor, BufRead, ErrorKind, IoSlice, IoSliceMut, Read, Seek, SeekFrom, Write,
 };
 use crate::mem;
 
@@ -18051,7 +18265,7 @@ impl<R: Read + ?Sized> Read for &mut R {
 }
 
     #[inline]
-    fn read_buf(&mut self, buf: &mut ReadBuf<'_>) -> io::Result<()> {
+    fn read_buf(&mut self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
 }
 
     #[inline]
@@ -18136,7 +18350,7 @@ impl<R: Read + ?Sized> Read for Box<R> {
 }
 
     #[inline]
-    fn read_buf(&mut self, buf: &mut ReadBuf<'_>) -> io::Result<()> {
+    fn read_buf(&mut self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
 }
 
     #[inline]
@@ -18228,7 +18442,7 @@ impl Read for &[u8] {
 }
 
     #[inline]
-    fn read_buf(&mut self, buf: &mut ReadBuf<'_>) -> io::Result<()> {
+    fn read_buf(&mut self, mut cursor: BorrowedCursor<'_>) -> io::Result<()> {
 }
 
     #[inline]
@@ -18327,7 +18541,7 @@ impl<A: Allocator> Read for VecDeque<u8, A> {
 }
 
     #[inline]
-    fn read_buf(&mut self, buf: &mut ReadBuf<'_>) -> io::Result<()> {
+    fn read_buf(&mut self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
 }
 }
 
@@ -18370,11 +18584,12 @@ mod readbuf {
 mod tests {
 }
 
-use crate::cmp;
 use crate::fmt::{self, Debug, Formatter};
-use crate::mem::MaybeUninit;
+use crate::io::{Result, Write};
+use crate::mem::{self, MaybeUninit};
+use crate::{cmp, ptr};
 
-/// A wrapper around a byte buffer that is incrementally filled and initialized.
+/// A borrowed byte buffer which is incrementally filled and initialized.
 ///
 /// This type is a sort of "double cursor". It tracks three regions in the buffer: a region at the beginning of the
 /// buffer that has been logically filled with data, a region that has been initialized at some point but not yet
@@ -18387,33 +18602,58 @@ use crate::mem::MaybeUninit;
 /// [ filled |         unfilled         ]
 /// [    initialized    | uninitialized ]
 /// ```
-pub struct ReadBuf<'a> {
-    buf: &'a mut [MaybeUninit<u8>],
+///
+/// A `BorrowedBuf` is created around some existing data (or capacity for data) via a unique reference
+/// (`&mut`). The `BorrowedBuf` can be configured (e.g., using `clear` or `set_init`), but cannot be
+/// directly written. To write into the buffer, use `unfilled` to create a `BorrowedCursor`. The cursor
+/// has write-only access to the unfilled portion of the buffer (you can think of it as a
+/// write-only iterator).
+///
+/// The lifetime `'data` is a bound on the lifetime of the underlying data.
+pub struct BorrowedBuf<'data> {
+    /// The buffer's underlying data.
+    buf: &'data mut [MaybeUninit<u8>],
+    /// The length of `self.buf` which is known to be filled.
     filled: usize,
-    initialized: usize,
+    /// The length of `self.buf` which is known to be initialized.
+    init: usize,
 }
 
-impl Debug for ReadBuf<'_> {
+impl Debug for BorrowedBuf<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
 }
 }
 
-impl<'a> ReadBuf<'a> {
-    /// Creates a new `ReadBuf` from a fully initialized buffer.
+/// Create a new `BorrowedBuf` from a fully initialized slice.
+impl<'data> From<&'data mut [u8]> for BorrowedBuf<'data> {
     #[inline]
-    pub fn new(buf: &'a mut [u8]) -> ReadBuf<'a> {
+    fn from(slice: &'data mut [u8]) -> BorrowedBuf<'data> {
+}
 }
 
-    /// Creates a new `ReadBuf` from a fully uninitialized buffer.
-    ///
-    /// Use `assume_init` if part of the buffer is known to be already initialized.
+/// Create a new `BorrowedBuf` from an uninitialized buffer.
+///
+/// Use `set_init` if part of the buffer is known to be already initialized.
+impl<'data> From<&'data mut [MaybeUninit<u8>]> for BorrowedBuf<'data> {
     #[inline]
-    pub fn uninit(buf: &'a mut [MaybeUninit<u8>]) -> ReadBuf<'a> {
+    fn from(buf: &'data mut [MaybeUninit<u8>]) -> BorrowedBuf<'data> {
+}
 }
 
+impl<'data> BorrowedBuf<'data> {
     /// Returns the total capacity of the buffer.
     #[inline]
     pub fn capacity(&self) -> usize {
+}
+
+    /// Returns the length of the filled part of the buffer.
+    #[inline]
+    pub fn len(&self) -> usize {
+}
+
+    /// Returns the length of the initialized part of the buffer.
+    #[inline]
+    pub fn init_len(&self) -> usize {
 }
 
     /// Returns a shared reference to the filled portion of the buffer.
@@ -18421,63 +18661,9 @@ impl<'a> ReadBuf<'a> {
     pub fn filled(&self) -> &[u8] {
 }
 
-    /// Returns a mutable reference to the filled portion of the buffer.
+    /// Returns a cursor over the unfilled part of the buffer.
     #[inline]
-    pub fn filled_mut(&mut self) -> &mut [u8] {
-}
-
-    /// Returns a shared reference to the initialized portion of the buffer.
-    ///
-    /// This includes the filled portion.
-    #[inline]
-    pub fn initialized(&self) -> &[u8] {
-}
-
-    /// Returns a mutable reference to the initialized portion of the buffer.
-    ///
-    /// This includes the filled portion.
-    #[inline]
-    pub fn initialized_mut(&mut self) -> &mut [u8] {
-}
-
-    /// Returns a mutable reference to the unfilled part of the buffer without ensuring that it has been fully
-    /// initialized.
-    ///
-    /// # Safety
-    ///
-    /// The caller must not de-initialize portions of the buffer that have already been initialized.
-    #[inline]
-    pub unsafe fn unfilled_mut(&mut self) -> &mut [MaybeUninit<u8>] {
-}
-
-    /// Returns a mutable reference to the uninitialized part of the buffer.
-    ///
-    /// It is safe to uninitialize any of these bytes.
-    #[inline]
-    pub fn uninitialized_mut(&mut self) -> &mut [MaybeUninit<u8>] {
-}
-
-    /// Returns a mutable reference to the unfilled part of the buffer, ensuring it is fully initialized.
-    ///
-    /// Since `ReadBuf` tracks the region of the buffer that has been initialized, this is effectively "free" after
-    /// the first use.
-    #[inline]
-    pub fn initialize_unfilled(&mut self) -> &mut [u8] {
-}
-
-    /// Returns a mutable reference to the first `n` bytes of the unfilled part of the buffer, ensuring it is
-    /// fully initialized.
-    ///
-    /// # Panics
-    ///
-    /// Panics if `self.remaining()` is less than `n`.
-    #[inline]
-    pub fn initialize_unfilled_to(&mut self, n: usize) -> &mut [u8] {
-}
-
-    /// Returns the number of bytes at the end of the slice that have not yet been filled.
-    #[inline]
-    pub fn remaining(&self) -> usize {
+    pub fn unfilled<'this>(&'this mut self) -> BorrowedCursor<'this> {
 }
 
     /// Clears the buffer, resetting the filled region to empty.
@@ -18487,60 +18673,139 @@ impl<'a> ReadBuf<'a> {
     pub fn clear(&mut self) -> &mut Self {
 }
 
-    /// Increases the size of the filled region of the buffer.
+    /// Asserts that the first `n` bytes of the buffer are initialized.
     ///
-    /// The number of initialized bytes is not changed.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the filled region of the buffer would become larger than the initialized region.
-    #[inline]
-    pub fn add_filled(&mut self, n: usize) -> &mut Self {
-}
-
-    /// Sets the size of the filled region of the buffer.
-    ///
-    /// The number of initialized bytes is not changed.
-    ///
-    /// Note that this can be used to *shrink* the filled region of the buffer in addition to growing it (for
-    /// example, by a `Read` implementation that compresses data in-place).
-    ///
-    /// # Panics
-    ///
-    /// Panics if the filled region of the buffer would become larger than the initialized region.
-    #[inline]
-    pub fn set_filled(&mut self, n: usize) -> &mut Self {
-}
-
-    /// Asserts that the first `n` unfilled bytes of the buffer are initialized.
-    ///
-    /// `ReadBuf` assumes that bytes are never de-initialized, so this method does nothing when called with fewer
+    /// `BorrowedBuf` assumes that bytes are never de-initialized, so this method does nothing when called with fewer
     /// bytes than are already known to be initialized.
     ///
     /// # Safety
     ///
     /// The caller must ensure that the first `n` unfilled bytes of the buffer have already been initialized.
     #[inline]
-    pub unsafe fn assume_init(&mut self, n: usize) -> &mut Self {
+    pub unsafe fn set_init(&mut self, n: usize) -> &mut Self {
+}
 }
 
-    /// Appends data to the buffer, advancing the written position and possibly also the initialized position.
+/// A writeable view of the unfilled portion of a [`BorrowedBuf`](BorrowedBuf).
+///
+/// Provides access to the initialized and uninitialized parts of the underlying `BorrowedBuf`.
+/// Data can be written directly to the cursor by using [`append`](BorrowedCursor::append) or
+/// indirectly by getting a slice of part or all of the cursor and writing into the slice. In the
+/// indirect case, the caller must call [`advance`](BorrowedCursor::advance) after writing to inform
+/// the cursor how many bytes have been written.
+///
+/// Once data is written to the cursor, it becomes part of the filled portion of the underlying
+/// `BorrowedBuf` and can no longer be accessed or re-written by the cursor. I.e., the cursor tracks
+/// the unfilled part of the underlying `BorrowedBuf`.
+///
+/// The lifetime `'a` is a bound on the lifetime of the underlying buffer (which means it is a bound
+/// on the data in that buffer by transitivity).
+#[derive(Debug)]
+pub struct BorrowedCursor<'a> {
+    /// The underlying buffer.
+    // Safety invariant: we treat the type of buf as covariant in the lifetime of `BorrowedBuf` when
+    // we create a `BorrowedCursor`. This is only safe if we never replace `buf` by assigning into
+    // it, so don't do that!
+    buf: &'a mut BorrowedBuf<'a>,
+    /// The length of the filled portion of the underlying buffer at the time of the cursor's
+    /// creation.
+    start: usize,
+}
+
+impl<'a> BorrowedCursor<'a> {
+    /// Reborrow this cursor by cloning it with a smaller lifetime.
+    ///
+    /// Since a cursor maintains unique access to its underlying buffer, the borrowed cursor is
+    /// not accessible while the new cursor exists.
+    #[inline]
+    pub fn reborrow<'this>(&'this mut self) -> BorrowedCursor<'this> {
+}
+
+    /// Returns the available space in the cursor.
+    #[inline]
+    pub fn capacity(&self) -> usize {
+}
+
+    /// Returns the number of bytes written to this cursor since it was created from a `BorrowedBuf`.
+    ///
+    /// Note that if this cursor is a reborrowed clone of another, then the count returned is the
+    /// count written via either cursor, not the count since the cursor was reborrowed.
+    #[inline]
+    pub fn written(&self) -> usize {
+}
+
+    /// Returns a shared reference to the initialized portion of the cursor.
+    #[inline]
+    pub fn init_ref(&self) -> &[u8] {
+}
+
+    /// Returns a mutable reference to the initialized portion of the cursor.
+    #[inline]
+    pub fn init_mut(&mut self) -> &mut [u8] {
+}
+
+    /// Returns a mutable reference to the uninitialized part of the cursor.
+    ///
+    /// It is safe to uninitialize any of these bytes.
+    #[inline]
+    pub fn uninit_mut(&mut self) -> &mut [MaybeUninit<u8>] {
+}
+
+    /// Returns a mutable reference to the whole cursor.
+    ///
+    /// # Safety
+    ///
+    /// The caller must not uninitialize any bytes in the initialized portion of the cursor.
+    #[inline]
+    pub unsafe fn as_mut(&mut self) -> &mut [MaybeUninit<u8>] {
+}
+
+    /// Advance the cursor by asserting that `n` bytes have been filled.
+    ///
+    /// After advancing, the `n` bytes are no longer accessible via the cursor and can only be
+    /// accessed via the underlying buffer. I.e., the buffer's filled portion grows by `n` elements
+    /// and its unfilled portion (and the capacity of this cursor) shrinks by `n` elements.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure that the first `n` bytes of the cursor have been properly
+    /// initialised.
+    #[inline]
+    pub unsafe fn advance(&mut self, n: usize) -> &mut Self {
+}
+
+    /// Initializes all bytes in the cursor.
+    #[inline]
+    pub fn ensure_init(&mut self) -> &mut Self {
+}
+
+    /// Asserts that the first `n` unfilled bytes of the cursor are initialized.
+    ///
+    /// `BorrowedBuf` assumes that bytes are never de-initialized, so this method does nothing when
+    /// called with fewer bytes than are already known to be initialized.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure that the first `n` bytes of the buffer have already been initialized.
+    #[inline]
+    pub unsafe fn set_init(&mut self, n: usize) -> &mut Self {
+}
+
+    /// Appends data to the cursor, advancing position within its buffer.
     ///
     /// # Panics
     ///
-    /// Panics if `self.remaining()` is less than `buf.len()`.
+    /// Panics if `self.capacity()` is less than `buf.len()`.
     #[inline]
     pub fn append(&mut self, buf: &[u8]) {
 }
-
-    /// Returns the amount of bytes that have been filled.
-    #[inline]
-    pub fn filled_len(&self) -> usize {
 }
 
-    /// Returns the amount of bytes that have been initialized.
-    #[inline]
-    pub fn initialized_len(&self) -> usize {
+impl<'a> Write for BorrowedCursor<'a> {
+    fn write(&mut self, buf: &[u8]) -> Result<usize> {
+}
+
+    fn flush(&mut self) -> Result<()> {
 }
 }
 }
@@ -18555,8 +18820,8 @@ use crate::io::prelude::*;
 
 use crate::cell::{Cell, RefCell};
 use crate::fmt;
+use crate::fs::File;
 use crate::io::{self, BufReader, IoSlice, IoSliceMut, LineWriter, Lines};
-use crate::pin::Pin;
 use crate::sync::atomic::{AtomicBool, Ordering};
 use crate::sync::{Arc, Mutex, MutexGuard, OnceLock};
 use crate::sys::stdio;
@@ -19016,7 +19281,7 @@ pub struct Stdout {
     // FIXME: this should be LineWriter or BufWriter depending on the state of
     //        stdout (tty or not). Note that if this is not line buffered it
     //        should also flush-on-panic or some form of flush-on-abort.
-    inner: Pin<&'static ReentrantMutex<RefCell<LineWriter<StdoutRaw>>>>,
+    inner: &'static ReentrantMutex<RefCell<LineWriter<StdoutRaw>>>,
 }
 
 /// A locked reference to the [`Stdout`] handle.
@@ -19094,6 +19359,9 @@ static STDOUT: OnceLock<ReentrantMutex<RefCell<LineWriter<StdoutRaw>>>> = OnceLo
 pub fn stdout() -> Stdout {
 }
 
+// Flush the data and disable buffering during shutdown
+// by replacing the line writer by one with zero
+// buffering capacity.
 pub fn cleanup() {
 }
 
@@ -19208,7 +19476,7 @@ impl fmt::Debug for StdoutLock<'_> {
 /// standard library or via raw Windows API calls, will fail.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Stderr {
-    inner: Pin<&'static ReentrantMutex<RefCell<StderrRaw>>>,
+    inner: &'static ReentrantMutex<RefCell<StderrRaw>>,
 }
 
 /// A locked reference to the [`Stderr`] handle.
@@ -19390,17 +19658,42 @@ pub fn set_output_capture(sink: Option<LocalStream>) -> Option<LocalStream> {
 /// otherwise. `label` identifies the stream in a panic message.
 ///
 /// This function is used to print error messages, so it takes extra
-/// care to avoid causing a panic when `local_s` is unusable.
-/// For instance, if the TLS key for the local stream is
-/// already destroyed, or if the local stream is locked by another
-/// thread, it will just fall back to the global stream.
+/// care to avoid causing a panic when `OUTPUT_CAPTURE` is unusable.
+/// For instance, if the TLS key for output capturing is already destroyed, or
+/// if the local stream is in use by another thread, it will just fall back to
+/// the global stream.
 ///
 /// However, if the actual I/O causes an error, this function does panic.
+///
+/// Writing to non-blocking stdout/stderr can cause an error, which will lead
+/// this function to panic.
 fn print_to<T>(args: fmt::Arguments<'_>, global_s: fn() -> T, label: &str)
 where
     T: Write,
 {
 }
+
+fn print_to_buffer_if_capture_used(args: fmt::Arguments<'_>) -> bool {
+}
+
+/// Used by impl Termination for Result to print error after `main` or a test
+/// has returned. Should avoid panicking, although we can't help it if one of
+/// the Display impls inside args decides to.
+pub(crate) fn attempt_print_to_stderr(args: fmt::Arguments<'_>) {
+}
+
+/// Trait to determine if a descriptor/handle refers to a terminal/tty.
+#[unstable(feature = "is_terminal", issue = "98070")]
+pub trait IsTerminal: crate::sealed::Sealed {
+}
+
+macro_rules! impl_is_terminal {
+    ($($t:ty),*$(,)?) => {$(
+        #[unstable(feature = "sealed", issue = "none")]
+        impl crate::sealed::Sealed for $t {}}
+}
+
+impl_is_terminal!(File, Stdin, StdinLock<'_>, Stdout, StdoutLock<'_>, Stderr, StderrLock<'_>);
 
 #[unstable(
     feature = "print_internals",
@@ -19434,7 +19727,7 @@ mod tests {
 
 use crate::fmt;
 use crate::io::{
-    self, BufRead, IoSlice, IoSliceMut, Read, ReadBuf, Seek, SeekFrom, SizeHint, Write,
+    self, BorrowedCursor, BufRead, IoSlice, IoSliceMut, Read, Seek, SeekFrom, SizeHint, Write,
 };
 
 /// A reader which is always at EOF.
@@ -19474,7 +19767,7 @@ impl Read for Empty {
 }
 
     #[inline]
-    fn read_buf(&mut self, _buf: &mut ReadBuf<'_>) -> io::Result<()> {
+    fn read_buf(&mut self, _cursor: BorrowedCursor<'_>) -> io::Result<()> {
 }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -19544,7 +19837,7 @@ impl Read for Repeat {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
 }
 
-    fn read_buf(&mut self, buf: &mut ReadBuf<'_>) -> io::Result<()> {
+    fn read_buf(&mut self, mut buf: BorrowedCursor<'_>) -> io::Result<()> {
 }
 
     #[inline]
@@ -19717,7 +20010,7 @@ where
 pub(crate) fn default_read_exact<R: Read + ?Sized>(this: &mut R, mut buf: &mut [u8]) -> Result<()> {
 }
 
-pub(crate) fn default_read_buf<F>(read: F, buf: &mut ReadBuf<'_>) -> Result<()>
+pub(crate) fn default_read_buf<F>(read: F, mut cursor: BorrowedCursor<'_>) -> Result<()>
 where
     F: FnOnce(&mut [u8]) -> Result<usize>,
 {
@@ -19829,7 +20122,7 @@ pub trait Read {
     /// `n > buf.len()`.
     ///
     /// No guarantees are provided about the contents of `buf` when this
-    /// function is called, implementations cannot rely on any property of the
+    /// function is called, so implementations cannot rely on any property of the
     /// contents of `buf` being true. It is recommended that *implementations*
     /// only write data to `buf` instead of reading its contents.
     ///
@@ -20002,7 +20295,7 @@ pub trait Read {
     /// specified buffer `buf`.
     ///
     /// No guarantees are provided about the contents of `buf` when this
-    /// function is called, implementations cannot rely on any property of the
+    /// function is called, so implementations cannot rely on any property of the
     /// contents of `buf` being true. It is recommended that implementations
     /// only write data to `buf` instead of reading its contents. The
     /// documentation on [`read`] has a more detailed explanation on this
@@ -20052,20 +20345,20 @@ pub trait Read {
 
     /// Pull some bytes from this source into the specified buffer.
     ///
-    /// This is equivalent to the [`read`](Read::read) method, except that it is passed a [`ReadBuf`] rather than `[u8]` to allow use
+    /// This is equivalent to the [`read`](Read::read) method, except that it is passed a [`BorrowedCursor`] rather than `[u8]` to allow use
     /// with uninitialized buffers. The new data will be appended to any existing contents of `buf`.
     ///
     /// The default implementation delegates to `read`.
     #[unstable(feature = "read_buf", issue = "78485")]
-    fn read_buf(&mut self, buf: &mut ReadBuf<'_>) -> Result<()> {
+    fn read_buf(&mut self, buf: BorrowedCursor<'_>) -> Result<()> {
 }
 
-    /// Read the exact number of bytes required to fill `buf`.
+    /// Read the exact number of bytes required to fill `cursor`.
     ///
-    /// This is equivalent to the [`read_exact`](Read::read_exact) method, except that it is passed a [`ReadBuf`] rather than `[u8]` to
+    /// This is equivalent to the [`read_exact`](Read::read_exact) method, except that it is passed a [`BorrowedCursor`] rather than `[u8]` to
     /// allow use with uninitialized buffers.
     #[unstable(feature = "read_buf", issue = "78485")]
-    fn read_buf_exact(&mut self, buf: &mut ReadBuf<'_>) -> Result<()> {
+    fn read_buf_exact(&mut self, mut cursor: BorrowedCursor<'_>) -> Result<()> {
 }
 
     /// Creates a "by reference" adaptor for this instance of `Read`.
@@ -20116,6 +20409,10 @@ pub trait Read {
     /// The yielded item is [`Ok`] if a byte was successfully read and [`Err`]
     /// otherwise. EOF is mapped to returning [`None`] from this iterator.
     ///
+    /// The default implementation calls `read` for each byte,
+    /// which can be very inefficient for data that's not in memory,
+    /// such as [`File`]. Consider using a [`BufReader`] in such cases.
+    ///
     /// # Examples
     ///
     /// [`File`]s implement `Read`:
@@ -20128,10 +20425,11 @@ pub trait Read {
     /// ```no_run
     /// use std::io;
     /// use std::io::prelude::*;
+    /// use std::io::BufReader;
     /// use std::fs::File;
     ///
     /// fn main() -> io::Result<()> {
-    ///     let f = File::open("foo.txt")?;
+    ///     let f = BufReader::new(File::open("foo.txt")?);
     ///
     ///     for byte in f.bytes() {
     ///         println!("{}", byte.unwrap());
@@ -20258,8 +20556,6 @@ pub trait Read {
 /// # Examples
 ///
 /// ```no_run
-/// #![feature(io_read_to_string)]
-///
 /// # use std::io;
 /// fn main() -> io::Result<()> {
 ///     let stdin = io::read_to_string(io::stdin())?;
@@ -20268,7 +20564,7 @@ pub trait Read {
 ///     Ok(())
 /// }
 /// ```
-#[unstable(feature = "io_read_to_string", issue = "80218")]
+#[stable(feature = "io_read_to_string", since = "1.65.0")]
 pub fn read_to_string<R: Read>(mut reader: R) -> Result<String> {
 }
 
@@ -21604,7 +21900,7 @@ impl<T: Read> Read for Take<T> {
     fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
 }
 
-    fn read_buf(&mut self, buf: &mut ReadBuf<'_>) -> Result<()> {
+    fn read_buf(&mut self, mut buf: BorrowedCursor<'_>) -> Result<()> {
 }
 }
 
@@ -21769,11 +22065,11 @@ pub mod net {
 use crate::io::{self, ErrorKind};
 
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use self::addr::{SocketAddr, SocketAddrV4, SocketAddrV6, ToSocketAddrs};
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use self::ip::{IpAddr, Ipv4Addr, Ipv6Addr, Ipv6MulticastScope};
+pub use self::ip_addr::{IpAddr, Ipv4Addr, Ipv6Addr, Ipv6MulticastScope};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::parser::AddrParseError;
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use self::socket_addr::{SocketAddr, SocketAddrV4, SocketAddrV6, ToSocketAddrs};
 #[unstable(feature = "tcplistener_into_incoming", issue = "88339")]
 pub use self::tcp::IntoIncoming;
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -21781,7 +22077,2242 @@ pub use self::tcp::{Incoming, TcpListener, TcpStream};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::udp::UdpSocket;
 
-mod addr {
+mod display_buffer {
+use crate::fmt;
+use crate::mem::MaybeUninit;
+use crate::str;
+
+/// Used for slow path in `Display` implementations when alignment is required.
+pub struct DisplayBuffer<const SIZE: usize> {
+    buf: [MaybeUninit<u8>; SIZE],
+    len: usize,
+}
+
+impl<const SIZE: usize> DisplayBuffer<SIZE> {
+    #[inline]
+    pub const fn new() -> Self {
+}
+
+    #[inline]
+    pub fn as_str(&self) -> &str {
+}
+}
+
+impl<const SIZE: usize> fmt::Write for DisplayBuffer<SIZE> {
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+}
+}
+}
+mod ip_addr {
+// Tests for this module
+#[cfg(all(test, not(target_os = "emscripten")))]
+mod tests {
+use crate::net::test::{sa4, sa6, tsa};
+use crate::net::*;
+use crate::str::FromStr;
+
+#[test]
+fn test_from_str_ipv4() {
+}
+
+#[test]
+fn test_from_str_ipv6() {
+}
+
+#[test]
+fn test_from_str_ipv4_in_ipv6() {
+}
+
+#[test]
+fn test_from_str_socket_addr() {
+}
+
+#[test]
+fn ipv4_addr_to_string() {
+}
+
+#[test]
+fn ipv6_addr_to_string() {
+}
+
+#[test]
+fn ipv4_to_ipv6() {
+}
+
+#[test]
+fn ipv6_to_ipv4_mapped() {
+}
+
+#[test]
+fn ipv6_to_ipv4() {
+}
+
+#[test]
+fn ip_properties() {
+}
+
+#[test]
+fn ipv4_properties() {
+}
+
+#[test]
+fn ipv6_properties() {
+}
+
+#[test]
+fn to_socket_addr_socketaddr() {
+}
+
+#[test]
+fn test_ipv4_to_int() {
+}
+
+#[test]
+fn test_int_to_ipv4() {
+}
+
+#[test]
+fn test_ipv6_to_int() {
+}
+
+#[test]
+fn test_int_to_ipv6() {
+}
+
+#[test]
+fn ipv4_from_constructors() {
+}
+
+#[test]
+fn ipv6_from_constructors() {
+}
+
+#[test]
+fn ipv4_from_octets() {
+}
+
+#[test]
+fn ipv6_from_segments() {
+}
+
+#[test]
+fn ipv6_from_octets() {
+}
+
+#[test]
+fn cmp() {
+}
+
+#[test]
+fn is_v4() {
+}
+
+#[test]
+fn is_v6() {
+}
+
+#[test]
+fn ipv4_const() {
+}
+
+#[test]
+fn ipv6_const() {
+}
+
+#[test]
+fn ip_const() {
+}
+
+#[test]
+fn structural_match() {
+}
+}
+
+use crate::cmp::Ordering;
+use crate::fmt::{self, Write};
+use crate::mem::transmute;
+use crate::sys::net::netc as c;
+use crate::sys_common::{FromInner, IntoInner};
+
+use super::display_buffer::DisplayBuffer;
+
+/// An IP address, either IPv4 or IPv6.
+///
+/// This enum can contain either an [`Ipv4Addr`] or an [`Ipv6Addr`], see their
+/// respective documentation for more details.
+///
+/// # Examples
+///
+/// ```
+/// use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+///
+/// let localhost_v4 = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
+/// let localhost_v6 = IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1));
+///
+/// assert_eq!("127.0.0.1".parse(), Ok(localhost_v4));
+/// assert_eq!("::1".parse(), Ok(localhost_v6));
+///
+/// assert_eq!(localhost_v4.is_ipv6(), false);
+/// assert_eq!(localhost_v4.is_ipv4(), true);
+/// ```
+#[cfg_attr(not(test), rustc_diagnostic_item = "IpAddr")]
+#[stable(feature = "ip_addr", since = "1.7.0")]
+#[derive(Copy, Clone, Eq, PartialEq, Hash, PartialOrd, Ord)]
+pub enum IpAddr {
+    /// An IPv4 address.
+    #[stable(feature = "ip_addr", since = "1.7.0")]
+    V4(#[stable(feature = "ip_addr", since = "1.7.0")] Ipv4Addr),
+    /// An IPv6 address.
+    #[stable(feature = "ip_addr", since = "1.7.0")]
+    V6(#[stable(feature = "ip_addr", since = "1.7.0")] Ipv6Addr),
+}
+
+/// An IPv4 address.
+///
+/// IPv4 addresses are defined as 32-bit integers in [IETF RFC 791].
+/// They are usually represented as four octets.
+///
+/// See [`IpAddr`] for a type encompassing both IPv4 and IPv6 addresses.
+///
+/// [IETF RFC 791]: https://tools.ietf.org/html/rfc791
+///
+/// # Textual representation
+///
+/// `Ipv4Addr` provides a [`FromStr`] implementation. The four octets are in decimal
+/// notation, divided by `.` (this is called "dot-decimal notation").
+/// Notably, octal numbers (which are indicated with a leading `0`) and hexadecimal numbers (which
+/// are indicated with a leading `0x`) are not allowed per [IETF RFC 6943].
+///
+/// [IETF RFC 6943]: https://tools.ietf.org/html/rfc6943#section-3.1.1
+/// [`FromStr`]: crate::str::FromStr
+///
+/// # Examples
+///
+/// ```
+/// use std::net::Ipv4Addr;
+///
+/// let localhost = Ipv4Addr::new(127, 0, 0, 1);
+/// assert_eq!("127.0.0.1".parse(), Ok(localhost));
+/// assert_eq!(localhost.is_loopback(), true);
+/// assert!("012.004.002.000".parse::<Ipv4Addr>().is_err()); // all octets are in octal
+/// assert!("0000000.0.0.0".parse::<Ipv4Addr>().is_err()); // first octet is a zero in octal
+/// assert!("0xcb.0x0.0x71.0x00".parse::<Ipv4Addr>().is_err()); // all octets are in hex
+/// ```
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(not(test), rustc_diagnostic_item = "Ipv4Addr")]
+#[stable(feature = "rust1", since = "1.0.0")]
+pub struct Ipv4Addr {
+    octets: [u8; 4],
+}
+
+/// An IPv6 address.
+///
+/// IPv6 addresses are defined as 128-bit integers in [IETF RFC 4291].
+/// They are usually represented as eight 16-bit segments.
+///
+/// [IETF RFC 4291]: https://tools.ietf.org/html/rfc4291
+///
+/// # Embedding IPv4 Addresses
+///
+/// See [`IpAddr`] for a type encompassing both IPv4 and IPv6 addresses.
+///
+/// To assist in the transition from IPv4 to IPv6 two types of IPv6 addresses that embed an IPv4 address were defined:
+/// IPv4-compatible and IPv4-mapped addresses. Of these IPv4-compatible addresses have been officially deprecated.
+///
+/// Both types of addresses are not assigned any special meaning by this implementation,
+/// other than what the relevant standards prescribe. This means that an address like `::ffff:127.0.0.1`,
+/// while representing an IPv4 loopback address, is not itself an IPv6 loopback address; only `::1` is.
+/// To handle these so called "IPv4-in-IPv6" addresses, they have to first be converted to their canonical IPv4 address.
+///
+/// ### IPv4-Compatible IPv6 Addresses
+///
+/// IPv4-compatible IPv6 addresses are defined in [IETF RFC 4291 Section 2.5.5.1], and have been officially deprecated.
+/// The RFC describes the format of an "IPv4-Compatible IPv6 address" as follows:
+///
+/// ```text
+/// |                80 bits               | 16 |      32 bits        |
+/// +--------------------------------------+--------------------------+
+/// |0000..............................0000|0000|    IPv4 address     |
+/// +--------------------------------------+----+---------------------+
+/// ```
+/// So `::a.b.c.d` would be an IPv4-compatible IPv6 address representing the IPv4 address `a.b.c.d`.
+///
+/// To convert from an IPv4 address to an IPv4-compatible IPv6 address, use [`Ipv4Addr::to_ipv6_compatible`].
+/// Use [`Ipv6Addr::to_ipv4`] to convert an IPv4-compatible IPv6 address to the canonical IPv4 address.
+///
+/// [IETF RFC 4291 Section 2.5.5.1]: https://datatracker.ietf.org/doc/html/rfc4291#section-2.5.5.1
+///
+/// ### IPv4-Mapped IPv6 Addresses
+///
+/// IPv4-mapped IPv6 addresses are defined in [IETF RFC 4291 Section 2.5.5.2].
+/// The RFC describes the format of an "IPv4-Mapped IPv6 address" as follows:
+///
+/// ```text
+/// |                80 bits               | 16 |      32 bits        |
+/// +--------------------------------------+--------------------------+
+/// |0000..............................0000|FFFF|    IPv4 address     |
+/// +--------------------------------------+----+---------------------+
+/// ```
+/// So `::ffff:a.b.c.d` would be an IPv4-mapped IPv6 address representing the IPv4 address `a.b.c.d`.
+///
+/// To convert from an IPv4 address to an IPv4-mapped IPv6 address, use [`Ipv4Addr::to_ipv6_mapped`].
+/// Use [`Ipv6Addr::to_ipv4`] to convert an IPv4-mapped IPv6 address to the canonical IPv4 address.
+/// Note that this will also convert the IPv6 loopback address `::1` to `0.0.0.1`. Use
+/// [`Ipv6Addr::to_ipv4_mapped`] to avoid this.
+///
+/// [IETF RFC 4291 Section 2.5.5.2]: https://datatracker.ietf.org/doc/html/rfc4291#section-2.5.5.2
+///
+/// # Textual representation
+///
+/// `Ipv6Addr` provides a [`FromStr`] implementation. There are many ways to represent
+/// an IPv6 address in text, but in general, each segments is written in hexadecimal
+/// notation, and segments are separated by `:`. For more information, see
+/// [IETF RFC 5952].
+///
+/// [`FromStr`]: crate::str::FromStr
+/// [IETF RFC 5952]: https://tools.ietf.org/html/rfc5952
+///
+/// # Examples
+///
+/// ```
+/// use std::net::Ipv6Addr;
+///
+/// let localhost = Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1);
+/// assert_eq!("::1".parse(), Ok(localhost));
+/// assert_eq!(localhost.is_loopback(), true);
+/// ```
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(not(test), rustc_diagnostic_item = "Ipv6Addr")]
+#[stable(feature = "rust1", since = "1.0.0")]
+pub struct Ipv6Addr {
+    octets: [u8; 16],
+}
+
+/// Scope of an [IPv6 multicast address] as defined in [IETF RFC 7346 section 2].
+///
+/// # Stability Guarantees
+///
+/// Not all possible values for a multicast scope have been assigned.
+/// Future RFCs may introduce new scopes, which will be added as variants to this enum;
+/// because of this the enum is marked as `#[non_exhaustive]`.
+///
+/// # Examples
+/// ```
+/// #![feature(ip)]
+///
+/// use std::net::Ipv6Addr;
+/// use std::net::Ipv6MulticastScope::*;
+///
+/// // An IPv6 multicast address with global scope (`ff0e::`).
+/// let address = Ipv6Addr::new(0xff0e, 0, 0, 0, 0, 0, 0, 0);
+///
+/// // Will print "Global scope".
+/// match address.multicast_scope() {
+///     Some(InterfaceLocal) => println!("Interface-Local scope"),
+///     Some(LinkLocal) => println!("Link-Local scope"),
+///     Some(RealmLocal) => println!("Realm-Local scope"),
+///     Some(AdminLocal) => println!("Admin-Local scope"),
+///     Some(SiteLocal) => println!("Site-Local scope"),
+///     Some(OrganizationLocal) => println!("Organization-Local scope"),
+///     Some(Global) => println!("Global scope"),
+///     Some(_) => println!("Unknown scope"),
+///     None => println!("Not a multicast address!")
+/// }
+///
+/// ```
+///
+/// [IPv6 multicast address]: Ipv6Addr
+/// [IETF RFC 7346 section 2]: https://tools.ietf.org/html/rfc7346#section-2
+#[derive(Copy, PartialEq, Eq, Clone, Hash, Debug)]
+#[unstable(feature = "ip", issue = "27709")]
+#[non_exhaustive]
+pub enum Ipv6MulticastScope {
+}
+
+impl IpAddr {
+    /// Returns [`true`] for the special 'unspecified' address.
+    ///
+    /// See the documentation for [`Ipv4Addr::is_unspecified()`] and
+    /// [`Ipv6Addr::is_unspecified()`] for more details.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+    ///
+    /// assert_eq!(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)).is_unspecified(), true);
+    /// assert_eq!(IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0)).is_unspecified(), true);
+    /// ```
+    #[rustc_const_stable(feature = "const_ip_50", since = "1.50.0")]
+    #[stable(feature = "ip_shared", since = "1.12.0")]
+    #[must_use]
+    #[inline]
+    pub const fn is_unspecified(&self) -> bool {
+}
+
+    /// Returns [`true`] if this is a loopback address.
+    ///
+    /// See the documentation for [`Ipv4Addr::is_loopback()`] and
+    /// [`Ipv6Addr::is_loopback()`] for more details.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+    ///
+    /// assert_eq!(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)).is_loopback(), true);
+    /// assert_eq!(IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0x1)).is_loopback(), true);
+    /// ```
+    #[rustc_const_stable(feature = "const_ip_50", since = "1.50.0")]
+    #[stable(feature = "ip_shared", since = "1.12.0")]
+    #[must_use]
+    #[inline]
+    pub const fn is_loopback(&self) -> bool {
+}
+
+    /// Returns [`true`] if the address appears to be globally routable.
+    ///
+    /// See the documentation for [`Ipv4Addr::is_global()`] and
+    /// [`Ipv6Addr::is_global()`] for more details.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ip)]
+    ///
+    /// use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+    ///
+    /// assert_eq!(IpAddr::V4(Ipv4Addr::new(80, 9, 12, 3)).is_global(), true);
+    /// assert_eq!(IpAddr::V6(Ipv6Addr::new(0, 0, 0x1c9, 0, 0, 0xafc8, 0, 0x1)).is_global(), true);
+    /// ```
+    #[rustc_const_unstable(feature = "const_ip", issue = "76205")]
+    #[unstable(feature = "ip", issue = "27709")]
+    #[must_use]
+    #[inline]
+    pub const fn is_global(&self) -> bool {
+}
+
+    /// Returns [`true`] if this is a multicast address.
+    ///
+    /// See the documentation for [`Ipv4Addr::is_multicast()`] and
+    /// [`Ipv6Addr::is_multicast()`] for more details.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+    ///
+    /// assert_eq!(IpAddr::V4(Ipv4Addr::new(224, 254, 0, 0)).is_multicast(), true);
+    /// assert_eq!(IpAddr::V6(Ipv6Addr::new(0xff00, 0, 0, 0, 0, 0, 0, 0)).is_multicast(), true);
+    /// ```
+    #[rustc_const_stable(feature = "const_ip_50", since = "1.50.0")]
+    #[stable(feature = "ip_shared", since = "1.12.0")]
+    #[must_use]
+    #[inline]
+    pub const fn is_multicast(&self) -> bool {
+}
+
+    /// Returns [`true`] if this address is in a range designated for documentation.
+    ///
+    /// See the documentation for [`Ipv4Addr::is_documentation()`] and
+    /// [`Ipv6Addr::is_documentation()`] for more details.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ip)]
+    ///
+    /// use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+    ///
+    /// assert_eq!(IpAddr::V4(Ipv4Addr::new(203, 0, 113, 6)).is_documentation(), true);
+    /// assert_eq!(
+    ///     IpAddr::V6(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 0)).is_documentation(),
+    ///     true
+    /// );
+    /// ```
+    #[rustc_const_unstable(feature = "const_ip", issue = "76205")]
+    #[unstable(feature = "ip", issue = "27709")]
+    #[must_use]
+    #[inline]
+    pub const fn is_documentation(&self) -> bool {
+}
+
+    /// Returns [`true`] if this address is in a range designated for benchmarking.
+    ///
+    /// See the documentation for [`Ipv4Addr::is_benchmarking()`] and
+    /// [`Ipv6Addr::is_benchmarking()`] for more details.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ip)]
+    ///
+    /// use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+    ///
+    /// assert_eq!(IpAddr::V4(Ipv4Addr::new(198, 19, 255, 255)).is_benchmarking(), true);
+    /// assert_eq!(IpAddr::V6(Ipv6Addr::new(0x2001, 0x2, 0, 0, 0, 0, 0, 0)).is_benchmarking(), true);
+    /// ```
+    #[unstable(feature = "ip", issue = "27709")]
+    #[must_use]
+    #[inline]
+    pub const fn is_benchmarking(&self) -> bool {
+}
+
+    /// Returns [`true`] if this address is an [`IPv4` address], and [`false`]
+    /// otherwise.
+    ///
+    /// [`IPv4` address]: IpAddr::V4
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+    ///
+    /// assert_eq!(IpAddr::V4(Ipv4Addr::new(203, 0, 113, 6)).is_ipv4(), true);
+    /// assert_eq!(IpAddr::V6(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 0)).is_ipv4(), false);
+    /// ```
+    #[rustc_const_stable(feature = "const_ip_50", since = "1.50.0")]
+    #[stable(feature = "ipaddr_checker", since = "1.16.0")]
+    #[must_use]
+    #[inline]
+    pub const fn is_ipv4(&self) -> bool {
+}
+
+    /// Returns [`true`] if this address is an [`IPv6` address], and [`false`]
+    /// otherwise.
+    ///
+    /// [`IPv6` address]: IpAddr::V6
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+    ///
+    /// assert_eq!(IpAddr::V4(Ipv4Addr::new(203, 0, 113, 6)).is_ipv6(), false);
+    /// assert_eq!(IpAddr::V6(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 0)).is_ipv6(), true);
+    /// ```
+    #[rustc_const_stable(feature = "const_ip_50", since = "1.50.0")]
+    #[stable(feature = "ipaddr_checker", since = "1.16.0")]
+    #[must_use]
+    #[inline]
+    pub const fn is_ipv6(&self) -> bool {
+}
+
+    /// Converts this address to an `IpAddr::V4` if it is an IPv4-mapped IPv6 addresses, otherwise it
+    /// return `self` as-is.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ip)]
+    /// use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+    ///
+    /// assert_eq!(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)).to_canonical().is_loopback(), true);
+    /// assert_eq!(IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0x7f00, 0x1)).is_loopback(), false);
+    /// assert_eq!(IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0x7f00, 0x1)).to_canonical().is_loopback(), true);
+    /// ```
+    #[inline]
+    #[must_use = "this returns the result of the operation, \
+                  without modifying the original"]
+    #[rustc_const_unstable(feature = "const_ip", issue = "76205")]
+    #[unstable(feature = "ip", issue = "27709")]
+    pub const fn to_canonical(&self) -> IpAddr {
+}
+}
+
+impl Ipv4Addr {
+    /// Creates a new IPv4 address from four eight-bit octets.
+    ///
+    /// The result will represent the IP address `a`.`b`.`c`.`d`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::Ipv4Addr;
+    ///
+    /// let addr = Ipv4Addr::new(127, 0, 0, 1);
+    /// ```
+    #[rustc_const_stable(feature = "const_ip_32", since = "1.32.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[must_use]
+    #[inline]
+    pub const fn new(a: u8, b: u8, c: u8, d: u8) -> Ipv4Addr {
+}
+
+    /// An IPv4 address with the address pointing to localhost: `127.0.0.1`
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::Ipv4Addr;
+    ///
+    /// let addr = Ipv4Addr::LOCALHOST;
+    /// assert_eq!(addr, Ipv4Addr::new(127, 0, 0, 1));
+    /// ```
+    #[stable(feature = "ip_constructors", since = "1.30.0")]
+    pub const LOCALHOST: Self = Ipv4Addr::new(127, 0, 0, 1);
+
+    /// An IPv4 address representing an unspecified address: `0.0.0.0`
+    ///
+    /// This corresponds to the constant `INADDR_ANY` in other languages.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::Ipv4Addr;
+    ///
+    /// let addr = Ipv4Addr::UNSPECIFIED;
+    /// assert_eq!(addr, Ipv4Addr::new(0, 0, 0, 0));
+    /// ```
+    #[doc(alias = "INADDR_ANY")]
+    #[stable(feature = "ip_constructors", since = "1.30.0")]
+    pub const UNSPECIFIED: Self = Ipv4Addr::new(0, 0, 0, 0);
+
+    /// An IPv4 address representing the broadcast address: `255.255.255.255`
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::Ipv4Addr;
+    ///
+    /// let addr = Ipv4Addr::BROADCAST;
+    /// assert_eq!(addr, Ipv4Addr::new(255, 255, 255, 255));
+    /// ```
+    #[stable(feature = "ip_constructors", since = "1.30.0")]
+    pub const BROADCAST: Self = Ipv4Addr::new(255, 255, 255, 255);
+
+    /// Returns the four eight-bit integers that make up this address.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::Ipv4Addr;
+    ///
+    /// let addr = Ipv4Addr::new(127, 0, 0, 1);
+    /// assert_eq!(addr.octets(), [127, 0, 0, 1]);
+    /// ```
+    #[rustc_const_stable(feature = "const_ip_50", since = "1.50.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[must_use]
+    #[inline]
+    pub const fn octets(&self) -> [u8; 4] {
+}
+
+    /// Returns [`true`] for the special 'unspecified' address (`0.0.0.0`).
+    ///
+    /// This property is defined in _UNIX Network Programming, Second Edition_,
+    /// W. Richard Stevens, p. 891; see also [ip7].
+    ///
+    /// [ip7]: https://man7.org/linux/man-pages/man7/ip.7.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::Ipv4Addr;
+    ///
+    /// assert_eq!(Ipv4Addr::new(0, 0, 0, 0).is_unspecified(), true);
+    /// assert_eq!(Ipv4Addr::new(45, 22, 13, 197).is_unspecified(), false);
+    /// ```
+    #[rustc_const_stable(feature = "const_ip_32", since = "1.32.0")]
+    #[stable(feature = "ip_shared", since = "1.12.0")]
+    #[must_use]
+    #[inline]
+    pub const fn is_unspecified(&self) -> bool {
+}
+
+    /// Returns [`true`] if this is a loopback address (`127.0.0.0/8`).
+    ///
+    /// This property is defined by [IETF RFC 1122].
+    ///
+    /// [IETF RFC 1122]: https://tools.ietf.org/html/rfc1122
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::Ipv4Addr;
+    ///
+    /// assert_eq!(Ipv4Addr::new(127, 0, 0, 1).is_loopback(), true);
+    /// assert_eq!(Ipv4Addr::new(45, 22, 13, 197).is_loopback(), false);
+    /// ```
+    #[rustc_const_stable(feature = "const_ip_50", since = "1.50.0")]
+    #[stable(since = "1.7.0", feature = "ip_17")]
+    #[must_use]
+    #[inline]
+    pub const fn is_loopback(&self) -> bool {
+}
+
+    /// Returns [`true`] if this is a private address.
+    ///
+    /// The private address ranges are defined in [IETF RFC 1918] and include:
+    ///
+    ///  - `10.0.0.0/8`
+    ///  - `172.16.0.0/12`
+    ///  - `192.168.0.0/16`
+    ///
+    /// [IETF RFC 1918]: https://tools.ietf.org/html/rfc1918
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::Ipv4Addr;
+    ///
+    /// assert_eq!(Ipv4Addr::new(10, 0, 0, 1).is_private(), true);
+    /// assert_eq!(Ipv4Addr::new(10, 10, 10, 10).is_private(), true);
+    /// assert_eq!(Ipv4Addr::new(172, 16, 10, 10).is_private(), true);
+    /// assert_eq!(Ipv4Addr::new(172, 29, 45, 14).is_private(), true);
+    /// assert_eq!(Ipv4Addr::new(172, 32, 0, 2).is_private(), false);
+    /// assert_eq!(Ipv4Addr::new(192, 168, 0, 2).is_private(), true);
+    /// assert_eq!(Ipv4Addr::new(192, 169, 0, 2).is_private(), false);
+    /// ```
+    #[rustc_const_stable(feature = "const_ip_50", since = "1.50.0")]
+    #[stable(since = "1.7.0", feature = "ip_17")]
+    #[must_use]
+    #[inline]
+    pub const fn is_private(&self) -> bool {
+}
+
+    /// Returns [`true`] if the address is link-local (`169.254.0.0/16`).
+    ///
+    /// This property is defined by [IETF RFC 3927].
+    ///
+    /// [IETF RFC 3927]: https://tools.ietf.org/html/rfc3927
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::Ipv4Addr;
+    ///
+    /// assert_eq!(Ipv4Addr::new(169, 254, 0, 0).is_link_local(), true);
+    /// assert_eq!(Ipv4Addr::new(169, 254, 10, 65).is_link_local(), true);
+    /// assert_eq!(Ipv4Addr::new(16, 89, 10, 65).is_link_local(), false);
+    /// ```
+    #[rustc_const_stable(feature = "const_ip_50", since = "1.50.0")]
+    #[stable(since = "1.7.0", feature = "ip_17")]
+    #[must_use]
+    #[inline]
+    pub const fn is_link_local(&self) -> bool {
+}
+
+    /// Returns [`true`] if the address appears to be globally reachable
+    /// as specified by the [IANA IPv4 Special-Purpose Address Registry].
+    /// Whether or not an address is practically reachable will depend on your network configuration.
+    ///
+    /// Most IPv4 addresses are globally reachable;
+    /// unless they are specifically defined as *not* globally reachable.
+    ///
+    /// Non-exhaustive list of notable addresses that are not globally reachable:
+    ///
+    /// - The [unspecified address] ([`is_unspecified`](Ipv4Addr::is_unspecified))
+    /// - Addresses reserved for private use ([`is_private`](Ipv4Addr::is_private))
+    /// - Addresses in the shared address space ([`is_shared`](Ipv4Addr::is_shared))
+    /// - Loopback addresses ([`is_loopback`](Ipv4Addr::is_loopback))
+    /// - Link-local addresses ([`is_link_local`](Ipv4Addr::is_link_local))
+    /// - Addresses reserved for documentation ([`is_documentation`](Ipv4Addr::is_documentation))
+    /// - Addresses reserved for benchmarking ([`is_benchmarking`](Ipv4Addr::is_benchmarking))
+    /// - Reserved addresses ([`is_reserved`](Ipv4Addr::is_reserved))
+    /// - The [broadcast address] ([`is_broadcast`](Ipv4Addr::is_broadcast))
+    ///
+    /// For the complete overview of which addresses are globally reachable, see the table at the [IANA IPv4 Special-Purpose Address Registry].
+    ///
+    /// [IANA IPv4 Special-Purpose Address Registry]: https://www.iana.org/assignments/iana-ipv4-special-registry/iana-ipv4-special-registry.xhtml
+    /// [unspecified address]: Ipv4Addr::UNSPECIFIED
+    /// [broadcast address]: Ipv4Addr::BROADCAST
+
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ip)]
+    ///
+    /// use std::net::Ipv4Addr;
+    ///
+    /// // Most IPv4 addresses are globally reachable:
+    /// assert_eq!(Ipv4Addr::new(80, 9, 12, 3).is_global(), true);
+    ///
+    /// // However some addresses have been assigned a special meaning
+    /// // that makes them not globally reachable. Some examples are:
+    ///
+    /// // The unspecified address (`0.0.0.0`)
+    /// assert_eq!(Ipv4Addr::UNSPECIFIED.is_global(), false);
+    ///
+    /// // Addresses reserved for private use (`10.0.0.0/8`, `172.16.0.0/12`, 192.168.0.0/16)
+    /// assert_eq!(Ipv4Addr::new(10, 254, 0, 0).is_global(), false);
+    /// assert_eq!(Ipv4Addr::new(192, 168, 10, 65).is_global(), false);
+    /// assert_eq!(Ipv4Addr::new(172, 16, 10, 65).is_global(), false);
+    ///
+    /// // Addresses in the shared address space (`100.64.0.0/10`)
+    /// assert_eq!(Ipv4Addr::new(100, 100, 0, 0).is_global(), false);
+    ///
+    /// // The loopback addresses (`127.0.0.0/8`)
+    /// assert_eq!(Ipv4Addr::LOCALHOST.is_global(), false);
+    ///
+    /// // Link-local addresses (`169.254.0.0/16`)
+    /// assert_eq!(Ipv4Addr::new(169, 254, 45, 1).is_global(), false);
+    ///
+    /// // Addresses reserved for documentation (`192.0.2.0/24`, `198.51.100.0/24`, `203.0.113.0/24`)
+    /// assert_eq!(Ipv4Addr::new(192, 0, 2, 255).is_global(), false);
+    /// assert_eq!(Ipv4Addr::new(198, 51, 100, 65).is_global(), false);
+    /// assert_eq!(Ipv4Addr::new(203, 0, 113, 6).is_global(), false);
+    ///
+    /// // Addresses reserved for benchmarking (`198.18.0.0/15`)
+    /// assert_eq!(Ipv4Addr::new(198, 18, 0, 0).is_global(), false);
+    ///
+    /// // Reserved addresses (`240.0.0.0/4`)
+    /// assert_eq!(Ipv4Addr::new(250, 10, 20, 30).is_global(), false);
+    ///
+    /// // The broadcast address (`255.255.255.255`)
+    /// assert_eq!(Ipv4Addr::BROADCAST.is_global(), false);
+    ///
+    /// // For a complete overview see the IANA IPv4 Special-Purpose Address Registry.
+    /// ```
+    #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
+    #[unstable(feature = "ip", issue = "27709")]
+    #[must_use]
+    #[inline]
+    pub const fn is_global(&self) -> bool {
+}
+
+    /// Returns [`true`] if this address is part of the Shared Address Space defined in
+    /// [IETF RFC 6598] (`100.64.0.0/10`).
+    ///
+    /// [IETF RFC 6598]: https://tools.ietf.org/html/rfc6598
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ip)]
+    /// use std::net::Ipv4Addr;
+    ///
+    /// assert_eq!(Ipv4Addr::new(100, 64, 0, 0).is_shared(), true);
+    /// assert_eq!(Ipv4Addr::new(100, 127, 255, 255).is_shared(), true);
+    /// assert_eq!(Ipv4Addr::new(100, 128, 0, 0).is_shared(), false);
+    /// ```
+    #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
+    #[unstable(feature = "ip", issue = "27709")]
+    #[must_use]
+    #[inline]
+    pub const fn is_shared(&self) -> bool {
+}
+
+    /// Returns [`true`] if this address part of the `198.18.0.0/15` range, which is reserved for
+    /// network devices benchmarking. This range is defined in [IETF RFC 2544] as `192.18.0.0`
+    /// through `198.19.255.255` but [errata 423] corrects it to `198.18.0.0/15`.
+    ///
+    /// [IETF RFC 2544]: https://tools.ietf.org/html/rfc2544
+    /// [errata 423]: https://www.rfc-editor.org/errata/eid423
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ip)]
+    /// use std::net::Ipv4Addr;
+    ///
+    /// assert_eq!(Ipv4Addr::new(198, 17, 255, 255).is_benchmarking(), false);
+    /// assert_eq!(Ipv4Addr::new(198, 18, 0, 0).is_benchmarking(), true);
+    /// assert_eq!(Ipv4Addr::new(198, 19, 255, 255).is_benchmarking(), true);
+    /// assert_eq!(Ipv4Addr::new(198, 20, 0, 0).is_benchmarking(), false);
+    /// ```
+    #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
+    #[unstable(feature = "ip", issue = "27709")]
+    #[must_use]
+    #[inline]
+    pub const fn is_benchmarking(&self) -> bool {
+}
+
+    /// Returns [`true`] if this address is reserved by IANA for future use. [IETF RFC 1112]
+    /// defines the block of reserved addresses as `240.0.0.0/4`. This range normally includes the
+    /// broadcast address `255.255.255.255`, but this implementation explicitly excludes it, since
+    /// it is obviously not reserved for future use.
+    ///
+    /// [IETF RFC 1112]: https://tools.ietf.org/html/rfc1112
+    ///
+    /// # Warning
+    ///
+    /// As IANA assigns new addresses, this method will be
+    /// updated. This may result in non-reserved addresses being
+    /// treated as reserved in code that relies on an outdated version
+    /// of this method.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ip)]
+    /// use std::net::Ipv4Addr;
+    ///
+    /// assert_eq!(Ipv4Addr::new(240, 0, 0, 0).is_reserved(), true);
+    /// assert_eq!(Ipv4Addr::new(255, 255, 255, 254).is_reserved(), true);
+    ///
+    /// assert_eq!(Ipv4Addr::new(239, 255, 255, 255).is_reserved(), false);
+    /// // The broadcast address is not considered as reserved for future use by this implementation
+    /// assert_eq!(Ipv4Addr::new(255, 255, 255, 255).is_reserved(), false);
+    /// ```
+    #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
+    #[unstable(feature = "ip", issue = "27709")]
+    #[must_use]
+    #[inline]
+    pub const fn is_reserved(&self) -> bool {
+}
+
+    /// Returns [`true`] if this is a multicast address (`224.0.0.0/4`).
+    ///
+    /// Multicast addresses have a most significant octet between `224` and `239`,
+    /// and is defined by [IETF RFC 5771].
+    ///
+    /// [IETF RFC 5771]: https://tools.ietf.org/html/rfc5771
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::Ipv4Addr;
+    ///
+    /// assert_eq!(Ipv4Addr::new(224, 254, 0, 0).is_multicast(), true);
+    /// assert_eq!(Ipv4Addr::new(236, 168, 10, 65).is_multicast(), true);
+    /// assert_eq!(Ipv4Addr::new(172, 16, 10, 65).is_multicast(), false);
+    /// ```
+    #[rustc_const_stable(feature = "const_ip_50", since = "1.50.0")]
+    #[stable(since = "1.7.0", feature = "ip_17")]
+    #[must_use]
+    #[inline]
+    pub const fn is_multicast(&self) -> bool {
+}
+
+    /// Returns [`true`] if this is a broadcast address (`255.255.255.255`).
+    ///
+    /// A broadcast address has all octets set to `255` as defined in [IETF RFC 919].
+    ///
+    /// [IETF RFC 919]: https://tools.ietf.org/html/rfc919
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::Ipv4Addr;
+    ///
+    /// assert_eq!(Ipv4Addr::new(255, 255, 255, 255).is_broadcast(), true);
+    /// assert_eq!(Ipv4Addr::new(236, 168, 10, 65).is_broadcast(), false);
+    /// ```
+    #[rustc_const_stable(feature = "const_ip_50", since = "1.50.0")]
+    #[stable(since = "1.7.0", feature = "ip_17")]
+    #[must_use]
+    #[inline]
+    pub const fn is_broadcast(&self) -> bool {
+}
+
+    /// Returns [`true`] if this address is in a range designated for documentation.
+    ///
+    /// This is defined in [IETF RFC 5737]:
+    ///
+    /// - `192.0.2.0/24` (TEST-NET-1)
+    /// - `198.51.100.0/24` (TEST-NET-2)
+    /// - `203.0.113.0/24` (TEST-NET-3)
+    ///
+    /// [IETF RFC 5737]: https://tools.ietf.org/html/rfc5737
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::Ipv4Addr;
+    ///
+    /// assert_eq!(Ipv4Addr::new(192, 0, 2, 255).is_documentation(), true);
+    /// assert_eq!(Ipv4Addr::new(198, 51, 100, 65).is_documentation(), true);
+    /// assert_eq!(Ipv4Addr::new(203, 0, 113, 6).is_documentation(), true);
+    /// assert_eq!(Ipv4Addr::new(193, 34, 17, 19).is_documentation(), false);
+    /// ```
+    #[rustc_const_stable(feature = "const_ip_50", since = "1.50.0")]
+    #[stable(since = "1.7.0", feature = "ip_17")]
+    #[must_use]
+    #[inline]
+    pub const fn is_documentation(&self) -> bool {
+}
+
+    /// Converts this address to an [IPv4-compatible] [`IPv6` address].
+    ///
+    /// `a.b.c.d` becomes `::a.b.c.d`
+    ///
+    /// Note that IPv4-compatible addresses have been officially deprecated.
+    /// If you don't explicitly need an IPv4-compatible address for legacy reasons, consider using `to_ipv6_mapped` instead.
+    ///
+    /// [IPv4-compatible]: Ipv6Addr#ipv4-compatible-ipv6-addresses
+    /// [`IPv6` address]: Ipv6Addr
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::{Ipv4Addr, Ipv6Addr};
+    ///
+    /// assert_eq!(
+    ///     Ipv4Addr::new(192, 0, 2, 255).to_ipv6_compatible(),
+    ///     Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0xc000, 0x2ff)
+    /// );
+    /// ```
+    #[rustc_const_stable(feature = "const_ip_50", since = "1.50.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[must_use = "this returns the result of the operation, \
+                  without modifying the original"]
+    #[inline]
+    pub const fn to_ipv6_compatible(&self) -> Ipv6Addr {
+}
+
+    /// Converts this address to an [IPv4-mapped] [`IPv6` address].
+    ///
+    /// `a.b.c.d` becomes `::ffff:a.b.c.d`
+    ///
+    /// [IPv4-mapped]: Ipv6Addr#ipv4-mapped-ipv6-addresses
+    /// [`IPv6` address]: Ipv6Addr
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::{Ipv4Addr, Ipv6Addr};
+    ///
+    /// assert_eq!(Ipv4Addr::new(192, 0, 2, 255).to_ipv6_mapped(),
+    ///            Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc000, 0x2ff));
+    /// ```
+    #[rustc_const_stable(feature = "const_ip_50", since = "1.50.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[must_use = "this returns the result of the operation, \
+                  without modifying the original"]
+    #[inline]
+    pub const fn to_ipv6_mapped(&self) -> Ipv6Addr {
+}
+}
+
+#[stable(feature = "ip_addr", since = "1.7.0")]
+impl fmt::Display for IpAddr {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
+}
+
+#[stable(feature = "ip_addr", since = "1.7.0")]
+impl fmt::Debug for IpAddr {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
+}
+
+#[stable(feature = "ip_from_ip", since = "1.16.0")]
+impl From<Ipv4Addr> for IpAddr {
+    /// Copies this address to a new `IpAddr::V4`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::{IpAddr, Ipv4Addr};
+    ///
+    /// let addr = Ipv4Addr::new(127, 0, 0, 1);
+    ///
+    /// assert_eq!(
+    ///     IpAddr::V4(addr),
+    ///     IpAddr::from(addr)
+    /// )
+    /// ```
+    #[inline]
+    fn from(ipv4: Ipv4Addr) -> IpAddr {
+}
+}
+
+#[stable(feature = "ip_from_ip", since = "1.16.0")]
+impl From<Ipv6Addr> for IpAddr {
+    /// Copies this address to a new `IpAddr::V6`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::{IpAddr, Ipv6Addr};
+    ///
+    /// let addr = Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff);
+    ///
+    /// assert_eq!(
+    ///     IpAddr::V6(addr),
+    ///     IpAddr::from(addr)
+    /// );
+    /// ```
+    #[inline]
+    fn from(ipv6: Ipv6Addr) -> IpAddr {
+}
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl fmt::Display for Ipv4Addr {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl fmt::Debug for Ipv4Addr {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
+}
+
+#[stable(feature = "ip_cmp", since = "1.16.0")]
+impl PartialEq<Ipv4Addr> for IpAddr {
+    #[inline]
+    fn eq(&self, other: &Ipv4Addr) -> bool {
+}
+}
+
+#[stable(feature = "ip_cmp", since = "1.16.0")]
+impl PartialEq<IpAddr> for Ipv4Addr {
+    #[inline]
+    fn eq(&self, other: &IpAddr) -> bool {
+}
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl PartialOrd for Ipv4Addr {
+    #[inline]
+    fn partial_cmp(&self, other: &Ipv4Addr) -> Option<Ordering> {
+}
+}
+
+#[stable(feature = "ip_cmp", since = "1.16.0")]
+impl PartialOrd<Ipv4Addr> for IpAddr {
+    #[inline]
+    fn partial_cmp(&self, other: &Ipv4Addr) -> Option<Ordering> {
+}
+}
+
+#[stable(feature = "ip_cmp", since = "1.16.0")]
+impl PartialOrd<IpAddr> for Ipv4Addr {
+    #[inline]
+    fn partial_cmp(&self, other: &IpAddr) -> Option<Ordering> {
+}
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Ord for Ipv4Addr {
+    #[inline]
+    fn cmp(&self, other: &Ipv4Addr) -> Ordering {
+}
+}
+
+impl IntoInner<c::in_addr> for Ipv4Addr {
+    #[inline]
+    fn into_inner(self) -> c::in_addr {
+}
+}
+impl FromInner<c::in_addr> for Ipv4Addr {
+    fn from_inner(addr: c::in_addr) -> Ipv4Addr {
+}
+}
+
+#[stable(feature = "ip_u32", since = "1.1.0")]
+impl From<Ipv4Addr> for u32 {
+    /// Converts an `Ipv4Addr` into a host byte order `u32`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::Ipv4Addr;
+    ///
+    /// let addr = Ipv4Addr::new(0x12, 0x34, 0x56, 0x78);
+    /// assert_eq!(0x12345678, u32::from(addr));
+    /// ```
+    #[inline]
+    fn from(ip: Ipv4Addr) -> u32 {
+}
+}
+
+#[stable(feature = "ip_u32", since = "1.1.0")]
+impl From<u32> for Ipv4Addr {
+    /// Converts a host byte order `u32` into an `Ipv4Addr`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::Ipv4Addr;
+    ///
+    /// let addr = Ipv4Addr::from(0x12345678);
+    /// assert_eq!(Ipv4Addr::new(0x12, 0x34, 0x56, 0x78), addr);
+    /// ```
+    #[inline]
+    fn from(ip: u32) -> Ipv4Addr {
+}
+}
+
+#[stable(feature = "from_slice_v4", since = "1.9.0")]
+impl From<[u8; 4]> for Ipv4Addr {
+    /// Creates an `Ipv4Addr` from a four element byte array.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::Ipv4Addr;
+    ///
+    /// let addr = Ipv4Addr::from([13u8, 12u8, 11u8, 10u8]);
+    /// assert_eq!(Ipv4Addr::new(13, 12, 11, 10), addr);
+    /// ```
+    #[inline]
+    fn from(octets: [u8; 4]) -> Ipv4Addr {
+}
+}
+
+#[stable(feature = "ip_from_slice", since = "1.17.0")]
+impl From<[u8; 4]> for IpAddr {
+    /// Creates an `IpAddr::V4` from a four element byte array.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::{IpAddr, Ipv4Addr};
+    ///
+    /// let addr = IpAddr::from([13u8, 12u8, 11u8, 10u8]);
+    /// assert_eq!(IpAddr::V4(Ipv4Addr::new(13, 12, 11, 10)), addr);
+    /// ```
+    #[inline]
+    fn from(octets: [u8; 4]) -> IpAddr {
+}
+}
+
+impl Ipv6Addr {
+    /// Creates a new IPv6 address from eight 16-bit segments.
+    ///
+    /// The result will represent the IP address `a:b:c:d:e:f:g:h`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::Ipv6Addr;
+    ///
+    /// let addr = Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff);
+    /// ```
+    #[rustc_const_stable(feature = "const_ip_32", since = "1.32.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[must_use]
+    #[inline]
+    pub const fn new(a: u16, b: u16, c: u16, d: u16, e: u16, f: u16, g: u16, h: u16) -> Ipv6Addr {
+}
+
+    /// An IPv6 address representing localhost: `::1`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::Ipv6Addr;
+    ///
+    /// let addr = Ipv6Addr::LOCALHOST;
+    /// assert_eq!(addr, Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1));
+    /// ```
+    #[stable(feature = "ip_constructors", since = "1.30.0")]
+    pub const LOCALHOST: Self = Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1);
+
+    /// An IPv6 address representing the unspecified address: `::`
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::Ipv6Addr;
+    ///
+    /// let addr = Ipv6Addr::UNSPECIFIED;
+    /// assert_eq!(addr, Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0));
+    /// ```
+    #[stable(feature = "ip_constructors", since = "1.30.0")]
+    pub const UNSPECIFIED: Self = Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0);
+
+    /// Returns the eight 16-bit segments that make up this address.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::Ipv6Addr;
+    ///
+    /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).segments(),
+    ///            [0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff]);
+    /// ```
+    #[rustc_const_stable(feature = "const_ip_50", since = "1.50.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[must_use]
+    #[inline]
+    pub const fn segments(&self) -> [u16; 8] {
+}
+
+    /// Returns [`true`] for the special 'unspecified' address (`::`).
+    ///
+    /// This property is defined in [IETF RFC 4291].
+    ///
+    /// [IETF RFC 4291]: https://tools.ietf.org/html/rfc4291
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::Ipv6Addr;
+    ///
+    /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).is_unspecified(), false);
+    /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0).is_unspecified(), true);
+    /// ```
+    #[rustc_const_stable(feature = "const_ip_50", since = "1.50.0")]
+    #[stable(since = "1.7.0", feature = "ip_17")]
+    #[must_use]
+    #[inline]
+    pub const fn is_unspecified(&self) -> bool {
+}
+
+    /// Returns [`true`] if this is the [loopback address] (`::1`),
+    /// as defined in [IETF RFC 4291 section 2.5.3].
+    ///
+    /// Contrary to IPv4, in IPv6 there is only one loopback address.
+    ///
+    /// [loopback address]: Ipv6Addr::LOCALHOST
+    /// [IETF RFC 4291 section 2.5.3]: https://tools.ietf.org/html/rfc4291#section-2.5.3
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::Ipv6Addr;
+    ///
+    /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).is_loopback(), false);
+    /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0x1).is_loopback(), true);
+    /// ```
+    #[rustc_const_stable(feature = "const_ip_50", since = "1.50.0")]
+    #[stable(since = "1.7.0", feature = "ip_17")]
+    #[must_use]
+    #[inline]
+    pub const fn is_loopback(&self) -> bool {
+}
+
+    /// Returns [`true`] if the address appears to be globally reachable
+    /// as specified by the [IANA IPv6 Special-Purpose Address Registry].
+    /// Whether or not an address is practically reachable will depend on your network configuration.
+    ///
+    /// Most IPv6 addresses are globally reachable;
+    /// unless they are specifically defined as *not* globally reachable.
+    ///
+    /// Non-exhaustive list of notable addresses that are not globally reachable:
+    /// - The [unspecified address] ([`is_unspecified`](Ipv6Addr::is_unspecified))
+    /// - The [loopback address] ([`is_loopback`](Ipv6Addr::is_loopback))
+    /// - IPv4-mapped addresses
+    /// - Addresses reserved for benchmarking
+    /// - Addresses reserved for documentation ([`is_documentation`](Ipv6Addr::is_documentation))
+    /// - Unique local addresses ([`is_unique_local`](Ipv6Addr::is_unique_local))
+    /// - Unicast addresses with link-local scope ([`is_unicast_link_local`](Ipv6Addr::is_unicast_link_local))
+    ///
+    /// For the complete overview of which addresses are globally reachable, see the table at the [IANA IPv6 Special-Purpose Address Registry].
+    ///
+    /// Note that an address having global scope is not the same as being globally reachable,
+    /// and there is no direct relation between the two concepts: There exist addresses with global scope
+    /// that are not globally reachable (for example unique local addresses),
+    /// and addresses that are globally reachable without having global scope
+    /// (multicast addresses with non-global scope).
+    ///
+    /// [IANA IPv6 Special-Purpose Address Registry]: https://www.iana.org/assignments/iana-ipv6-special-registry/iana-ipv6-special-registry.xhtml
+    /// [unspecified address]: Ipv6Addr::UNSPECIFIED
+    /// [loopback address]: Ipv6Addr::LOCALHOST
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ip)]
+    ///
+    /// use std::net::Ipv6Addr;
+    ///
+    /// // Most IPv6 addresses are globally reachable:
+    /// assert_eq!(Ipv6Addr::new(0x26, 0, 0x1c9, 0, 0, 0xafc8, 0x10, 0x1).is_global(), true);
+    ///
+    /// // However some addresses have been assigned a special meaning
+    /// // that makes them not globally reachable. Some examples are:
+    ///
+    /// // The unspecified address (`::`)
+    /// assert_eq!(Ipv6Addr::UNSPECIFIED.is_global(), false);
+    ///
+    /// // The loopback address (`::1`)
+    /// assert_eq!(Ipv6Addr::LOCALHOST.is_global(), false);
+    ///
+    /// // IPv4-mapped addresses (`::ffff:0:0/96`)
+    /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).is_global(), false);
+    ///
+    /// // Addresses reserved for benchmarking (`2001:2::/48`)
+    /// assert_eq!(Ipv6Addr::new(0x2001, 2, 0, 0, 0, 0, 0, 1,).is_global(), false);
+    ///
+    /// // Addresses reserved for documentation (`2001:db8::/32`)
+    /// assert_eq!(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 1).is_global(), false);
+    ///
+    /// // Unique local addresses (`fc00::/7`)
+    /// assert_eq!(Ipv6Addr::new(0xfc02, 0, 0, 0, 0, 0, 0, 1).is_global(), false);
+    ///
+    /// // Unicast addresses with link-local scope (`fe80::/10`)
+    /// assert_eq!(Ipv6Addr::new(0xfe81, 0, 0, 0, 0, 0, 0, 1).is_global(), false);
+    ///
+    /// // For a complete overview see the IANA IPv6 Special-Purpose Address Registry.
+    /// ```
+    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
+    #[unstable(feature = "ip", issue = "27709")]
+    #[must_use]
+    #[inline]
+    pub const fn is_global(&self) -> bool {
+}
+
+    /// Returns [`true`] if this is a unique local address (`fc00::/7`).
+    ///
+    /// This property is defined in [IETF RFC 4193].
+    ///
+    /// [IETF RFC 4193]: https://tools.ietf.org/html/rfc4193
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ip)]
+    ///
+    /// use std::net::Ipv6Addr;
+    ///
+    /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).is_unique_local(), false);
+    /// assert_eq!(Ipv6Addr::new(0xfc02, 0, 0, 0, 0, 0, 0, 0).is_unique_local(), true);
+    /// ```
+    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
+    #[unstable(feature = "ip", issue = "27709")]
+    #[must_use]
+    #[inline]
+    pub const fn is_unique_local(&self) -> bool {
+}
+
+    /// Returns [`true`] if this is a unicast address, as defined by [IETF RFC 4291].
+    /// Any address that is not a [multicast address] (`ff00::/8`) is unicast.
+    ///
+    /// [IETF RFC 4291]: https://tools.ietf.org/html/rfc4291
+    /// [multicast address]: Ipv6Addr::is_multicast
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ip)]
+    ///
+    /// use std::net::Ipv6Addr;
+    ///
+    /// // The unspecified and loopback addresses are unicast.
+    /// assert_eq!(Ipv6Addr::UNSPECIFIED.is_unicast(), true);
+    /// assert_eq!(Ipv6Addr::LOCALHOST.is_unicast(), true);
+    ///
+    /// // Any address that is not a multicast address (`ff00::/8`) is unicast.
+    /// assert_eq!(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 0).is_unicast(), true);
+    /// assert_eq!(Ipv6Addr::new(0xff00, 0, 0, 0, 0, 0, 0, 0).is_unicast(), false);
+    /// ```
+    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
+    #[unstable(feature = "ip", issue = "27709")]
+    #[must_use]
+    #[inline]
+    pub const fn is_unicast(&self) -> bool {
+}
+
+    /// Returns `true` if the address is a unicast address with link-local scope,
+    /// as defined in [RFC 4291].
+    ///
+    /// A unicast address has link-local scope if it has the prefix `fe80::/10`, as per [RFC 4291 section 2.4].
+    /// Note that this encompasses more addresses than those defined in [RFC 4291 section 2.5.6],
+    /// which describes "Link-Local IPv6 Unicast Addresses" as having the following stricter format:
+    ///
+    /// ```text
+    /// | 10 bits  |         54 bits         |          64 bits           |
+    /// +----------+-------------------------+----------------------------+
+    /// |1111111010|           0             |       interface ID         |
+    /// +----------+-------------------------+----------------------------+
+    /// ```
+    /// So while currently the only addresses with link-local scope an application will encounter are all in `fe80::/64`,
+    /// this might change in the future with the publication of new standards. More addresses in `fe80::/10` could be allocated,
+    /// and those addresses will have link-local scope.
+    ///
+    /// Also note that while [RFC 4291 section 2.5.3] mentions about the [loopback address] (`::1`) that "it is treated as having Link-Local scope",
+    /// this does not mean that the loopback address actually has link-local scope and this method will return `false` on it.
+    ///
+    /// [RFC 4291]: https://tools.ietf.org/html/rfc4291
+    /// [RFC 4291 section 2.4]: https://tools.ietf.org/html/rfc4291#section-2.4
+    /// [RFC 4291 section 2.5.3]: https://tools.ietf.org/html/rfc4291#section-2.5.3
+    /// [RFC 4291 section 2.5.6]: https://tools.ietf.org/html/rfc4291#section-2.5.6
+    /// [loopback address]: Ipv6Addr::LOCALHOST
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ip)]
+    ///
+    /// use std::net::Ipv6Addr;
+    ///
+    /// // The loopback address (`::1`) does not actually have link-local scope.
+    /// assert_eq!(Ipv6Addr::LOCALHOST.is_unicast_link_local(), false);
+    ///
+    /// // Only addresses in `fe80::/10` have link-local scope.
+    /// assert_eq!(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 0).is_unicast_link_local(), false);
+    /// assert_eq!(Ipv6Addr::new(0xfe80, 0, 0, 0, 0, 0, 0, 0).is_unicast_link_local(), true);
+    ///
+    /// // Addresses outside the stricter `fe80::/64` also have link-local scope.
+    /// assert_eq!(Ipv6Addr::new(0xfe80, 0, 0, 1, 0, 0, 0, 0).is_unicast_link_local(), true);
+    /// assert_eq!(Ipv6Addr::new(0xfe81, 0, 0, 0, 0, 0, 0, 0).is_unicast_link_local(), true);
+    /// ```
+    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
+    #[unstable(feature = "ip", issue = "27709")]
+    #[must_use]
+    #[inline]
+    pub const fn is_unicast_link_local(&self) -> bool {
+}
+
+    /// Returns [`true`] if this is an address reserved for documentation
+    /// (`2001:db8::/32`).
+    ///
+    /// This property is defined in [IETF RFC 3849].
+    ///
+    /// [IETF RFC 3849]: https://tools.ietf.org/html/rfc3849
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ip)]
+    ///
+    /// use std::net::Ipv6Addr;
+    ///
+    /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).is_documentation(), false);
+    /// assert_eq!(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 0).is_documentation(), true);
+    /// ```
+    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
+    #[unstable(feature = "ip", issue = "27709")]
+    #[must_use]
+    #[inline]
+    pub const fn is_documentation(&self) -> bool {
+}
+
+    /// Returns [`true`] if this is an address reserved for benchmarking (`2001:2::/48`).
+    ///
+    /// This property is defined in [IETF RFC 5180], where it is mistakenly specified as covering the range `2001:0200::/48`.
+    /// This is corrected in [IETF RFC Errata 1752] to `2001:0002::/48`.
+    ///
+    /// [IETF RFC 5180]: https://tools.ietf.org/html/rfc5180
+    /// [IETF RFC Errata 1752]: https://www.rfc-editor.org/errata_search.php?eid=1752
+    ///
+    /// ```
+    /// #![feature(ip)]
+    ///
+    /// use std::net::Ipv6Addr;
+    ///
+    /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc613, 0x0).is_benchmarking(), false);
+    /// assert_eq!(Ipv6Addr::new(0x2001, 0x2, 0, 0, 0, 0, 0, 0).is_benchmarking(), true);
+    /// ```
+    #[unstable(feature = "ip", issue = "27709")]
+    #[must_use]
+    #[inline]
+    pub const fn is_benchmarking(&self) -> bool {
+}
+
+    /// Returns [`true`] if the address is a globally routable unicast address.
+    ///
+    /// The following return false:
+    ///
+    /// - the loopback address
+    /// - the link-local addresses
+    /// - unique local addresses
+    /// - the unspecified address
+    /// - the address range reserved for documentation
+    ///
+    /// This method returns [`true`] for site-local addresses as per [RFC 4291 section 2.5.7]
+    ///
+    /// ```no_rust
+    /// The special behavior of [the site-local unicast] prefix defined in [RFC3513] must no longer
+    /// be supported in new implementations (i.e., new implementations must treat this prefix as
+    /// Global Unicast).
+    /// ```
+    ///
+    /// [RFC 4291 section 2.5.7]: https://tools.ietf.org/html/rfc4291#section-2.5.7
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ip)]
+    ///
+    /// use std::net::Ipv6Addr;
+    ///
+    /// assert_eq!(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 0).is_unicast_global(), false);
+    /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).is_unicast_global(), true);
+    /// ```
+    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
+    #[unstable(feature = "ip", issue = "27709")]
+    #[must_use]
+    #[inline]
+    pub const fn is_unicast_global(&self) -> bool {
+}
+
+    /// Returns the address's multicast scope if the address is multicast.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ip)]
+    ///
+    /// use std::net::{Ipv6Addr, Ipv6MulticastScope};
+    ///
+    /// assert_eq!(
+    ///     Ipv6Addr::new(0xff0e, 0, 0, 0, 0, 0, 0, 0).multicast_scope(),
+    ///     Some(Ipv6MulticastScope::Global)
+    /// );
+    /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).multicast_scope(), None);
+    /// ```
+    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
+    #[unstable(feature = "ip", issue = "27709")]
+    #[must_use]
+    #[inline]
+    pub const fn multicast_scope(&self) -> Option<Ipv6MulticastScope> {
+}
+
+    /// Returns [`true`] if this is a multicast address (`ff00::/8`).
+    ///
+    /// This property is defined by [IETF RFC 4291].
+    ///
+    /// [IETF RFC 4291]: https://tools.ietf.org/html/rfc4291
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::Ipv6Addr;
+    ///
+    /// assert_eq!(Ipv6Addr::new(0xff00, 0, 0, 0, 0, 0, 0, 0).is_multicast(), true);
+    /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).is_multicast(), false);
+    /// ```
+    #[rustc_const_stable(feature = "const_ip_50", since = "1.50.0")]
+    #[stable(since = "1.7.0", feature = "ip_17")]
+    #[must_use]
+    #[inline]
+    pub const fn is_multicast(&self) -> bool {
+}
+
+    /// Converts this address to an [`IPv4` address] if it's an [IPv4-mapped] address,
+    /// as defined in [IETF RFC 4291 section 2.5.5.2], otherwise returns [`None`].
+    ///
+    /// `::ffff:a.b.c.d` becomes `a.b.c.d`.
+    /// All addresses *not* starting with `::ffff` will return `None`.
+    ///
+    /// [`IPv4` address]: Ipv4Addr
+    /// [IPv4-mapped]: Ipv6Addr
+    /// [IETF RFC 4291 section 2.5.5.2]: https://tools.ietf.org/html/rfc4291#section-2.5.5.2
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::{Ipv4Addr, Ipv6Addr};
+    ///
+    /// assert_eq!(Ipv6Addr::new(0xff00, 0, 0, 0, 0, 0, 0, 0).to_ipv4_mapped(), None);
+    /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).to_ipv4_mapped(),
+    ///            Some(Ipv4Addr::new(192, 10, 2, 255)));
+    /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1).to_ipv4_mapped(), None);
+    /// ```
+    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
+    #[stable(feature = "ipv6_to_ipv4_mapped", since = "1.63.0")]
+    #[must_use = "this returns the result of the operation, \
+                  without modifying the original"]
+    #[inline]
+    pub const fn to_ipv4_mapped(&self) -> Option<Ipv4Addr> {
+}
+
+    /// Converts this address to an [`IPv4` address] if it is either
+    /// an [IPv4-compatible] address as defined in [IETF RFC 4291 section 2.5.5.1],
+    /// or an [IPv4-mapped] address as defined in [IETF RFC 4291 section 2.5.5.2],
+    /// otherwise returns [`None`].
+    ///
+    /// Note that this will return an [`IPv4` address] for the IPv6 loopback address `::1`. Use
+    /// [`Ipv6Addr::to_ipv4_mapped`] to avoid this.
+    ///
+    /// `::a.b.c.d` and `::ffff:a.b.c.d` become `a.b.c.d`. `::1` becomes `0.0.0.1`.
+    /// All addresses *not* starting with either all zeroes or `::ffff` will return `None`.
+    ///
+    /// [`IPv4` address]: Ipv4Addr
+    /// [IPv4-compatible]: Ipv6Addr#ipv4-compatible-ipv6-addresses
+    /// [IPv4-mapped]: Ipv6Addr#ipv4-mapped-ipv6-addresses
+    /// [IETF RFC 4291 section 2.5.5.1]: https://tools.ietf.org/html/rfc4291#section-2.5.5.1
+    /// [IETF RFC 4291 section 2.5.5.2]: https://tools.ietf.org/html/rfc4291#section-2.5.5.2
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::{Ipv4Addr, Ipv6Addr};
+    ///
+    /// assert_eq!(Ipv6Addr::new(0xff00, 0, 0, 0, 0, 0, 0, 0).to_ipv4(), None);
+    /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).to_ipv4(),
+    ///            Some(Ipv4Addr::new(192, 10, 2, 255)));
+    /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1).to_ipv4(),
+    ///            Some(Ipv4Addr::new(0, 0, 0, 1)));
+    /// ```
+    #[rustc_const_stable(feature = "const_ip_50", since = "1.50.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[must_use = "this returns the result of the operation, \
+                  without modifying the original"]
+    #[inline]
+    pub const fn to_ipv4(&self) -> Option<Ipv4Addr> {
+}
+
+    /// Converts this address to an `IpAddr::V4` if it is an IPv4-mapped addresses, otherwise it
+    /// returns self wrapped in an `IpAddr::V6`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ip)]
+    /// use std::net::Ipv6Addr;
+    ///
+    /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0x7f00, 0x1).is_loopback(), false);
+    /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0x7f00, 0x1).to_canonical().is_loopback(), true);
+    /// ```
+    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
+    #[unstable(feature = "ip", issue = "27709")]
+    #[must_use = "this returns the result of the operation, \
+                  without modifying the original"]
+    #[inline]
+    pub const fn to_canonical(&self) -> IpAddr {
+}
+
+    /// Returns the sixteen eight-bit integers the IPv6 address consists of.
+    ///
+    /// ```
+    /// use std::net::Ipv6Addr;
+    ///
+    /// assert_eq!(Ipv6Addr::new(0xff00, 0, 0, 0, 0, 0, 0, 0).octets(),
+    ///            [255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+    /// ```
+    #[rustc_const_stable(feature = "const_ip_32", since = "1.32.0")]
+    #[stable(feature = "ipv6_to_octets", since = "1.12.0")]
+    #[must_use]
+    #[inline]
+    pub const fn octets(&self) -> [u8; 16] {
+}
+}
+
+/// Write an Ipv6Addr, conforming to the canonical style described by
+/// [RFC 5952](https://tools.ietf.org/html/rfc5952).
+#[stable(feature = "rust1", since = "1.0.0")]
+impl fmt::Display for Ipv6Addr {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl fmt::Debug for Ipv6Addr {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
+}
+
+#[stable(feature = "ip_cmp", since = "1.16.0")]
+impl PartialEq<IpAddr> for Ipv6Addr {
+    #[inline]
+    fn eq(&self, other: &IpAddr) -> bool {
+}
+}
+
+#[stable(feature = "ip_cmp", since = "1.16.0")]
+impl PartialEq<Ipv6Addr> for IpAddr {
+    #[inline]
+    fn eq(&self, other: &Ipv6Addr) -> bool {
+}
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl PartialOrd for Ipv6Addr {
+    #[inline]
+    fn partial_cmp(&self, other: &Ipv6Addr) -> Option<Ordering> {
+}
+}
+
+#[stable(feature = "ip_cmp", since = "1.16.0")]
+impl PartialOrd<Ipv6Addr> for IpAddr {
+    #[inline]
+    fn partial_cmp(&self, other: &Ipv6Addr) -> Option<Ordering> {
+}
+}
+
+#[stable(feature = "ip_cmp", since = "1.16.0")]
+impl PartialOrd<IpAddr> for Ipv6Addr {
+    #[inline]
+    fn partial_cmp(&self, other: &IpAddr) -> Option<Ordering> {
+}
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Ord for Ipv6Addr {
+    #[inline]
+    fn cmp(&self, other: &Ipv6Addr) -> Ordering {
+}
+}
+
+impl IntoInner<c::in6_addr> for Ipv6Addr {
+    fn into_inner(self) -> c::in6_addr {
+}
+}
+impl FromInner<c::in6_addr> for Ipv6Addr {
+    #[inline]
+    fn from_inner(addr: c::in6_addr) -> Ipv6Addr {
+}
+}
+
+#[stable(feature = "i128", since = "1.26.0")]
+impl From<Ipv6Addr> for u128 {
+    /// Convert an `Ipv6Addr` into a host byte order `u128`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::Ipv6Addr;
+    ///
+    /// let addr = Ipv6Addr::new(
+    ///     0x1020, 0x3040, 0x5060, 0x7080,
+    ///     0x90A0, 0xB0C0, 0xD0E0, 0xF00D,
+    /// );
+    /// assert_eq!(0x102030405060708090A0B0C0D0E0F00D_u128, u128::from(addr));
+    /// ```
+    #[inline]
+    fn from(ip: Ipv6Addr) -> u128 {
+}
+}
+#[stable(feature = "i128", since = "1.26.0")]
+impl From<u128> for Ipv6Addr {
+    /// Convert a host byte order `u128` into an `Ipv6Addr`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::Ipv6Addr;
+    ///
+    /// let addr = Ipv6Addr::from(0x102030405060708090A0B0C0D0E0F00D_u128);
+    /// assert_eq!(
+    ///     Ipv6Addr::new(
+    ///         0x1020, 0x3040, 0x5060, 0x7080,
+    ///         0x90A0, 0xB0C0, 0xD0E0, 0xF00D,
+    ///     ),
+    ///     addr);
+    /// ```
+    #[inline]
+    fn from(ip: u128) -> Ipv6Addr {
+}
+}
+
+#[stable(feature = "ipv6_from_octets", since = "1.9.0")]
+impl From<[u8; 16]> for Ipv6Addr {
+    /// Creates an `Ipv6Addr` from a sixteen element byte array.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::Ipv6Addr;
+    ///
+    /// let addr = Ipv6Addr::from([
+    ///     25u8, 24u8, 23u8, 22u8, 21u8, 20u8, 19u8, 18u8,
+    ///     17u8, 16u8, 15u8, 14u8, 13u8, 12u8, 11u8, 10u8,
+    /// ]);
+    /// assert_eq!(
+    ///     Ipv6Addr::new(
+    ///         0x1918, 0x1716,
+    ///         0x1514, 0x1312,
+    ///         0x1110, 0x0f0e,
+    ///         0x0d0c, 0x0b0a
+    ///     ),
+    ///     addr
+    /// );
+    /// ```
+    #[inline]
+    fn from(octets: [u8; 16]) -> Ipv6Addr {
+}
+}
+
+#[stable(feature = "ipv6_from_segments", since = "1.16.0")]
+impl From<[u16; 8]> for Ipv6Addr {
+    /// Creates an `Ipv6Addr` from an eight element 16-bit array.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::Ipv6Addr;
+    ///
+    /// let addr = Ipv6Addr::from([
+    ///     525u16, 524u16, 523u16, 522u16,
+    ///     521u16, 520u16, 519u16, 518u16,
+    /// ]);
+    /// assert_eq!(
+    ///     Ipv6Addr::new(
+    ///         0x20d, 0x20c,
+    ///         0x20b, 0x20a,
+    ///         0x209, 0x208,
+    ///         0x207, 0x206
+    ///     ),
+    ///     addr
+    /// );
+    /// ```
+    #[inline]
+    fn from(segments: [u16; 8]) -> Ipv6Addr {
+}
+}
+
+#[stable(feature = "ip_from_slice", since = "1.17.0")]
+impl From<[u8; 16]> for IpAddr {
+    /// Creates an `IpAddr::V6` from a sixteen element byte array.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::{IpAddr, Ipv6Addr};
+    ///
+    /// let addr = IpAddr::from([
+    ///     25u8, 24u8, 23u8, 22u8, 21u8, 20u8, 19u8, 18u8,
+    ///     17u8, 16u8, 15u8, 14u8, 13u8, 12u8, 11u8, 10u8,
+    /// ]);
+    /// assert_eq!(
+    ///     IpAddr::V6(Ipv6Addr::new(
+    ///         0x1918, 0x1716,
+    ///         0x1514, 0x1312,
+    ///         0x1110, 0x0f0e,
+    ///         0x0d0c, 0x0b0a
+    ///     )),
+    ///     addr
+    /// );
+    /// ```
+    #[inline]
+    fn from(octets: [u8; 16]) -> IpAddr {
+}
+}
+
+#[stable(feature = "ip_from_slice", since = "1.17.0")]
+impl From<[u16; 8]> for IpAddr {
+    /// Creates an `IpAddr::V6` from an eight element 16-bit array.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::{IpAddr, Ipv6Addr};
+    ///
+    /// let addr = IpAddr::from([
+    ///     525u16, 524u16, 523u16, 522u16,
+    ///     521u16, 520u16, 519u16, 518u16,
+    /// ]);
+    /// assert_eq!(
+    ///     IpAddr::V6(Ipv6Addr::new(
+    ///         0x20d, 0x20c,
+    ///         0x20b, 0x20a,
+    ///         0x209, 0x208,
+    ///         0x207, 0x206
+    ///     )),
+    ///     addr
+    /// );
+    /// ```
+    #[inline]
+    fn from(segments: [u16; 8]) -> IpAddr {
+}
+}
+}
+mod parser {
+//! A private parser implementation of IPv4, IPv6, and socket addresses.
+//!
+//! This module is "publicly exported" through the `FromStr` implementations
+//! below.
+
+#[cfg(test)]
+mod tests {
+}
+
+use crate::error::Error;
+use crate::fmt;
+use crate::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6};
+use crate::str::FromStr;
+
+trait ReadNumberHelper: crate::marker::Sized {
+    const ZERO: Self;
+    fn checked_mul(&self, other: u32) -> Option<Self>;
+    fn checked_add(&self, other: u32) -> Option<Self>;
+}
+
+macro_rules! impl_helper {
+    ($($t:ty)*) => ($(impl ReadNumberHelper for $t {
+        const ZERO: Self = 0;
+        #[inline]
+        fn checked_mul(&self, other: u32) -> Option<Self> {
+}
+        #[inline]
+        fn checked_add(&self, other: u32) -> Option<Self> {
+}
+    })*)
+}
+
+impl_helper! { u8 u16 u32 }
+
+struct Parser<'a> {
+    // Parsing as ASCII, so can use byte array.
+    state: &'a [u8],
+}
+
+impl<'a> Parser<'a> {
+    fn new(input: &'a [u8]) -> Parser<'a> {
+}
+
+    /// Run a parser, and restore the pre-parse state if it fails.
+    fn read_atomically<T, F>(&mut self, inner: F) -> Option<T>
+    where
+        F: FnOnce(&mut Parser<'_>) -> Option<T>,
+    {
+}
+
+    /// Run a parser, but fail if the entire input wasn't consumed.
+    /// Doesn't run atomically.
+    fn parse_with<T, F>(&mut self, inner: F, kind: AddrKind) -> Result<T, AddrParseError>
+    where
+        F: FnOnce(&mut Parser<'_>) -> Option<T>,
+    {
+}
+
+    /// Peek the next character from the input
+    fn peek_char(&self) -> Option<char> {
+}
+
+    /// Read the next character from the input
+    fn read_char(&mut self) -> Option<char> {
+}
+
+    #[must_use]
+    /// Read the next character from the input if it matches the target.
+    fn read_given_char(&mut self, target: char) -> Option<()> {
+}
+
+    /// Helper for reading separators in an indexed loop. Reads the separator
+    /// character iff index > 0, then runs the parser. When used in a loop,
+    /// the separator character will only be read on index > 0 (see
+    /// read_ipv4_addr for an example)
+    fn read_separator<T, F>(&mut self, sep: char, index: usize, inner: F) -> Option<T>
+    where
+        F: FnOnce(&mut Parser<'_>) -> Option<T>,
+    {
+}
+
+    // Read a number off the front of the input in the given radix, stopping
+    // at the first non-digit character or eof. Fails if the number has more
+    // digits than max_digits or if there is no number.
+    fn read_number<T: ReadNumberHelper>(
+        &mut self,
+        radix: u32,
+        max_digits: Option<usize>,
+        allow_zero_prefix: bool,
+    ) -> Option<T> {
+}
+
+    /// Read an IPv4 address.
+    fn read_ipv4_addr(&mut self) -> Option<Ipv4Addr> {
+}
+
+    /// Read an IPv6 Address.
+    fn read_ipv6_addr(&mut self) -> Option<Ipv6Addr> {
+}
+
+    /// Read an IP Address, either IPv4 or IPv6.
+    fn read_ip_addr(&mut self) -> Option<IpAddr> {
+}
+
+    /// Read a `:` followed by a port in base 10.
+    fn read_port(&mut self) -> Option<u16> {
+}
+
+    /// Read a `%` followed by a scope ID in base 10.
+    fn read_scope_id(&mut self) -> Option<u32> {
+}
+
+    /// Read an IPv4 address with a port.
+    fn read_socket_addr_v4(&mut self) -> Option<SocketAddrV4> {
+}
+
+    /// Read an IPv6 address with a port.
+    fn read_socket_addr_v6(&mut self) -> Option<SocketAddrV6> {
+}
+
+    /// Read an IP address with a port
+    fn read_socket_addr(&mut self) -> Option<SocketAddr> {
+}
+}
+
+impl IpAddr {
+    /// Parse an IP address from a slice of bytes.
+    ///
+    /// ```
+    /// #![feature(addr_parse_ascii)]
+    ///
+    /// use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+    ///
+    /// let localhost_v4 = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
+    /// let localhost_v6 = IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1));
+    ///
+    /// assert_eq!(IpAddr::parse_ascii(b"127.0.0.1"), Ok(localhost_v4));
+    /// assert_eq!(IpAddr::parse_ascii(b"::1"), Ok(localhost_v6));
+    /// ```
+    #[unstable(feature = "addr_parse_ascii", issue = "101035")]
+    pub fn parse_ascii(b: &[u8]) -> Result<Self, AddrParseError> {
+}
+}
+
+#[stable(feature = "ip_addr", since = "1.7.0")]
+impl FromStr for IpAddr {
+    type Err = AddrParseError;
+    fn from_str(s: &str) -> Result<IpAddr, AddrParseError> {
+}
+}
+
+impl Ipv4Addr {
+    /// Parse an IPv4 address from a slice of bytes.
+    ///
+    /// ```
+    /// #![feature(addr_parse_ascii)]
+    ///
+    /// use std::net::Ipv4Addr;
+    ///
+    /// let localhost = Ipv4Addr::new(127, 0, 0, 1);
+    ///
+    /// assert_eq!(Ipv4Addr::parse_ascii(b"127.0.0.1"), Ok(localhost));
+    /// ```
+    #[unstable(feature = "addr_parse_ascii", issue = "101035")]
+    pub fn parse_ascii(b: &[u8]) -> Result<Self, AddrParseError> {
+}
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl FromStr for Ipv4Addr {
+    type Err = AddrParseError;
+    fn from_str(s: &str) -> Result<Ipv4Addr, AddrParseError> {
+}
+}
+
+impl Ipv6Addr {
+    /// Parse an IPv6 address from a slice of bytes.
+    ///
+    /// ```
+    /// #![feature(addr_parse_ascii)]
+    ///
+    /// use std::net::Ipv6Addr;
+    ///
+    /// let localhost = Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1);
+    ///
+    /// assert_eq!(Ipv6Addr::parse_ascii(b"::1"), Ok(localhost));
+    /// ```
+    #[unstable(feature = "addr_parse_ascii", issue = "101035")]
+    pub fn parse_ascii(b: &[u8]) -> Result<Self, AddrParseError> {
+}
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl FromStr for Ipv6Addr {
+    type Err = AddrParseError;
+    fn from_str(s: &str) -> Result<Ipv6Addr, AddrParseError> {
+}
+}
+
+impl SocketAddrV4 {
+    /// Parse an IPv4 socket address from a slice of bytes.
+    ///
+    /// ```
+    /// #![feature(addr_parse_ascii)]
+    ///
+    /// use std::net::{Ipv4Addr, SocketAddrV4};
+    ///
+    /// let socket = SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 8080);
+    ///
+    /// assert_eq!(SocketAddrV4::parse_ascii(b"127.0.0.1:8080"), Ok(socket));
+    /// ```
+    #[unstable(feature = "addr_parse_ascii", issue = "101035")]
+    pub fn parse_ascii(b: &[u8]) -> Result<Self, AddrParseError> {
+}
+}
+
+#[stable(feature = "socket_addr_from_str", since = "1.5.0")]
+impl FromStr for SocketAddrV4 {
+    type Err = AddrParseError;
+    fn from_str(s: &str) -> Result<SocketAddrV4, AddrParseError> {
+}
+}
+
+impl SocketAddrV6 {
+    /// Parse an IPv6 socket address from a slice of bytes.
+    ///
+    /// ```
+    /// #![feature(addr_parse_ascii)]
+    ///
+    /// use std::net::{Ipv6Addr, SocketAddrV6};
+    ///
+    /// let socket = SocketAddrV6::new(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 1), 8080, 0, 0);
+    ///
+    /// assert_eq!(SocketAddrV6::parse_ascii(b"[2001:db8::1]:8080"), Ok(socket));
+    /// ```
+    #[unstable(feature = "addr_parse_ascii", issue = "101035")]
+    pub fn parse_ascii(b: &[u8]) -> Result<Self, AddrParseError> {
+}
+}
+
+#[stable(feature = "socket_addr_from_str", since = "1.5.0")]
+impl FromStr for SocketAddrV6 {
+    type Err = AddrParseError;
+    fn from_str(s: &str) -> Result<SocketAddrV6, AddrParseError> {
+}
+}
+
+impl SocketAddr {
+    /// Parse a socket address from a slice of bytes.
+    ///
+    /// ```
+    /// #![feature(addr_parse_ascii)]
+    ///
+    /// use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
+    ///
+    /// let socket_v4 = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080);
+    /// let socket_v6 = SocketAddr::new(IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1)), 8080);
+    ///
+    /// assert_eq!(SocketAddr::parse_ascii(b"127.0.0.1:8080"), Ok(socket_v4));
+    /// assert_eq!(SocketAddr::parse_ascii(b"[::1]:8080"), Ok(socket_v6));
+    /// ```
+    #[unstable(feature = "addr_parse_ascii", issue = "101035")]
+    pub fn parse_ascii(b: &[u8]) -> Result<Self, AddrParseError> {
+}
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl FromStr for SocketAddr {
+    type Err = AddrParseError;
+    fn from_str(s: &str) -> Result<SocketAddr, AddrParseError> {
+}
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum AddrKind {
+    Ip,
+    Ipv4,
+    Ipv6,
+    Socket,
+    SocketV4,
+    SocketV6,
+}
+
+/// An error which can be returned when parsing an IP address or a socket address.
+///
+/// This error is used as the error type for the [`FromStr`] implementation for
+/// [`IpAddr`], [`Ipv4Addr`], [`Ipv6Addr`], [`SocketAddr`], [`SocketAddrV4`], and
+/// [`SocketAddrV6`].
+///
+/// # Potential causes
+///
+/// `AddrParseError` may be thrown because the provided string does not parse as the given type,
+/// often because it includes information only handled by a different address type.
+///
+/// ```should_panic
+/// use std::net::IpAddr;
+/// let _foo: IpAddr = "127.0.0.1:8080".parse().expect("Cannot handle the socket port");
+/// ```
+///
+/// [`IpAddr`] doesn't handle the port. Use [`SocketAddr`] instead.
+///
+/// ```
+/// use std::net::SocketAddr;
+///
+/// // No problem, the `panic!` message has disappeared.
+/// let _foo: SocketAddr = "127.0.0.1:8080".parse().expect("unreachable panic");
+/// ```
+#[stable(feature = "rust1", since = "1.0.0")]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AddrParseError(AddrKind);
+
+#[stable(feature = "addr_parse_error_error", since = "1.4.0")]
+impl fmt::Display for AddrParseError {
+    #[allow(deprecated, deprecated_in_future)]
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
+}
+
+#[stable(feature = "addr_parse_error_error", since = "1.4.0")]
+impl Error for AddrParseError {
+    #[allow(deprecated)]
+    fn description(&self) -> &str {
+}
+}
+}
+mod socket_addr {
 #[cfg(all(test, not(target_os = "emscripten")))]
 mod tests {
 use crate::net::test::{sa4, sa6, tsa};
@@ -21801,6 +24332,14 @@ fn to_socket_addr_str() {
 
 #[test]
 fn to_socket_addr_string() {
+}
+
+#[test]
+fn ipv4_socket_addr_to_string() {
+}
+
+#[test]
+fn ipv6_socket_addr_to_string() {
 }
 
 #[test]
@@ -21845,9 +24384,9 @@ fn compare() {
 }
 
 use crate::cmp::Ordering;
-use crate::fmt;
+use crate::fmt::{self, Write};
 use crate::hash;
-use crate::io::{self, Write};
+use crate::io;
 use crate::iter;
 use crate::mem;
 use crate::net::{IpAddr, Ipv4Addr, Ipv6Addr};
@@ -21857,6 +24396,8 @@ use crate::sys::net::netc as c;
 use crate::sys_common::net::LookupHost;
 use crate::sys_common::{FromInner, IntoInner};
 use crate::vec;
+
+use super::display_buffer::DisplayBuffer;
 
 /// An internet socket address, either IPv4 or IPv6.
 ///
@@ -22659,2056 +25200,6 @@ impl<T: ToSocketAddrs + ?Sized> ToSocketAddrs for &T {
 impl ToSocketAddrs for String {
     type Iter = vec::IntoIter<SocketAddr>;
     fn to_socket_addrs(&self) -> io::Result<vec::IntoIter<SocketAddr>> {
-}
-}
-}
-mod ip {
-// Tests for this module
-#[cfg(all(test, not(target_os = "emscripten")))]
-mod tests {
-use crate::net::test::{sa4, sa6, tsa};
-use crate::net::*;
-use crate::str::FromStr;
-
-#[test]
-fn test_from_str_ipv4() {
-}
-
-#[test]
-fn test_from_str_ipv6() {
-}
-
-#[test]
-fn test_from_str_ipv4_in_ipv6() {
-}
-
-#[test]
-fn test_from_str_socket_addr() {
-}
-
-#[test]
-fn ipv4_addr_to_string() {
-}
-
-#[test]
-fn ipv6_addr_to_string() {
-}
-
-#[test]
-fn ipv4_to_ipv6() {
-}
-
-#[test]
-fn ipv6_to_ipv4_mapped() {
-}
-
-#[test]
-fn ipv6_to_ipv4() {
-}
-
-#[test]
-fn ip_properties() {
-}
-
-#[test]
-fn ipv4_properties() {
-}
-
-#[test]
-fn ipv6_properties() {
-}
-
-#[test]
-fn to_socket_addr_socketaddr() {
-}
-
-#[test]
-fn test_ipv4_to_int() {
-}
-
-#[test]
-fn test_int_to_ipv4() {
-}
-
-#[test]
-fn test_ipv6_to_int() {
-}
-
-#[test]
-fn test_int_to_ipv6() {
-}
-
-#[test]
-fn ipv4_from_constructors() {
-}
-
-#[test]
-fn ipv6_from_constructors() {
-}
-
-#[test]
-fn ipv4_from_octets() {
-}
-
-#[test]
-fn ipv6_from_segments() {
-}
-
-#[test]
-fn ipv6_from_octets() {
-}
-
-#[test]
-fn cmp() {
-}
-
-#[test]
-fn is_v4() {
-}
-
-#[test]
-fn is_v6() {
-}
-
-#[test]
-fn ipv4_const() {
-}
-
-#[test]
-fn ipv6_const() {
-}
-
-#[test]
-fn ip_const() {
-}
-
-#[test]
-fn structural_match() {
-}
-}
-
-use crate::cmp::Ordering;
-use crate::fmt::{self, Write as FmtWrite};
-use crate::io::Write as IoWrite;
-use crate::mem::transmute;
-use crate::sys::net::netc as c;
-use crate::sys_common::{FromInner, IntoInner};
-
-/// An IP address, either IPv4 or IPv6.
-///
-/// This enum can contain either an [`Ipv4Addr`] or an [`Ipv6Addr`], see their
-/// respective documentation for more details.
-///
-/// # Examples
-///
-/// ```
-/// use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
-///
-/// let localhost_v4 = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
-/// let localhost_v6 = IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1));
-///
-/// assert_eq!("127.0.0.1".parse(), Ok(localhost_v4));
-/// assert_eq!("::1".parse(), Ok(localhost_v6));
-///
-/// assert_eq!(localhost_v4.is_ipv6(), false);
-/// assert_eq!(localhost_v4.is_ipv4(), true);
-/// ```
-#[stable(feature = "ip_addr", since = "1.7.0")]
-#[derive(Copy, Clone, Eq, PartialEq, Hash, PartialOrd, Ord)]
-pub enum IpAddr {
-    /// An IPv4 address.
-    #[stable(feature = "ip_addr", since = "1.7.0")]
-    V4(#[stable(feature = "ip_addr", since = "1.7.0")] Ipv4Addr),
-    /// An IPv6 address.
-    #[stable(feature = "ip_addr", since = "1.7.0")]
-    V6(#[stable(feature = "ip_addr", since = "1.7.0")] Ipv6Addr),
-}
-
-/// An IPv4 address.
-///
-/// IPv4 addresses are defined as 32-bit integers in [IETF RFC 791].
-/// They are usually represented as four octets.
-///
-/// See [`IpAddr`] for a type encompassing both IPv4 and IPv6 addresses.
-///
-/// [IETF RFC 791]: https://tools.ietf.org/html/rfc791
-///
-/// # Textual representation
-///
-/// `Ipv4Addr` provides a [`FromStr`] implementation. The four octets are in decimal
-/// notation, divided by `.` (this is called "dot-decimal notation").
-/// Notably, octal numbers (which are indicated with a leading `0`) and hexadecimal numbers (which
-/// are indicated with a leading `0x`) are not allowed per [IETF RFC 6943].
-///
-/// [IETF RFC 6943]: https://tools.ietf.org/html/rfc6943#section-3.1.1
-/// [`FromStr`]: crate::str::FromStr
-///
-/// # Examples
-///
-/// ```
-/// use std::net::Ipv4Addr;
-///
-/// let localhost = Ipv4Addr::new(127, 0, 0, 1);
-/// assert_eq!("127.0.0.1".parse(), Ok(localhost));
-/// assert_eq!(localhost.is_loopback(), true);
-/// assert!("012.004.002.000".parse::<Ipv4Addr>().is_err()); // all octets are in octal
-/// assert!("0000000.0.0.0".parse::<Ipv4Addr>().is_err()); // first octet is a zero in octal
-/// assert!("0xcb.0x0.0x71.0x00".parse::<Ipv4Addr>().is_err()); // all octets are in hex
-/// ```
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
-#[stable(feature = "rust1", since = "1.0.0")]
-pub struct Ipv4Addr {
-    octets: [u8; 4],
-}
-
-/// An IPv6 address.
-///
-/// IPv6 addresses are defined as 128-bit integers in [IETF RFC 4291].
-/// They are usually represented as eight 16-bit segments.
-///
-/// [IETF RFC 4291]: https://tools.ietf.org/html/rfc4291
-///
-/// # Embedding IPv4 Addresses
-///
-/// See [`IpAddr`] for a type encompassing both IPv4 and IPv6 addresses.
-///
-/// To assist in the transition from IPv4 to IPv6 two types of IPv6 addresses that embed an IPv4 address were defined:
-/// IPv4-compatible and IPv4-mapped addresses. Of these IPv4-compatible addresses have been officially deprecated.
-///
-/// Both types of addresses are not assigned any special meaning by this implementation,
-/// other than what the relevant standards prescribe. This means that an address like `::ffff:127.0.0.1`,
-/// while representing an IPv4 loopback address, is not itself an IPv6 loopback address; only `::1` is.
-/// To handle these so called "IPv4-in-IPv6" addresses, they have to first be converted to their canonical IPv4 address.
-///
-/// ### IPv4-Compatible IPv6 Addresses
-///
-/// IPv4-compatible IPv6 addresses are defined in [IETF RFC 4291 Section 2.5.5.1], and have been officially deprecated.
-/// The RFC describes the format of an "IPv4-Compatible IPv6 address" as follows:
-///
-/// ```text
-/// |                80 bits               | 16 |      32 bits        |
-/// +--------------------------------------+--------------------------+
-/// |0000..............................0000|0000|    IPv4 address     |
-/// +--------------------------------------+----+---------------------+
-/// ```
-/// So `::a.b.c.d` would be an IPv4-compatible IPv6 address representing the IPv4 address `a.b.c.d`.
-///
-/// To convert from an IPv4 address to an IPv4-compatible IPv6 address, use [`Ipv4Addr::to_ipv6_compatible`].
-/// Use [`Ipv6Addr::to_ipv4`] to convert an IPv4-compatible IPv6 address to the canonical IPv4 address.
-///
-/// [IETF RFC 4291 Section 2.5.5.1]: https://datatracker.ietf.org/doc/html/rfc4291#section-2.5.5.1
-///
-/// ### IPv4-Mapped IPv6 Addresses
-///
-/// IPv4-mapped IPv6 addresses are defined in [IETF RFC 4291 Section 2.5.5.2].
-/// The RFC describes the format of an "IPv4-Mapped IPv6 address" as follows:
-///
-/// ```text
-/// |                80 bits               | 16 |      32 bits        |
-/// +--------------------------------------+--------------------------+
-/// |0000..............................0000|FFFF|    IPv4 address     |
-/// +--------------------------------------+----+---------------------+
-/// ```
-/// So `::ffff:a.b.c.d` would be an IPv4-mapped IPv6 address representing the IPv4 address `a.b.c.d`.
-///
-/// To convert from an IPv4 address to an IPv4-mapped IPv6 address, use [`Ipv4Addr::to_ipv6_mapped`].
-/// Use [`Ipv6Addr::to_ipv4`] to convert an IPv4-mapped IPv6 address to the canonical IPv4 address.
-/// Note that this will also convert the IPv6 loopback address `::1` to `0.0.0.1`. Use
-/// [`Ipv6Addr::to_ipv4_mapped`] to avoid this.
-///
-/// [IETF RFC 4291 Section 2.5.5.2]: https://datatracker.ietf.org/doc/html/rfc4291#section-2.5.5.2
-///
-/// # Textual representation
-///
-/// `Ipv6Addr` provides a [`FromStr`] implementation. There are many ways to represent
-/// an IPv6 address in text, but in general, each segments is written in hexadecimal
-/// notation, and segments are separated by `:`. For more information, see
-/// [IETF RFC 5952].
-///
-/// [`FromStr`]: crate::str::FromStr
-/// [IETF RFC 5952]: https://tools.ietf.org/html/rfc5952
-///
-/// # Examples
-///
-/// ```
-/// use std::net::Ipv6Addr;
-///
-/// let localhost = Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1);
-/// assert_eq!("::1".parse(), Ok(localhost));
-/// assert_eq!(localhost.is_loopback(), true);
-/// ```
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
-#[stable(feature = "rust1", since = "1.0.0")]
-pub struct Ipv6Addr {
-    octets: [u8; 16],
-}
-
-/// Scope of an [IPv6 multicast address] as defined in [IETF RFC 7346 section 2].
-///
-/// # Stability Guarantees
-///
-/// Not all possible values for a multicast scope have been assigned.
-/// Future RFCs may introduce new scopes, which will be added as variants to this enum;
-/// because of this the enum is marked as `#[non_exhaustive]`.
-///
-/// # Examples
-/// ```
-/// #![feature(ip)]
-///
-/// use std::net::Ipv6Addr;
-/// use std::net::Ipv6MulticastScope::*;
-///
-/// // An IPv6 multicast address with global scope (`ff0e::`).
-/// let address = Ipv6Addr::new(0xff0e, 0, 0, 0, 0, 0, 0, 0);
-///
-/// // Will print "Global scope".
-/// match address.multicast_scope() {
-///     Some(InterfaceLocal) => println!("Interface-Local scope"),
-///     Some(LinkLocal) => println!("Link-Local scope"),
-///     Some(RealmLocal) => println!("Realm-Local scope"),
-///     Some(AdminLocal) => println!("Admin-Local scope"),
-///     Some(SiteLocal) => println!("Site-Local scope"),
-///     Some(OrganizationLocal) => println!("Organization-Local scope"),
-///     Some(Global) => println!("Global scope"),
-///     Some(_) => println!("Unknown scope"),
-///     None => println!("Not a multicast address!")
-/// }
-///
-/// ```
-///
-/// [IPv6 multicast address]: Ipv6Addr
-/// [IETF RFC 7346 section 2]: https://tools.ietf.org/html/rfc7346#section-2
-#[derive(Copy, PartialEq, Eq, Clone, Hash, Debug)]
-#[unstable(feature = "ip", issue = "27709")]
-#[non_exhaustive]
-pub enum Ipv6MulticastScope {
-}
-
-impl IpAddr {
-    /// Returns [`true`] for the special 'unspecified' address.
-    ///
-    /// See the documentation for [`Ipv4Addr::is_unspecified()`] and
-    /// [`Ipv6Addr::is_unspecified()`] for more details.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
-    ///
-    /// assert_eq!(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)).is_unspecified(), true);
-    /// assert_eq!(IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0)).is_unspecified(), true);
-    /// ```
-    #[rustc_const_stable(feature = "const_ip_50", since = "1.50.0")]
-    #[stable(feature = "ip_shared", since = "1.12.0")]
-    #[must_use]
-    #[inline]
-    pub const fn is_unspecified(&self) -> bool {
-}
-
-    /// Returns [`true`] if this is a loopback address.
-    ///
-    /// See the documentation for [`Ipv4Addr::is_loopback()`] and
-    /// [`Ipv6Addr::is_loopback()`] for more details.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
-    ///
-    /// assert_eq!(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)).is_loopback(), true);
-    /// assert_eq!(IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0x1)).is_loopback(), true);
-    /// ```
-    #[rustc_const_stable(feature = "const_ip_50", since = "1.50.0")]
-    #[stable(feature = "ip_shared", since = "1.12.0")]
-    #[must_use]
-    #[inline]
-    pub const fn is_loopback(&self) -> bool {
-}
-
-    /// Returns [`true`] if the address appears to be globally routable.
-    ///
-    /// See the documentation for [`Ipv4Addr::is_global()`] and
-    /// [`Ipv6Addr::is_global()`] for more details.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(ip)]
-    ///
-    /// use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
-    ///
-    /// assert_eq!(IpAddr::V4(Ipv4Addr::new(80, 9, 12, 3)).is_global(), true);
-    /// assert_eq!(IpAddr::V6(Ipv6Addr::new(0, 0, 0x1c9, 0, 0, 0xafc8, 0, 0x1)).is_global(), true);
-    /// ```
-    #[rustc_const_unstable(feature = "const_ip", issue = "76205")]
-    #[unstable(feature = "ip", issue = "27709")]
-    #[must_use]
-    #[inline]
-    pub const fn is_global(&self) -> bool {
-}
-
-    /// Returns [`true`] if this is a multicast address.
-    ///
-    /// See the documentation for [`Ipv4Addr::is_multicast()`] and
-    /// [`Ipv6Addr::is_multicast()`] for more details.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
-    ///
-    /// assert_eq!(IpAddr::V4(Ipv4Addr::new(224, 254, 0, 0)).is_multicast(), true);
-    /// assert_eq!(IpAddr::V6(Ipv6Addr::new(0xff00, 0, 0, 0, 0, 0, 0, 0)).is_multicast(), true);
-    /// ```
-    #[rustc_const_stable(feature = "const_ip_50", since = "1.50.0")]
-    #[stable(feature = "ip_shared", since = "1.12.0")]
-    #[must_use]
-    #[inline]
-    pub const fn is_multicast(&self) -> bool {
-}
-
-    /// Returns [`true`] if this address is in a range designated for documentation.
-    ///
-    /// See the documentation for [`Ipv4Addr::is_documentation()`] and
-    /// [`Ipv6Addr::is_documentation()`] for more details.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(ip)]
-    ///
-    /// use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
-    ///
-    /// assert_eq!(IpAddr::V4(Ipv4Addr::new(203, 0, 113, 6)).is_documentation(), true);
-    /// assert_eq!(
-    ///     IpAddr::V6(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 0)).is_documentation(),
-    ///     true
-    /// );
-    /// ```
-    #[rustc_const_unstable(feature = "const_ip", issue = "76205")]
-    #[unstable(feature = "ip", issue = "27709")]
-    #[must_use]
-    #[inline]
-    pub const fn is_documentation(&self) -> bool {
-}
-
-    /// Returns [`true`] if this address is in a range designated for benchmarking.
-    ///
-    /// See the documentation for [`Ipv4Addr::is_benchmarking()`] and
-    /// [`Ipv6Addr::is_benchmarking()`] for more details.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(ip)]
-    ///
-    /// use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
-    ///
-    /// assert_eq!(IpAddr::V4(Ipv4Addr::new(198, 19, 255, 255)).is_benchmarking(), true);
-    /// assert_eq!(IpAddr::V6(Ipv6Addr::new(0x2001, 0x2, 0, 0, 0, 0, 0, 0)).is_benchmarking(), true);
-    /// ```
-    #[unstable(feature = "ip", issue = "27709")]
-    #[must_use]
-    #[inline]
-    pub const fn is_benchmarking(&self) -> bool {
-}
-
-    /// Returns [`true`] if this address is an [`IPv4` address], and [`false`]
-    /// otherwise.
-    ///
-    /// [`IPv4` address]: IpAddr::V4
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
-    ///
-    /// assert_eq!(IpAddr::V4(Ipv4Addr::new(203, 0, 113, 6)).is_ipv4(), true);
-    /// assert_eq!(IpAddr::V6(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 0)).is_ipv4(), false);
-    /// ```
-    #[rustc_const_stable(feature = "const_ip_50", since = "1.50.0")]
-    #[stable(feature = "ipaddr_checker", since = "1.16.0")]
-    #[must_use]
-    #[inline]
-    pub const fn is_ipv4(&self) -> bool {
-}
-
-    /// Returns [`true`] if this address is an [`IPv6` address], and [`false`]
-    /// otherwise.
-    ///
-    /// [`IPv6` address]: IpAddr::V6
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
-    ///
-    /// assert_eq!(IpAddr::V4(Ipv4Addr::new(203, 0, 113, 6)).is_ipv6(), false);
-    /// assert_eq!(IpAddr::V6(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 0)).is_ipv6(), true);
-    /// ```
-    #[rustc_const_stable(feature = "const_ip_50", since = "1.50.0")]
-    #[stable(feature = "ipaddr_checker", since = "1.16.0")]
-    #[must_use]
-    #[inline]
-    pub const fn is_ipv6(&self) -> bool {
-}
-
-    /// Converts this address to an `IpAddr::V4` if it is an IPv4-mapped IPv6 addresses, otherwise it
-    /// return `self` as-is.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(ip)]
-    /// use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
-    ///
-    /// assert_eq!(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)).to_canonical().is_loopback(), true);
-    /// assert_eq!(IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0x7f00, 0x1)).is_loopback(), false);
-    /// assert_eq!(IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0x7f00, 0x1)).to_canonical().is_loopback(), true);
-    /// ```
-    #[inline]
-    #[must_use = "this returns the result of the operation, \
-                  without modifying the original"]
-    #[rustc_const_unstable(feature = "const_ip", issue = "76205")]
-    #[unstable(feature = "ip", issue = "27709")]
-    pub const fn to_canonical(&self) -> IpAddr {
-}
-}
-
-impl Ipv4Addr {
-    /// Creates a new IPv4 address from four eight-bit octets.
-    ///
-    /// The result will represent the IP address `a`.`b`.`c`.`d`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::net::Ipv4Addr;
-    ///
-    /// let addr = Ipv4Addr::new(127, 0, 0, 1);
-    /// ```
-    #[rustc_const_stable(feature = "const_ip_32", since = "1.32.0")]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[must_use]
-    #[inline]
-    pub const fn new(a: u8, b: u8, c: u8, d: u8) -> Ipv4Addr {
-}
-
-    /// An IPv4 address with the address pointing to localhost: `127.0.0.1`
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::net::Ipv4Addr;
-    ///
-    /// let addr = Ipv4Addr::LOCALHOST;
-    /// assert_eq!(addr, Ipv4Addr::new(127, 0, 0, 1));
-    /// ```
-    #[stable(feature = "ip_constructors", since = "1.30.0")]
-    pub const LOCALHOST: Self = Ipv4Addr::new(127, 0, 0, 1);
-
-    /// An IPv4 address representing an unspecified address: `0.0.0.0`
-    ///
-    /// This corresponds to the constant `INADDR_ANY` in other languages.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::net::Ipv4Addr;
-    ///
-    /// let addr = Ipv4Addr::UNSPECIFIED;
-    /// assert_eq!(addr, Ipv4Addr::new(0, 0, 0, 0));
-    /// ```
-    #[doc(alias = "INADDR_ANY")]
-    #[stable(feature = "ip_constructors", since = "1.30.0")]
-    pub const UNSPECIFIED: Self = Ipv4Addr::new(0, 0, 0, 0);
-
-    /// An IPv4 address representing the broadcast address: `255.255.255.255`
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::net::Ipv4Addr;
-    ///
-    /// let addr = Ipv4Addr::BROADCAST;
-    /// assert_eq!(addr, Ipv4Addr::new(255, 255, 255, 255));
-    /// ```
-    #[stable(feature = "ip_constructors", since = "1.30.0")]
-    pub const BROADCAST: Self = Ipv4Addr::new(255, 255, 255, 255);
-
-    /// Returns the four eight-bit integers that make up this address.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::net::Ipv4Addr;
-    ///
-    /// let addr = Ipv4Addr::new(127, 0, 0, 1);
-    /// assert_eq!(addr.octets(), [127, 0, 0, 1]);
-    /// ```
-    #[rustc_const_stable(feature = "const_ip_50", since = "1.50.0")]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[must_use]
-    #[inline]
-    pub const fn octets(&self) -> [u8; 4] {
-}
-
-    /// Returns [`true`] for the special 'unspecified' address (`0.0.0.0`).
-    ///
-    /// This property is defined in _UNIX Network Programming, Second Edition_,
-    /// W. Richard Stevens, p. 891; see also [ip7].
-    ///
-    /// [ip7]: https://man7.org/linux/man-pages/man7/ip.7.html
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::net::Ipv4Addr;
-    ///
-    /// assert_eq!(Ipv4Addr::new(0, 0, 0, 0).is_unspecified(), true);
-    /// assert_eq!(Ipv4Addr::new(45, 22, 13, 197).is_unspecified(), false);
-    /// ```
-    #[rustc_const_stable(feature = "const_ip_32", since = "1.32.0")]
-    #[stable(feature = "ip_shared", since = "1.12.0")]
-    #[must_use]
-    #[inline]
-    pub const fn is_unspecified(&self) -> bool {
-}
-
-    /// Returns [`true`] if this is a loopback address (`127.0.0.0/8`).
-    ///
-    /// This property is defined by [IETF RFC 1122].
-    ///
-    /// [IETF RFC 1122]: https://tools.ietf.org/html/rfc1122
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::net::Ipv4Addr;
-    ///
-    /// assert_eq!(Ipv4Addr::new(127, 0, 0, 1).is_loopback(), true);
-    /// assert_eq!(Ipv4Addr::new(45, 22, 13, 197).is_loopback(), false);
-    /// ```
-    #[rustc_const_stable(feature = "const_ip_50", since = "1.50.0")]
-    #[stable(since = "1.7.0", feature = "ip_17")]
-    #[must_use]
-    #[inline]
-    pub const fn is_loopback(&self) -> bool {
-}
-
-    /// Returns [`true`] if this is a private address.
-    ///
-    /// The private address ranges are defined in [IETF RFC 1918] and include:
-    ///
-    ///  - `10.0.0.0/8`
-    ///  - `172.16.0.0/12`
-    ///  - `192.168.0.0/16`
-    ///
-    /// [IETF RFC 1918]: https://tools.ietf.org/html/rfc1918
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::net::Ipv4Addr;
-    ///
-    /// assert_eq!(Ipv4Addr::new(10, 0, 0, 1).is_private(), true);
-    /// assert_eq!(Ipv4Addr::new(10, 10, 10, 10).is_private(), true);
-    /// assert_eq!(Ipv4Addr::new(172, 16, 10, 10).is_private(), true);
-    /// assert_eq!(Ipv4Addr::new(172, 29, 45, 14).is_private(), true);
-    /// assert_eq!(Ipv4Addr::new(172, 32, 0, 2).is_private(), false);
-    /// assert_eq!(Ipv4Addr::new(192, 168, 0, 2).is_private(), true);
-    /// assert_eq!(Ipv4Addr::new(192, 169, 0, 2).is_private(), false);
-    /// ```
-    #[rustc_const_stable(feature = "const_ip_50", since = "1.50.0")]
-    #[stable(since = "1.7.0", feature = "ip_17")]
-    #[must_use]
-    #[inline]
-    pub const fn is_private(&self) -> bool {
-}
-
-    /// Returns [`true`] if the address is link-local (`169.254.0.0/16`).
-    ///
-    /// This property is defined by [IETF RFC 3927].
-    ///
-    /// [IETF RFC 3927]: https://tools.ietf.org/html/rfc3927
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::net::Ipv4Addr;
-    ///
-    /// assert_eq!(Ipv4Addr::new(169, 254, 0, 0).is_link_local(), true);
-    /// assert_eq!(Ipv4Addr::new(169, 254, 10, 65).is_link_local(), true);
-    /// assert_eq!(Ipv4Addr::new(16, 89, 10, 65).is_link_local(), false);
-    /// ```
-    #[rustc_const_stable(feature = "const_ip_50", since = "1.50.0")]
-    #[stable(since = "1.7.0", feature = "ip_17")]
-    #[must_use]
-    #[inline]
-    pub const fn is_link_local(&self) -> bool {
-}
-
-    /// Returns [`true`] if the address appears to be globally routable.
-    /// See [iana-ipv4-special-registry][ipv4-sr].
-    ///
-    /// The following return [`false`]:
-    ///
-    /// - private addresses (see [`Ipv4Addr::is_private()`])
-    /// - the loopback address (see [`Ipv4Addr::is_loopback()`])
-    /// - the link-local address (see [`Ipv4Addr::is_link_local()`])
-    /// - the broadcast address (see [`Ipv4Addr::is_broadcast()`])
-    /// - addresses used for documentation (see [`Ipv4Addr::is_documentation()`])
-    /// - the unspecified address (see [`Ipv4Addr::is_unspecified()`]), and the whole
-    ///   `0.0.0.0/8` block
-    /// - addresses reserved for future protocols, except
-    /// `192.0.0.9/32` and `192.0.0.10/32` which are globally routable
-    /// - addresses reserved for future use (see [`Ipv4Addr::is_reserved()`]
-    /// - addresses reserved for networking devices benchmarking (see
-    /// [`Ipv4Addr::is_benchmarking()`])
-    ///
-    /// [ipv4-sr]: https://www.iana.org/assignments/iana-ipv4-special-registry/iana-ipv4-special-registry.xhtml
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(ip)]
-    ///
-    /// use std::net::Ipv4Addr;
-    ///
-    /// // private addresses are not global
-    /// assert_eq!(Ipv4Addr::new(10, 254, 0, 0).is_global(), false);
-    /// assert_eq!(Ipv4Addr::new(192, 168, 10, 65).is_global(), false);
-    /// assert_eq!(Ipv4Addr::new(172, 16, 10, 65).is_global(), false);
-    ///
-    /// // the 0.0.0.0/8 block is not global
-    /// assert_eq!(Ipv4Addr::new(0, 1, 2, 3).is_global(), false);
-    /// // in particular, the unspecified address is not global
-    /// assert_eq!(Ipv4Addr::new(0, 0, 0, 0).is_global(), false);
-    ///
-    /// // the loopback address is not global
-    /// assert_eq!(Ipv4Addr::new(127, 0, 0, 1).is_global(), false);
-    ///
-    /// // link local addresses are not global
-    /// assert_eq!(Ipv4Addr::new(169, 254, 45, 1).is_global(), false);
-    ///
-    /// // the broadcast address is not global
-    /// assert_eq!(Ipv4Addr::new(255, 255, 255, 255).is_global(), false);
-    ///
-    /// // the address space designated for documentation is not global
-    /// assert_eq!(Ipv4Addr::new(192, 0, 2, 255).is_global(), false);
-    /// assert_eq!(Ipv4Addr::new(198, 51, 100, 65).is_global(), false);
-    /// assert_eq!(Ipv4Addr::new(203, 0, 113, 6).is_global(), false);
-    ///
-    /// // shared addresses are not global
-    /// assert_eq!(Ipv4Addr::new(100, 100, 0, 0).is_global(), false);
-    ///
-    /// // addresses reserved for protocol assignment are not global
-    /// assert_eq!(Ipv4Addr::new(192, 0, 0, 0).is_global(), false);
-    /// assert_eq!(Ipv4Addr::new(192, 0, 0, 255).is_global(), false);
-    ///
-    /// // addresses reserved for future use are not global
-    /// assert_eq!(Ipv4Addr::new(250, 10, 20, 30).is_global(), false);
-    ///
-    /// // addresses reserved for network devices benchmarking are not global
-    /// assert_eq!(Ipv4Addr::new(198, 18, 0, 0).is_global(), false);
-    ///
-    /// // All the other addresses are global
-    /// assert_eq!(Ipv4Addr::new(1, 1, 1, 1).is_global(), true);
-    /// assert_eq!(Ipv4Addr::new(80, 9, 12, 3).is_global(), true);
-    /// ```
-    #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
-    #[unstable(feature = "ip", issue = "27709")]
-    #[must_use]
-    #[inline]
-    pub const fn is_global(&self) -> bool {
-}
-
-    /// Returns [`true`] if this address is part of the Shared Address Space defined in
-    /// [IETF RFC 6598] (`100.64.0.0/10`).
-    ///
-    /// [IETF RFC 6598]: https://tools.ietf.org/html/rfc6598
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(ip)]
-    /// use std::net::Ipv4Addr;
-    ///
-    /// assert_eq!(Ipv4Addr::new(100, 64, 0, 0).is_shared(), true);
-    /// assert_eq!(Ipv4Addr::new(100, 127, 255, 255).is_shared(), true);
-    /// assert_eq!(Ipv4Addr::new(100, 128, 0, 0).is_shared(), false);
-    /// ```
-    #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
-    #[unstable(feature = "ip", issue = "27709")]
-    #[must_use]
-    #[inline]
-    pub const fn is_shared(&self) -> bool {
-}
-
-    /// Returns [`true`] if this address part of the `198.18.0.0/15` range, which is reserved for
-    /// network devices benchmarking. This range is defined in [IETF RFC 2544] as `192.18.0.0`
-    /// through `198.19.255.255` but [errata 423] corrects it to `198.18.0.0/15`.
-    ///
-    /// [IETF RFC 2544]: https://tools.ietf.org/html/rfc2544
-    /// [errata 423]: https://www.rfc-editor.org/errata/eid423
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(ip)]
-    /// use std::net::Ipv4Addr;
-    ///
-    /// assert_eq!(Ipv4Addr::new(198, 17, 255, 255).is_benchmarking(), false);
-    /// assert_eq!(Ipv4Addr::new(198, 18, 0, 0).is_benchmarking(), true);
-    /// assert_eq!(Ipv4Addr::new(198, 19, 255, 255).is_benchmarking(), true);
-    /// assert_eq!(Ipv4Addr::new(198, 20, 0, 0).is_benchmarking(), false);
-    /// ```
-    #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
-    #[unstable(feature = "ip", issue = "27709")]
-    #[must_use]
-    #[inline]
-    pub const fn is_benchmarking(&self) -> bool {
-}
-
-    /// Returns [`true`] if this address is reserved by IANA for future use. [IETF RFC 1112]
-    /// defines the block of reserved addresses as `240.0.0.0/4`. This range normally includes the
-    /// broadcast address `255.255.255.255`, but this implementation explicitly excludes it, since
-    /// it is obviously not reserved for future use.
-    ///
-    /// [IETF RFC 1112]: https://tools.ietf.org/html/rfc1112
-    ///
-    /// # Warning
-    ///
-    /// As IANA assigns new addresses, this method will be
-    /// updated. This may result in non-reserved addresses being
-    /// treated as reserved in code that relies on an outdated version
-    /// of this method.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(ip)]
-    /// use std::net::Ipv4Addr;
-    ///
-    /// assert_eq!(Ipv4Addr::new(240, 0, 0, 0).is_reserved(), true);
-    /// assert_eq!(Ipv4Addr::new(255, 255, 255, 254).is_reserved(), true);
-    ///
-    /// assert_eq!(Ipv4Addr::new(239, 255, 255, 255).is_reserved(), false);
-    /// // The broadcast address is not considered as reserved for future use by this implementation
-    /// assert_eq!(Ipv4Addr::new(255, 255, 255, 255).is_reserved(), false);
-    /// ```
-    #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
-    #[unstable(feature = "ip", issue = "27709")]
-    #[must_use]
-    #[inline]
-    pub const fn is_reserved(&self) -> bool {
-}
-
-    /// Returns [`true`] if this is a multicast address (`224.0.0.0/4`).
-    ///
-    /// Multicast addresses have a most significant octet between `224` and `239`,
-    /// and is defined by [IETF RFC 5771].
-    ///
-    /// [IETF RFC 5771]: https://tools.ietf.org/html/rfc5771
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::net::Ipv4Addr;
-    ///
-    /// assert_eq!(Ipv4Addr::new(224, 254, 0, 0).is_multicast(), true);
-    /// assert_eq!(Ipv4Addr::new(236, 168, 10, 65).is_multicast(), true);
-    /// assert_eq!(Ipv4Addr::new(172, 16, 10, 65).is_multicast(), false);
-    /// ```
-    #[rustc_const_stable(feature = "const_ip_50", since = "1.50.0")]
-    #[stable(since = "1.7.0", feature = "ip_17")]
-    #[must_use]
-    #[inline]
-    pub const fn is_multicast(&self) -> bool {
-}
-
-    /// Returns [`true`] if this is a broadcast address (`255.255.255.255`).
-    ///
-    /// A broadcast address has all octets set to `255` as defined in [IETF RFC 919].
-    ///
-    /// [IETF RFC 919]: https://tools.ietf.org/html/rfc919
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::net::Ipv4Addr;
-    ///
-    /// assert_eq!(Ipv4Addr::new(255, 255, 255, 255).is_broadcast(), true);
-    /// assert_eq!(Ipv4Addr::new(236, 168, 10, 65).is_broadcast(), false);
-    /// ```
-    #[rustc_const_stable(feature = "const_ip_50", since = "1.50.0")]
-    #[stable(since = "1.7.0", feature = "ip_17")]
-    #[must_use]
-    #[inline]
-    pub const fn is_broadcast(&self) -> bool {
-}
-
-    /// Returns [`true`] if this address is in a range designated for documentation.
-    ///
-    /// This is defined in [IETF RFC 5737]:
-    ///
-    /// - `192.0.2.0/24` (TEST-NET-1)
-    /// - `198.51.100.0/24` (TEST-NET-2)
-    /// - `203.0.113.0/24` (TEST-NET-3)
-    ///
-    /// [IETF RFC 5737]: https://tools.ietf.org/html/rfc5737
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::net::Ipv4Addr;
-    ///
-    /// assert_eq!(Ipv4Addr::new(192, 0, 2, 255).is_documentation(), true);
-    /// assert_eq!(Ipv4Addr::new(198, 51, 100, 65).is_documentation(), true);
-    /// assert_eq!(Ipv4Addr::new(203, 0, 113, 6).is_documentation(), true);
-    /// assert_eq!(Ipv4Addr::new(193, 34, 17, 19).is_documentation(), false);
-    /// ```
-    #[rustc_const_stable(feature = "const_ip_50", since = "1.50.0")]
-    #[stable(since = "1.7.0", feature = "ip_17")]
-    #[must_use]
-    #[inline]
-    pub const fn is_documentation(&self) -> bool {
-}
-
-    /// Converts this address to an [IPv4-compatible] [`IPv6` address].
-    ///
-    /// `a.b.c.d` becomes `::a.b.c.d`
-    ///
-    /// Note that IPv4-compatible addresses have been officially deprecated.
-    /// If you don't explicitly need an IPv4-compatible address for legacy reasons, consider using `to_ipv6_mapped` instead.
-    ///
-    /// [IPv4-compatible]: Ipv6Addr#ipv4-compatible-ipv6-addresses
-    /// [`IPv6` address]: Ipv6Addr
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::net::{Ipv4Addr, Ipv6Addr};
-    ///
-    /// assert_eq!(
-    ///     Ipv4Addr::new(192, 0, 2, 255).to_ipv6_compatible(),
-    ///     Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0xc000, 0x2ff)
-    /// );
-    /// ```
-    #[rustc_const_stable(feature = "const_ip_50", since = "1.50.0")]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[must_use = "this returns the result of the operation, \
-                  without modifying the original"]
-    #[inline]
-    pub const fn to_ipv6_compatible(&self) -> Ipv6Addr {
-}
-
-    /// Converts this address to an [IPv4-mapped] [`IPv6` address].
-    ///
-    /// `a.b.c.d` becomes `::ffff:a.b.c.d`
-    ///
-    /// [IPv4-mapped]: Ipv6Addr#ipv4-mapped-ipv6-addresses
-    /// [`IPv6` address]: Ipv6Addr
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::net::{Ipv4Addr, Ipv6Addr};
-    ///
-    /// assert_eq!(Ipv4Addr::new(192, 0, 2, 255).to_ipv6_mapped(),
-    ///            Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc000, 0x2ff));
-    /// ```
-    #[rustc_const_stable(feature = "const_ip_50", since = "1.50.0")]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[must_use = "this returns the result of the operation, \
-                  without modifying the original"]
-    #[inline]
-    pub const fn to_ipv6_mapped(&self) -> Ipv6Addr {
-}
-}
-
-#[stable(feature = "ip_addr", since = "1.7.0")]
-impl fmt::Display for IpAddr {
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-}
-}
-
-#[stable(feature = "ip_addr", since = "1.7.0")]
-impl fmt::Debug for IpAddr {
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-}
-}
-
-#[stable(feature = "ip_from_ip", since = "1.16.0")]
-impl From<Ipv4Addr> for IpAddr {
-    /// Copies this address to a new `IpAddr::V4`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::net::{IpAddr, Ipv4Addr};
-    ///
-    /// let addr = Ipv4Addr::new(127, 0, 0, 1);
-    ///
-    /// assert_eq!(
-    ///     IpAddr::V4(addr),
-    ///     IpAddr::from(addr)
-    /// )
-    /// ```
-    #[inline]
-    fn from(ipv4: Ipv4Addr) -> IpAddr {
-}
-}
-
-#[stable(feature = "ip_from_ip", since = "1.16.0")]
-impl From<Ipv6Addr> for IpAddr {
-    /// Copies this address to a new `IpAddr::V6`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::net::{IpAddr, Ipv6Addr};
-    ///
-    /// let addr = Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff);
-    ///
-    /// assert_eq!(
-    ///     IpAddr::V6(addr),
-    ///     IpAddr::from(addr)
-    /// );
-    /// ```
-    #[inline]
-    fn from(ipv6: Ipv6Addr) -> IpAddr {
-}
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl fmt::Display for Ipv4Addr {
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-}
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl fmt::Debug for Ipv4Addr {
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-}
-}
-
-#[stable(feature = "ip_cmp", since = "1.16.0")]
-impl PartialEq<Ipv4Addr> for IpAddr {
-    #[inline]
-    fn eq(&self, other: &Ipv4Addr) -> bool {
-}
-}
-
-#[stable(feature = "ip_cmp", since = "1.16.0")]
-impl PartialEq<IpAddr> for Ipv4Addr {
-    #[inline]
-    fn eq(&self, other: &IpAddr) -> bool {
-}
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl PartialOrd for Ipv4Addr {
-    #[inline]
-    fn partial_cmp(&self, other: &Ipv4Addr) -> Option<Ordering> {
-}
-}
-
-#[stable(feature = "ip_cmp", since = "1.16.0")]
-impl PartialOrd<Ipv4Addr> for IpAddr {
-    #[inline]
-    fn partial_cmp(&self, other: &Ipv4Addr) -> Option<Ordering> {
-}
-}
-
-#[stable(feature = "ip_cmp", since = "1.16.0")]
-impl PartialOrd<IpAddr> for Ipv4Addr {
-    #[inline]
-    fn partial_cmp(&self, other: &IpAddr) -> Option<Ordering> {
-}
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl Ord for Ipv4Addr {
-    #[inline]
-    fn cmp(&self, other: &Ipv4Addr) -> Ordering {
-}
-}
-
-impl IntoInner<c::in_addr> for Ipv4Addr {
-    #[inline]
-    fn into_inner(self) -> c::in_addr {
-}
-}
-impl FromInner<c::in_addr> for Ipv4Addr {
-    fn from_inner(addr: c::in_addr) -> Ipv4Addr {
-}
-}
-
-#[stable(feature = "ip_u32", since = "1.1.0")]
-impl From<Ipv4Addr> for u32 {
-    /// Converts an `Ipv4Addr` into a host byte order `u32`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::net::Ipv4Addr;
-    ///
-    /// let addr = Ipv4Addr::new(0x12, 0x34, 0x56, 0x78);
-    /// assert_eq!(0x12345678, u32::from(addr));
-    /// ```
-    #[inline]
-    fn from(ip: Ipv4Addr) -> u32 {
-}
-}
-
-#[stable(feature = "ip_u32", since = "1.1.0")]
-impl From<u32> for Ipv4Addr {
-    /// Converts a host byte order `u32` into an `Ipv4Addr`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::net::Ipv4Addr;
-    ///
-    /// let addr = Ipv4Addr::from(0x12345678);
-    /// assert_eq!(Ipv4Addr::new(0x12, 0x34, 0x56, 0x78), addr);
-    /// ```
-    #[inline]
-    fn from(ip: u32) -> Ipv4Addr {
-}
-}
-
-#[stable(feature = "from_slice_v4", since = "1.9.0")]
-impl From<[u8; 4]> for Ipv4Addr {
-    /// Creates an `Ipv4Addr` from a four element byte array.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::net::Ipv4Addr;
-    ///
-    /// let addr = Ipv4Addr::from([13u8, 12u8, 11u8, 10u8]);
-    /// assert_eq!(Ipv4Addr::new(13, 12, 11, 10), addr);
-    /// ```
-    #[inline]
-    fn from(octets: [u8; 4]) -> Ipv4Addr {
-}
-}
-
-#[stable(feature = "ip_from_slice", since = "1.17.0")]
-impl From<[u8; 4]> for IpAddr {
-    /// Creates an `IpAddr::V4` from a four element byte array.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::net::{IpAddr, Ipv4Addr};
-    ///
-    /// let addr = IpAddr::from([13u8, 12u8, 11u8, 10u8]);
-    /// assert_eq!(IpAddr::V4(Ipv4Addr::new(13, 12, 11, 10)), addr);
-    /// ```
-    #[inline]
-    fn from(octets: [u8; 4]) -> IpAddr {
-}
-}
-
-impl Ipv6Addr {
-    /// Creates a new IPv6 address from eight 16-bit segments.
-    ///
-    /// The result will represent the IP address `a:b:c:d:e:f:g:h`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::net::Ipv6Addr;
-    ///
-    /// let addr = Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff);
-    /// ```
-    #[rustc_const_stable(feature = "const_ip_32", since = "1.32.0")]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[must_use]
-    #[inline]
-    pub const fn new(a: u16, b: u16, c: u16, d: u16, e: u16, f: u16, g: u16, h: u16) -> Ipv6Addr {
-}
-
-    /// An IPv6 address representing localhost: `::1`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::net::Ipv6Addr;
-    ///
-    /// let addr = Ipv6Addr::LOCALHOST;
-    /// assert_eq!(addr, Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1));
-    /// ```
-    #[stable(feature = "ip_constructors", since = "1.30.0")]
-    pub const LOCALHOST: Self = Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1);
-
-    /// An IPv6 address representing the unspecified address: `::`
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::net::Ipv6Addr;
-    ///
-    /// let addr = Ipv6Addr::UNSPECIFIED;
-    /// assert_eq!(addr, Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0));
-    /// ```
-    #[stable(feature = "ip_constructors", since = "1.30.0")]
-    pub const UNSPECIFIED: Self = Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0);
-
-    /// Returns the eight 16-bit segments that make up this address.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::net::Ipv6Addr;
-    ///
-    /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).segments(),
-    ///            [0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff]);
-    /// ```
-    #[rustc_const_stable(feature = "const_ip_50", since = "1.50.0")]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[must_use]
-    #[inline]
-    pub const fn segments(&self) -> [u16; 8] {
-}
-
-    /// Returns [`true`] for the special 'unspecified' address (`::`).
-    ///
-    /// This property is defined in [IETF RFC 4291].
-    ///
-    /// [IETF RFC 4291]: https://tools.ietf.org/html/rfc4291
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::net::Ipv6Addr;
-    ///
-    /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).is_unspecified(), false);
-    /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0).is_unspecified(), true);
-    /// ```
-    #[rustc_const_stable(feature = "const_ip_50", since = "1.50.0")]
-    #[stable(since = "1.7.0", feature = "ip_17")]
-    #[must_use]
-    #[inline]
-    pub const fn is_unspecified(&self) -> bool {
-}
-
-    /// Returns [`true`] if this is the [loopback address] (`::1`),
-    /// as defined in [IETF RFC 4291 section 2.5.3].
-    ///
-    /// Contrary to IPv4, in IPv6 there is only one loopback address.
-    ///
-    /// [loopback address]: Ipv6Addr::LOCALHOST
-    /// [IETF RFC 4291 section 2.5.3]: https://tools.ietf.org/html/rfc4291#section-2.5.3
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::net::Ipv6Addr;
-    ///
-    /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).is_loopback(), false);
-    /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0x1).is_loopback(), true);
-    /// ```
-    #[rustc_const_stable(feature = "const_ip_50", since = "1.50.0")]
-    #[stable(since = "1.7.0", feature = "ip_17")]
-    #[must_use]
-    #[inline]
-    pub const fn is_loopback(&self) -> bool {
-}
-
-    /// Returns [`true`] if the address appears to be globally routable.
-    ///
-    /// The following return [`false`]:
-    ///
-    /// - the loopback address
-    /// - link-local and unique local unicast addresses
-    /// - interface-, link-, realm-, admin- and site-local multicast addresses
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(ip)]
-    ///
-    /// use std::net::Ipv6Addr;
-    ///
-    /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).is_global(), true);
-    /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0x1).is_global(), false);
-    /// assert_eq!(Ipv6Addr::new(0, 0, 0x1c9, 0, 0, 0xafc8, 0, 0x1).is_global(), true);
-    /// ```
-    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
-    #[unstable(feature = "ip", issue = "27709")]
-    #[must_use]
-    #[inline]
-    pub const fn is_global(&self) -> bool {
-}
-
-    /// Returns [`true`] if this is a unique local address (`fc00::/7`).
-    ///
-    /// This property is defined in [IETF RFC 4193].
-    ///
-    /// [IETF RFC 4193]: https://tools.ietf.org/html/rfc4193
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(ip)]
-    ///
-    /// use std::net::Ipv6Addr;
-    ///
-    /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).is_unique_local(), false);
-    /// assert_eq!(Ipv6Addr::new(0xfc02, 0, 0, 0, 0, 0, 0, 0).is_unique_local(), true);
-    /// ```
-    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
-    #[unstable(feature = "ip", issue = "27709")]
-    #[must_use]
-    #[inline]
-    pub const fn is_unique_local(&self) -> bool {
-}
-
-    /// Returns [`true`] if this is a unicast address, as defined by [IETF RFC 4291].
-    /// Any address that is not a [multicast address] (`ff00::/8`) is unicast.
-    ///
-    /// [IETF RFC 4291]: https://tools.ietf.org/html/rfc4291
-    /// [multicast address]: Ipv6Addr::is_multicast
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(ip)]
-    ///
-    /// use std::net::Ipv6Addr;
-    ///
-    /// // The unspecified and loopback addresses are unicast.
-    /// assert_eq!(Ipv6Addr::UNSPECIFIED.is_unicast(), true);
-    /// assert_eq!(Ipv6Addr::LOCALHOST.is_unicast(), true);
-    ///
-    /// // Any address that is not a multicast address (`ff00::/8`) is unicast.
-    /// assert_eq!(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 0).is_unicast(), true);
-    /// assert_eq!(Ipv6Addr::new(0xff00, 0, 0, 0, 0, 0, 0, 0).is_unicast(), false);
-    /// ```
-    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
-    #[unstable(feature = "ip", issue = "27709")]
-    #[must_use]
-    #[inline]
-    pub const fn is_unicast(&self) -> bool {
-}
-
-    /// Returns `true` if the address is a unicast address with link-local scope,
-    /// as defined in [RFC 4291].
-    ///
-    /// A unicast address has link-local scope if it has the prefix `fe80::/10`, as per [RFC 4291 section 2.4].
-    /// Note that this encompasses more addresses than those defined in [RFC 4291 section 2.5.6],
-    /// which describes "Link-Local IPv6 Unicast Addresses" as having the following stricter format:
-    ///
-    /// ```text
-    /// | 10 bits  |         54 bits         |          64 bits           |
-    /// +----------+-------------------------+----------------------------+
-    /// |1111111010|           0             |       interface ID         |
-    /// +----------+-------------------------+----------------------------+
-    /// ```
-    /// So while currently the only addresses with link-local scope an application will encounter are all in `fe80::/64`,
-    /// this might change in the future with the publication of new standards. More addresses in `fe80::/10` could be allocated,
-    /// and those addresses will have link-local scope.
-    ///
-    /// Also note that while [RFC 4291 section 2.5.3] mentions about the [loopback address] (`::1`) that "it is treated as having Link-Local scope",
-    /// this does not mean that the loopback address actually has link-local scope and this method will return `false` on it.
-    ///
-    /// [RFC 4291]: https://tools.ietf.org/html/rfc4291
-    /// [RFC 4291 section 2.4]: https://tools.ietf.org/html/rfc4291#section-2.4
-    /// [RFC 4291 section 2.5.3]: https://tools.ietf.org/html/rfc4291#section-2.5.3
-    /// [RFC 4291 section 2.5.6]: https://tools.ietf.org/html/rfc4291#section-2.5.6
-    /// [loopback address]: Ipv6Addr::LOCALHOST
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(ip)]
-    ///
-    /// use std::net::Ipv6Addr;
-    ///
-    /// // The loopback address (`::1`) does not actually have link-local scope.
-    /// assert_eq!(Ipv6Addr::LOCALHOST.is_unicast_link_local(), false);
-    ///
-    /// // Only addresses in `fe80::/10` have link-local scope.
-    /// assert_eq!(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 0).is_unicast_link_local(), false);
-    /// assert_eq!(Ipv6Addr::new(0xfe80, 0, 0, 0, 0, 0, 0, 0).is_unicast_link_local(), true);
-    ///
-    /// // Addresses outside the stricter `fe80::/64` also have link-local scope.
-    /// assert_eq!(Ipv6Addr::new(0xfe80, 0, 0, 1, 0, 0, 0, 0).is_unicast_link_local(), true);
-    /// assert_eq!(Ipv6Addr::new(0xfe81, 0, 0, 0, 0, 0, 0, 0).is_unicast_link_local(), true);
-    /// ```
-    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
-    #[unstable(feature = "ip", issue = "27709")]
-    #[must_use]
-    #[inline]
-    pub const fn is_unicast_link_local(&self) -> bool {
-}
-
-    /// Returns [`true`] if this is an address reserved for documentation
-    /// (`2001:db8::/32`).
-    ///
-    /// This property is defined in [IETF RFC 3849].
-    ///
-    /// [IETF RFC 3849]: https://tools.ietf.org/html/rfc3849
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(ip)]
-    ///
-    /// use std::net::Ipv6Addr;
-    ///
-    /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).is_documentation(), false);
-    /// assert_eq!(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 0).is_documentation(), true);
-    /// ```
-    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
-    #[unstable(feature = "ip", issue = "27709")]
-    #[must_use]
-    #[inline]
-    pub const fn is_documentation(&self) -> bool {
-}
-
-    /// Returns [`true`] if this is an address reserved for benchmarking (`2001:2::/48`).
-    ///
-    /// This property is defined in [IETF RFC 5180], where it is mistakenly specified as covering the range `2001:0200::/48`.
-    /// This is corrected in [IETF RFC Errata 1752] to `2001:0002::/48`.
-    ///
-    /// [IETF RFC 5180]: https://tools.ietf.org/html/rfc5180
-    /// [IETF RFC Errata 1752]: https://www.rfc-editor.org/errata_search.php?eid=1752
-    ///
-    /// ```
-    /// #![feature(ip)]
-    ///
-    /// use std::net::Ipv6Addr;
-    ///
-    /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc613, 0x0).is_benchmarking(), false);
-    /// assert_eq!(Ipv6Addr::new(0x2001, 0x2, 0, 0, 0, 0, 0, 0).is_benchmarking(), true);
-    /// ```
-    #[unstable(feature = "ip", issue = "27709")]
-    #[must_use]
-    #[inline]
-    pub const fn is_benchmarking(&self) -> bool {
-}
-
-    /// Returns [`true`] if the address is a globally routable unicast address.
-    ///
-    /// The following return false:
-    ///
-    /// - the loopback address
-    /// - the link-local addresses
-    /// - unique local addresses
-    /// - the unspecified address
-    /// - the address range reserved for documentation
-    ///
-    /// This method returns [`true`] for site-local addresses as per [RFC 4291 section 2.5.7]
-    ///
-    /// ```no_rust
-    /// The special behavior of [the site-local unicast] prefix defined in [RFC3513] must no longer
-    /// be supported in new implementations (i.e., new implementations must treat this prefix as
-    /// Global Unicast).
-    /// ```
-    ///
-    /// [RFC 4291 section 2.5.7]: https://tools.ietf.org/html/rfc4291#section-2.5.7
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(ip)]
-    ///
-    /// use std::net::Ipv6Addr;
-    ///
-    /// assert_eq!(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 0).is_unicast_global(), false);
-    /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).is_unicast_global(), true);
-    /// ```
-    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
-    #[unstable(feature = "ip", issue = "27709")]
-    #[must_use]
-    #[inline]
-    pub const fn is_unicast_global(&self) -> bool {
-}
-
-    /// Returns the address's multicast scope if the address is multicast.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(ip)]
-    ///
-    /// use std::net::{Ipv6Addr, Ipv6MulticastScope};
-    ///
-    /// assert_eq!(
-    ///     Ipv6Addr::new(0xff0e, 0, 0, 0, 0, 0, 0, 0).multicast_scope(),
-    ///     Some(Ipv6MulticastScope::Global)
-    /// );
-    /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).multicast_scope(), None);
-    /// ```
-    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
-    #[unstable(feature = "ip", issue = "27709")]
-    #[must_use]
-    #[inline]
-    pub const fn multicast_scope(&self) -> Option<Ipv6MulticastScope> {
-}
-
-    /// Returns [`true`] if this is a multicast address (`ff00::/8`).
-    ///
-    /// This property is defined by [IETF RFC 4291].
-    ///
-    /// [IETF RFC 4291]: https://tools.ietf.org/html/rfc4291
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::net::Ipv6Addr;
-    ///
-    /// assert_eq!(Ipv6Addr::new(0xff00, 0, 0, 0, 0, 0, 0, 0).is_multicast(), true);
-    /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).is_multicast(), false);
-    /// ```
-    #[rustc_const_stable(feature = "const_ip_50", since = "1.50.0")]
-    #[stable(since = "1.7.0", feature = "ip_17")]
-    #[must_use]
-    #[inline]
-    pub const fn is_multicast(&self) -> bool {
-}
-
-    /// Converts this address to an [`IPv4` address] if it's an [IPv4-mapped] address,
-    /// as defined in [IETF RFC 4291 section 2.5.5.2], otherwise returns [`None`].
-    ///
-    /// `::ffff:a.b.c.d` becomes `a.b.c.d`.
-    /// All addresses *not* starting with `::ffff` will return `None`.
-    ///
-    /// [`IPv4` address]: Ipv4Addr
-    /// [IPv4-mapped]: Ipv6Addr
-    /// [IETF RFC 4291 section 2.5.5.2]: https://tools.ietf.org/html/rfc4291#section-2.5.5.2
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::net::{Ipv4Addr, Ipv6Addr};
-    ///
-    /// assert_eq!(Ipv6Addr::new(0xff00, 0, 0, 0, 0, 0, 0, 0).to_ipv4_mapped(), None);
-    /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).to_ipv4_mapped(),
-    ///            Some(Ipv4Addr::new(192, 10, 2, 255)));
-    /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1).to_ipv4_mapped(), None);
-    /// ```
-    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
-    #[stable(feature = "ipv6_to_ipv4_mapped", since = "1.63.0")]
-    #[must_use = "this returns the result of the operation, \
-                  without modifying the original"]
-    #[inline]
-    pub const fn to_ipv4_mapped(&self) -> Option<Ipv4Addr> {
-}
-
-    /// Converts this address to an [`IPv4` address] if it is either
-    /// an [IPv4-compatible] address as defined in [IETF RFC 4291 section 2.5.5.1],
-    /// or an [IPv4-mapped] address as defined in [IETF RFC 4291 section 2.5.5.2],
-    /// otherwise returns [`None`].
-    ///
-    /// Note that this will return an [`IPv4` address] for the IPv6 loopback address `::1`. Use
-    /// [`Ipv6Addr::to_ipv4_mapped`] to avoid this.
-    ///
-    /// `::a.b.c.d` and `::ffff:a.b.c.d` become `a.b.c.d`. `::1` becomes `0.0.0.1`.
-    /// All addresses *not* starting with either all zeroes or `::ffff` will return `None`.
-    ///
-    /// [`IPv4` address]: Ipv4Addr
-    /// [IPv4-compatible]: Ipv6Addr#ipv4-compatible-ipv6-addresses
-    /// [IPv4-mapped]: Ipv6Addr#ipv4-mapped-ipv6-addresses
-    /// [IETF RFC 4291 section 2.5.5.1]: https://tools.ietf.org/html/rfc4291#section-2.5.5.1
-    /// [IETF RFC 4291 section 2.5.5.2]: https://tools.ietf.org/html/rfc4291#section-2.5.5.2
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::net::{Ipv4Addr, Ipv6Addr};
-    ///
-    /// assert_eq!(Ipv6Addr::new(0xff00, 0, 0, 0, 0, 0, 0, 0).to_ipv4(), None);
-    /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).to_ipv4(),
-    ///            Some(Ipv4Addr::new(192, 10, 2, 255)));
-    /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1).to_ipv4(),
-    ///            Some(Ipv4Addr::new(0, 0, 0, 1)));
-    /// ```
-    #[rustc_const_stable(feature = "const_ip_50", since = "1.50.0")]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[must_use = "this returns the result of the operation, \
-                  without modifying the original"]
-    #[inline]
-    pub const fn to_ipv4(&self) -> Option<Ipv4Addr> {
-}
-
-    /// Converts this address to an `IpAddr::V4` if it is an IPv4-mapped addresses, otherwise it
-    /// returns self wrapped in an `IpAddr::V6`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(ip)]
-    /// use std::net::Ipv6Addr;
-    ///
-    /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0x7f00, 0x1).is_loopback(), false);
-    /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0x7f00, 0x1).to_canonical().is_loopback(), true);
-    /// ```
-    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
-    #[unstable(feature = "ip", issue = "27709")]
-    #[must_use = "this returns the result of the operation, \
-                  without modifying the original"]
-    #[inline]
-    pub const fn to_canonical(&self) -> IpAddr {
-}
-
-    /// Returns the sixteen eight-bit integers the IPv6 address consists of.
-    ///
-    /// ```
-    /// use std::net::Ipv6Addr;
-    ///
-    /// assert_eq!(Ipv6Addr::new(0xff00, 0, 0, 0, 0, 0, 0, 0).octets(),
-    ///            [255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
-    /// ```
-    #[rustc_const_stable(feature = "const_ip_32", since = "1.32.0")]
-    #[stable(feature = "ipv6_to_octets", since = "1.12.0")]
-    #[must_use]
-    #[inline]
-    pub const fn octets(&self) -> [u8; 16] {
-}
-}
-
-/// Write an Ipv6Addr, conforming to the canonical style described by
-/// [RFC 5952](https://tools.ietf.org/html/rfc5952).
-#[stable(feature = "rust1", since = "1.0.0")]
-impl fmt::Display for Ipv6Addr {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-}
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl fmt::Debug for Ipv6Addr {
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-}
-}
-
-#[stable(feature = "ip_cmp", since = "1.16.0")]
-impl PartialEq<IpAddr> for Ipv6Addr {
-    #[inline]
-    fn eq(&self, other: &IpAddr) -> bool {
-}
-}
-
-#[stable(feature = "ip_cmp", since = "1.16.0")]
-impl PartialEq<Ipv6Addr> for IpAddr {
-    #[inline]
-    fn eq(&self, other: &Ipv6Addr) -> bool {
-}
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl PartialOrd for Ipv6Addr {
-    #[inline]
-    fn partial_cmp(&self, other: &Ipv6Addr) -> Option<Ordering> {
-}
-}
-
-#[stable(feature = "ip_cmp", since = "1.16.0")]
-impl PartialOrd<Ipv6Addr> for IpAddr {
-    #[inline]
-    fn partial_cmp(&self, other: &Ipv6Addr) -> Option<Ordering> {
-}
-}
-
-#[stable(feature = "ip_cmp", since = "1.16.0")]
-impl PartialOrd<IpAddr> for Ipv6Addr {
-    #[inline]
-    fn partial_cmp(&self, other: &IpAddr) -> Option<Ordering> {
-}
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl Ord for Ipv6Addr {
-    #[inline]
-    fn cmp(&self, other: &Ipv6Addr) -> Ordering {
-}
-}
-
-impl IntoInner<c::in6_addr> for Ipv6Addr {
-    fn into_inner(self) -> c::in6_addr {
-}
-}
-impl FromInner<c::in6_addr> for Ipv6Addr {
-    #[inline]
-    fn from_inner(addr: c::in6_addr) -> Ipv6Addr {
-}
-}
-
-#[stable(feature = "i128", since = "1.26.0")]
-impl From<Ipv6Addr> for u128 {
-    /// Convert an `Ipv6Addr` into a host byte order `u128`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::net::Ipv6Addr;
-    ///
-    /// let addr = Ipv6Addr::new(
-    ///     0x1020, 0x3040, 0x5060, 0x7080,
-    ///     0x90A0, 0xB0C0, 0xD0E0, 0xF00D,
-    /// );
-    /// assert_eq!(0x102030405060708090A0B0C0D0E0F00D_u128, u128::from(addr));
-    /// ```
-    #[inline]
-    fn from(ip: Ipv6Addr) -> u128 {
-}
-}
-#[stable(feature = "i128", since = "1.26.0")]
-impl From<u128> for Ipv6Addr {
-    /// Convert a host byte order `u128` into an `Ipv6Addr`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::net::Ipv6Addr;
-    ///
-    /// let addr = Ipv6Addr::from(0x102030405060708090A0B0C0D0E0F00D_u128);
-    /// assert_eq!(
-    ///     Ipv6Addr::new(
-    ///         0x1020, 0x3040, 0x5060, 0x7080,
-    ///         0x90A0, 0xB0C0, 0xD0E0, 0xF00D,
-    ///     ),
-    ///     addr);
-    /// ```
-    #[inline]
-    fn from(ip: u128) -> Ipv6Addr {
-}
-}
-
-#[stable(feature = "ipv6_from_octets", since = "1.9.0")]
-impl From<[u8; 16]> for Ipv6Addr {
-    /// Creates an `Ipv6Addr` from a sixteen element byte array.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::net::Ipv6Addr;
-    ///
-    /// let addr = Ipv6Addr::from([
-    ///     25u8, 24u8, 23u8, 22u8, 21u8, 20u8, 19u8, 18u8,
-    ///     17u8, 16u8, 15u8, 14u8, 13u8, 12u8, 11u8, 10u8,
-    /// ]);
-    /// assert_eq!(
-    ///     Ipv6Addr::new(
-    ///         0x1918, 0x1716,
-    ///         0x1514, 0x1312,
-    ///         0x1110, 0x0f0e,
-    ///         0x0d0c, 0x0b0a
-    ///     ),
-    ///     addr
-    /// );
-    /// ```
-    #[inline]
-    fn from(octets: [u8; 16]) -> Ipv6Addr {
-}
-}
-
-#[stable(feature = "ipv6_from_segments", since = "1.16.0")]
-impl From<[u16; 8]> for Ipv6Addr {
-    /// Creates an `Ipv6Addr` from an eight element 16-bit array.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::net::Ipv6Addr;
-    ///
-    /// let addr = Ipv6Addr::from([
-    ///     525u16, 524u16, 523u16, 522u16,
-    ///     521u16, 520u16, 519u16, 518u16,
-    /// ]);
-    /// assert_eq!(
-    ///     Ipv6Addr::new(
-    ///         0x20d, 0x20c,
-    ///         0x20b, 0x20a,
-    ///         0x209, 0x208,
-    ///         0x207, 0x206
-    ///     ),
-    ///     addr
-    /// );
-    /// ```
-    #[inline]
-    fn from(segments: [u16; 8]) -> Ipv6Addr {
-}
-}
-
-#[stable(feature = "ip_from_slice", since = "1.17.0")]
-impl From<[u8; 16]> for IpAddr {
-    /// Creates an `IpAddr::V6` from a sixteen element byte array.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::net::{IpAddr, Ipv6Addr};
-    ///
-    /// let addr = IpAddr::from([
-    ///     25u8, 24u8, 23u8, 22u8, 21u8, 20u8, 19u8, 18u8,
-    ///     17u8, 16u8, 15u8, 14u8, 13u8, 12u8, 11u8, 10u8,
-    /// ]);
-    /// assert_eq!(
-    ///     IpAddr::V6(Ipv6Addr::new(
-    ///         0x1918, 0x1716,
-    ///         0x1514, 0x1312,
-    ///         0x1110, 0x0f0e,
-    ///         0x0d0c, 0x0b0a
-    ///     )),
-    ///     addr
-    /// );
-    /// ```
-    #[inline]
-    fn from(octets: [u8; 16]) -> IpAddr {
-}
-}
-
-#[stable(feature = "ip_from_slice", since = "1.17.0")]
-impl From<[u16; 8]> for IpAddr {
-    /// Creates an `IpAddr::V6` from an eight element 16-bit array.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::net::{IpAddr, Ipv6Addr};
-    ///
-    /// let addr = IpAddr::from([
-    ///     525u16, 524u16, 523u16, 522u16,
-    ///     521u16, 520u16, 519u16, 518u16,
-    /// ]);
-    /// assert_eq!(
-    ///     IpAddr::V6(Ipv6Addr::new(
-    ///         0x20d, 0x20c,
-    ///         0x20b, 0x20a,
-    ///         0x209, 0x208,
-    ///         0x207, 0x206
-    ///     )),
-    ///     addr
-    /// );
-    /// ```
-    #[inline]
-    fn from(segments: [u16; 8]) -> IpAddr {
-}
-}
-}
-mod parser {
-//! A private parser implementation of IPv4, IPv6, and socket addresses.
-//!
-//! This module is "publicly exported" through the `FromStr` implementations
-//! below.
-
-#[cfg(test)]
-mod tests {
-}
-
-use crate::error::Error;
-use crate::fmt;
-use crate::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6};
-use crate::str::FromStr;
-
-trait ReadNumberHelper: crate::marker::Sized {
-    const ZERO: Self;
-    fn checked_mul(&self, other: u32) -> Option<Self>;
-    fn checked_add(&self, other: u32) -> Option<Self>;
-}
-
-macro_rules! impl_helper {
-    ($($t:ty)*) => ($(impl ReadNumberHelper for $t {
-        const ZERO: Self = 0;
-        #[inline]
-        fn checked_mul(&self, other: u32) -> Option<Self> {
-}
-        #[inline]
-        fn checked_add(&self, other: u32) -> Option<Self> {
-}
-    })*)
-}
-
-impl_helper! { u8 u16 u32 }
-
-struct Parser<'a> {
-    // Parsing as ASCII, so can use byte array.
-    state: &'a [u8],
-}
-
-impl<'a> Parser<'a> {
-    fn new(input: &'a str) -> Parser<'a> {
-}
-
-    /// Run a parser, and restore the pre-parse state if it fails.
-    fn read_atomically<T, F>(&mut self, inner: F) -> Option<T>
-    where
-        F: FnOnce(&mut Parser<'_>) -> Option<T>,
-    {
-}
-
-    /// Run a parser, but fail if the entire input wasn't consumed.
-    /// Doesn't run atomically.
-    fn parse_with<T, F>(&mut self, inner: F, kind: AddrKind) -> Result<T, AddrParseError>
-    where
-        F: FnOnce(&mut Parser<'_>) -> Option<T>,
-    {
-}
-
-    /// Peek the next character from the input
-    fn peek_char(&self) -> Option<char> {
-}
-
-    /// Read the next character from the input
-    fn read_char(&mut self) -> Option<char> {
-}
-
-    #[must_use]
-    /// Read the next character from the input if it matches the target.
-    fn read_given_char(&mut self, target: char) -> Option<()> {
-}
-
-    /// Helper for reading separators in an indexed loop. Reads the separator
-    /// character iff index > 0, then runs the parser. When used in a loop,
-    /// the separator character will only be read on index > 0 (see
-    /// read_ipv4_addr for an example)
-    fn read_separator<T, F>(&mut self, sep: char, index: usize, inner: F) -> Option<T>
-    where
-        F: FnOnce(&mut Parser<'_>) -> Option<T>,
-    {
-}
-
-    // Read a number off the front of the input in the given radix, stopping
-    // at the first non-digit character or eof. Fails if the number has more
-    // digits than max_digits or if there is no number.
-    fn read_number<T: ReadNumberHelper>(
-        &mut self,
-        radix: u32,
-        max_digits: Option<usize>,
-        allow_zero_prefix: bool,
-    ) -> Option<T> {
-}
-
-    /// Read an IPv4 address.
-    fn read_ipv4_addr(&mut self) -> Option<Ipv4Addr> {
-}
-
-    /// Read an IPv6 Address.
-    fn read_ipv6_addr(&mut self) -> Option<Ipv6Addr> {
-}
-
-    /// Read an IP Address, either IPv4 or IPv6.
-    fn read_ip_addr(&mut self) -> Option<IpAddr> {
-}
-
-    /// Read a `:` followed by a port in base 10.
-    fn read_port(&mut self) -> Option<u16> {
-}
-
-    /// Read a `%` followed by a scope ID in base 10.
-    fn read_scope_id(&mut self) -> Option<u32> {
-}
-
-    /// Read an IPv4 address with a port.
-    fn read_socket_addr_v4(&mut self) -> Option<SocketAddrV4> {
-}
-
-    /// Read an IPv6 address with a port.
-    fn read_socket_addr_v6(&mut self) -> Option<SocketAddrV6> {
-}
-
-    /// Read an IP address with a port
-    fn read_socket_addr(&mut self) -> Option<SocketAddr> {
-}
-}
-
-#[stable(feature = "ip_addr", since = "1.7.0")]
-impl FromStr for IpAddr {
-    type Err = AddrParseError;
-    fn from_str(s: &str) -> Result<IpAddr, AddrParseError> {
-}
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl FromStr for Ipv4Addr {
-    type Err = AddrParseError;
-    fn from_str(s: &str) -> Result<Ipv4Addr, AddrParseError> {
-}
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl FromStr for Ipv6Addr {
-    type Err = AddrParseError;
-    fn from_str(s: &str) -> Result<Ipv6Addr, AddrParseError> {
-}
-}
-
-#[stable(feature = "socket_addr_from_str", since = "1.5.0")]
-impl FromStr for SocketAddrV4 {
-    type Err = AddrParseError;
-    fn from_str(s: &str) -> Result<SocketAddrV4, AddrParseError> {
-}
-}
-
-#[stable(feature = "socket_addr_from_str", since = "1.5.0")]
-impl FromStr for SocketAddrV6 {
-    type Err = AddrParseError;
-    fn from_str(s: &str) -> Result<SocketAddrV6, AddrParseError> {
-}
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl FromStr for SocketAddr {
-    type Err = AddrParseError;
-    fn from_str(s: &str) -> Result<SocketAddr, AddrParseError> {
-}
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-enum AddrKind {
-    Ip,
-    Ipv4,
-    Ipv6,
-    Socket,
-    SocketV4,
-    SocketV6,
-}
-
-/// An error which can be returned when parsing an IP address or a socket address.
-///
-/// This error is used as the error type for the [`FromStr`] implementation for
-/// [`IpAddr`], [`Ipv4Addr`], [`Ipv6Addr`], [`SocketAddr`], [`SocketAddrV4`], and
-/// [`SocketAddrV6`].
-///
-/// # Potential causes
-///
-/// `AddrParseError` may be thrown because the provided string does not parse as the given type,
-/// often because it includes information only handled by a different address type.
-///
-/// ```should_panic
-/// use std::net::IpAddr;
-/// let _foo: IpAddr = "127.0.0.1:8080".parse().expect("Cannot handle the socket port");
-/// ```
-///
-/// [`IpAddr`] doesn't handle the port. Use [`SocketAddr`] instead.
-///
-/// ```
-/// use std::net::SocketAddr;
-///
-/// // No problem, the `panic!` message has disappeared.
-/// let _foo: SocketAddr = "127.0.0.1:8080".parse().expect("unreachable panic");
-/// ```
-#[stable(feature = "rust1", since = "1.0.0")]
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct AddrParseError(AddrKind);
-
-#[stable(feature = "addr_parse_error_error", since = "1.4.0")]
-impl fmt::Display for AddrParseError {
-    #[allow(deprecated, deprecated_in_future)]
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-}
-}
-
-#[stable(feature = "addr_parse_error_error", since = "1.4.0")]
-impl Error for AddrParseError {
-    #[allow(deprecated)]
-    fn description(&self) -> &str {
 }
 }
 }
@@ -25862,7 +26353,7 @@ impl Iterator for IntoIncoming {
 #[unstable(feature = "tcplistener_into_incoming", issue = "88339")]
 impl FusedIterator for IntoIncoming {}}
 #[cfg(test)]
-mod test {
+pub(crate) mod test {
 }
 mod udp {
 #[cfg(all(test, not(any(target_os = "emscripten", target_env = "sgx"))))]
@@ -27122,6 +27613,8 @@ mod platform {
     pub use crate::os::solaris::*;
     #[cfg(target_os = "vxworks")]
     pub use crate::os::vxworks::*;
+    #[cfg(target_os = "watchos")]
+    pub use crate::os::watchos::*;
 }
 
 pub mod ffi {
@@ -28105,30 +28598,13 @@ pub mod io {
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-mod fd {
-//! Owned and borrowed file descriptors.
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use crate::os::fd::*;
 
 // Tests for this module
 #[cfg(test)]
 mod tests {
 }
-
-#[stable(feature = "io_safety", since = "1.63.0")]
-pub use crate::os::fd::owned::*;
-}
-mod raw {
-//! Unix-specific extensions to general I/O primitives.
-
-#![stable(feature = "rust1", since = "1.0.0")]
-
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use crate::os::fd::raw::*;
-}
-
-#[stable(feature = "io_safety", since = "1.63.0")]
-pub use fd::*;
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use raw::*;
 }
 pub mod net {
 //! Unix-specific networking functionality.
@@ -28141,7 +28617,7 @@ use crate::ffi::OsStr;
 use crate::os::unix::ffi::OsStrExt;
 use crate::path::Path;
 use crate::sys::cvt;
-use crate::{ascii, fmt, io, mem, ptr};
+use crate::{fmt, io, mem, ptr};
 
 // FIXME(#43348): Make libc adapt #[doc(cfg(...))] so we don't need these fake definitions here?
 #[cfg(not(unix))]
@@ -28164,13 +28640,6 @@ enum AddressKind<'a> {
     Unnamed,
     Pathname(&'a Path),
     Abstract(&'a [u8]),
-}
-
-struct AsciiEscaped<'a>(&'a [u8]);
-
-impl<'a> fmt::Display for AsciiEscaped<'a> {
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-}
 }
 
 /// An address associated with a Unix socket.
@@ -29566,6 +30035,30 @@ impl UnixDatagram {
     pub fn passcred(&self) -> io::Result<bool> {
 }
 
+    /// Set the id of the socket for network filtering purpose
+    ///
+    #[cfg_attr(
+        any(target_os = "linux", target_os = "freebsd", target_os = "openbsd"),
+        doc = "```no_run"
+    )]
+    #[cfg_attr(
+        not(any(target_os = "linux", target_os = "freebsd", target_os = "openbsd")),
+        doc = "```ignore"
+    )]
+    /// #![feature(unix_set_mark)]
+    /// use std::os::unix::net::UnixDatagram;
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let sock = UnixDatagram::unbound()?;
+    ///     sock.set_mark(32)?;
+    ///     Ok(())
+    /// }
+    /// ```
+    #[cfg(any(doc, target_os = "linux", target_os = "freebsd", target_os = "openbsd",))]
+    #[unstable(feature = "unix_set_mark", issue = "96467")]
+    pub fn set_mark(&self, mark: u32) -> io::Result<()> {
+}
+
     /// Returns the value of the `SO_ERROR` option.
     ///
     /// # Examples
@@ -30437,6 +30930,30 @@ impl UnixStream {
     #[cfg(any(doc, target_os = "android", target_os = "linux", target_os = "netbsd",))]
     #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
     pub fn passcred(&self) -> io::Result<bool> {
+}
+
+    /// Set the id of the socket for network filtering purpose
+    ///
+    #[cfg_attr(
+        any(target_os = "linux", target_os = "freebsd", target_os = "openbsd"),
+        doc = "```no_run"
+    )]
+    #[cfg_attr(
+        not(any(target_os = "linux", target_os = "freebsd", target_os = "openbsd")),
+        doc = "```ignore"
+    )]
+    /// #![feature(unix_set_mark)]
+    /// use std::os::unix::net::UnixStream;
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let sock = UnixStream::connect("/tmp/sock")?;
+    ///     sock.set_mark(32)?;
+    ///     Ok(())
+    /// }
+    /// ```
+    #[cfg(any(doc, target_os = "linux", target_os = "freebsd", target_os = "openbsd",))]
+    #[unstable(feature = "unix_set_mark", issue = "96467")]
+    pub fn set_mark(&self, mark: u32) -> io::Result<()> {
 }
 
     /// Returns the value of the `SO_ERROR` option.
@@ -31767,6 +32284,12 @@ impl MetadataExt for Metadata {
 }
 }
 }
+pub mod net {
+//! Linux and Android-specific definitions for socket options.
+
+#![unstable(feature = "tcp_quickack", issue = "96256")]
+pub use crate::os::net::tcp::TcpStreamExt;
+}
 pub mod process {
 //! Linux-specific extensions to primitives in the [`std::process`] module.
 //!
@@ -32901,48 +33424,10 @@ fn osstr2str(f: &OsStr) -> io::Result<&str> {
 pub mod io {
 //! WASI-specific extensions to general I/O primitives.
 
-#![deny(unsafe_op_in_unsafe_fn)]
-#![unstable(feature = "wasi_ext", issue = "71213")]
+#![stable(feature = "io_safety", since = "1.63.0")]
 
-mod fd {
-//! Owned and borrowed file descriptors.
-
-#![unstable(feature = "wasi_ext", issue = "71213")]
-
-// Tests for this module
-#[cfg(test)]
-mod tests {
-}
-
-pub use crate::os::fd::owned::*;
-}
-mod raw {
-//! WASI-specific extensions to general I/O primitives.
-
-#![unstable(feature = "wasi_ext", issue = "71213")]
-
-// NOTE: despite the fact that this module is unstable,
-// stable Rust had the capability to access the stable
-// re-exported items from os::fd::raw through this
-// unstable module.
-// In PR #95956 the stability checker was changed to check
-// all path segments of an item rather than just the last,
-// which caused the aforementioned stable usage to regress
-// (see issue #99502).
-// As a result, the items in os::fd::raw were given the
-// rustc_allowed_through_unstable_modules attribute.
-// No regression tests were added to ensure this property,
-// as CI is not configured to test wasm32-wasi.
-// If this module is stabilized,
-// you may want to remove those attributes
-// (assuming no other unstable modules need them).
-pub use crate::os::fd::raw::*;
-}
-
-#[unstable(feature = "wasi_ext", issue = "71213")]
-pub use fd::*;
-#[unstable(feature = "wasi_ext", issue = "71213")]
-pub use raw::*;
+#[stable(feature = "io_safety", since = "1.63.0")]
+pub use crate::os::fd::*;
 }
 pub mod net {
 //! WASI-specific networking functionality
@@ -34122,6 +34607,14 @@ impl fmt::Debug for OwnedHandle {
 }
 }
 
+macro_rules! impl_is_terminal {
+    ($($t:ty),*$(,)?) => {$(
+        #[unstable(feature = "sealed", issue = "none")]
+        impl crate::sealed::Sealed for $t {}}
+}
+
+impl_is_terminal!(BorrowedHandle<'_>, OwnedHandle);
+
 /// A trait to borrow the handle from an underlying object.
 #[stable(feature = "io_safety", since = "1.63.0")]
 pub trait AsHandle {
@@ -35232,6 +35725,12 @@ impl MetadataExt for Metadata {
 }
 }
 }
+pub mod net {
+//! Linux and Android-specific definitions for socket options.
+
+#![unstable(feature = "tcp_quickack", issue = "96256")]
+pub use crate::os::net::tcp::TcpStreamExt;
+}
 pub mod raw {
 //! Android-specific raw type definitions
 
@@ -36059,10 +36558,13 @@ pub mod usercalls {
             free, insecure_time, launch_thread, read, read_alloc, send, wait, write,
         };
         pub use crate::sys::abi::usercalls::raw::{do_usercall, Usercalls as UsercallNrs};
+        pub use crate::sys::abi::usercalls::raw::{Register, RegisterArgument, ReturnValue};
 
         // fortanix-sgx-abi re-exports
         pub use crate::sys::abi::usercalls::raw::Error;
-        pub use crate::sys::abi::usercalls::raw::{ByteBuffer, FifoDescriptor, Return, Usercall};
+        pub use crate::sys::abi::usercalls::raw::{
+            ByteBuffer, Cancel, FifoDescriptor, Return, Usercall,
+        };
         pub use crate::sys::abi::usercalls::raw::{Fd, Result, Tcs};
         pub use crate::sys::abi::usercalls::raw::{
             EV_RETURNQ_NOT_EMPTY, EV_UNPARK, EV_USERCALLQ_NOT_FULL, FD_STDERR, FD_STDIN, FD_STDOUT,
@@ -40065,16 +40567,233 @@ pub type pthread_t = c_ulong;
 pub use libc::{blkcnt_t, blksize_t, dev_t, ino_t, mode_t, nlink_t, off_t, time_t};
 }
 }
+#[cfg(target_os = "watchos")]
+pub(crate) mod watchos {
+//! watchOS-specific definitions
+
+#![stable(feature = "raw_ext", since = "1.1.0")]
+
+pub mod fs {
+#![stable(feature = "metadata_ext", since = "1.1.0")]
+
+use crate::fs::Metadata;
+use crate::sys_common::AsInner;
+
+#[allow(deprecated)]
+use crate::os::watchos::raw;
+
+/// OS-specific extensions to [`fs::Metadata`].
+///
+/// [`fs::Metadata`]: crate::fs::Metadata
+#[stable(feature = "metadata_ext", since = "1.1.0")]
+pub trait MetadataExt {
+    /// Gain a reference to the underlying `stat` structure which contains
+    /// the raw information returned by the OS.
+    ///
+    /// The contents of the returned `stat` are **not** consistent across
+    /// Unix platforms. The `os::unix::fs::MetadataExt` trait contains the
+    /// cross-Unix abstractions contained within the raw stat.
+    #[stable(feature = "metadata_ext", since = "1.1.0")]
+    #[deprecated(
+        since = "1.8.0",
+        note = "deprecated in favor of the accessor \
+                  methods of this trait"
+    )]
+    #[allow(deprecated)]
+    fn as_raw_stat(&self) -> &raw::stat;
+
+    #[stable(feature = "metadata_ext2", since = "1.8.0")]
+    fn st_dev(&self) -> u64;
+    #[stable(feature = "metadata_ext2", since = "1.8.0")]
+    fn st_ino(&self) -> u64;
+    #[stable(feature = "metadata_ext2", since = "1.8.0")]
+    fn st_mode(&self) -> u32;
+    #[stable(feature = "metadata_ext2", since = "1.8.0")]
+    fn st_nlink(&self) -> u64;
+    #[stable(feature = "metadata_ext2", since = "1.8.0")]
+    fn st_uid(&self) -> u32;
+    #[stable(feature = "metadata_ext2", since = "1.8.0")]
+    fn st_gid(&self) -> u32;
+    #[stable(feature = "metadata_ext2", since = "1.8.0")]
+    fn st_rdev(&self) -> u64;
+    #[stable(feature = "metadata_ext2", since = "1.8.0")]
+    fn st_size(&self) -> u64;
+    #[stable(feature = "metadata_ext2", since = "1.8.0")]
+    fn st_atime(&self) -> i64;
+    #[stable(feature = "metadata_ext2", since = "1.8.0")]
+    fn st_atime_nsec(&self) -> i64;
+    #[stable(feature = "metadata_ext2", since = "1.8.0")]
+    fn st_mtime(&self) -> i64;
+    #[stable(feature = "metadata_ext2", since = "1.8.0")]
+    fn st_mtime_nsec(&self) -> i64;
+    #[stable(feature = "metadata_ext2", since = "1.8.0")]
+    fn st_ctime(&self) -> i64;
+    #[stable(feature = "metadata_ext2", since = "1.8.0")]
+    fn st_ctime_nsec(&self) -> i64;
+    #[stable(feature = "metadata_ext2", since = "1.8.0")]
+    fn st_birthtime(&self) -> i64;
+    #[stable(feature = "metadata_ext2", since = "1.8.0")]
+    fn st_birthtime_nsec(&self) -> i64;
+    #[stable(feature = "metadata_ext2", since = "1.8.0")]
+    fn st_blksize(&self) -> u64;
+    #[stable(feature = "metadata_ext2", since = "1.8.0")]
+    fn st_blocks(&self) -> u64;
+    #[stable(feature = "metadata_ext2", since = "1.8.0")]
+    fn st_flags(&self) -> u32;
+    #[stable(feature = "metadata_ext2", since = "1.8.0")]
+    fn st_gen(&self) -> u32;
+    #[stable(feature = "metadata_ext2", since = "1.8.0")]
+    fn st_lspare(&self) -> u32;
+}
+
+#[stable(feature = "metadata_ext", since = "1.1.0")]
+impl MetadataExt for Metadata {
+    #[allow(deprecated)]
+    fn as_raw_stat(&self) -> &raw::stat {
+}
+    fn st_dev(&self) -> u64 {
+}
+    fn st_ino(&self) -> u64 {
+}
+    fn st_mode(&self) -> u32 {
+}
+    fn st_nlink(&self) -> u64 {
+}
+    fn st_uid(&self) -> u32 {
+}
+    fn st_gid(&self) -> u32 {
+}
+    fn st_rdev(&self) -> u64 {
+}
+    fn st_size(&self) -> u64 {
+}
+    fn st_atime(&self) -> i64 {
+}
+    fn st_atime_nsec(&self) -> i64 {
+}
+    fn st_mtime(&self) -> i64 {
+}
+    fn st_mtime_nsec(&self) -> i64 {
+}
+    fn st_ctime(&self) -> i64 {
+}
+    fn st_ctime_nsec(&self) -> i64 {
+}
+    fn st_birthtime(&self) -> i64 {
+}
+    fn st_birthtime_nsec(&self) -> i64 {
+}
+    fn st_blksize(&self) -> u64 {
+}
+    fn st_blocks(&self) -> u64 {
+}
+    fn st_gen(&self) -> u32 {
+}
+    fn st_flags(&self) -> u32 {
+}
+    fn st_lspare(&self) -> u32 {
+}
+}
+}
+pub mod raw {
+//! watchOS-specific raw type definitions
+
+#![stable(feature = "raw_ext", since = "1.1.0")]
+#![deprecated(
+    since = "1.8.0",
+    note = "these type aliases are no longer supported by \
+              the standard library, the `libc` crate on \
+              crates.io should be used instead for the correct \
+              definitions"
+)]
+#![allow(deprecated)]
+
+use crate::os::raw::c_long;
+
+#[stable(feature = "raw_ext", since = "1.1.0")]
+pub type blkcnt_t = u64;
+#[stable(feature = "raw_ext", since = "1.1.0")]
+pub type blksize_t = u64;
+#[stable(feature = "raw_ext", since = "1.1.0")]
+pub type dev_t = u64;
+#[stable(feature = "raw_ext", since = "1.1.0")]
+pub type ino_t = u64;
+#[stable(feature = "raw_ext", since = "1.1.0")]
+pub type mode_t = u32;
+#[stable(feature = "raw_ext", since = "1.1.0")]
+pub type nlink_t = u64;
+#[stable(feature = "raw_ext", since = "1.1.0")]
+pub type off_t = u64;
+#[stable(feature = "raw_ext", since = "1.1.0")]
+pub type time_t = i64;
+
+#[stable(feature = "pthread_t", since = "1.8.0")]
+pub type pthread_t = usize;
+
+#[repr(C)]
+#[derive(Clone)]
+#[stable(feature = "raw_ext", since = "1.1.0")]
+pub struct stat {
+    #[stable(feature = "raw_ext", since = "1.1.0")]
+    pub st_dev: i32,
+    #[stable(feature = "raw_ext", since = "1.1.0")]
+    pub st_mode: u16,
+    #[stable(feature = "raw_ext", since = "1.1.0")]
+    pub st_nlink: u16,
+    #[stable(feature = "raw_ext", since = "1.1.0")]
+    pub st_ino: u64,
+    #[stable(feature = "raw_ext", since = "1.1.0")]
+    pub st_uid: u32,
+    #[stable(feature = "raw_ext", since = "1.1.0")]
+    pub st_gid: u32,
+    #[stable(feature = "raw_ext", since = "1.1.0")]
+    pub st_rdev: i32,
+    #[stable(feature = "raw_ext", since = "1.1.0")]
+    pub st_atime: c_long,
+    #[stable(feature = "raw_ext", since = "1.1.0")]
+    pub st_atime_nsec: c_long,
+    #[stable(feature = "raw_ext", since = "1.1.0")]
+    pub st_mtime: c_long,
+    #[stable(feature = "raw_ext", since = "1.1.0")]
+    pub st_mtime_nsec: c_long,
+    #[stable(feature = "raw_ext", since = "1.1.0")]
+    pub st_ctime: c_long,
+    #[stable(feature = "raw_ext", since = "1.1.0")]
+    pub st_ctime_nsec: c_long,
+    #[stable(feature = "raw_ext", since = "1.1.0")]
+    pub st_birthtime: c_long,
+    #[stable(feature = "raw_ext", since = "1.1.0")]
+    pub st_birthtime_nsec: c_long,
+    #[stable(feature = "raw_ext", since = "1.1.0")]
+    pub st_size: i64,
+    #[stable(feature = "raw_ext", since = "1.1.0")]
+    pub st_blocks: i64,
+    #[stable(feature = "raw_ext", since = "1.1.0")]
+    pub st_blksize: i32,
+    #[stable(feature = "raw_ext", since = "1.1.0")]
+    pub st_flags: u32,
+    #[stable(feature = "raw_ext", since = "1.1.0")]
+    pub st_gen: u32,
+    #[stable(feature = "raw_ext", since = "1.1.0")]
+    pub st_lspare: i32,
+    #[stable(feature = "raw_ext", since = "1.1.0")]
+    pub st_qspare: [i64; 2],
+}
+}
+}
 
 #[cfg(any(unix, target_os = "wasi", doc))]
-mod fd {
+pub mod fd {
 //! Owned and borrowed Unix-like file descriptors.
+//!
+//! This module is supported on Unix platforms and WASI, which both use a
+//! similar file descriptor system for referencing OS resources.
 
 #![stable(feature = "io_safety", since = "1.63.0")]
 #![deny(unsafe_op_in_unsafe_fn)]
 
 // `RawFd`, `AsRawFd`, etc.
-pub mod raw {
+mod raw {
 //! Raw Unix-like file descriptors.
 
 #![stable(feature = "rust1", since = "1.0.0")]
@@ -40091,7 +40810,7 @@ use crate::os::wasi::io::OwnedFd;
 use crate::sys_common::{AsInner, IntoInner};
 
 /// Raw file descriptors.
-#[cfg_attr(not(bootstrap), rustc_allowed_through_unstable_modules)]
+#[rustc_allowed_through_unstable_modules]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub type RawFd = raw::c_int;
 
@@ -40100,7 +40819,7 @@ pub type RawFd = raw::c_int;
 /// This is only available on unix and WASI platforms and must be imported in
 /// order to call the method. Windows platforms have a corresponding
 /// `AsRawHandle` and `AsRawSocket` set of traits.
-#[cfg_attr(not(bootstrap), rustc_allowed_through_unstable_modules)]
+#[rustc_allowed_through_unstable_modules]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait AsRawFd {
     /// Extracts the raw file descriptor.
@@ -40119,10 +40838,8 @@ pub trait AsRawFd {
     /// ```no_run
     /// use std::fs::File;
     /// # use std::io;
-    /// #[cfg(unix)]
-    /// use std::os::unix::io::{AsRawFd, RawFd};
-    /// #[cfg(target_os = "wasi")]
-    /// use std::os::wasi::io::{AsRawFd, RawFd};
+    /// #[cfg(any(unix, target_os = "wasi"))]
+    /// use std::os::fd::{AsRawFd, RawFd};
     ///
     /// let mut f = File::open("foo.txt")?;
     /// // Note that `raw_fd` is only valid as long as `f` exists.
@@ -40136,7 +40853,7 @@ pub trait AsRawFd {
 
 /// A trait to express the ability to construct an object from a raw file
 /// descriptor.
-#[cfg_attr(not(bootstrap), rustc_allowed_through_unstable_modules)]
+#[rustc_allowed_through_unstable_modules]
 #[stable(feature = "from_raw_os", since = "1.1.0")]
 pub trait FromRawFd {
     /// Constructs a new instance of `Self` from the given raw file
@@ -40160,10 +40877,8 @@ pub trait FromRawFd {
     /// ```no_run
     /// use std::fs::File;
     /// # use std::io;
-    /// #[cfg(unix)]
-    /// use std::os::unix::io::{FromRawFd, IntoRawFd, RawFd};
-    /// #[cfg(target_os = "wasi")]
-    /// use std::os::wasi::io::{FromRawFd, IntoRawFd, RawFd};
+    /// #[cfg(any(unix, target_os = "wasi"))]
+    /// use std::os::fd::{FromRawFd, IntoRawFd, RawFd};
     ///
     /// let f = File::open("foo.txt")?;
     /// # #[cfg(any(unix, target_os = "wasi"))]
@@ -40180,7 +40895,7 @@ pub trait FromRawFd {
 
 /// A trait to express the ability to consume an object and acquire ownership of
 /// its raw file descriptor.
-#[cfg_attr(not(bootstrap), rustc_allowed_through_unstable_modules)]
+#[rustc_allowed_through_unstable_modules]
 #[stable(feature = "into_raw_os", since = "1.4.0")]
 pub trait IntoRawFd {
     /// Consumes this object, returning the raw underlying file descriptor.
@@ -40198,10 +40913,8 @@ pub trait IntoRawFd {
     /// ```no_run
     /// use std::fs::File;
     /// # use std::io;
-    /// #[cfg(unix)]
-    /// use std::os::unix::io::{IntoRawFd, RawFd};
-    /// #[cfg(target_os = "wasi")]
-    /// use std::os::wasi::io::{IntoRawFd, RawFd};
+    /// #[cfg(any(unix, target_os = "wasi"))]
+    /// use std::os::fd::{IntoRawFd, RawFd};
     ///
     /// let f = File::open("foo.txt")?;
     /// #[cfg(any(unix, target_os = "wasi"))]
@@ -40323,7 +41036,7 @@ impl<T: AsRawFd> AsRawFd for Box<T> {
 }
 
 // `OwnedFd`, `AsFd`, etc.
-pub mod owned {
+mod owned {
 //! Owned and borrowed Unix-like file descriptors.
 
 #![stable(feature = "io_safety", since = "1.63.0")]
@@ -40332,6 +41045,7 @@ pub mod owned {
 use super::raw::{AsRawFd, FromRawFd, IntoRawFd, RawFd};
 use crate::fmt;
 use crate::fs;
+use crate::io;
 use crate::marker::PhantomData;
 use crate::mem::forget;
 #[cfg(not(any(target_arch = "wasm32", target_env = "sgx")))]
@@ -40476,6 +41190,14 @@ impl fmt::Debug for OwnedFd {
 }
 }
 
+macro_rules! impl_is_terminal {
+    ($($t:ty),*$(,)?) => {$(
+        #[unstable(feature = "sealed", issue = "none")]
+        impl crate::sealed::Sealed for $t {}}
+}
+
+impl_is_terminal!(BorrowedFd<'_>, OwnedFd);
+
 /// A trait to borrow the file descriptor from an underlying object.
 ///
 /// This is only available on unix platforms and must be imported in order to
@@ -40490,10 +41212,8 @@ pub trait AsFd {
     /// ```rust,no_run
     /// use std::fs::File;
     /// # use std::io;
-    /// # #[cfg(target_os = "wasi")]
-    /// # use std::os::wasi::io::{AsFd, BorrowedFd};
-    /// # #[cfg(unix)]
-    /// # use std::os::unix::io::{AsFd, BorrowedFd};
+    /// # #[cfg(any(unix, target_os = "wasi"))]
+    /// # use std::os::fd::{AsFd, BorrowedFd};
     ///
     /// let mut f = File::open("foo.txt")?;
     /// # #[cfg(any(unix, target_os = "wasi"))]
@@ -40644,6 +41364,48 @@ impl<T: AsFd> AsFd for Box<T> {
     fn as_fd(&self) -> BorrowedFd<'_> {
 }
 }
+
+#[stable(feature = "io_safety", since = "1.63.0")]
+impl AsFd for io::Stdin {
+    #[inline]
+    fn as_fd(&self) -> BorrowedFd<'_> {
+}
+}
+
+#[stable(feature = "io_safety", since = "1.63.0")]
+impl<'a> AsFd for io::StdinLock<'a> {
+    #[inline]
+    fn as_fd(&self) -> BorrowedFd<'_> {
+}
+}
+
+#[stable(feature = "io_safety", since = "1.63.0")]
+impl AsFd for io::Stdout {
+    #[inline]
+    fn as_fd(&self) -> BorrowedFd<'_> {
+}
+}
+
+#[stable(feature = "io_safety", since = "1.63.0")]
+impl<'a> AsFd for io::StdoutLock<'a> {
+    #[inline]
+    fn as_fd(&self) -> BorrowedFd<'_> {
+}
+}
+
+#[stable(feature = "io_safety", since = "1.63.0")]
+impl AsFd for io::Stderr {
+    #[inline]
+    fn as_fd(&self) -> BorrowedFd<'_> {
+}
+}
+
+#[stable(feature = "io_safety", since = "1.63.0")]
+impl<'a> AsFd for io::StderrLock<'a> {
+    #[inline]
+    fn as_fd(&self) -> BorrowedFd<'_> {
+}
+}
 }
 
 // Implementations for `AsRawFd` etc. for network types.
@@ -40690,6 +41452,47 @@ macro_rules! impl_into_raw_fd {
 impl_into_raw_fd! { TcpStream TcpListener UdpSocket }
 }
 
+#[cfg(test)]
+mod tests {
+}
+
+// Export the types and traits for the public API.
+#[unstable(feature = "os_fd", issue = "98699")]
+pub use owned::*;
+#[unstable(feature = "os_fd", issue = "98699")]
+pub use raw::*;
+}
+
+#[cfg(any(target_os = "linux", target_os = "android", doc))]
+mod net {
+//! Linux and Android-specific definitions for socket options.
+
+#![unstable(feature = "tcp_quickack", issue = "96256")]
+#![doc(cfg(any(target_os = "linux", target_os = "android",)))]
+pub mod tcp {
+//! Linux and Android-specific tcp extensions to primitives in the [`std::net`] module.
+//!
+//! [`std::net`]: crate::net
+
+use crate::io;
+use crate::net;
+use crate::sealed::Sealed;
+use crate::sys_common::AsInner;
+
+/// Os-specific extensions for [`TcpStream`]
+///
+/// [`TcpStream`]: net::TcpStream
+#[unstable(feature = "tcp_quickack", issue = "96256")]
+pub trait TcpStreamExt: Sealed {
+}
+
+#[unstable(feature = "tcp_quickack", issue = "96256")]
+impl Sealed for net::TcpStream {}
+
+#[unstable(feature = "tcp_quickack", issue = "96256")]
+impl TcpStreamExt for net::TcpStream {
+}
+}
 #[cfg(test)]
 mod tests {
 }
@@ -42602,6 +43405,7 @@ impl Path {
     /// assert_eq!(grand_parent.parent(), None);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[doc(alias = "dirname")]
     #[must_use]
     pub fn parent(&self) -> Option<&Path> {
 }
@@ -42660,6 +43464,7 @@ impl Path {
     /// assert_eq!(None, Path::new("/").file_name());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[doc(alias = "basename")]
     #[must_use]
     pub fn file_name(&self) -> Option<&OsStr> {
 }
@@ -42822,7 +43627,7 @@ impl Path {
     pub fn file_prefix(&self) -> Option<&OsStr> {
 }
 
-    /// Extracts the extension of [`self.file_name`], if possible.
+    /// Extracts the extension (without the leading dot) of [`self.file_name`], if possible.
     ///
     /// The extension is:
     ///
@@ -43912,15 +44717,15 @@ use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
 pub struct Child {
     pub(crate) handle: imp::Process,
 
-    /// The handle for writing to the child's standard input (stdin), if it has
-    /// been captured. To avoid partially moving
-    /// the `child` and thus blocking yourself from calling
-    /// functions on `child` while using `stdin`,
-    /// you might find it helpful:
+    /// The handle for writing to the child's standard input (stdin), if it
+    /// has been captured. You might find it helpful to do
     ///
     /// ```compile_fail,E0425
     /// let stdin = child.stdin.take().unwrap();
     /// ```
+    ///
+    /// to avoid partially moving the `child` and thus blocking yourself from calling
+    /// functions on `child` while using `stdin`.
     #[stable(feature = "process", since = "1.0.0")]
     pub stdin: Option<ChildStdin>,
 
@@ -47948,6 +48753,7 @@ unsafe impl<T: ?Sized + Send> Sync for Mutex<T> {}
                       and cause Futures to not implement `Send`"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[clippy::has_significant_drop]
+#[cfg_attr(not(test), rustc_diagnostic_item = "MutexGuard")]
 pub struct MutexGuard<'a, T: ?Sized + 'a> {
     lock: &'a Mutex<T>,
     poison: poison::Guard,
@@ -48258,87 +49064,6 @@ mod once {
 //! This primitive is meant to be used to run one-time initialization. An
 //! example use case would be for initializing an FFI library.
 
-// A "once" is a relatively simple primitive, and it's also typically provided
-// by the OS as well (see `pthread_once` or `InitOnceExecuteOnce`). The OS
-// primitives, however, tend to have surprising restrictions, such as the Unix
-// one doesn't allow an argument to be passed to the function.
-//
-// As a result, we end up implementing it ourselves in the standard library.
-// This also gives us the opportunity to optimize the implementation a bit which
-// should help the fast path on call sites. Consequently, let's explain how this
-// primitive works now!
-//
-// So to recap, the guarantees of a Once are that it will call the
-// initialization closure at most once, and it will never return until the one
-// that's running has finished running. This means that we need some form of
-// blocking here while the custom callback is running at the very least.
-// Additionally, we add on the restriction of **poisoning**. Whenever an
-// initialization closure panics, the Once enters a "poisoned" state which means
-// that all future calls will immediately panic as well.
-//
-// So to implement this, one might first reach for a `Mutex`, but those cannot
-// be put into a `static`. It also gets a lot harder with poisoning to figure
-// out when the mutex needs to be deallocated because it's not after the closure
-// finishes, but after the first successful closure finishes.
-//
-// All in all, this is instead implemented with atomics and lock-free
-// operations! Whee! Each `Once` has one word of atomic state, and this state is
-// CAS'd on to determine what to do. There are four possible state of a `Once`:
-//
-// * Incomplete - no initialization has run yet, and no thread is currently
-//                using the Once.
-// * Poisoned - some thread has previously attempted to initialize the Once, but
-//              it panicked, so the Once is now poisoned. There are no other
-//              threads currently accessing this Once.
-// * Running - some thread is currently attempting to run initialization. It may
-//             succeed, so all future threads need to wait for it to finish.
-//             Note that this state is accompanied with a payload, described
-//             below.
-// * Complete - initialization has completed and all future calls should finish
-//              immediately.
-//
-// With 4 states we need 2 bits to encode this, and we use the remaining bits
-// in the word we have allocated as a queue of threads waiting for the thread
-// responsible for entering the RUNNING state. This queue is just a linked list
-// of Waiter nodes which is monotonically increasing in size. Each node is
-// allocated on the stack, and whenever the running closure finishes it will
-// consume the entire queue and notify all waiters they should try again.
-//
-// You'll find a few more details in the implementation, but that's the gist of
-// it!
-//
-// Atomic orderings:
-// When running `Once` we deal with multiple atomics:
-// `Once.state_and_queue` and an unknown number of `Waiter.signaled`.
-// * `state_and_queue` is used (1) as a state flag, (2) for synchronizing the
-//   result of the `Once`, and (3) for synchronizing `Waiter` nodes.
-//     - At the end of the `call_inner` function we have to make sure the result
-//       of the `Once` is acquired. So every load which can be the only one to
-//       load COMPLETED must have at least Acquire ordering, which means all
-//       three of them.
-//     - `WaiterQueue::Drop` is the only place that may store COMPLETED, and
-//       must do so with Release ordering to make the result available.
-//     - `wait` inserts `Waiter` nodes as a pointer in `state_and_queue`, and
-//       needs to make the nodes available with Release ordering. The load in
-//       its `compare_exchange` can be Relaxed because it only has to compare
-//       the atomic, not to read other data.
-//     - `WaiterQueue::Drop` must see the `Waiter` nodes, so it must load
-//       `state_and_queue` with Acquire ordering.
-//     - There is just one store where `state_and_queue` is used only as a
-//       state flag, without having to synchronize data: switching the state
-//       from INCOMPLETE to RUNNING in `call_inner`. This store can be Relaxed,
-//       but the read has to be Acquire because of the requirements mentioned
-//       above.
-// * `Waiter.signaled` is both used as a flag, and to protect a field with
-//   interior mutability in `Waiter`. `Waiter.thread` is changed in
-//   `WaiterQueue::Drop` which then sets `signaled` with Release ordering.
-//   After `wait` loads `signaled` with Acquire and sees it is true, it needs to
-//   see the changes to drop the `Waiter` struct correctly.
-// * There is one place where the two atomics `Once.state_and_queue` and
-//   `Waiter.signaled` come together, and might be reordered by the compiler or
-//   processor. Because both use Acquire ordering such a reordering is not
-//   allowed, so no need for SeqCst.
-
 #[cfg(all(test, not(target_os = "emscripten")))]
 mod tests {
 use super::Once;
@@ -48363,15 +49088,9 @@ fn wait_for_force_to_finish() {
 }
 }
 
-use crate::cell::Cell;
 use crate::fmt;
-use crate::marker;
 use crate::panic::{RefUnwindSafe, UnwindSafe};
-use crate::ptr;
-use crate::sync::atomic::{AtomicBool, AtomicPtr, Ordering};
-use crate::thread::{self, Thread};
-
-type Masked = ();
+use crate::sys_common::once as sys;
 
 /// A synchronization primitive which can be used to run a one-time global
 /// initialization. Useful for one-time initialization for FFI or related
@@ -48390,18 +49109,8 @@ type Masked = ();
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Once {
-    // `state_and_queue` is actually a pointer to a `Waiter` with extra state
-    // bits, so we add the `PhantomData` appropriately.
-    state_and_queue: AtomicPtr<Masked>,
-    _marker: marker::PhantomData<*const Waiter>,
+    inner: sys::Once,
 }
-
-// The `PhantomData` of a raw pointer removes these two auto traits, but we
-// enforce both below in the implementation so this should be safe to add.
-#[stable(feature = "rust1", since = "1.0.0")]
-unsafe impl Sync for Once {}
-#[stable(feature = "rust1", since = "1.0.0")]
-unsafe impl Send for Once {}
 
 #[stable(feature = "sync_once_unwind_safe", since = "1.59.0")]
 impl UnwindSafe for Once {}
@@ -48412,10 +49121,8 @@ impl RefUnwindSafe for Once {}
 /// State yielded to [`Once::call_once_force()`]’s closure parameter. The state
 /// can be used to query the poison status of the [`Once`].
 #[stable(feature = "once_poison", since = "1.51.0")]
-#[derive(Debug)]
 pub struct OnceState {
-    poisoned: bool,
-    set_state_on_drop_to: Cell<*mut Masked>,
+    pub(crate) inner: sys::OnceState,
 }
 
 /// Initialization value for static [`Once`] values.
@@ -48434,38 +49141,6 @@ pub struct OnceState {
     suggestion = "Once::new()"
 )]
 pub const ONCE_INIT: Once = Once::new();
-
-// Four states that a Once can be in, encoded into the lower bits of
-// `state_and_queue` in the Once structure.
-const INCOMPLETE: usize = 0x0;
-const POISONED: usize = 0x1;
-const RUNNING: usize = 0x2;
-const COMPLETE: usize = 0x3;
-
-// Mask to learn about the state. All other bits are the queue of waiters if
-// this is in the RUNNING state.
-const STATE_MASK: usize = 0x3;
-
-// Representation of a node in the linked list of waiters, used while in the
-// RUNNING state.
-// Note: `Waiter` can't hold a mutable pointer to the next thread, because then
-// `wait` would both hand out a mutable reference to its `Waiter` node, and keep
-// a shared reference to check `signaled`. Instead we hold shared references and
-// use interior mutability.
-#[repr(align(4))] // Ensure the two lower bits are free to use as state bits.
-struct Waiter {
-    thread: Cell<Option<Thread>>,
-    signaled: AtomicBool,
-    next: *const Waiter,
-}
-
-// Head of a linked list of waiters.
-// Every node is a struct on the stack of a waiting thread.
-// Will wake up the waiters when it gets dropped, i.e. also on panic.
-struct WaiterQueue<'a> {
-    state_and_queue: &'a AtomicPtr<Masked>,
-    set_state_on_drop_to: *mut Masked,
-}
 
 impl Once {
     /// Creates a new `Once` value.
@@ -48533,6 +49208,7 @@ impl Once {
     /// This is similar to [poisoning with mutexes][poison].
     ///
     /// [poison]: struct.Mutex.html#poisoning
+    #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[track_caller]
     pub fn call_once<F>(&self, f: F)
@@ -48585,6 +49261,7 @@ impl Once {
     /// // once any success happens, we stop propagating the poison
     /// INIT.call_once(|| {});
     /// ```
+    #[inline]
     #[stable(feature = "once_poison", since = "1.51.0")]
     pub fn call_once_force<F>(&self, f: F)
     where
@@ -48637,35 +49314,11 @@ impl Once {
     #[inline]
     pub fn is_completed(&self) -> bool {
 }
-
-    // This is a non-generic function to reduce the monomorphization cost of
-    // using `call_once` (this isn't exactly a trivial or small implementation).
-    //
-    // Additionally, this is tagged with `#[cold]` as it should indeed be cold
-    // and it helps let LLVM know that calls to this function should be off the
-    // fast path. Essentially, this should help generate more straight line code
-    // in LLVM.
-    //
-    // Finally, this takes an `FnMut` instead of a `FnOnce` because there's
-    // currently no way to take an `FnOnce` and call it via virtual dispatch
-    // without some allocation overhead.
-    #[cold]
-    #[track_caller]
-    fn call_inner(&self, ignore_poisoning: bool, init: &mut dyn FnMut(&OnceState)) {
-}
-}
-
-fn wait(state_and_queue: &AtomicPtr<Masked>, mut current_state: *mut Masked) {
 }
 
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for Once {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-}
-}
-
-impl Drop for WaiterQueue<'_> {
-    fn drop(&mut self) {
 }
 }
 
@@ -48705,12 +49358,20 @@ impl OnceState {
     ///     assert!(!state.is_poisoned());
     /// });
     #[stable(feature = "once_poison", since = "1.51.0")]
+    #[inline]
     pub fn is_poisoned(&self) -> bool {
 }
 
     /// Poison the associated [`Once`] without explicitly panicking.
-    // NOTE: This is currently only exposed for the `lazy` module
+    // NOTE: This is currently only exposed for `OnceLock`.
+    #[inline]
     pub(crate) fn poison(&self) {
+}
+}
+
+#[stable(feature = "std_debug", since = "1.16.0")]
+impl fmt::Debug for OnceState {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 }
 }
 }
@@ -48720,7 +49381,6 @@ use crate::fmt;
 use crate::marker::PhantomData;
 use crate::mem::MaybeUninit;
 use crate::panic::{RefUnwindSafe, UnwindSafe};
-use crate::pin::Pin;
 use crate::sync::Once;
 
 /// A synchronization primitive which can be written to only once.
@@ -48874,36 +49534,6 @@ impl<T> OnceLock<T> {
     pub fn get_or_try_init<F, E>(&self, f: F) -> Result<&T, E>
     where
         F: FnOnce() -> Result<T, E>,
-    {
-}
-
-    /// Internal-only API that gets the contents of the cell, initializing it
-    /// in two steps with `f` and `g` if the cell was empty.
-    ///
-    /// `f` is called to construct the value, which is then moved into the cell
-    /// and given as a (pinned) mutable reference to `g` to finish
-    /// initialization.
-    ///
-    /// This allows `g` to inspect an manipulate the value after it has been
-    /// moved into its final place in the cell, but before the cell is
-    /// considered initialized.
-    ///
-    /// # Panics
-    ///
-    /// If `f` or `g` panics, the panic is propagated to the caller, and the
-    /// cell remains uninitialized.
-    ///
-    /// With the current implementation, if `g` panics, the value from `f` will
-    /// not be dropped. This should probably be fixed if this is ever used for
-    /// a type where this matters.
-    ///
-    /// It is an error to reentrantly initialize the cell from `f`. The exact
-    /// outcome is unspecified. Current implementation deadlocks, but this may
-    /// be changed to a panic in the future.
-    pub(crate) fn get_or_init_pin<F, G>(self: Pin<&Self>, f: F, g: G) -> Pin<&T>
-    where
-        F: FnOnce() -> T,
-        G: FnOnce(Pin<&mut T>),
     {
 }
 
@@ -49371,6 +50001,7 @@ use crate::sys_common::rwlock as sys;
 ///
 /// [`Mutex`]: super::Mutex
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "RwLock")]
 pub struct RwLock<T: ?Sized> {
     inner: sys::MovableRwLock,
     poison: poison::Flag,
@@ -49396,6 +50027,7 @@ unsafe impl<T: ?Sized + Send + Sync> Sync for RwLock<T> {}
                       and cause Futures to not implement `Send`"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[clippy::has_significant_drop]
+#[cfg_attr(not(test), rustc_diagnostic_item = "RwLockReadGuard")]
 pub struct RwLockReadGuard<'a, T: ?Sized + 'a> {
     // NB: we use a pointer instead of `&'a T` to avoid `noalias` violations, because a
     // `Ref` argument doesn't hold immutability for its whole scope, only until it drops.
@@ -49425,6 +50057,7 @@ unsafe impl<T: ?Sized + Sync> Sync for RwLockReadGuard<'_, T> {}
                       and cause Future's to not implement `Send`"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[clippy::has_significant_drop]
+#[cfg_attr(not(test), rustc_diagnostic_item = "RwLockWriteGuard")]
 pub struct RwLockWriteGuard<'a, T: ?Sized + 'a> {
     lock: &'a RwLock<T>,
     poison: poison::Guard,
@@ -49454,7 +50087,7 @@ impl<T> RwLock<T> {
 }
 
 impl<T: ?Sized> RwLock<T> {
-    /// Locks this rwlock with shared read access, blocking the current thread
+    /// Locks this `RwLock` with shared read access, blocking the current thread
     /// until it can be acquired.
     ///
     /// The calling thread will be blocked until there are no more writers which
@@ -49468,9 +50101,10 @@ impl<T: ?Sized> RwLock<T> {
     ///
     /// # Errors
     ///
-    /// This function will return an error if the RwLock is poisoned. An RwLock
-    /// is poisoned whenever a writer panics while holding an exclusive lock.
-    /// The failure will occur immediately after the lock has been acquired.
+    /// This function will return an error if the `RwLock` is poisoned. An
+    /// `RwLock` is poisoned whenever a writer panics while holding an exclusive
+    /// lock. The failure will occur immediately after the lock has been
+    /// acquired.
     ///
     /// # Panics
     ///
@@ -49498,7 +50132,7 @@ impl<T: ?Sized> RwLock<T> {
     pub fn read(&self) -> LockResult<RwLockReadGuard<'_, T>> {
 }
 
-    /// Attempts to acquire this rwlock with shared read access.
+    /// Attempts to acquire this `RwLock` with shared read access.
     ///
     /// If the access could not be granted at this time, then `Err` is returned.
     /// Otherwise, an RAII guard is returned which will release the shared access
@@ -49511,13 +50145,13 @@ impl<T: ?Sized> RwLock<T> {
     ///
     /// # Errors
     ///
-    /// This function will return the [`Poisoned`] error if the RwLock is poisoned.
-    /// An RwLock is poisoned whenever a writer panics while holding an exclusive
-    /// lock. `Poisoned` will only be returned if the lock would have otherwise been
-    /// acquired.
+    /// This function will return the [`Poisoned`] error if the `RwLock` is
+    /// poisoned. An `RwLock` is poisoned whenever a writer panics while holding
+    /// an exclusive lock. `Poisoned` will only be returned if the lock would
+    /// have otherwise been acquired.
     ///
-    /// This function will return the [`WouldBlock`] error if the RwLock could not
-    /// be acquired because it was already locked exclusively.
+    /// This function will return the [`WouldBlock`] error if the `RwLock` could
+    /// not be acquired because it was already locked exclusively.
     ///
     /// [`Poisoned`]: TryLockError::Poisoned
     /// [`WouldBlock`]: TryLockError::WouldBlock
@@ -49539,20 +50173,20 @@ impl<T: ?Sized> RwLock<T> {
     pub fn try_read(&self) -> TryLockResult<RwLockReadGuard<'_, T>> {
 }
 
-    /// Locks this rwlock with exclusive write access, blocking the current
+    /// Locks this `RwLock` with exclusive write access, blocking the current
     /// thread until it can be acquired.
     ///
     /// This function will not return while other writers or other readers
     /// currently have access to the lock.
     ///
-    /// Returns an RAII guard which will drop the write access of this rwlock
+    /// Returns an RAII guard which will drop the write access of this `RwLock`
     /// when dropped.
     ///
     /// # Errors
     ///
-    /// This function will return an error if the RwLock is poisoned. An RwLock
-    /// is poisoned whenever a writer panics while holding an exclusive lock.
-    /// An error will be returned when the lock is acquired.
+    /// This function will return an error if the `RwLock` is poisoned. An
+    /// `RwLock` is poisoned whenever a writer panics while holding an exclusive
+    /// lock. An error will be returned when the lock is acquired.
     ///
     /// # Panics
     ///
@@ -49575,7 +50209,7 @@ impl<T: ?Sized> RwLock<T> {
     pub fn write(&self) -> LockResult<RwLockWriteGuard<'_, T>> {
 }
 
-    /// Attempts to lock this rwlock with exclusive write access.
+    /// Attempts to lock this `RwLock` with exclusive write access.
     ///
     /// If the lock could not be acquired at this time, then `Err` is returned.
     /// Otherwise, an RAII guard is returned which will release the lock when
@@ -49588,13 +50222,13 @@ impl<T: ?Sized> RwLock<T> {
     ///
     /// # Errors
     ///
-    /// This function will return the [`Poisoned`] error if the RwLock is
-    /// poisoned. An RwLock is poisoned whenever a writer panics while holding
-    /// an exclusive lock. `Poisoned` will only be returned if the lock would have
-    /// otherwise been acquired.
+    /// This function will return the [`Poisoned`] error if the `RwLock` is
+    /// poisoned. An `RwLock` is poisoned whenever a writer panics while holding
+    /// an exclusive lock. `Poisoned` will only be returned if the lock would
+    /// have otherwise been acquired.
     ///
-    /// This function will return the [`WouldBlock`] error if the RwLock could not
-    /// be acquired because it was already locked exclusively.
+    /// This function will return the [`WouldBlock`] error if the `RwLock` could
+    /// not be acquired because it was already locked exclusively.
     ///
     /// [`Poisoned`]: TryLockError::Poisoned
     /// [`WouldBlock`]: TryLockError::WouldBlock
@@ -49685,10 +50319,10 @@ impl<T: ?Sized> RwLock<T> {
     ///
     /// # Errors
     ///
-    /// This function will return an error if the RwLock is poisoned. An RwLock
-    /// is poisoned whenever a writer panics while holding an exclusive lock. An
-    /// error will only be returned if the lock would have otherwise been
-    /// acquired.
+    /// This function will return an error if the `RwLock` is poisoned. An
+    /// `RwLock` is poisoned whenever a writer panics while holding an exclusive
+    /// lock. An error will only be returned if the lock would have otherwise
+    /// been acquired.
     ///
     /// # Examples
     ///
@@ -49716,10 +50350,10 @@ impl<T: ?Sized> RwLock<T> {
     ///
     /// # Errors
     ///
-    /// This function will return an error if the RwLock is poisoned. An RwLock
-    /// is poisoned whenever a writer panics while holding an exclusive lock. An
-    /// error will only be returned if the lock would have otherwise been
-    /// acquired.
+    /// This function will return an error if the `RwLock` is poisoned. An
+    /// `RwLock` is poisoned whenever a writer panics while holding an exclusive
+    /// lock. An error will only be returned if the lock would have otherwise
+    /// been acquired.
     ///
     /// # Examples
     ///
@@ -49878,8 +50512,8 @@ use crate::sys_common::{FromInner, IntoInner};
 #[stable(feature = "time", since = "1.3.0")]
 pub use core::time::Duration;
 
-#[unstable(feature = "duration_checked_float", issue = "83400")]
-pub use core::time::FromFloatSecsError;
+#[stable(feature = "duration_checked_float", since = "1.66.0")]
+pub use core::time::TryFromFloatSecsError;
 
 /// A measurement of a monotonically nondecreasing clock.
 /// Opaque and useful only with [`Duration`].
@@ -50187,7 +50821,7 @@ impl Instant {
     ///
     /// # Panics
     ///
-    /// Previous rust versions panicked when self was earlier than the current time. Currently this
+    /// Previous rust versions panicked when the current time was earlier than self. Currently this
     /// method returns a Duration of zero in that case. Future versions may reintroduce the panic.
     /// See [Monotonicity].
     ///
@@ -50501,10 +51135,6 @@ impl IntoInner<time::SystemTime> for SystemTime {
 }
 }
 
-#[unstable(feature = "once_cell", issue = "74465")]
-pub mod lazy {
-}
-
 // Pull in `std_float` crate  into libstd. The contents of
 // `std_float` are in a different repository: rust-lang/portable-simd.
 #[path = "../../portable-simd/crates/std_float/src/lib.rs"]
@@ -50582,7 +51212,7 @@ mod sys {
 
 #![allow(missing_debug_implementations)]
 
-mod common {
+pub mod common {
 // This module contains code that is shared between all platforms, mostly utility or fallback code.
 // This explicitly does not include code that is shared between only a few platforms,
 // such as when reusing an implementation from `unix` or `unsupported`.
@@ -50640,6 +51270,49 @@ pub unsafe fn realloc_fallback(
     new_size: usize,
 ) -> *mut u8 {
 }
+}
+pub mod small_c_string {
+use crate::ffi::{CStr, CString};
+use crate::mem::MaybeUninit;
+use crate::path::Path;
+use crate::slice;
+use crate::{io, ptr};
+
+// Make sure to stay under 4096 so the compiler doesn't insert a probe frame:
+// https://docs.rs/compiler_builtins/latest/compiler_builtins/probestack/index.html
+#[cfg(not(target_os = "espidf"))]
+const MAX_STACK_ALLOCATION: usize = 384;
+#[cfg(target_os = "espidf")]
+const MAX_STACK_ALLOCATION: usize = 32;
+
+const NUL_ERR: io::Error =
+    io::const_io_error!(io::ErrorKind::InvalidInput, "file name contained an unexpected NUL byte");
+
+#[inline]
+pub fn run_path_with_cstr<T, F>(path: &Path, f: F) -> io::Result<T>
+where
+    F: FnOnce(&CStr) -> io::Result<T>,
+{
+}
+
+#[inline]
+pub fn run_with_cstr<T, F>(bytes: &[u8], f: F) -> io::Result<T>
+where
+    F: FnOnce(&CStr) -> io::Result<T>,
+{
+}
+
+#[cold]
+#[inline(never)]
+fn run_with_cstr_allocating<T, F>(bytes: &[u8], f: F) -> io::Result<T>
+where
+    F: FnOnce(&CStr) -> io::Result<T>,
+{
+}
+}
+
+#[cfg(test)]
+mod tests {
 }
 }
 
@@ -50730,13 +51403,12 @@ use crate::fmt;
 use crate::io;
 use crate::io::prelude::*;
 use crate::path::{self, Path, PathBuf};
-use crate::sys_common::mutex::StaticMutex;
+use crate::sync::{Mutex, PoisonError};
 
 /// Max number of frames to print.
 const MAX_NB_FRAMES: usize = 100;
 
-// SAFETY: Don't attempt to lock this reentrantly.
-pub unsafe fn lock() -> impl Drop {
+pub fn lock() -> impl Drop {
 }
 
 /// Prints the current backtrace.
@@ -50824,6 +51496,7 @@ pub struct NoCheck;
 
 #[allow(dead_code)]
 impl NoCheck {
+    #[rustc_const_stable(feature = "const_locks", since = "1.63.0")]
     pub const fn new() -> Self {
 }
     pub fn verify(&self, _: &MovableMutex) {}}
@@ -50840,6 +51513,7 @@ pub struct Condvar {
 impl Condvar {
     /// Creates a new condition variable for use.
     #[inline]
+    #[rustc_const_stable(feature = "const_locks", since = "1.63.0")]
     pub const fn new() -> Self {
 }
 
@@ -51034,44 +51708,6 @@ pub fn memrchr(needle: u8, haystack: &[u8]) -> Option<usize> {
 pub mod mutex {
 use crate::sys::locks as imp;
 
-/// An OS-based mutual exclusion lock, meant for use in static variables.
-///
-/// This mutex has a const constructor ([`StaticMutex::new`]), does not
-/// implement `Drop` to cleanup resources, and causes UB when used reentrantly.
-///
-/// This mutex does not implement poisoning.
-///
-/// This is a wrapper around `imp::Mutex` that does *not* call `init()` and
-/// `destroy()`.
-pub struct StaticMutex(imp::Mutex);
-
-unsafe impl Sync for StaticMutex {}
-
-impl StaticMutex {
-    /// Creates a new mutex for use.
-    #[inline]
-    pub const fn new() -> Self {
-}
-
-    /// Calls raw_lock() and then returns an RAII guard to guarantee the mutex
-    /// will be unlocked.
-    ///
-    /// It is undefined behaviour to call this function while locked by the
-    /// same thread.
-    #[inline]
-    pub unsafe fn lock(&'static self) -> StaticMutexGuard {
-}
-}
-
-#[must_use]
-pub struct StaticMutexGuard(&'static imp::Mutex);
-
-impl Drop for StaticMutexGuard {
-    #[inline]
-    fn drop(&mut self) {
-}
-}
-
 /// An OS-based mutual exclusion lock.
 ///
 /// This mutex cleans up its resources in its `Drop` implementation, may safely
@@ -51089,6 +51725,7 @@ unsafe impl Sync for MovableMutex {}
 impl MovableMutex {
     /// Creates a new mutex.
     #[inline]
+    #[rustc_const_stable(feature = "const_locks", since = "1.63.0")]
     pub const fn new() -> Self {
 }
 
@@ -51113,6 +51750,51 @@ impl MovableMutex {
     #[inline]
     pub unsafe fn raw_unlock(&self) {
 }
+}
+}
+pub mod once {
+// A "once" is a relatively simple primitive, and it's also typically provided
+// by the OS as well (see `pthread_once` or `InitOnceExecuteOnce`). The OS
+// primitives, however, tend to have surprising restrictions, such as the Unix
+// one doesn't allow an argument to be passed to the function.
+//
+// As a result, we end up implementing it ourselves in the standard library.
+// This also gives us the opportunity to optimize the implementation a bit which
+// should help the fast path on call sites.
+//
+// So to recap, the guarantees of a Once are that it will call the
+// initialization closure at most once, and it will never return until the one
+// that's running has finished running. This means that we need some form of
+// blocking here while the custom callback is running at the very least.
+// Additionally, we add on the restriction of **poisoning**. Whenever an
+// initialization closure panics, the Once enters a "poisoned" state which means
+// that all future calls will immediately panic as well.
+//
+// So to implement this, one might first reach for a `Mutex`, but those cannot
+// be put into a `static`. It also gets a lot harder with poisoning to figure
+// out when the mutex needs to be deallocated because it's not after the closure
+// finishes, but after the first successful closure finishes.
+//
+// All in all, this is instead implemented with atomics and lock-free
+// operations! Whee!
+
+cfg_if::cfg_if! {
+    if #[cfg(any(
+        target_os = "linux",
+        target_os = "android",
+        all(target_arch = "wasm32", target_feature = "atomics"),
+        target_os = "freebsd",
+        target_os = "openbsd",
+        target_os = "dragonfly",
+        target_os = "fuchsia",
+        target_os = "hermit",
+    ))] {
+        mod futex;
+        pub use futex::{Once, OnceState};
+    } else {
+        mod generic;
+        pub use generic::{Once, OnceState};
+    }
 }
 }
 pub mod process {
@@ -51200,9 +51882,7 @@ impl<'a> ExactSizeIterator for CommandEnvs<'a> {
 pub mod remutex {
 #[cfg(all(test, not(target_os = "emscripten")))]
 mod tests {
-use crate::boxed::Box;
 use crate::cell::RefCell;
-use crate::pin::Pin;
 use crate::sync::Arc;
 use crate::sys_common::remutex::{ReentrantMutex, ReentrantMutexGuard};
 use crate::thread;
@@ -51226,13 +51906,11 @@ impl Drop for Answer<'_> {
 }
 }
 
+use super::mutex as sys;
 use crate::cell::UnsafeCell;
-use crate::marker::PhantomPinned;
 use crate::ops::Deref;
 use crate::panic::{RefUnwindSafe, UnwindSafe};
-use crate::pin::Pin;
 use crate::sync::atomic::{AtomicUsize, Ordering::Relaxed};
-use crate::sys::locks as sys;
 
 /// A re-entrant mutual exclusion
 ///
@@ -51266,11 +51944,10 @@ use crate::sys::locks as sys;
 /// synchronization is left to the mutex, making relaxed memory ordering for
 /// the `owner` field fine in all cases.
 pub struct ReentrantMutex<T> {
-    mutex: sys::Mutex,
+    mutex: sys::MovableMutex,
     owner: AtomicUsize,
     lock_count: UnsafeCell<u32>,
     data: T,
-    _pinned: PhantomPinned,
 }
 
 unsafe impl<T: Send> Send for ReentrantMutex<T> {}
@@ -51293,29 +51970,14 @@ impl<T> RefUnwindSafe for ReentrantMutex<T> {}
 /// guarded data.
 #[must_use = "if unused the ReentrantMutex will immediately unlock"]
 pub struct ReentrantMutexGuard<'a, T: 'a> {
-    lock: Pin<&'a ReentrantMutex<T>>,
+    lock: &'a ReentrantMutex<T>,
 }
 
 impl<T> !Send for ReentrantMutexGuard<'_, T> {}
 
 impl<T> ReentrantMutex<T> {
     /// Creates a new reentrant mutex in an unlocked state.
-    ///
-    /// # Unsafety
-    ///
-    /// This function is unsafe because it is required that `init` is called
-    /// once this mutex is in its final resting place, and only then are the
-    /// lock/unlock methods safe.
-    pub const unsafe fn new(t: T) -> ReentrantMutex<T> {
-}
-
-    /// Initializes this mutex so it's ready for use.
-    ///
-    /// # Unsafety
-    ///
-    /// Unsafe to call more than once, and must be called after this will no
-    /// longer move in memory.
-    pub unsafe fn init(self: Pin<&mut Self>) {
+    pub const fn new(t: T) -> ReentrantMutex<T> {
 }
 
     /// Acquires a mutex, blocking the current thread until it is able to do so.
@@ -51330,7 +51992,7 @@ impl<T> ReentrantMutex<T> {
     /// If another user of this mutex panicked while holding the mutex, then
     /// this call will return failure if the mutex would otherwise be
     /// acquired.
-    pub fn lock(self: Pin<&Self>) -> ReentrantMutexGuard<'_, T> {
+    pub fn lock(&self) -> ReentrantMutexGuard<'_, T> {
 }
 
     /// Attempts to acquire this lock.
@@ -51345,7 +52007,7 @@ impl<T> ReentrantMutex<T> {
     /// If another user of this mutex panicked while holding the mutex, then
     /// this call will return failure if the mutex would otherwise be
     /// acquired.
-    pub fn try_lock(self: Pin<&Self>) -> Option<ReentrantMutexGuard<'_, T>> {
+    pub fn try_lock(&self) -> Option<ReentrantMutexGuard<'_, T>> {
 }
 
     unsafe fn increment_lock_count(&self) {
@@ -51374,55 +52036,6 @@ pub fn current_thread_unique_ptr() -> usize {
 pub mod rwlock {
 use crate::sys::locks as imp;
 
-/// An OS-based reader-writer lock, meant for use in static variables.
-///
-/// This rwlock does not implement poisoning.
-///
-/// This rwlock has a const constructor ([`StaticRwLock::new`]), does not
-/// implement `Drop` to cleanup resources.
-pub struct StaticRwLock(imp::RwLock);
-
-impl StaticRwLock {
-    /// Creates a new rwlock for use.
-    #[inline]
-    pub const fn new() -> Self {
-}
-
-    /// Acquires shared access to the underlying lock, blocking the current
-    /// thread to do so.
-    ///
-    /// The lock is automatically unlocked when the returned guard is dropped.
-    #[inline]
-    pub fn read(&'static self) -> StaticRwLockReadGuard {
-}
-
-    /// Acquires write access to the underlying lock, blocking the current thread
-    /// to do so.
-    ///
-    /// The lock is automatically unlocked when the returned guard is dropped.
-    #[inline]
-    pub fn write(&'static self) -> StaticRwLockWriteGuard {
-}
-}
-
-#[must_use]
-pub struct StaticRwLockReadGuard(&'static imp::RwLock);
-
-impl Drop for StaticRwLockReadGuard {
-    #[inline]
-    fn drop(&mut self) {
-}
-}
-
-#[must_use]
-pub struct StaticRwLockWriteGuard(&'static imp::RwLock);
-
-impl Drop for StaticRwLockWriteGuard {
-    #[inline]
-    fn drop(&mut self) {
-}
-}
-
 /// An OS-based reader-writer lock.
 ///
 /// This rwlock cleans up its resources in its `Drop` implementation and may
@@ -51438,6 +52051,7 @@ pub struct MovableRwLock(imp::MovableRwLock);
 impl MovableRwLock {
     /// Creates a new reader-writer lock for use.
     #[inline]
+    #[rustc_const_stable(feature = "const_locks", since = "1.63.0")]
     pub const fn new() -> Self {
 }
 
@@ -51547,187 +52161,6 @@ use crate::sys_common::thread_local_key::StaticKey;
 pub unsafe fn register_dtor_fallback(t: *mut u8, dtor: unsafe extern "C" fn(*mut u8)) {
 }
 }
-pub mod thread_local_key {
-//! OS-based thread local storage
-//!
-//! This module provides an implementation of OS-based thread local storage,
-//! using the native OS-provided facilities (think `TlsAlloc` or
-//! `pthread_setspecific`). The interface of this differs from the other types
-//! of thread-local-storage provided in this crate in that OS-based TLS can only
-//! get/set pointer-sized data, possibly with an associated destructor.
-//!
-//! This module also provides two flavors of TLS. One is intended for static
-//! initialization, and does not contain a `Drop` implementation to deallocate
-//! the OS-TLS key. The other is a type which does implement `Drop` and hence
-//! has a safe interface.
-//!
-//! # Usage
-//!
-//! This module should likely not be used directly unless other primitives are
-//! being built on. Types such as `thread_local::spawn::Key` are likely much
-//! more useful in practice than this OS-based version which likely requires
-//! unsafe code to interoperate with.
-//!
-//! # Examples
-//!
-//! Using a dynamically allocated TLS key. Note that this key can be shared
-//! among many threads via an `Arc`.
-//!
-//! ```ignore (cannot-doctest-private-modules)
-//! let key = Key::new(None);
-//! assert!(key.get().is_null());
-//! key.set(1 as *mut u8);
-//! assert!(!key.get().is_null());
-//!
-//! drop(key); // deallocate this TLS slot.
-//! ```
-//!
-//! Sometimes a statically allocated key is either required or easier to work
-//! with, however.
-//!
-//! ```ignore (cannot-doctest-private-modules)
-//! static KEY: StaticKey = INIT;
-//!
-//! unsafe {
-//!     assert!(KEY.get().is_null());
-//!     KEY.set(1 as *mut u8);
-//! }
-//! ```
-
-#![allow(non_camel_case_types)]
-#![unstable(feature = "thread_local_internals", issue = "none")]
-#![allow(dead_code)]
-
-#[cfg(test)]
-mod tests {
-}
-
-use crate::sync::atomic::{self, AtomicUsize, Ordering};
-use crate::sys::thread_local_key as imp;
-use crate::sys_common::mutex::StaticMutex;
-
-/// A type for TLS keys that are statically allocated.
-///
-/// This type is entirely `unsafe` to use as it does not protect against
-/// use-after-deallocation or use-during-deallocation.
-///
-/// The actual OS-TLS key is lazily allocated when this is used for the first
-/// time. The key is also deallocated when the Rust runtime exits or `destroy`
-/// is called, whichever comes first.
-///
-/// # Examples
-///
-/// ```ignore (cannot-doctest-private-modules)
-/// use tls::os::{StaticKey, INIT};
-///
-/// static KEY: StaticKey = INIT;
-///
-/// unsafe {
-///     assert!(KEY.get().is_null());
-///     KEY.set(1 as *mut u8);
-/// }
-/// ```
-pub struct StaticKey {
-    /// Inner static TLS key (internals).
-    key: AtomicUsize,
-    /// Destructor for the TLS value.
-    ///
-    /// See `Key::new` for information about when the destructor runs and how
-    /// it runs.
-    dtor: Option<unsafe extern "C" fn(*mut u8)>,
-}
-
-/// A type for a safely managed OS-based TLS slot.
-///
-/// This type allocates an OS TLS key when it is initialized and will deallocate
-/// the key when it falls out of scope. When compared with `StaticKey`, this
-/// type is entirely safe to use.
-///
-/// Implementations will likely, however, contain unsafe code as this type only
-/// operates on `*mut u8`, a raw pointer.
-///
-/// # Examples
-///
-/// ```ignore (cannot-doctest-private-modules)
-/// use tls::os::Key;
-///
-/// let key = Key::new(None);
-/// assert!(key.get().is_null());
-/// key.set(1 as *mut u8);
-/// assert!(!key.get().is_null());
-///
-/// drop(key); // deallocate this TLS slot.
-/// ```
-pub struct Key {
-    key: imp::Key,
-}
-
-/// Constant initialization value for static TLS keys.
-///
-/// This value specifies no destructor by default.
-pub const INIT: StaticKey = StaticKey::new(None);
-
-impl StaticKey {
-    #[rustc_const_unstable(feature = "thread_local_internals", issue = "none")]
-    pub const fn new(dtor: Option<unsafe extern "C" fn(*mut u8)>) -> StaticKey {
-}
-
-    /// Gets the value associated with this TLS key
-    ///
-    /// This will lazily allocate a TLS key from the OS if one has not already
-    /// been allocated.
-    #[inline]
-    pub unsafe fn get(&self) -> *mut u8 {
-}
-
-    /// Sets this TLS key to a new value.
-    ///
-    /// This will lazily allocate a TLS key from the OS if one has not already
-    /// been allocated.
-    #[inline]
-    pub unsafe fn set(&self, val: *mut u8) {
-}
-
-    #[inline]
-    unsafe fn key(&self) -> imp::Key {
-}
-
-    unsafe fn lazy_init(&self) -> usize {
-}
-}
-
-impl Key {
-    /// Creates a new managed OS TLS key.
-    ///
-    /// This key will be deallocated when the key falls out of scope.
-    ///
-    /// The argument provided is an optionally-specified destructor for the
-    /// value of this TLS key. When a thread exits and the value for this key
-    /// is non-null the destructor will be invoked. The TLS value will be reset
-    /// to null before the destructor is invoked.
-    ///
-    /// Note that the destructor will not be run when the `Key` goes out of
-    /// scope.
-    #[inline]
-    pub fn new(dtor: Option<unsafe extern "C" fn(*mut u8)>) -> Key {
-}
-
-    /// See StaticKey::get
-    #[inline]
-    pub fn get(&self) -> *mut u8 {
-}
-
-    /// See StaticKey::set
-    #[inline]
-    pub fn set(&self, val: *mut u8) {
-}
-}
-
-impl Drop for Key {
-    fn drop(&mut self) {
-}
-}
-}
 pub mod thread_parker {
 cfg_if::cfg_if! {
     if #[cfg(any(
@@ -51738,6 +52171,7 @@ cfg_if::cfg_if! {
         target_os = "openbsd",
         target_os = "dragonfly",
         target_os = "fuchsia",
+        target_os = "hermit",
     ))] {
         mod futex;
         pub use futex::Parker;
@@ -51837,6 +52271,16 @@ impl CodePoint {
     pub fn to_u32(&self) -> u32 {
 }
 
+    /// Returns the numeric value of the code point if it is a leading surrogate.
+    #[inline]
+    pub fn to_lead_surrogate(&self) -> Option<u16> {
+}
+
+    /// Returns the numeric value of the code point if it is a trailing surrogate.
+    #[inline]
+    pub fn to_trail_surrogate(&self) -> Option<u16> {
+}
+
     /// Optionally returns a Unicode scalar value for the code point.
     ///
     /// Returns `None` if the code point is a surrogate (from U+D800 to U+DFFF).
@@ -51860,6 +52304,14 @@ impl CodePoint {
 #[derive(Eq, PartialEq, Ord, PartialOrd, Clone)]
 pub struct Wtf8Buf {
     bytes: Vec<u8>,
+
+    /// Do we know that `bytes` holds a valid UTF-8 encoding? We can easily
+    /// know this if we're constructed from a `String` or `&str`.
+    ///
+    /// It is possible for `bytes` to have valid UTF-8 without this being
+    /// set, such as when we're concatenating `&Wtf8`'s and surrogates become
+    /// paired, as we don't bother to rescan the entire string.
+    is_known_utf8: bool,
 }
 
 impl ops::Deref for Wtf8Buf {
@@ -51923,7 +52375,7 @@ impl Wtf8Buf {
 }
 
     /// Copied from String::push
-    /// This does **not** include the WTF-8 concatenation check.
+    /// This does **not** include the WTF-8 concatenation check or `is_known_utf8` check.
     fn push_code_point_unchecked(&mut self, code_point: CodePoint) {
 }
 
@@ -51950,7 +52402,8 @@ impl Wtf8Buf {
     /// in the given `Wtf8Buf`. The `Wtf8Buf` may reserve more space to avoid
     /// frequent reallocations. After calling `try_reserve`, capacity will be
     /// greater than or equal to `self.len() + additional`. Does nothing if
-    /// capacity is already sufficient.
+    /// capacity is already sufficient. This method preserves the contents even
+    /// if an error occurs.
     ///
     /// # Errors
     ///
@@ -52173,6 +52626,10 @@ impl Wtf8 {
     pub fn as_str(&self) -> Option<&str> {
 }
 
+    /// Creates an owned `Wtf8Buf` from a borrowed `Wtf8`.
+    pub fn to_owned(&self) -> Wtf8Buf {
+}
+
     /// Lossily converts the string to UTF-8.
     /// Returns a UTF-8 `&str` slice if the contents are well-formed in UTF-8.
     ///
@@ -52387,6 +52844,14 @@ impl Hash for Wtf8 {
 }
 
 cfg_if::cfg_if! {
+    if #[cfg(target_os = "windows")] {
+        pub use crate::sys::thread_local_key;
+    } else {
+        pub mod thread_local_key;
+    }
+}
+
+cfg_if::cfg_if! {
     if #[cfg(any(target_os = "l4re",
                  target_os = "hermit",
                  feature = "restricted-std",
@@ -52509,7 +52974,10 @@ pub use alloc_crate::alloc::*;
 /// The default memory allocator provided by the operating system.
 ///
 /// This is based on `malloc` on Unix platforms and `HeapAlloc` on Windows,
-/// plus related functions.
+/// plus related functions. However, it is not valid to mix use of the backing
+/// system allocator with `System`, as this implementation may include extra
+/// work, such as to serve alignment requests greater than the alignment
+/// provided directly by the backing system allocator.
 ///
 /// This type implements the `GlobalAlloc` trait and Rust programs by default
 /// work as if they had this definition:
@@ -52671,9 +53139,9 @@ use crate::intrinsics;
 use crate::mem::{self, ManuallyDrop};
 use crate::process;
 use crate::sync::atomic::{AtomicBool, Ordering};
+use crate::sync::{PoisonError, RwLock};
 use crate::sys::stdio::panic_output;
 use crate::sys_common::backtrace;
-use crate::sys_common::rwlock::StaticRwLock;
 use crate::sys_common::thread_info;
 use crate::thread;
 
@@ -52721,19 +53189,24 @@ extern "C" fn __rust_drop_panic() -> ! {
 extern "C" fn __rust_foreign_exception() -> ! {
 }
 
-#[derive(Copy, Clone)]
 enum Hook {
     Default,
-    Custom(*mut (dyn Fn(&PanicInfo<'_>) + 'static + Sync + Send)),
+    Custom(Box<dyn Fn(&PanicInfo<'_>) + 'static + Sync + Send>),
 }
 
 impl Hook {
-    fn custom(f: impl Fn(&PanicInfo<'_>) + 'static + Sync + Send) -> Self {
+    #[inline]
+    fn into_box(self) -> Box<dyn Fn(&PanicInfo<'_>) + 'static + Sync + Send> {
 }
 }
 
-static HOOK_LOCK: StaticRwLock = StaticRwLock::new();
-static mut HOOK: Hook = Hook::Default;
+impl Default for Hook {
+    #[inline]
+    fn default() -> Hook {
+}
+}
+
+static HOOK: RwLock<Hook> = RwLock::new(Hook::Default);
 
 /// Registers a custom panic hook, replacing any that was previously registered.
 ///
@@ -52940,6 +53413,166 @@ pub fn rust_panic_without_hook(payload: Box<dyn Any + Send>) -> ! {
 #[inline(never)]
 #[cfg_attr(not(test), rustc_std_internal_symbol)]
 fn rust_panic(mut msg: &mut dyn BoxMeUp) -> ! {
+}
+}
+mod personality {
+//! This module contains the implementation of the `eh_personality` lang item.
+//!
+//! The actual implementation is heavily dependent on the target since Rust
+//! tries to use the native stack unwinding mechanism whenever possible.
+//!
+//! This personality function is still required with `-C panic=abort` because
+//! it is used to catch foreign exceptions from `extern "C-unwind"` and turn
+//! them into aborts.
+//!
+//! Additionally, ARM EHABI uses the personality function when generating
+//! backtraces.
+
+mod dwarf {
+//! Utilities for parsing DWARF-encoded data streams.
+//! See <http://www.dwarfstd.org>,
+//! DWARF-4 standard, Section 7 - "Data Representation"
+
+// This module is used only by x86_64-pc-windows-gnu for now, but we
+// are compiling it everywhere to avoid regressions.
+#![allow(unused)]
+
+#[cfg(test)]
+mod tests {
+}
+
+pub mod eh {
+//! Parsing of GCC-style Language-Specific Data Area (LSDA)
+//! For details see:
+//!  * <https://refspecs.linuxfoundation.org/LSB_3.0.0/LSB-PDA/LSB-PDA/ehframechpt.html>
+//!  * <https://itanium-cxx-abi.github.io/cxx-abi/exceptions.pdf>
+//!  * <https://www.airs.com/blog/archives/460>
+//!  * <https://www.airs.com/blog/archives/464>
+//!
+//! A reference implementation may be found in the GCC source tree
+//! (`<root>/libgcc/unwind-c.c` as of this writing).
+
+#![allow(non_upper_case_globals)]
+#![allow(unused)]
+
+use super::DwarfReader;
+use core::mem;
+
+pub const DW_EH_PE_omit: u8 = 0xFF;
+pub const DW_EH_PE_absptr: u8 = 0x00;
+
+pub const DW_EH_PE_uleb128: u8 = 0x01;
+pub const DW_EH_PE_udata2: u8 = 0x02;
+pub const DW_EH_PE_udata4: u8 = 0x03;
+pub const DW_EH_PE_udata8: u8 = 0x04;
+pub const DW_EH_PE_sleb128: u8 = 0x09;
+pub const DW_EH_PE_sdata2: u8 = 0x0A;
+pub const DW_EH_PE_sdata4: u8 = 0x0B;
+pub const DW_EH_PE_sdata8: u8 = 0x0C;
+
+pub const DW_EH_PE_pcrel: u8 = 0x10;
+pub const DW_EH_PE_textrel: u8 = 0x20;
+pub const DW_EH_PE_datarel: u8 = 0x30;
+pub const DW_EH_PE_funcrel: u8 = 0x40;
+pub const DW_EH_PE_aligned: u8 = 0x50;
+
+pub const DW_EH_PE_indirect: u8 = 0x80;
+
+#[derive(Copy, Clone)]
+pub struct EHContext<'a> {
+    pub ip: usize,                             // Current instruction pointer
+    pub func_start: usize,                     // Address of the current function
+    pub get_text_start: &'a dyn Fn() -> usize, // Get address of the code section
+    pub get_data_start: &'a dyn Fn() -> usize, // Get address of the data section
+}
+
+pub enum EHAction {
+    None,
+    Cleanup(usize),
+    Catch(usize),
+    Terminate,
+}
+
+pub const USING_SJLJ_EXCEPTIONS: bool = cfg!(all(target_os = "ios", target_arch = "arm"));
+
+pub unsafe fn find_eh_action(lsda: *const u8, context: &EHContext<'_>) -> Result<EHAction, ()> {
+}
+
+fn interpret_cs_action(cs_action: u64, lpad: usize) -> EHAction {
+}
+
+#[inline]
+fn round_up(unrounded: usize, align: usize) -> Result<usize, ()> {
+}
+
+unsafe fn read_encoded_pointer(
+    reader: &mut DwarfReader,
+    context: &EHContext<'_>,
+    encoding: u8,
+) -> Result<usize, ()> {
+}
+}
+
+use core::mem;
+
+pub struct DwarfReader {
+    pub ptr: *const u8,
+}
+
+#[repr(C, packed)]
+struct Unaligned<T>(T);
+
+impl DwarfReader {
+    pub fn new(ptr: *const u8) -> DwarfReader {
+}
+
+    // DWARF streams are packed, so e.g., a u32 would not necessarily be aligned
+    // on a 4-byte boundary. This may cause problems on platforms with strict
+    // alignment requirements. By wrapping data in a "packed" struct, we are
+    // telling the backend to generate "misalignment-safe" code.
+    pub unsafe fn read<T: Copy>(&mut self) -> T {
+}
+
+    // ULEB128 and SLEB128 encodings are defined in Section 7.6 - "Variable
+    // Length Data".
+    pub unsafe fn read_uleb128(&mut self) -> u64 {
+}
+
+    pub unsafe fn read_sleb128(&mut self) -> i64 {
+}
+}
+}
+
+#[cfg(not(test))]
+cfg_if::cfg_if! {
+    if #[cfg(target_os = "emscripten")] {
+        mod emcc;
+    } else if #[cfg(target_env = "msvc")] {
+        // This is required by the compiler to exist (e.g., it's a lang item),
+        // but it's never actually called by the compiler because
+        // _CxxFrameHandler3 is the personality function that is always used.
+        // Hence this is just an aborting stub.
+        #[lang = "eh_personality"]
+        fn rust_eh_personality() {
+}
+    } else if #[cfg(any(
+        all(target_family = "windows", target_env = "gnu"),
+        target_os = "psp",
+        target_os = "solid_asp3",
+        all(target_family = "unix", not(target_os = "espidf")),
+        all(target_vendor = "fortanix", target_env = "sgx"),
+    ))] {
+        mod gcc;
+    } else {
+        // Targets that don't support unwinding.
+        // - family=wasm
+        // - os=none ("bare metal" targets)
+        // - os=uefi
+        // - os=espidf
+        // - os=hermit
+        // - nvptx64-nvidia-cuda
+        // - arch=avr
+    }
 }
 }
 

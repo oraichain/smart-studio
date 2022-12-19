@@ -93,6 +93,7 @@
 #![warn(missing_debug_implementations)]
 #![warn(missing_docs)]
 #![allow(explicit_outlives_requirements)]
+#![allow(incomplete_features)]
 //
 // Library features:
 #![feature(const_align_offset)]
@@ -113,6 +114,7 @@
 #![feature(const_fmt_arguments_new)]
 #![feature(const_heap)]
 #![feature(const_convert)]
+#![feature(const_index_range_slice_index)]
 #![feature(const_inherent_unchecked_arith)]
 #![feature(const_int_unchecked_arith)]
 #![feature(const_intrinsic_forget)]
@@ -130,25 +132,30 @@
 #![feature(const_replace)]
 #![feature(const_ptr_as_ref)]
 #![feature(const_ptr_is_null)]
-#![feature(const_ptr_offset_from)]
 #![feature(const_ptr_read)]
 #![feature(const_ptr_write)]
 #![feature(const_raw_ptr_comparison)]
 #![feature(const_size_of_val)]
 #![feature(const_slice_from_raw_parts_mut)]
 #![feature(const_slice_ptr_len)]
+#![feature(const_slice_split_at_mut)]
 #![feature(const_str_from_utf8_unchecked_mut)]
 #![feature(const_swap)]
 #![feature(const_trait_impl)]
+#![feature(const_try)]
 #![feature(const_type_id)]
 #![feature(const_type_name)]
 #![feature(const_default_impls)]
+#![feature(const_unicode_case_lookup)]
 #![feature(const_unsafecell_get_mut)]
+#![feature(const_waker)]
 #![feature(core_panic)]
 #![feature(duration_consts_float)]
 #![feature(maybe_uninit_uninit_array)]
+#![feature(ptr_alignment_type)]
 #![feature(ptr_metadata)]
 #![feature(slice_ptr_get)]
+#![feature(slice_split_at_unchecked)]
 #![feature(str_internals)]
 #![feature(utf16_extra)]
 #![feature(utf16_extra_const)]
@@ -157,13 +164,17 @@
 #![feature(const_slice_from_ref)]
 #![feature(const_slice_index)]
 #![feature(const_is_char_boundary)]
+#![feature(const_cstr_methods)]
+#![feature(is_ascii_octdigit)]
 //
 // Language features:
 #![feature(abi_unadjusted)]
+#![feature(adt_const_params)]
 #![feature(allow_internal_unsafe)]
 #![feature(allow_internal_unstable)]
 #![feature(associated_type_bounds)]
 #![feature(auto_traits)]
+#![feature(c_unwind)]
 #![feature(cfg_sanitize)]
 #![feature(cfg_target_has_atomic)]
 #![feature(cfg_target_has_atomic_equal_alignment)]
@@ -181,13 +192,13 @@
 #![feature(extern_types)]
 #![feature(fundamental)]
 #![feature(if_let_guard)]
+#![feature(inline_const)]
 #![feature(intra_doc_pointers)]
 #![feature(intrinsics)]
 #![feature(lang_items)]
 #![feature(link_llvm_intrinsics)]
 #![feature(macro_metavar_expr)]
 #![feature(min_specialization)]
-#![feature(mixed_integer_ops)]
 #![feature(must_not_suspend)]
 #![feature(negative_impls)]
 #![feature(never_type)]
@@ -201,12 +212,14 @@
 #![feature(simd_ffi)]
 #![feature(staged_api)]
 #![feature(stmt_expr_attributes)]
+#![feature(target_feature_11)]
 #![feature(trait_alias)]
 #![feature(transparent_unions)]
 #![feature(try_blocks)]
 #![feature(unboxed_closures)]
 #![feature(unsized_fn_params)]
 #![feature(asm_const)]
+#![feature(const_transmute_copy)]
 //
 // Target features:
 #![feature(arm_target_feature)]
@@ -216,6 +229,7 @@
 #![feature(hexagon_target_feature)]
 #![feature(mips_target_feature)]
 #![feature(powerpc_target_feature)]
+#![feature(riscv_target_feature)]
 #![feature(rtm_target_feature)]
 #![feature(sse4a_target_feature)]
 #![feature(tbm_target_feature)]
@@ -584,10 +598,12 @@ macro_rules! matches {
 
 /// Unwraps a result or propagates its error.
 ///
-/// The `?` operator was added to replace `try!` and should be used instead.
-/// Furthermore, `try` is a reserved word in Rust 2018, so if you must use
-/// it, you will need to use the [raw-identifier syntax][ris]: `r#try`.
+/// The [`?` operator][propagating-errors] was added to replace `try!`
+/// and should be used instead. Furthermore, `try` is a reserved word
+/// in Rust 2018, so if you must use it, you will need to use the
+/// [raw-identifier syntax][ris]: `r#try`.
 ///
+/// [propagating-errors]: https://doc.rust-lang.org/book/ch09-02-recoverable-errors-with-result.html#a-shortcut-for-propagating-errors-the--operator
 /// [ris]: https://doc.rust-lang.org/nightly/rust-by-example/compatibility/raw_identifiers.html
 ///
 /// `try!` matches the given [`Result`]. In case of the `Ok` variant, the
@@ -691,11 +707,12 @@ macro_rules! r#try {
 ///
 /// A module can import both `std::fmt::Write` and `std::io::Write` and call `write!` on objects
 /// implementing either, as objects do not typically implement both. However, the module must
-/// import the traits qualified so their names do not conflict:
+/// avoid conflict between the trait names, such as by importing them as `_` or otherwise renaming
+/// them:
 ///
 /// ```
-/// use std::fmt::Write as FmtWrite;
-/// use std::io::Write as IoWrite;
+/// use std::fmt::Write as _;
+/// use std::io::Write as _;
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///     let mut s = String::new();
@@ -705,6 +722,23 @@ macro_rules! r#try {
 ///     write!(&mut v, "s = {:?}", s)?; // uses io::Write::write_fmt
 ///     assert_eq!(v, b"s = \"abc 123\"");
 ///     Ok(())
+/// }
+/// ```
+///
+/// If you also need the trait names themselves, such as to implement one or both on your types,
+/// import the containing module and then name them with a prefix:
+///
+/// ```
+/// # #![allow(unused_imports)]
+/// use std::fmt::{self, Write as _};
+/// use std::io::{self, Write as _};
+///
+/// struct Example;
+///
+/// impl fmt::Write for Example {
+///     fn write_str(&mut self, _s: &str) -> core::fmt::Result {
+///          unimplemented!();
+///     }
 /// }
 /// ```
 ///
@@ -757,25 +791,6 @@ macro_rules! write {
 ///     writeln!(&mut w, "formatted {}", "arguments")?;
 ///
 ///     assert_eq!(&w[..], "\ntest\nformatted arguments\n".as_bytes());
-///     Ok(())
-/// }
-/// ```
-///
-/// A module can import both `std::fmt::Write` and `std::io::Write` and call `write!` on objects
-/// implementing either, as objects do not typically implement both. However, the module must
-/// import the traits qualified so their names do not conflict:
-///
-/// ```
-/// use std::fmt::Write as FmtWrite;
-/// use std::io::Write as IoWrite;
-///
-/// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let mut s = String::new();
-///     let mut v = Vec::new();
-///
-///     writeln!(&mut s, "{} {}", "abc", 123)?; // uses fmt::Write::write_fmt
-///     writeln!(&mut v, "s = {:?}", s)?; // uses io::Write::write_fmt
-///     assert_eq!(v, b"s = \"abc 123\\n\"\n");
 ///     Ok(())
 /// }
 /// ```
@@ -1249,7 +1264,7 @@ pub(crate) mod builtin {
     /// Concatenates literals into a byte slice.
     ///
     /// This macro takes any number of comma-separated literals, and concatenates them all into
-    /// one, yielding an expression of type `&[u8, _]`, which represents all of the literals
+    /// one, yielding an expression of type `&[u8; _]`, which represents all of the literals
     /// concatenated left-to-right. The literals passed can be any combination of:
     ///
     /// - byte literals (`b'r'`)
@@ -2305,7 +2320,7 @@ int_module! { usize }
 
 #[path = "num/f32.rs"]
 pub mod f32 {
-//! Constants specific to the `f32` single-precision floating point type.
+//! Constants for the `f32` single-precision floating point type.
 //!
 //! *[See also the `f32` primitive type][f32].*
 //!
@@ -2701,7 +2716,7 @@ impl f32 {
 
     /// Not a Number (NaN).
     ///
-    /// Note that IEEE-745 doesn't define just a single NaN value;
+    /// Note that IEEE 754 doesn't define just a single NaN value;
     /// a plethora of bit patterns are considered to be NaN.
     /// Furthermore, the standard makes a difference
     /// between a "signaling" and a "quiet" NaN,
@@ -2939,7 +2954,7 @@ impl f32 {
     }
 
     /// Returns `true` if `self` has a positive sign, including `+0.0`, NaNs with
-    /// positive sign bit and positive infinity. Note that IEEE-745 doesn't assign any
+    /// positive sign bit and positive infinity. Note that IEEE 754 doesn't assign any
     /// meaning to the sign bit in case of a NaN, and as Rust doesn't guarantee that
     /// the bit pattern of NaNs are conserved over arithmetic operations, the result of
     /// `is_sign_positive` on a NaN might produce an unexpected result in some cases.
@@ -2961,7 +2976,7 @@ impl f32 {
     }
 
     /// Returns `true` if `self` has a negative sign, including `-0.0`, NaNs with
-    /// negative sign bit and negative infinity. Note that IEEE-745 doesn't assign any
+    /// negative sign bit and negative infinity. Note that IEEE 754 doesn't assign any
     /// meaning to the sign bit in case of a NaN, and as Rust doesn't guarantee that
     /// the bit pattern of NaNs are conserved over arithmetic operations, the result of
     /// `is_sign_negative` on a NaN might produce an unexpected result in some cases.
@@ -2983,6 +2998,106 @@ impl f32 {
         // applies to zeros and NaNs as well.
         // SAFETY: This is just transmuting to get the sign bit, it's fine.
         unsafe { mem::transmute::<f32, u32>(self) & 0x8000_0000 != 0 }
+    }
+
+    /// Returns the least number greater than `self`.
+    ///
+    /// Let `TINY` be the smallest representable positive `f32`. Then,
+    ///  - if `self.is_nan()`, this returns `self`;
+    ///  - if `self` is [`NEG_INFINITY`], this returns [`MIN`];
+    ///  - if `self` is `-TINY`, this returns -0.0;
+    ///  - if `self` is -0.0 or +0.0, this returns `TINY`;
+    ///  - if `self` is [`MAX`] or [`INFINITY`], this returns [`INFINITY`];
+    ///  - otherwise the unique least value greater than `self` is returned.
+    ///
+    /// The identity `x.next_up() == -(-x).next_down()` holds for all non-NaN `x`. When `x`
+    /// is finite `x == x.next_up().next_down()` also holds.
+    ///
+    /// ```rust
+    /// #![feature(float_next_up_down)]
+    /// // f32::EPSILON is the difference between 1.0 and the next number up.
+    /// assert_eq!(1.0f32.next_up(), 1.0 + f32::EPSILON);
+    /// // But not for most numbers.
+    /// assert!(0.1f32.next_up() < 0.1 + f32::EPSILON);
+    /// assert_eq!(16777216f32.next_up(), 16777218.0);
+    /// ```
+    ///
+    /// [`NEG_INFINITY`]: Self::NEG_INFINITY
+    /// [`INFINITY`]: Self::INFINITY
+    /// [`MIN`]: Self::MIN
+    /// [`MAX`]: Self::MAX
+    #[unstable(feature = "float_next_up_down", issue = "91399")]
+    #[rustc_const_unstable(feature = "float_next_up_down", issue = "91399")]
+    pub const fn next_up(self) -> Self {
+        // We must use strictly integer arithmetic to prevent denormals from
+        // flushing to zero after an arithmetic operation on some platforms.
+        const TINY_BITS: u32 = 0x1; // Smallest positive f32.
+        const CLEAR_SIGN_MASK: u32 = 0x7fff_ffff;
+
+        let bits = self.to_bits();
+        if self.is_nan() || bits == Self::INFINITY.to_bits() {
+            return self;
+        }
+
+        let abs = bits & CLEAR_SIGN_MASK;
+        let next_bits = if abs == 0 {
+            TINY_BITS
+        } else if bits == abs {
+            bits + 1
+        } else {
+            bits - 1
+        };
+        Self::from_bits(next_bits)
+    }
+
+    /// Returns the greatest number less than `self`.
+    ///
+    /// Let `TINY` be the smallest representable positive `f32`. Then,
+    ///  - if `self.is_nan()`, this returns `self`;
+    ///  - if `self` is [`INFINITY`], this returns [`MAX`];
+    ///  - if `self` is `TINY`, this returns 0.0;
+    ///  - if `self` is -0.0 or +0.0, this returns `-TINY`;
+    ///  - if `self` is [`MIN`] or [`NEG_INFINITY`], this returns [`NEG_INFINITY`];
+    ///  - otherwise the unique greatest value less than `self` is returned.
+    ///
+    /// The identity `x.next_down() == -(-x).next_up()` holds for all non-NaN `x`. When `x`
+    /// is finite `x == x.next_down().next_up()` also holds.
+    ///
+    /// ```rust
+    /// #![feature(float_next_up_down)]
+    /// let x = 1.0f32;
+    /// // Clamp value into range [0, 1).
+    /// let clamped = x.clamp(0.0, 1.0f32.next_down());
+    /// assert!(clamped < 1.0);
+    /// assert_eq!(clamped.next_up(), 1.0);
+    /// ```
+    ///
+    /// [`NEG_INFINITY`]: Self::NEG_INFINITY
+    /// [`INFINITY`]: Self::INFINITY
+    /// [`MIN`]: Self::MIN
+    /// [`MAX`]: Self::MAX
+    #[unstable(feature = "float_next_up_down", issue = "91399")]
+    #[rustc_const_unstable(feature = "float_next_up_down", issue = "91399")]
+    pub const fn next_down(self) -> Self {
+        // We must use strictly integer arithmetic to prevent denormals from
+        // flushing to zero after an arithmetic operation on some platforms.
+        const NEG_TINY_BITS: u32 = 0x8000_0001; // Smallest (in magnitude) negative f32.
+        const CLEAR_SIGN_MASK: u32 = 0x7fff_ffff;
+
+        let bits = self.to_bits();
+        if self.is_nan() || bits == Self::NEG_INFINITY.to_bits() {
+            return self;
+        }
+
+        let abs = bits & CLEAR_SIGN_MASK;
+        let next_bits = if abs == 0 {
+            NEG_TINY_BITS
+        } else if bits == abs {
+            bits - 1
+        } else {
+            bits + 1
+        };
+        Self::from_bits(next_bits)
     }
 
     /// Takes the reciprocal (inverse) of a number, `1/x`.
@@ -3040,7 +3155,7 @@ impl f32 {
     /// Returns the maximum of the two numbers, ignoring NaN.
     ///
     /// If one of the arguments is NaN, then the other argument is returned.
-    /// This follows the IEEE-754 2008 semantics for maxNum, except for handling of signaling NaNs;
+    /// This follows the IEEE 754-2008 semantics for maxNum, except for handling of signaling NaNs;
     /// this function handles all NaNs the same way and avoids maxNum's problems with associativity.
     /// This also matches the behavior of libm’s fmax.
     ///
@@ -3060,7 +3175,7 @@ impl f32 {
     /// Returns the minimum of the two numbers, ignoring NaN.
     ///
     /// If one of the arguments is NaN, then the other argument is returned.
-    /// This follows the IEEE-754 2008 semantics for minNum, except for handling of signaling NaNs;
+    /// This follows the IEEE 754-2008 semantics for minNum, except for handling of signaling NaNs;
     /// this function handles all NaNs the same way and avoids minNum's problems with associativity.
     /// This also matches the behavior of libm’s fmin.
     ///
@@ -3240,10 +3355,14 @@ impl f32 {
                 }
             }
         }
-        // SAFETY: `u32` is a plain old datatype so we can always... uh...
-        // ...look, just pretend you forgot what you just read.
-        // Stability concerns.
-        let rt_f32_to_u32 = |rt| unsafe { mem::transmute::<f32, u32>(rt) };
+
+        #[inline(always)] // See https://github.com/rust-lang/compiler-builtins/issues/491
+        fn rt_f32_to_u32(x: f32) -> u32 {
+            // SAFETY: `u32` is a plain old datatype so we can always... uh...
+            // ...look, just pretend you forgot what you just read.
+            // Stability concerns.
+            unsafe { mem::transmute(x) }
+        }
         // SAFETY: We use internal implementations that either always work or fail at compile time.
         unsafe { intrinsics::const_eval_select((self,), ct_f32_to_u32, rt_f32_to_u32) }
     }
@@ -3254,9 +3373,9 @@ impl f32 {
     /// It turns out this is incredibly portable, for two reasons:
     ///
     /// * Floats and Ints have the same endianness on all supported platforms.
-    /// * IEEE-754 very precisely specifies the bit layout of floats.
+    /// * IEEE 754 very precisely specifies the bit layout of floats.
     ///
-    /// However there is one caveat: prior to the 2008 version of IEEE-754, how
+    /// However there is one caveat: prior to the 2008 version of IEEE 754, how
     /// to interpret the NaN signaling bit wasn't actually specified. Most platforms
     /// (notably x86 and ARM) picked the interpretation that was ultimately
     /// standardized in 2008, but some didn't (notably MIPS). As a result, all
@@ -3328,10 +3447,14 @@ impl f32 {
                 }
             }
         }
-        // SAFETY: `u32` is a plain old datatype so we can always... uh...
-        // ...look, just pretend you forgot what you just read.
-        // Stability concerns.
-        let rt_u32_to_f32 = |rt| unsafe { mem::transmute::<u32, f32>(rt) };
+
+        #[inline(always)] // See https://github.com/rust-lang/compiler-builtins/issues/491
+        fn rt_u32_to_f32(x: u32) -> f32 {
+            // SAFETY: `u32` is a plain old datatype so we can always... uh...
+            // ...look, just pretend you forgot what you just read.
+            // Stability concerns.
+            unsafe { mem::transmute(x) }
+        }
         // SAFETY: We use internal implementations that either always work or fail at compile time.
         unsafe { intrinsics::const_eval_select((v,), ct_u32_to_f32, rt_u32_to_f32) }
     }
@@ -3589,22 +3712,21 @@ impl f32 {
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "clamp", since = "1.50.0")]
     #[inline]
-    pub fn clamp(self, min: f32, max: f32) -> f32 {
+    pub fn clamp(mut self, min: f32, max: f32) -> f32 {
         assert!(min <= max);
-        let mut x = self;
-        if x < min {
-            x = min;
+        if self < min {
+            self = min;
         }
-        if x > max {
-            x = max;
+        if self > max {
+            self = max;
         }
-        x
+        self
     }
 }
 }
 #[path = "num/f64.rs"]
 pub mod f64 {
-//! Constants specific to the `f64` double-precision floating point type.
+//! Constants for the `f64` double-precision floating point type.
 //!
 //! *[See also the `f64` primitive type][f64].*
 //!
@@ -3999,7 +4121,7 @@ impl f64 {
 
     /// Not a Number (NaN).
     ///
-    /// Note that IEEE-745 doesn't define just a single NaN value;
+    /// Note that IEEE 754 doesn't define just a single NaN value;
     /// a plethora of bit patterns are considered to be NaN.
     /// Furthermore, the standard makes a difference
     /// between a "signaling" and a "quiet" NaN,
@@ -4230,7 +4352,7 @@ impl f64 {
     }
 
     /// Returns `true` if `self` has a positive sign, including `+0.0`, NaNs with
-    /// positive sign bit and positive infinity. Note that IEEE-745 doesn't assign any
+    /// positive sign bit and positive infinity. Note that IEEE 754 doesn't assign any
     /// meaning to the sign bit in case of a NaN, and as Rust doesn't guarantee that
     /// the bit pattern of NaNs are conserved over arithmetic operations, the result of
     /// `is_sign_positive` on a NaN might produce an unexpected result in some cases.
@@ -4261,7 +4383,7 @@ impl f64 {
     }
 
     /// Returns `true` if `self` has a negative sign, including `-0.0`, NaNs with
-    /// negative sign bit and negative infinity. Note that IEEE-745 doesn't assign any
+    /// negative sign bit and negative infinity. Note that IEEE 754 doesn't assign any
     /// meaning to the sign bit in case of a NaN, and as Rust doesn't guarantee that
     /// the bit pattern of NaNs are conserved over arithmetic operations, the result of
     /// `is_sign_negative` on a NaN might produce an unexpected result in some cases.
@@ -4292,6 +4414,106 @@ impl f64 {
     #[doc(hidden)]
     pub fn is_negative(self) -> bool {
         self.is_sign_negative()
+    }
+
+    /// Returns the least number greater than `self`.
+    ///
+    /// Let `TINY` be the smallest representable positive `f64`. Then,
+    ///  - if `self.is_nan()`, this returns `self`;
+    ///  - if `self` is [`NEG_INFINITY`], this returns [`MIN`];
+    ///  - if `self` is `-TINY`, this returns -0.0;
+    ///  - if `self` is -0.0 or +0.0, this returns `TINY`;
+    ///  - if `self` is [`MAX`] or [`INFINITY`], this returns [`INFINITY`];
+    ///  - otherwise the unique least value greater than `self` is returned.
+    ///
+    /// The identity `x.next_up() == -(-x).next_down()` holds for all non-NaN `x`. When `x`
+    /// is finite `x == x.next_up().next_down()` also holds.
+    ///
+    /// ```rust
+    /// #![feature(float_next_up_down)]
+    /// // f64::EPSILON is the difference between 1.0 and the next number up.
+    /// assert_eq!(1.0f64.next_up(), 1.0 + f64::EPSILON);
+    /// // But not for most numbers.
+    /// assert!(0.1f64.next_up() < 0.1 + f64::EPSILON);
+    /// assert_eq!(9007199254740992f64.next_up(), 9007199254740994.0);
+    /// ```
+    ///
+    /// [`NEG_INFINITY`]: Self::NEG_INFINITY
+    /// [`INFINITY`]: Self::INFINITY
+    /// [`MIN`]: Self::MIN
+    /// [`MAX`]: Self::MAX
+    #[unstable(feature = "float_next_up_down", issue = "91399")]
+    #[rustc_const_unstable(feature = "float_next_up_down", issue = "91399")]
+    pub const fn next_up(self) -> Self {
+        // We must use strictly integer arithmetic to prevent denormals from
+        // flushing to zero after an arithmetic operation on some platforms.
+        const TINY_BITS: u64 = 0x1; // Smallest positive f64.
+        const CLEAR_SIGN_MASK: u64 = 0x7fff_ffff_ffff_ffff;
+
+        let bits = self.to_bits();
+        if self.is_nan() || bits == Self::INFINITY.to_bits() {
+            return self;
+        }
+
+        let abs = bits & CLEAR_SIGN_MASK;
+        let next_bits = if abs == 0 {
+            TINY_BITS
+        } else if bits == abs {
+            bits + 1
+        } else {
+            bits - 1
+        };
+        Self::from_bits(next_bits)
+    }
+
+    /// Returns the greatest number less than `self`.
+    ///
+    /// Let `TINY` be the smallest representable positive `f64`. Then,
+    ///  - if `self.is_nan()`, this returns `self`;
+    ///  - if `self` is [`INFINITY`], this returns [`MAX`];
+    ///  - if `self` is `TINY`, this returns 0.0;
+    ///  - if `self` is -0.0 or +0.0, this returns `-TINY`;
+    ///  - if `self` is [`MIN`] or [`NEG_INFINITY`], this returns [`NEG_INFINITY`];
+    ///  - otherwise the unique greatest value less than `self` is returned.
+    ///
+    /// The identity `x.next_down() == -(-x).next_up()` holds for all non-NaN `x`. When `x`
+    /// is finite `x == x.next_down().next_up()` also holds.
+    ///
+    /// ```rust
+    /// #![feature(float_next_up_down)]
+    /// let x = 1.0f64;
+    /// // Clamp value into range [0, 1).
+    /// let clamped = x.clamp(0.0, 1.0f64.next_down());
+    /// assert!(clamped < 1.0);
+    /// assert_eq!(clamped.next_up(), 1.0);
+    /// ```
+    ///
+    /// [`NEG_INFINITY`]: Self::NEG_INFINITY
+    /// [`INFINITY`]: Self::INFINITY
+    /// [`MIN`]: Self::MIN
+    /// [`MAX`]: Self::MAX
+    #[unstable(feature = "float_next_up_down", issue = "91399")]
+    #[rustc_const_unstable(feature = "float_next_up_down", issue = "91399")]
+    pub const fn next_down(self) -> Self {
+        // We must use strictly integer arithmetic to prevent denormals from
+        // flushing to zero after an arithmetic operation on some platforms.
+        const NEG_TINY_BITS: u64 = 0x8000_0000_0000_0001; // Smallest (in magnitude) negative f64.
+        const CLEAR_SIGN_MASK: u64 = 0x7fff_ffff_ffff_ffff;
+
+        let bits = self.to_bits();
+        if self.is_nan() || bits == Self::NEG_INFINITY.to_bits() {
+            return self;
+        }
+
+        let abs = bits & CLEAR_SIGN_MASK;
+        let next_bits = if abs == 0 {
+            NEG_TINY_BITS
+        } else if bits == abs {
+            bits - 1
+        } else {
+            bits + 1
+        };
+        Self::from_bits(next_bits)
     }
 
     /// Takes the reciprocal (inverse) of a number, `1/x`.
@@ -4350,7 +4572,7 @@ impl f64 {
     /// Returns the maximum of the two numbers, ignoring NaN.
     ///
     /// If one of the arguments is NaN, then the other argument is returned.
-    /// This follows the IEEE-754 2008 semantics for maxNum, except for handling of signaling NaNs;
+    /// This follows the IEEE 754-2008 semantics for maxNum, except for handling of signaling NaNs;
     /// this function handles all NaNs the same way and avoids maxNum's problems with associativity.
     /// This also matches the behavior of libm’s fmax.
     ///
@@ -4370,7 +4592,7 @@ impl f64 {
     /// Returns the minimum of the two numbers, ignoring NaN.
     ///
     /// If one of the arguments is NaN, then the other argument is returned.
-    /// This follows the IEEE-754 2008 semantics for minNum, except for handling of signaling NaNs;
+    /// This follows the IEEE 754-2008 semantics for minNum, except for handling of signaling NaNs;
     /// this function handles all NaNs the same way and avoids minNum's problems with associativity.
     /// This also matches the behavior of libm’s fmin.
     ///
@@ -4532,10 +4754,14 @@ impl f64 {
                 }
             }
         }
-        // SAFETY: `u64` is a plain old datatype so we can always... uh...
-        // ...look, just pretend you forgot what you just read.
-        // Stability concerns.
-        let rt_f64_to_u64 = |rt| unsafe { mem::transmute::<f64, u64>(rt) };
+
+        #[inline(always)] // See https://github.com/rust-lang/compiler-builtins/issues/491
+        fn rt_f64_to_u64(rt: f64) -> u64 {
+            // SAFETY: `u64` is a plain old datatype so we can always... uh...
+            // ...look, just pretend you forgot what you just read.
+            // Stability concerns.
+            unsafe { mem::transmute::<f64, u64>(rt) }
+        }
         // SAFETY: We use internal implementations that either always work or fail at compile time.
         unsafe { intrinsics::const_eval_select((self,), ct_f64_to_u64, rt_f64_to_u64) }
     }
@@ -4546,9 +4772,9 @@ impl f64 {
     /// It turns out this is incredibly portable, for two reasons:
     ///
     /// * Floats and Ints have the same endianness on all supported platforms.
-    /// * IEEE-754 very precisely specifies the bit layout of floats.
+    /// * IEEE 754 very precisely specifies the bit layout of floats.
     ///
-    /// However there is one caveat: prior to the 2008 version of IEEE-754, how
+    /// However there is one caveat: prior to the 2008 version of IEEE 754, how
     /// to interpret the NaN signaling bit wasn't actually specified. Most platforms
     /// (notably x86 and ARM) picked the interpretation that was ultimately
     /// standardized in 2008, but some didn't (notably MIPS). As a result, all
@@ -4625,10 +4851,14 @@ impl f64 {
                 }
             }
         }
-        // SAFETY: `u64` is a plain old datatype so we can always... uh...
-        // ...look, just pretend you forgot what you just read.
-        // Stability concerns.
-        let rt_u64_to_f64 = |rt| unsafe { mem::transmute::<u64, f64>(rt) };
+
+        #[inline(always)] // See https://github.com/rust-lang/compiler-builtins/issues/491
+        fn rt_u64_to_f64(rt: u64) -> f64 {
+            // SAFETY: `u64` is a plain old datatype so we can always... uh...
+            // ...look, just pretend you forgot what you just read.
+            // Stability concerns.
+            unsafe { mem::transmute::<u64, f64>(rt) }
+        }
         // SAFETY: We use internal implementations that either always work or fail at compile time.
         unsafe { intrinsics::const_eval_select((v,), ct_u64_to_f64, rt_u64_to_f64) }
     }
@@ -4886,16 +5116,15 @@ impl f64 {
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "clamp", since = "1.50.0")]
     #[inline]
-    pub fn clamp(self, min: f64, max: f64) -> f64 {
+    pub fn clamp(mut self, min: f64, max: f64) -> f64 {
         assert!(min <= max);
-        let mut x = self;
-        if x < min {
-            x = min;
+        if self < min {
+            self = min;
         }
-        if x > max {
-            x = max;
+        if self > max {
+            self = max;
         }
-        x
+        self
     }
 }
 }
@@ -4907,6 +5136,7 @@ pub mod num {
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::ascii;
+use crate::error::Error;
 use crate::intrinsics;
 use crate::mem;
 use crate::ops::{Add, Mul, Sub};
@@ -5071,7 +5301,7 @@ macro_rules! define_bignum {
                 // Find the most significant non-zero digit.
                 let msd = digits.iter().rposition(|&x| x != 0);
                 match msd {
-                    Some(msd) => msd * digitbits + digits[msd].log2() as usize + 1,
+                    Some(msd) => msd * digitbits + digits[msd].ilog2() as usize + 1,
                     // There are no non-zero digits, i.e., the number is zero.
                     _ => 0,
                 }
@@ -5690,7 +5920,7 @@ impl Default for Decimal {
 impl Decimal {
     /// The maximum number of digits required to unambiguously round a float.
     ///
-    /// For a double-precision IEEE-754 float, this required 767 digits,
+    /// For a double-precision IEEE 754 float, this required 767 digits,
     /// so we store the max digits + 1.
     ///
     /// We can exactly represent a float in radix `b` from radix 2 if
@@ -7102,7 +7332,7 @@ use crate::num::dec2flt::table::{
     LARGEST_POWER_OF_FIVE, POWER_OF_FIVE_128, SMALLEST_POWER_OF_FIVE,
 };
 
-/// Compute a float using an extended-precision representation.
+/// Compute w * 10^q using an extended-precision float representation.
 ///
 /// Fast conversion of a the significant digits and decimal exponent
 /// a float to an extended representation with a binary float. This
@@ -7172,7 +7402,7 @@ pub fn compute_float<F: RawFloat>(q: i64, mut w: u64) -> BiasedFp {
         return BiasedFp { f: mantissa, e: power2 };
     }
     // Need to handle rounding ties. Normally, we need to round up,
-    // but if we fall right in between and and we have an even basis, we
+    // but if we fall right in between and we have an even basis, we
     // need to round down.
     //
     // This will only occur if:
@@ -9213,12 +9443,11 @@ macro_rules! int_impl {
         /// Basic usage:
         ///
         /// ```
-        /// # #![feature(mixed_integer_ops)]
         #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".checked_add_unsigned(2), Some(3));")]
         #[doc = concat!("assert_eq!((", stringify!($SelfT), "::MAX - 2).checked_add_unsigned(3), None);")]
         /// ```
-        #[unstable(feature = "mixed_integer_ops", issue = "87840")]
-        #[rustc_const_unstable(feature = "mixed_integer_ops", issue = "87840")]
+        #[stable(feature = "mixed_integer_ops", since = "1.66.0")]
+        #[rustc_const_stable(feature = "mixed_integer_ops", since = "1.66.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -9282,12 +9511,11 @@ macro_rules! int_impl {
         /// Basic usage:
         ///
         /// ```
-        /// # #![feature(mixed_integer_ops)]
         #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".checked_sub_unsigned(2), Some(-1));")]
         #[doc = concat!("assert_eq!((", stringify!($SelfT), "::MIN + 2).checked_sub_unsigned(3), None);")]
         /// ```
-        #[unstable(feature = "mixed_integer_ops", issue = "87840")]
-        #[rustc_const_unstable(feature = "mixed_integer_ops", issue = "87840")]
+        #[stable(feature = "mixed_integer_ops", since = "1.66.0")]
+        #[rustc_const_stable(feature = "mixed_integer_ops", since = "1.66.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -9403,7 +9631,6 @@ macro_rules! int_impl {
         /// Basic usage:
         ///
         /// ```
-        ///
         #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".checked_rem(2), Some(1));")]
         #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".checked_rem(0), None);")]
         #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MIN.checked_rem(-1), None);")]
@@ -9455,7 +9682,6 @@ macro_rules! int_impl {
         /// Basic usage:
         ///
         /// ```
-        ///
         #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".checked_neg(), Some(-5));")]
         #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MIN.checked_neg(), None);")]
         /// ```
@@ -9571,7 +9797,6 @@ macro_rules! int_impl {
         /// Basic usage:
         ///
         /// ```
-        ///
         #[doc = concat!("assert_eq!((-5", stringify!($SelfT), ").checked_abs(), Some(5));")]
         #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MIN.checked_abs(), None);")]
         /// ```
@@ -9623,7 +9848,7 @@ macro_rules! int_impl {
             // Deal with the final bit of the exponent separately, since
             // squaring the base afterwards is not necessary and may cause a
             // needless overflow.
-            Some(try_opt!(acc.checked_mul(base)))
+            acc.checked_mul(base)
         }
 
         /// Saturating integer addition. Computes `self + rhs`, saturating at the numeric
@@ -9656,12 +9881,11 @@ macro_rules! int_impl {
         /// Basic usage:
         ///
         /// ```
-        /// # #![feature(mixed_integer_ops)]
         #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".saturating_add_unsigned(2), 3);")]
         #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MAX.saturating_add_unsigned(100), ", stringify!($SelfT), "::MAX);")]
         /// ```
-        #[unstable(feature = "mixed_integer_ops", issue = "87840")]
-        #[rustc_const_unstable(feature = "mixed_integer_ops", issue = "87840")]
+        #[stable(feature = "mixed_integer_ops", since = "1.66.0")]
+        #[rustc_const_stable(feature = "mixed_integer_ops", since = "1.66.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -9703,12 +9927,11 @@ macro_rules! int_impl {
         /// Basic usage:
         ///
         /// ```
-        /// # #![feature(mixed_integer_ops)]
         #[doc = concat!("assert_eq!(100", stringify!($SelfT), ".saturating_sub_unsigned(127), -27);")]
         #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MIN.saturating_sub_unsigned(100), ", stringify!($SelfT), "::MIN);")]
         /// ```
-        #[unstable(feature = "mixed_integer_ops", issue = "87840")]
-        #[rustc_const_unstable(feature = "mixed_integer_ops", issue = "87840")]
+        #[stable(feature = "mixed_integer_ops", since = "1.66.0")]
+        #[rustc_const_stable(feature = "mixed_integer_ops", since = "1.66.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -9779,7 +10002,6 @@ macro_rules! int_impl {
         /// Basic usage:
         ///
         /// ```
-        ///
         #[doc = concat!("assert_eq!(10", stringify!($SelfT), ".saturating_mul(12), 120);")]
         #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MAX.saturating_mul(10), ", stringify!($SelfT), "::MAX);")]
         #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MIN.saturating_mul(10), ", stringify!($SelfT), "::MIN);")]
@@ -9838,7 +10060,6 @@ macro_rules! int_impl {
         /// Basic usage:
         ///
         /// ```
-        ///
         #[doc = concat!("assert_eq!((-4", stringify!($SelfT), ").saturating_pow(3), -64);")]
         #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MIN.saturating_pow(2), ", stringify!($SelfT), "::MAX);")]
         #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MIN.saturating_pow(3), ", stringify!($SelfT), "::MIN);")]
@@ -9884,12 +10105,11 @@ macro_rules! int_impl {
         /// Basic usage:
         ///
         /// ```
-        /// # #![feature(mixed_integer_ops)]
         #[doc = concat!("assert_eq!(100", stringify!($SelfT), ".wrapping_add_unsigned(27), 127);")]
         #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MAX.wrapping_add_unsigned(2), ", stringify!($SelfT), "::MIN + 1);")]
         /// ```
-        #[unstable(feature = "mixed_integer_ops", issue = "87840")]
-        #[rustc_const_unstable(feature = "mixed_integer_ops", issue = "87840")]
+        #[stable(feature = "mixed_integer_ops", since = "1.66.0")]
+        #[rustc_const_stable(feature = "mixed_integer_ops", since = "1.66.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
@@ -9925,12 +10145,11 @@ macro_rules! int_impl {
         /// Basic usage:
         ///
         /// ```
-        /// # #![feature(mixed_integer_ops)]
         #[doc = concat!("assert_eq!(0", stringify!($SelfT), ".wrapping_sub_unsigned(127), -127);")]
         #[doc = concat!("assert_eq!((-2", stringify!($SelfT), ").wrapping_sub_unsigned(", stringify!($UnsignedT), "::MAX), -1);")]
         /// ```
-        #[unstable(feature = "mixed_integer_ops", issue = "87840")]
-        #[rustc_const_unstable(feature = "mixed_integer_ops", issue = "87840")]
+        #[stable(feature = "mixed_integer_ops", since = "1.66.0")]
+        #[rustc_const_stable(feature = "mixed_integer_ops", since = "1.66.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
@@ -10253,7 +10472,6 @@ macro_rules! int_impl {
         /// Basic usage:
         ///
         /// ```
-        ///
         #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".overflowing_add(2), (7, false));")]
         #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MAX.overflowing_add(1), (", stringify!($SelfT), "::MIN, true));")]
         /// ```
@@ -10267,6 +10485,51 @@ macro_rules! int_impl {
             (a as Self, b)
         }
 
+        /// Calculates `self + rhs + carry` without the ability to overflow.
+        ///
+        /// Performs "signed ternary addition" which takes in an extra bit to add, and may return an
+        /// additional bit of overflow. This signed function is used only on the highest-ordered data,
+        /// for which the signed overflow result indicates whether the big integer overflowed or not.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// ```
+        /// #![feature(bigint_helper_methods)]
+        #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".carrying_add(2, false), (7, false));")]
+        #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".carrying_add(2, true), (8, false));")]
+        #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MAX.carrying_add(1, false), (", stringify!($SelfT), "::MIN, true));")]
+        #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MAX.carrying_add(0, true), (", stringify!($SelfT), "::MIN, true));")]
+        #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MAX.carrying_add(1, true), (", stringify!($SelfT), "::MIN + 1, true));")]
+        #[doc = concat!("assert_eq!(",
+            stringify!($SelfT), "::MAX.carrying_add(", stringify!($SelfT), "::MAX, true), ",
+            "(-1, true));"
+        )]
+        #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MIN.carrying_add(-1, true), (", stringify!($SelfT), "::MIN, false));")]
+        #[doc = concat!("assert_eq!(0", stringify!($SelfT), ".carrying_add(", stringify!($SelfT), "::MAX, true), (", stringify!($SelfT), "::MIN, true));")]
+        /// ```
+        ///
+        /// If `carry` is false, this method is equivalent to [`overflowing_add`](Self::overflowing_add):
+        ///
+        /// ```
+        /// #![feature(bigint_helper_methods)]
+        #[doc = concat!("assert_eq!(5_", stringify!($SelfT), ".carrying_add(2, false), 5_", stringify!($SelfT), ".overflowing_add(2));")]
+        #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MAX.carrying_add(1, false), ", stringify!($SelfT), "::MAX.overflowing_add(1));")]
+        /// ```
+        #[unstable(feature = "bigint_helper_methods", issue = "85532")]
+        #[rustc_const_unstable(feature = "const_bigint_helper_methods", issue = "85532")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        pub const fn carrying_add(self, rhs: Self, carry: bool) -> (Self, bool) {
+            // note: longer-term this should be done via an intrinsic.
+            // note: no intermediate overflow is required (https://github.com/rust-lang/rust/issues/85532#issuecomment-1032214946).
+            let (a, b) = self.overflowing_add(rhs);
+            let (c, d) = a.overflowing_add(carry as $SelfT);
+            (c, b != d)
+        }
+
         /// Calculates `self` + `rhs` with an unsigned `rhs`
         ///
         /// Returns a tuple of the addition along with a boolean indicating
@@ -10278,13 +10541,12 @@ macro_rules! int_impl {
         /// Basic usage:
         ///
         /// ```
-        /// # #![feature(mixed_integer_ops)]
         #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".overflowing_add_unsigned(2), (3, false));")]
         #[doc = concat!("assert_eq!((", stringify!($SelfT), "::MIN).overflowing_add_unsigned(", stringify!($UnsignedT), "::MAX), (", stringify!($SelfT), "::MAX, false));")]
         #[doc = concat!("assert_eq!((", stringify!($SelfT), "::MAX - 2).overflowing_add_unsigned(3), (", stringify!($SelfT), "::MIN, true));")]
         /// ```
-        #[unstable(feature = "mixed_integer_ops", issue = "87840")]
-        #[rustc_const_unstable(feature = "mixed_integer_ops", issue = "87840")]
+        #[stable(feature = "mixed_integer_ops", since = "1.66.0")]
+        #[rustc_const_stable(feature = "mixed_integer_ops", since = "1.66.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -10304,7 +10566,6 @@ macro_rules! int_impl {
         /// Basic usage:
         ///
         /// ```
-        ///
         #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".overflowing_sub(2), (3, false));")]
         #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MIN.overflowing_sub(1), (", stringify!($SelfT), "::MAX, true));")]
         /// ```
@@ -10318,6 +10579,39 @@ macro_rules! int_impl {
             (a as Self, b)
         }
 
+        /// Calculates `self - rhs - borrow` without the ability to overflow.
+        ///
+        /// Performs "signed ternary subtraction" which takes in an extra bit to subtract, and may return an
+        /// additional bit of overflow. This signed function is used only on the highest-ordered data,
+        /// for which the signed overflow result indicates whether the big integer overflowed or not.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// ```
+        /// #![feature(bigint_helper_methods)]
+        #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".borrowing_sub(2, false), (3, false));")]
+        #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".borrowing_sub(2, true), (2, false));")]
+        #[doc = concat!("assert_eq!(0", stringify!($SelfT), ".borrowing_sub(1, false), (-1, false));")]
+        #[doc = concat!("assert_eq!(0", stringify!($SelfT), ".borrowing_sub(1, true), (-2, false));")]
+        #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MIN.borrowing_sub(1, true), (", stringify!($SelfT), "::MAX - 1, true));")]
+        #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MAX.borrowing_sub(-1, false), (", stringify!($SelfT), "::MIN, true));")]
+        #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MAX.borrowing_sub(-1, true), (", stringify!($SelfT), "::MAX, false));")]
+        /// ```
+        #[unstable(feature = "bigint_helper_methods", issue = "85532")]
+        #[rustc_const_unstable(feature = "const_bigint_helper_methods", issue = "85532")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        pub const fn borrowing_sub(self, rhs: Self, borrow: bool) -> (Self, bool) {
+            // note: longer-term this should be done via an intrinsic.
+            // note: no intermediate overflow is required (https://github.com/rust-lang/rust/issues/85532#issuecomment-1032214946).
+            let (a, b) = self.overflowing_sub(rhs);
+            let (c, d) = a.overflowing_sub(borrow as $SelfT);
+            (c, b != d)
+        }
+
         /// Calculates `self` - `rhs` with an unsigned `rhs`
         ///
         /// Returns a tuple of the subtraction along with a boolean indicating
@@ -10329,13 +10623,12 @@ macro_rules! int_impl {
         /// Basic usage:
         ///
         /// ```
-        /// # #![feature(mixed_integer_ops)]
         #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".overflowing_sub_unsigned(2), (-1, false));")]
         #[doc = concat!("assert_eq!((", stringify!($SelfT), "::MAX).overflowing_sub_unsigned(", stringify!($UnsignedT), "::MAX), (", stringify!($SelfT), "::MIN, false));")]
         #[doc = concat!("assert_eq!((", stringify!($SelfT), "::MIN + 2).overflowing_sub_unsigned(3), (", stringify!($SelfT), "::MAX, true));")]
         /// ```
-        #[unstable(feature = "mixed_integer_ops", issue = "87840")]
-        #[rustc_const_unstable(feature = "mixed_integer_ops", issue = "87840")]
+        #[stable(feature = "mixed_integer_ops", since = "1.66.0")]
+        #[rustc_const_stable(feature = "mixed_integer_ops", since = "1.66.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -10382,7 +10675,6 @@ macro_rules! int_impl {
         /// Basic usage:
         ///
         /// ```
-        ///
         #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".overflowing_div(2), (2, false));")]
         #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MIN.overflowing_div(-1), (", stringify!($SelfT), "::MIN, true));")]
         /// ```
@@ -10445,7 +10737,6 @@ macro_rules! int_impl {
         /// Basic usage:
         ///
         /// ```
-        ///
         #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".overflowing_rem(2), (1, false));")]
         #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MIN.overflowing_rem(-1), (0, true));")]
         /// ```
@@ -10953,105 +11244,70 @@ macro_rules! int_impl {
         /// rounded down.
         ///
         /// This method might not be optimized owing to implementation details;
-        /// `log2` can produce results more efficiently for base 2, and `log10`
+        /// `ilog2` can produce results more efficiently for base 2, and `ilog10`
         /// can produce results more efficiently for base 10.
         ///
         /// # Panics
         ///
-        /// When the number is negative, zero, or if the base is not at least 2; it
-        /// panics in debug mode and the return value is 0 in release
-        /// mode.
+        /// This function will panic if `self` is less than or equal to zero,
+        /// or if `base` is less then 2.
         ///
         /// # Examples
         ///
         /// ```
         /// #![feature(int_log)]
-        #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".log(5), 1);")]
+        #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".ilog(5), 1);")]
         /// ```
         #[unstable(feature = "int_log", issue = "70887")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
         #[track_caller]
-        #[rustc_inherit_overflow_checks]
-        #[allow(arithmetic_overflow)]
-        pub const fn log(self, base: Self) -> u32 {
-            match self.checked_log(base) {
-                Some(n) => n,
-                None => {
-                    // In debug builds, trigger a panic on None.
-                    // This should optimize completely out in release builds.
-                    let _ = Self::MAX + 1;
-
-                    0
-                },
-            }
+        pub const fn ilog(self, base: Self) -> u32 {
+            assert!(base >= 2, "base of integer logarithm must be at least 2");
+            self.checked_ilog(base).expect("argument of integer logarithm must be positive")
         }
 
         /// Returns the base 2 logarithm of the number, rounded down.
         ///
         /// # Panics
         ///
-        /// When the number is negative or zero it panics in debug mode and the return value
-        /// is 0 in release mode.
+        /// This function will panic if `self` is less than or equal to zero.
         ///
         /// # Examples
         ///
         /// ```
         /// #![feature(int_log)]
-        #[doc = concat!("assert_eq!(2", stringify!($SelfT), ".log2(), 1);")]
+        #[doc = concat!("assert_eq!(2", stringify!($SelfT), ".ilog2(), 1);")]
         /// ```
         #[unstable(feature = "int_log", issue = "70887")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
         #[track_caller]
-        #[rustc_inherit_overflow_checks]
-        #[allow(arithmetic_overflow)]
-        pub const fn log2(self) -> u32 {
-            match self.checked_log2() {
-                Some(n) => n,
-                None => {
-                    // In debug builds, trigger a panic on None.
-                    // This should optimize completely out in release builds.
-                    let _ = Self::MAX + 1;
-
-                    0
-                },
-            }
+        pub const fn ilog2(self) -> u32 {
+            self.checked_ilog2().expect("argument of integer logarithm must be positive")
         }
 
         /// Returns the base 10 logarithm of the number, rounded down.
         ///
         /// # Panics
         ///
-        /// When the number is negative or zero it panics in debug mode and the return value
-        /// is 0 in release mode.
+        /// This function will panic if `self` is less than or equal to zero.
         ///
         /// # Example
         ///
         /// ```
         /// #![feature(int_log)]
-        #[doc = concat!("assert_eq!(10", stringify!($SelfT), ".log10(), 1);")]
+        #[doc = concat!("assert_eq!(10", stringify!($SelfT), ".ilog10(), 1);")]
         /// ```
         #[unstable(feature = "int_log", issue = "70887")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
         #[track_caller]
-        #[rustc_inherit_overflow_checks]
-        #[allow(arithmetic_overflow)]
-        pub const fn log10(self) -> u32 {
-            match self.checked_log10() {
-                Some(n) => n,
-                None => {
-                    // In debug builds, trigger a panic on None.
-                    // This should optimize completely out in release builds.
-                    let _ = Self::MAX + 1;
-
-                    0
-                },
-            }
+        pub const fn ilog10(self) -> u32 {
+            self.checked_ilog10().expect("argument of integer logarithm must be positive")
         }
 
         /// Returns the logarithm of the number with respect to an arbitrary base,
@@ -11060,20 +11316,20 @@ macro_rules! int_impl {
         /// Returns `None` if the number is negative or zero, or if the base is not at least 2.
         ///
         /// This method might not be optimized owing to implementation details;
-        /// `checked_log2` can produce results more efficiently for base 2, and
-        /// `checked_log10` can produce results more efficiently for base 10.
+        /// `checked_ilog2` can produce results more efficiently for base 2, and
+        /// `checked_ilog10` can produce results more efficiently for base 10.
         ///
         /// # Examples
         ///
         /// ```
         /// #![feature(int_log)]
-        #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".checked_log(5), Some(1));")]
+        #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".checked_ilog(5), Some(1));")]
         /// ```
         #[unstable(feature = "int_log", issue = "70887")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
-        pub const fn checked_log(self, base: Self) -> Option<u32> {
+        pub const fn checked_ilog(self, base: Self) -> Option<u32> {
             if self <= 0 || base <= 1 {
                 None
             } else {
@@ -11082,7 +11338,7 @@ macro_rules! int_impl {
 
                 // Optimization for 128 bit wide integers.
                 if Self::BITS == 128 {
-                    let b = Self::log2(self) / (Self::log2(base) + 1);
+                    let b = Self::ilog2(self) / (Self::ilog2(base) + 1);
                     n += b;
                     r /= base.pow(b as u32);
                 }
@@ -11103,13 +11359,13 @@ macro_rules! int_impl {
         ///
         /// ```
         /// #![feature(int_log)]
-        #[doc = concat!("assert_eq!(2", stringify!($SelfT), ".checked_log2(), Some(1));")]
+        #[doc = concat!("assert_eq!(2", stringify!($SelfT), ".checked_ilog2(), Some(1));")]
         /// ```
         #[unstable(feature = "int_log", issue = "70887")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
-        pub const fn checked_log2(self) -> Option<u32> {
+        pub const fn checked_ilog2(self) -> Option<u32> {
             if self <= 0 {
                 None
             } else {
@@ -11127,13 +11383,13 @@ macro_rules! int_impl {
         ///
         /// ```
         /// #![feature(int_log)]
-        #[doc = concat!("assert_eq!(10", stringify!($SelfT), ".checked_log10(), Some(1));")]
+        #[doc = concat!("assert_eq!(10", stringify!($SelfT), ".checked_ilog10(), Some(1));")]
         /// ```
         #[unstable(feature = "int_log", issue = "70887")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
-        pub const fn checked_log10(self) -> Option<u32> {
+        pub const fn checked_ilog10(self) -> Option<u32> {
             if self > 0 {
                 Some(int_log10::$ActualT(self as $ActualT))
             } else {
@@ -11970,13 +12226,12 @@ macro_rules! uint_impl {
         /// Basic usage:
         ///
         /// ```
-        /// # #![feature(mixed_integer_ops)]
         #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".checked_add_signed(2), Some(3));")]
         #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".checked_add_signed(-2), None);")]
         #[doc = concat!("assert_eq!((", stringify!($SelfT), "::MAX - 2).checked_add_signed(3), None);")]
         /// ```
-        #[unstable(feature = "mixed_integer_ops", issue = "87840")]
-        #[rustc_const_unstable(feature = "mixed_integer_ops", issue = "87840")]
+        #[stable(feature = "mixed_integer_ops", since = "1.66.0")]
+        #[rustc_const_stable(feature = "mixed_integer_ops", since = "1.66.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -12184,104 +12439,69 @@ macro_rules! uint_impl {
         /// rounded down.
         ///
         /// This method might not be optimized owing to implementation details;
-        /// `log2` can produce results more efficiently for base 2, and `log10`
+        /// `ilog2` can produce results more efficiently for base 2, and `ilog10`
         /// can produce results more efficiently for base 10.
         ///
         /// # Panics
         ///
-        /// When the number is zero, or if the base is not at least 2;
-        /// it panics in debug mode and the return value is 0 in release mode.
+        /// This function will panic if `self` is zero, or if `base` is less then 2.
         ///
         /// # Examples
         ///
         /// ```
         /// #![feature(int_log)]
-        #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".log(5), 1);")]
+        #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".ilog(5), 1);")]
         /// ```
         #[unstable(feature = "int_log", issue = "70887")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
         #[track_caller]
-        #[rustc_inherit_overflow_checks]
-        #[allow(arithmetic_overflow)]
-        pub const fn log(self, base: Self) -> u32 {
-            match self.checked_log(base) {
-                Some(n) => n,
-                None => {
-                    // In debug builds, trigger a panic on None.
-                    // This should optimize completely out in release builds.
-                    let _ = Self::MAX + 1;
-
-                    0
-                },
-            }
+        pub const fn ilog(self, base: Self) -> u32 {
+            assert!(base >= 2, "base of integer logarithm must be at least 2");
+            self.checked_ilog(base).expect("argument of integer logarithm must be positive")
         }
 
         /// Returns the base 2 logarithm of the number, rounded down.
         ///
         /// # Panics
         ///
-        /// When the number is zero it panics in debug mode and
-        /// the return value is 0 in release mode.
+        /// This function will panic if `self` is zero.
         ///
         /// # Examples
         ///
         /// ```
         /// #![feature(int_log)]
-        #[doc = concat!("assert_eq!(2", stringify!($SelfT), ".log2(), 1);")]
+        #[doc = concat!("assert_eq!(2", stringify!($SelfT), ".ilog2(), 1);")]
         /// ```
         #[unstable(feature = "int_log", issue = "70887")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
         #[track_caller]
-        #[rustc_inherit_overflow_checks]
-        #[allow(arithmetic_overflow)]
-        pub const fn log2(self) -> u32 {
-            match self.checked_log2() {
-                Some(n) => n,
-                None => {
-                    // In debug builds, trigger a panic on None.
-                    // This should optimize completely out in release builds.
-                    let _ = Self::MAX + 1;
-
-                    0
-                },
-            }
+        pub const fn ilog2(self) -> u32 {
+            self.checked_ilog2().expect("argument of integer logarithm must be positive")
         }
 
         /// Returns the base 10 logarithm of the number, rounded down.
         ///
         /// # Panics
         ///
-        /// When the number is zero it panics in debug mode and the
-        /// return value is 0 in release mode.
+        /// This function will panic if `self` is zero.
         ///
         /// # Example
         ///
         /// ```
         /// #![feature(int_log)]
-        #[doc = concat!("assert_eq!(10", stringify!($SelfT), ".log10(), 1);")]
+        #[doc = concat!("assert_eq!(10", stringify!($SelfT), ".ilog10(), 1);")]
         /// ```
         #[unstable(feature = "int_log", issue = "70887")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
         #[track_caller]
-        #[rustc_inherit_overflow_checks]
-        #[allow(arithmetic_overflow)]
-        pub const fn log10(self) -> u32 {
-            match self.checked_log10() {
-                Some(n) => n,
-                None => {
-                    // In debug builds, trigger a panic on None.
-                    // This should optimize completely out in release builds.
-                    let _ = Self::MAX + 1;
-
-                    0
-                },
-            }
+        pub const fn ilog10(self) -> u32 {
+            self.checked_ilog10().expect("argument of integer logarithm must be positive")
         }
 
         /// Returns the logarithm of the number with respect to an arbitrary base,
@@ -12290,20 +12510,20 @@ macro_rules! uint_impl {
         /// Returns `None` if the number is zero, or if the base is not at least 2.
         ///
         /// This method might not be optimized owing to implementation details;
-        /// `checked_log2` can produce results more efficiently for base 2, and
-        /// `checked_log10` can produce results more efficiently for base 10.
+        /// `checked_ilog2` can produce results more efficiently for base 2, and
+        /// `checked_ilog10` can produce results more efficiently for base 10.
         ///
         /// # Examples
         ///
         /// ```
         /// #![feature(int_log)]
-        #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".checked_log(5), Some(1));")]
+        #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".checked_ilog(5), Some(1));")]
         /// ```
         #[unstable(feature = "int_log", issue = "70887")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
-        pub const fn checked_log(self, base: Self) -> Option<u32> {
+        pub const fn checked_ilog(self, base: Self) -> Option<u32> {
             if self <= 0 || base <= 1 {
                 None
             } else {
@@ -12312,7 +12532,7 @@ macro_rules! uint_impl {
 
                 // Optimization for 128 bit wide integers.
                 if Self::BITS == 128 {
-                    let b = Self::log2(self) / (Self::log2(base) + 1);
+                    let b = Self::ilog2(self) / (Self::ilog2(base) + 1);
                     n += b;
                     r /= base.pow(b as u32);
                 }
@@ -12333,15 +12553,15 @@ macro_rules! uint_impl {
         ///
         /// ```
         /// #![feature(int_log)]
-        #[doc = concat!("assert_eq!(2", stringify!($SelfT), ".checked_log2(), Some(1));")]
+        #[doc = concat!("assert_eq!(2", stringify!($SelfT), ".checked_ilog2(), Some(1));")]
         /// ```
         #[unstable(feature = "int_log", issue = "70887")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
-        pub const fn checked_log2(self) -> Option<u32> {
+        pub const fn checked_ilog2(self) -> Option<u32> {
             if let Some(x) = <$NonZeroT>::new(self) {
-                Some(x.log2())
+                Some(x.ilog2())
             } else {
                 None
             }
@@ -12355,15 +12575,15 @@ macro_rules! uint_impl {
         ///
         /// ```
         /// #![feature(int_log)]
-        #[doc = concat!("assert_eq!(10", stringify!($SelfT), ".checked_log10(), Some(1));")]
+        #[doc = concat!("assert_eq!(10", stringify!($SelfT), ".checked_ilog10(), Some(1));")]
         /// ```
         #[unstable(feature = "int_log", issue = "70887")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
-        pub const fn checked_log10(self) -> Option<u32> {
+        pub const fn checked_ilog10(self) -> Option<u32> {
             if let Some(x) = <$NonZeroT>::new(self) {
-                Some(x.log10())
+                Some(x.ilog10())
             } else {
                 None
             }
@@ -12522,7 +12742,7 @@ macro_rules! uint_impl {
             // squaring the base afterwards is not necessary and may cause a
             // needless overflow.
 
-            Some(try_opt!(acc.checked_mul(base)))
+            acc.checked_mul(base)
         }
 
         /// Saturating integer addition. Computes `self + rhs`, saturating at
@@ -12553,13 +12773,12 @@ macro_rules! uint_impl {
         /// Basic usage:
         ///
         /// ```
-        /// # #![feature(mixed_integer_ops)]
         #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".saturating_add_signed(2), 3);")]
         #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".saturating_add_signed(-2), 0);")]
         #[doc = concat!("assert_eq!((", stringify!($SelfT), "::MAX - 2).saturating_add_signed(4), ", stringify!($SelfT), "::MAX);")]
         /// ```
-        #[unstable(feature = "mixed_integer_ops", issue = "87840")]
-        #[rustc_const_unstable(feature = "mixed_integer_ops", issue = "87840")]
+        #[stable(feature = "mixed_integer_ops", since = "1.66.0")]
+        #[rustc_const_stable(feature = "mixed_integer_ops", since = "1.66.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -12694,13 +12913,12 @@ macro_rules! uint_impl {
         /// Basic usage:
         ///
         /// ```
-        /// # #![feature(mixed_integer_ops)]
         #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".wrapping_add_signed(2), 3);")]
         #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".wrapping_add_signed(-2), ", stringify!($SelfT), "::MAX);")]
         #[doc = concat!("assert_eq!((", stringify!($SelfT), "::MAX - 2).wrapping_add_signed(4), 1);")]
         /// ```
-        #[unstable(feature = "mixed_integer_ops", issue = "87840")]
-        #[rustc_const_unstable(feature = "mixed_integer_ops", issue = "87840")]
+        #[stable(feature = "mixed_integer_ops", since = "1.66.0")]
+        #[rustc_const_stable(feature = "mixed_integer_ops", since = "1.66.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -12990,7 +13208,6 @@ macro_rules! uint_impl {
         /// Basic usage
         ///
         /// ```
-        ///
         #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".overflowing_add(2), (7, false));")]
         #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MAX.overflowing_add(1), (0, true));")]
         /// ```
@@ -13004,37 +13221,42 @@ macro_rules! uint_impl {
             (a as Self, b)
         }
 
-        /// Calculates `self + rhs + carry` without the ability to overflow.
+        /// Calculates `self` + `rhs` + `carry` and returns a tuple containing
+        /// the sum and the output carry.
         ///
-        /// Performs "ternary addition" which takes in an extra bit to add, and may return an
-        /// additional bit of overflow. This allows for chaining together multiple additions
-        /// to create "big integers" which represent larger values.
+        /// Performs "ternary addition" of two integer operands and a carry-in
+        /// bit, and returns an output integer and a carry-out bit. This allows
+        /// chaining together multiple additions to create a wider addition, and
+        /// can be useful for bignum addition.
         ///
         #[doc = concat!("This can be thought of as a ", stringify!($BITS), "-bit \"full adder\", in the electronics sense.")]
         ///
+        /// If the input carry is false, this method is equivalent to
+        /// [`overflowing_add`](Self::overflowing_add), and the output carry is
+        /// equal to the overflow flag. Note that although carry and overflow
+        /// flags are similar for unsigned integers, they are different for
+        /// signed integers.
+        ///
         /// # Examples
         ///
-        /// Basic usage
-        ///
         /// ```
         /// #![feature(bigint_helper_methods)]
-        #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".carrying_add(2, false), (7, false));")]
-        #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".carrying_add(2, true), (8, false));")]
-        #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MAX.carrying_add(1, false), (0, true));")]
-        #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MAX.carrying_add(0, true), (0, true));")]
-        #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MAX.carrying_add(1, true), (1, true));")]
-        #[doc = concat!("assert_eq!(",
-            stringify!($SelfT), "::MAX.carrying_add(", stringify!($SelfT), "::MAX, true), ",
-            "(", stringify!($SelfT), "::MAX, true));"
-        )]
-        /// ```
         ///
-        /// If `carry` is false, this method is equivalent to [`overflowing_add`](Self::overflowing_add):
+        #[doc = concat!("//    3  MAX    (a = 3 × 2^", stringify!($BITS), " + 2^", stringify!($BITS), " - 1)")]
+        #[doc = concat!("// +  5    7    (b = 5 × 2^", stringify!($BITS), " + 7)")]
+        /// // ---------
+        #[doc = concat!("//    9    6    (sum = 9 × 2^", stringify!($BITS), " + 6)")]
         ///
-        /// ```
-        /// #![feature(bigint_helper_methods)]
-        #[doc = concat!("assert_eq!(5_", stringify!($SelfT), ".carrying_add(2, false), 5_", stringify!($SelfT), ".overflowing_add(2));")]
-        #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MAX.carrying_add(1, false), ", stringify!($SelfT), "::MAX.overflowing_add(1));")]
+        #[doc = concat!("let (a1, a0): (", stringify!($SelfT), ", ", stringify!($SelfT), ") = (3, ", stringify!($SelfT), "::MAX);")]
+        #[doc = concat!("let (b1, b0): (", stringify!($SelfT), ", ", stringify!($SelfT), ") = (5, 7);")]
+        /// let carry0 = false;
+        ///
+        /// let (sum0, carry1) = a0.carrying_add(b0, carry0);
+        /// assert_eq!(carry1, true);
+        /// let (sum1, carry2) = a1.carrying_add(b1, carry1);
+        /// assert_eq!(carry2, false);
+        ///
+        /// assert_eq!((sum1, sum0), (9, 6));
         /// ```
         #[unstable(feature = "bigint_helper_methods", issue = "85532")]
         #[rustc_const_unstable(feature = "const_bigint_helper_methods", issue = "85532")]
@@ -13060,13 +13282,12 @@ macro_rules! uint_impl {
         /// Basic usage:
         ///
         /// ```
-        /// # #![feature(mixed_integer_ops)]
         #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".overflowing_add_signed(2), (3, false));")]
         #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".overflowing_add_signed(-2), (", stringify!($SelfT), "::MAX, true));")]
         #[doc = concat!("assert_eq!((", stringify!($SelfT), "::MAX - 2).overflowing_add_signed(4), (1, true));")]
         /// ```
-        #[unstable(feature = "mixed_integer_ops", issue = "87840")]
-        #[rustc_const_unstable(feature = "mixed_integer_ops", issue = "87840")]
+        #[stable(feature = "mixed_integer_ops", since = "1.66.0")]
+        #[rustc_const_stable(feature = "mixed_integer_ops", since = "1.66.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -13086,7 +13307,6 @@ macro_rules! uint_impl {
         /// Basic usage
         ///
         /// ```
-        ///
         #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".overflowing_sub(2), (3, false));")]
         #[doc = concat!("assert_eq!(0", stringify!($SelfT), ".overflowing_sub(1), (", stringify!($SelfT), "::MAX, true));")]
         /// ```
@@ -13100,22 +13320,35 @@ macro_rules! uint_impl {
             (a as Self, b)
         }
 
-        /// Calculates `self - rhs - borrow` without the ability to overflow.
+        /// Calculates `self` &minus; `rhs` &minus; `borrow` and returns a tuple
+        /// containing the difference and the output borrow.
         ///
-        /// Performs "ternary subtraction" which takes in an extra bit to subtract, and may return
-        /// an additional bit of overflow. This allows for chaining together multiple subtractions
-        /// to create "big integers" which represent larger values.
+        /// Performs "ternary subtraction" by subtracting both an integer
+        /// operand and a borrow-in bit from `self`, and returns an output
+        /// integer and a borrow-out bit. This allows chaining together multiple
+        /// subtractions to create a wider subtraction, and can be useful for
+        /// bignum subtraction.
         ///
         /// # Examples
         ///
-        /// Basic usage
-        ///
         /// ```
         /// #![feature(bigint_helper_methods)]
-        #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".borrowing_sub(2, false), (3, false));")]
-        #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".borrowing_sub(2, true), (2, false));")]
-        #[doc = concat!("assert_eq!(0", stringify!($SelfT), ".borrowing_sub(1, false), (", stringify!($SelfT), "::MAX, true));")]
-        #[doc = concat!("assert_eq!(0", stringify!($SelfT), ".borrowing_sub(1, true), (", stringify!($SelfT), "::MAX - 1, true));")]
+        ///
+        #[doc = concat!("//    9    6    (a = 9 × 2^", stringify!($BITS), " + 6)")]
+        #[doc = concat!("// -  5    7    (b = 5 × 2^", stringify!($BITS), " + 7)")]
+        /// // ---------
+        #[doc = concat!("//    3  MAX    (diff = 3 × 2^", stringify!($BITS), " + 2^", stringify!($BITS), " - 1)")]
+        ///
+        #[doc = concat!("let (a1, a0): (", stringify!($SelfT), ", ", stringify!($SelfT), ") = (9, 6);")]
+        #[doc = concat!("let (b1, b0): (", stringify!($SelfT), ", ", stringify!($SelfT), ") = (5, 7);")]
+        /// let borrow0 = false;
+        ///
+        /// let (diff0, borrow1) = a0.borrowing_sub(b0, borrow0);
+        /// assert_eq!(borrow1, true);
+        /// let (diff1, borrow2) = a1.borrowing_sub(b1, borrow1);
+        /// assert_eq!(borrow2, false);
+        ///
+        #[doc = concat!("assert_eq!((diff1, diff0), (3, ", stringify!($SelfT), "::MAX));")]
         /// ```
         #[unstable(feature = "bigint_helper_methods", issue = "85532")]
         #[rustc_const_unstable(feature = "const_bigint_helper_methods", issue = "85532")]
@@ -13954,6 +14187,7 @@ mod error {
 //! Error types for conversion to integral types.
 
 use crate::convert::Infallible;
+use crate::error::Error;
 use crate::fmt;
 
 /// The error type returned when a checked integral type conversion fails.
@@ -14097,10 +14331,26 @@ impl fmt::Display for ParseIntError {
         self.__description().fmt(f)
     }
 }
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Error for ParseIntError {
+    #[allow(deprecated)]
+    fn description(&self) -> &str {
+        self.__description()
+    }
+}
+
+#[stable(feature = "try_from", since = "1.34.0")]
+impl Error for TryFromIntError {
+    #[allow(deprecated)]
+    fn description(&self) -> &str {
+        self.__description()
+    }
+}
 }
 mod int_log10 {
 /// These functions compute the integer logarithm of their type, assuming
-/// that someone has already checked that the the value is strictly positive.
+/// that someone has already checked that the value is strictly positive.
 
 // 0 < val <= u8::MAX
 #[inline]
@@ -14299,7 +14549,10 @@ macro_rules! nonzero_integers {
                 pub const unsafe fn new_unchecked(n: $Int) -> Self {
                     // SAFETY: this is guaranteed to be safe by the caller.
                     unsafe {
-                        core::intrinsics::assert_unsafe_precondition!(n != 0);
+                        core::intrinsics::assert_unsafe_precondition!(
+                            concat!(stringify!($Ty), "::new_unchecked requires a non-zero argument"),
+                            (n: $Int) => n != 0
+                        );
                         Self(n)
                     }
                 }
@@ -14552,8 +14805,8 @@ macro_rules! nonzero_unsigned_operations {
     ( $( $Ty: ident($Int: ident); )+ ) => {
         $(
             impl $Ty {
-                /// Add an unsigned integer to a non-zero value.
-                /// Check for overflow and return [`None`] on overflow
+                /// Adds an unsigned integer to a non-zero value.
+                /// Checks for overflow and returns [`None`] on overflow.
                 /// As a consequence, the result cannot wrap to zero.
                 ///
                 ///
@@ -14589,7 +14842,7 @@ macro_rules! nonzero_unsigned_operations {
                     }
                 }
 
-                /// Add an unsigned integer to a non-zero value.
+                /// Adds an unsigned integer to a non-zero value.
                 #[doc = concat!("Return [`", stringify!($Int), "::MAX`] on overflow.")]
                 ///
                 /// # Examples
@@ -14620,7 +14873,7 @@ macro_rules! nonzero_unsigned_operations {
                     unsafe { $Ty::new_unchecked(self.get().saturating_add(other)) }
                 }
 
-                /// Add an unsigned integer to a non-zero value,
+                /// Adds an unsigned integer to a non-zero value,
                 /// assuming overflow cannot occur.
                 /// Overflow is unchecked, and it is undefined behaviour to overflow
                 /// *even if the result would wrap to a non-zero value*.
@@ -14652,7 +14905,7 @@ macro_rules! nonzero_unsigned_operations {
                 }
 
                 /// Returns the smallest power of two greater than or equal to n.
-                /// Check for overflow and return [`None`]
+                /// Checks for overflow and returns [`None`]
                 /// if the next power of two is greater than the type’s maximum value.
                 /// As a consequence, the result cannot wrap to zero.
                 ///
@@ -14693,7 +14946,7 @@ macro_rules! nonzero_unsigned_operations {
                 /// Returns the base 2 logarithm of the number, rounded down.
                 ///
                 /// This is the same operation as
-                #[doc = concat!("[`", stringify!($Int), "::log2`],")]
+                #[doc = concat!("[`", stringify!($Int), "::ilog2`],")]
                 /// except that it has no failure cases to worry about
                 /// since this value can never be zero.
                 ///
@@ -14703,22 +14956,22 @@ macro_rules! nonzero_unsigned_operations {
                 /// #![feature(int_log)]
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
                 ///
-                #[doc = concat!("assert_eq!(", stringify!($Ty), "::new(7).unwrap().log2(), 2);")]
-                #[doc = concat!("assert_eq!(", stringify!($Ty), "::new(8).unwrap().log2(), 3);")]
-                #[doc = concat!("assert_eq!(", stringify!($Ty), "::new(9).unwrap().log2(), 3);")]
+                #[doc = concat!("assert_eq!(", stringify!($Ty), "::new(7).unwrap().ilog2(), 2);")]
+                #[doc = concat!("assert_eq!(", stringify!($Ty), "::new(8).unwrap().ilog2(), 3);")]
+                #[doc = concat!("assert_eq!(", stringify!($Ty), "::new(9).unwrap().ilog2(), 3);")]
                 /// ```
                 #[unstable(feature = "int_log", issue = "70887")]
                 #[must_use = "this returns the result of the operation, \
                               without modifying the original"]
                 #[inline]
-                pub const fn log2(self) -> u32 {
+                pub const fn ilog2(self) -> u32 {
                     Self::BITS - 1 - self.leading_zeros()
                 }
 
                 /// Returns the base 10 logarithm of the number, rounded down.
                 ///
                 /// This is the same operation as
-                #[doc = concat!("[`", stringify!($Int), "::log10`],")]
+                #[doc = concat!("[`", stringify!($Int), "::ilog10`],")]
                 /// except that it has no failure cases to worry about
                 /// since this value can never be zero.
                 ///
@@ -14728,15 +14981,15 @@ macro_rules! nonzero_unsigned_operations {
                 /// #![feature(int_log)]
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
                 ///
-                #[doc = concat!("assert_eq!(", stringify!($Ty), "::new(99).unwrap().log10(), 1);")]
-                #[doc = concat!("assert_eq!(", stringify!($Ty), "::new(100).unwrap().log10(), 2);")]
-                #[doc = concat!("assert_eq!(", stringify!($Ty), "::new(101).unwrap().log10(), 2);")]
+                #[doc = concat!("assert_eq!(", stringify!($Ty), "::new(99).unwrap().ilog10(), 1);")]
+                #[doc = concat!("assert_eq!(", stringify!($Ty), "::new(100).unwrap().ilog10(), 2);")]
+                #[doc = concat!("assert_eq!(", stringify!($Ty), "::new(101).unwrap().ilog10(), 2);")]
                 /// ```
                 #[unstable(feature = "int_log", issue = "70887")]
                 #[must_use = "this returns the result of the operation, \
                               without modifying the original"]
                 #[inline]
-                pub const fn log10(self) -> u32 {
+                pub const fn ilog10(self) -> u32 {
                     super::int_log10::$Int(self.0)
                 }
             }
@@ -14788,7 +15041,7 @@ macro_rules! nonzero_signed_operations {
                 }
 
                 /// Checked absolute value.
-                /// Check for overflow and returns [`None`] if
+                /// Checks for overflow and returns [`None`] if
                 #[doc = concat!("`self == ", stringify!($Int), "::MIN`.")]
                 /// The result cannot be zero.
                 ///
@@ -14964,6 +15217,160 @@ macro_rules! nonzero_signed_operations {
                     // SAFETY: absolute value of nonzero cannot yield zero values.
                     unsafe { $Uty::new_unchecked(self.get().unsigned_abs()) }
                 }
+
+                /// Returns `true` if `self` is negative and `false` if the
+                /// number is positive.
+                ///
+                /// # Example
+                ///
+                /// ```
+                /// #![feature(nonzero_negation_ops)]
+                ///
+                #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
+                /// # fn main() { test().unwrap(); }
+                /// # fn test() -> Option<()> {
+                #[doc = concat!("let pos_five = ", stringify!($Ty), "::new(5)?;")]
+                #[doc = concat!("let neg_five = ", stringify!($Ty), "::new(-5)?;")]
+                ///
+                /// assert!(neg_five.is_negative());
+                /// assert!(!pos_five.is_negative());
+                /// # Some(())
+                /// # }
+                /// ```
+                #[must_use]
+                #[inline]
+                #[unstable(feature = "nonzero_negation_ops", issue = "102443")]
+                pub const fn is_negative(self) -> bool {
+                    self.get().is_negative()
+                }
+
+                /// Checked negation. Computes `-self`, returning `None` if `self == i32::MIN`.
+                ///
+                /// # Example
+                ///
+                /// ```
+                /// #![feature(nonzero_negation_ops)]
+                ///
+                #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
+                /// # fn main() { test().unwrap(); }
+                /// # fn test() -> Option<()> {
+                #[doc = concat!("let pos_five = ", stringify!($Ty), "::new(5)?;")]
+                #[doc = concat!("let neg_five = ", stringify!($Ty), "::new(-5)?;")]
+                #[doc = concat!("let min = ", stringify!($Ty), "::new(",
+                                stringify!($Int), "::MIN)?;")]
+                ///
+                /// assert_eq!(pos_five.checked_neg(), Some(neg_five));
+                /// assert_eq!(min.checked_neg(), None);
+                /// # Some(())
+                /// # }
+                /// ```
+                #[inline]
+                #[unstable(feature = "nonzero_negation_ops", issue = "102443")]
+                pub const fn checked_neg(self) -> Option<$Ty> {
+                    if let Some(result) = self.get().checked_neg() {
+                        // SAFETY: negation of nonzero cannot yield zero values.
+                        return Some(unsafe { $Ty::new_unchecked(result) });
+                    }
+                    None
+                }
+
+                /// Negates self, overflowing if this is equal to the minimum value.
+                ///
+                #[doc = concat!("See [`", stringify!($Int), "::overflowing_neg`]")]
+                /// for documentation on overflow behaviour.
+                ///
+                /// # Example
+                ///
+                /// ```
+                /// #![feature(nonzero_negation_ops)]
+                ///
+                #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
+                /// # fn main() { test().unwrap(); }
+                /// # fn test() -> Option<()> {
+                #[doc = concat!("let pos_five = ", stringify!($Ty), "::new(5)?;")]
+                #[doc = concat!("let neg_five = ", stringify!($Ty), "::new(-5)?;")]
+                #[doc = concat!("let min = ", stringify!($Ty), "::new(",
+                                stringify!($Int), "::MIN)?;")]
+                ///
+                /// assert_eq!(pos_five.overflowing_neg(), (neg_five, false));
+                /// assert_eq!(min.overflowing_neg(), (min, true));
+                /// # Some(())
+                /// # }
+                /// ```
+                #[inline]
+                #[unstable(feature = "nonzero_negation_ops", issue = "102443")]
+                pub const fn overflowing_neg(self) -> ($Ty, bool) {
+                    let (result, overflow) = self.get().overflowing_neg();
+                    // SAFETY: negation of nonzero cannot yield zero values.
+                    ((unsafe { $Ty::new_unchecked(result) }), overflow)
+                }
+
+                /// Saturating negation. Computes `-self`, returning `MAX` if
+                /// `self == i32::MIN` instead of overflowing.
+                ///
+                /// # Example
+                ///
+                /// ```
+                /// #![feature(nonzero_negation_ops)]
+                ///
+                #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
+                /// # fn main() { test().unwrap(); }
+                /// # fn test() -> Option<()> {
+                #[doc = concat!("let pos_five = ", stringify!($Ty), "::new(5)?;")]
+                #[doc = concat!("let neg_five = ", stringify!($Ty), "::new(-5)?;")]
+                #[doc = concat!("let min = ", stringify!($Ty), "::new(",
+                                stringify!($Int), "::MIN)?;")]
+                #[doc = concat!("let min_plus_one = ", stringify!($Ty), "::new(",
+                                stringify!($Int), "::MIN + 1)?;")]
+                #[doc = concat!("let max = ", stringify!($Ty), "::new(",
+                                stringify!($Int), "::MAX)?;")]
+                ///
+                /// assert_eq!(pos_five.saturating_neg(), neg_five);
+                /// assert_eq!(min.saturating_neg(), max);
+                /// assert_eq!(max.saturating_neg(), min_plus_one);
+                /// # Some(())
+                /// # }
+                /// ```
+                #[inline]
+                #[unstable(feature = "nonzero_negation_ops", issue = "102443")]
+                pub const fn saturating_neg(self) -> $Ty {
+                    if let Some(result) = self.checked_neg() {
+                        return result;
+                    }
+                    $Ty::MAX
+                }
+
+                /// Wrapping (modular) negation. Computes `-self`, wrapping around at the boundary
+                /// of the type.
+                ///
+                #[doc = concat!("See [`", stringify!($Int), "::wrapping_neg`]")]
+                /// for documentation on overflow behaviour.
+                ///
+                /// # Example
+                ///
+                /// ```
+                /// #![feature(nonzero_negation_ops)]
+                ///
+                #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
+                /// # fn main() { test().unwrap(); }
+                /// # fn test() -> Option<()> {
+                #[doc = concat!("let pos_five = ", stringify!($Ty), "::new(5)?;")]
+                #[doc = concat!("let neg_five = ", stringify!($Ty), "::new(-5)?;")]
+                #[doc = concat!("let min = ", stringify!($Ty), "::new(",
+                                stringify!($Int), "::MIN)?;")]
+                ///
+                /// assert_eq!(pos_five.wrapping_neg(), neg_five);
+                /// assert_eq!(min.wrapping_neg(), min);
+                /// # Some(())
+                /// # }
+                /// ```
+                #[inline]
+                #[unstable(feature = "nonzero_negation_ops", issue = "102443")]
+                pub const fn wrapping_neg(self) -> $Ty {
+                    let result = self.get().wrapping_neg();
+                    // SAFETY: negation of nonzero cannot yield zero values.
+                    unsafe { $Ty::new_unchecked(result) }
+                }
             }
         )+
     }
@@ -14983,8 +15390,8 @@ macro_rules! nonzero_unsigned_signed_operations {
     ( $( $signedness:ident $Ty: ident($Int: ty); )+ ) => {
         $(
             impl $Ty {
-                /// Multiply two non-zero integers together.
-                /// Check for overflow and return [`None`] on overflow.
+                /// Multiplies two non-zero integers together.
+                /// Checks for overflow and returns [`None`] on overflow.
                 /// As a consequence, the result cannot wrap to zero.
                 ///
                 /// # Examples
@@ -15020,7 +15427,7 @@ macro_rules! nonzero_unsigned_signed_operations {
                     }
                 }
 
-                /// Multiply two non-zero integers together.
+                /// Multiplies two non-zero integers together.
                 #[doc = concat!("Return [`", stringify!($Int), "::MAX`] on overflow.")]
                 ///
                 /// # Examples
@@ -15052,7 +15459,7 @@ macro_rules! nonzero_unsigned_signed_operations {
                     unsafe { $Ty::new_unchecked(self.get().saturating_mul(other.get())) }
                 }
 
-                /// Multiply two non-zero integers together,
+                /// Multiplies two non-zero integers together,
                 /// assuming overflow cannot occur.
                 /// Overflow is unchecked, and it is undefined behaviour to overflow
                 /// *even if the result would wrap to a non-zero value*.
@@ -15092,8 +15499,8 @@ macro_rules! nonzero_unsigned_signed_operations {
                     unsafe { $Ty::new_unchecked(self.get().unchecked_mul(other.get())) }
                 }
 
-                /// Raise non-zero value to an integer power.
-                /// Check for overflow and return [`None`] on overflow.
+                /// Raises non-zero value to an integer power.
+                /// Checks for overflow and returns [`None`] on overflow.
                 /// As a consequence, the result cannot wrap to zero.
                 ///
                 /// # Examples
@@ -17595,6 +18002,15 @@ pub use wrapping::Wrapping;
 #[cfg(not(no_fp_fmt_parse))]
 pub use dec2flt::ParseFloatError;
 
+#[cfg(not(no_fp_fmt_parse))]
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Error for ParseFloatError {
+    #[allow(deprecated)]
+    fn description(&self) -> &str {
+        self.__description()
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use error::ParseIntError;
 
@@ -17639,6 +18055,9 @@ macro_rules! widening_impl {
         /// This returns the low-order (wrapping) bits and the high-order (overflow) bits
         /// of the result as two separate values, in that order.
         ///
+        /// If you also need to add a carry to the wide result, then you want
+        /// [`Self::carrying_mul`] instead.
+        ///
         /// # Examples
         ///
         /// Basic usage:
@@ -17674,6 +18093,8 @@ macro_rules! widening_impl {
         /// additional amount of overflow. This allows for chaining together multiple
         /// multiplications to create "big integers" which represent larger values.
         ///
+        /// If you don't need the `carry`, then you can use [`Self::widening_mul`] instead.
+        ///
         /// # Examples
         ///
         /// Basic usage:
@@ -17691,6 +18112,31 @@ macro_rules! widening_impl {
             stringify!($SelfT), "::MAX.carrying_mul(", stringify!($SelfT), "::MAX, ", stringify!($SelfT), "::MAX), ",
             "(0, ", stringify!($SelfT), "::MAX));"
         )]
+        /// ```
+        ///
+        /// This is the core operation needed for scalar multiplication when
+        /// implementing it for wider-than-native types.
+        ///
+        /// ```
+        /// #![feature(bigint_helper_methods)]
+        /// fn scalar_mul_eq(little_endian_digits: &mut Vec<u16>, multiplicand: u16) {
+        ///     let mut carry = 0;
+        ///     for d in little_endian_digits.iter_mut() {
+        ///         (*d, carry) = d.carrying_mul(multiplicand, carry);
+        ///     }
+        ///     if carry != 0 {
+        ///         little_endian_digits.push(carry);
+        ///     }
+        /// }
+        ///
+        /// let mut v = vec![10, 20];
+        /// scalar_mul_eq(&mut v, 3);
+        /// assert_eq!(v, [30, 60]);
+        ///
+        /// assert_eq!(0x87654321_u64 * 0xFEED, 0x86D3D159E38D);
+        /// let mut v = vec![0x4321, 0x8765];
+        /// scalar_mul_eq(&mut v, 0xFEED);
+        /// assert_eq!(v, [0xE38D, 0xD159, 0x86D3]);
         /// ```
         ///
         /// If `carry` is zero, this is similar to [`overflowing_mul`](Self::overflowing_mul),
@@ -18120,6 +18566,38 @@ impl u8 {
         matches!(*self, b'0'..=b'9')
     }
 
+    /// Checks if the value is an ASCII octal digit:
+    /// U+0030 '0' ..= U+0037 '7'.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(is_ascii_octdigit)]
+    ///
+    /// let uppercase_a = b'A';
+    /// let a = b'a';
+    /// let zero = b'0';
+    /// let seven = b'7';
+    /// let nine = b'9';
+    /// let percent = b'%';
+    /// let lf = b'\n';
+    ///
+    /// assert!(!uppercase_a.is_ascii_octdigit());
+    /// assert!(!a.is_ascii_octdigit());
+    /// assert!(zero.is_ascii_octdigit());
+    /// assert!(seven.is_ascii_octdigit());
+    /// assert!(!nine.is_ascii_octdigit());
+    /// assert!(!percent.is_ascii_octdigit());
+    /// assert!(!lf.is_ascii_octdigit());
+    /// ```
+    #[must_use]
+    #[unstable(feature = "is_ascii_octdigit", issue = "101288")]
+    #[rustc_const_unstable(feature = "is_ascii_octdigit", issue = "101288")]
+    #[inline]
+    pub const fn is_ascii_octdigit(&self) -> bool {
+        matches!(*self, b'0'..=b'7')
+    }
+
     /// Checks if the value is an ASCII hexadecimal digit:
     ///
     /// - U+0030 '0' ..= U+0039 '9', or
@@ -18161,7 +18639,7 @@ impl u8 {
     ///
     /// - U+0021 ..= U+002F `! " # $ % & ' ( ) * + , - . /`, or
     /// - U+003A ..= U+0040 `: ; < = > ? @`, or
-    /// - U+005B ..= U+0060 ``[ \ ] ^ _ ` ``, or
+    /// - U+005B ..= U+0060 `` [ \ ] ^ _ ` ``, or
     /// - U+007B ..= U+007E `{ | } ~`
     ///
     /// # Examples
@@ -18474,8 +18952,8 @@ impl usize {
 /// assert_eq!(num.classify(), FpCategory::Normal);
 /// assert_eq!(inf.classify(), FpCategory::Infinite);
 /// assert_eq!(zero.classify(), FpCategory::Zero);
-/// assert_eq!(nan.classify(), FpCategory::Nan);
 /// assert_eq!(sub.classify(), FpCategory::Subnormal);
+/// assert_eq!(nan.classify(), FpCategory::Nan);
 /// ```
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -18854,7 +19332,7 @@ use crate::intrinsics;
 ///
 /// `unreachable_unchecked()` can be used in situations where the compiler
 /// can't prove invariants that were previously established. Such situations
-/// have a higher chance of occuring if those invariants are upheld by
+/// have a higher chance of occurring if those invariants are upheld by
 /// external code that the compiler can't analyze.
 /// ```
 /// fn prepare_inputs(divisors: &mut Vec<u32>) {
@@ -18923,7 +19401,10 @@ use crate::intrinsics;
 pub const unsafe fn unreachable_unchecked() -> ! {
     // SAFETY: the safety contract for `intrinsics::unreachable` must
     // be upheld by the caller.
-    unsafe { intrinsics::unreachable() }
+    unsafe {
+        intrinsics::assert_unsafe_precondition!("hint::unreachable_unchecked must never be reached", () => false);
+        intrinsics::unreachable()
+    }
 }
 
 /// Emits a machine instruction to signal the processor that it is running in
@@ -18983,19 +19464,16 @@ pub const unsafe fn unreachable_unchecked() -> ! {
 #[inline]
 #[stable(feature = "renamed_spin_loop", since = "1.49.0")]
 pub fn spin_loop() {
-    #[cfg(all(any(target_arch = "x86", target_arch = "x86_64"), target_feature = "sse2"))]
+    #[cfg(target_arch = "x86")]
     {
-        #[cfg(target_arch = "x86")]
-        {
-            // SAFETY: the `cfg` attr ensures that we only execute this on x86 targets.
-            unsafe { crate::arch::x86::_mm_pause() };
-        }
+        // SAFETY: the `cfg` attr ensures that we only execute this on x86 targets.
+        unsafe { crate::arch::x86::_mm_pause() };
+    }
 
-        #[cfg(target_arch = "x86_64")]
-        {
-            // SAFETY: the `cfg` attr ensures that we only execute this on x86_64 targets.
-            unsafe { crate::arch::x86_64::_mm_pause() };
-        }
+    #[cfg(target_arch = "x86_64")]
+    {
+        // SAFETY: the `cfg` attr ensures that we only execute this on x86_64 targets.
+        unsafe { crate::arch::x86_64::_mm_pause() };
     }
 
     // RISC-V platform spin loop hint implementation
@@ -19043,7 +19521,7 @@ pub fn spin_loop() {
 ///
 /// [`std::convert::identity`]: crate::convert::identity
 #[inline]
-#[unstable(feature = "bench_black_box", issue = "64102")]
+#[stable(feature = "bench_black_box", since = "1.66.0")]
 #[rustc_const_unstable(feature = "const_black_box", issue = "none")]
 pub const fn black_box<T>(dummy: T) -> T {
     crate::intrinsics::black_box(dummy)
@@ -19229,7 +19707,7 @@ pub mod intrinsics {
 )]
 #![allow(missing_docs)]
 
-use crate::marker::{Destruct, DiscriminantKind};
+use crate::marker::DiscriminantKind;
 use crate::mem;
 
 // These imports are used for simplifying intra-doc links
@@ -19238,7 +19716,7 @@ use crate::mem;
 use crate::sync::atomic::{self, AtomicBool, AtomicI32, AtomicIsize, AtomicU32, Ordering};
 
 #[stable(feature = "drop_in_place", since = "1.8.0")]
-#[cfg_attr(not(bootstrap), rustc_allowed_through_unstable_modules)]
+#[rustc_allowed_through_unstable_modules]
 #[deprecated(note = "no longer an intrinsic - use `ptr::drop_in_place` directly", since = "1.52.0")]
 #[inline]
 pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
@@ -19246,214 +19724,6 @@ pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
     unsafe { crate::ptr::drop_in_place(to_drop) }
 }
 
-// These have been renamed.
-#[cfg(bootstrap)]
-extern "rust-intrinsic" {
-    pub fn atomic_cxchg<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-    pub fn atomic_cxchg_acq<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-    pub fn atomic_cxchg_rel<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-    pub fn atomic_cxchg_acqrel<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-    pub fn atomic_cxchg_relaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-    pub fn atomic_cxchg_failrelaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-    pub fn atomic_cxchg_failacq<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-    pub fn atomic_cxchg_acq_failrelaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-    pub fn atomic_cxchg_acqrel_failrelaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-    pub fn atomic_cxchgweak<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-    pub fn atomic_cxchgweak_acq<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-    pub fn atomic_cxchgweak_rel<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-    pub fn atomic_cxchgweak_acqrel<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-    pub fn atomic_cxchgweak_relaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-    pub fn atomic_cxchgweak_failrelaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-    pub fn atomic_cxchgweak_failacq<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-    pub fn atomic_cxchgweak_acq_failrelaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-    pub fn atomic_cxchgweak_acqrel_failrelaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-    pub fn atomic_load<T: Copy>(src: *const T) -> T;
-    pub fn atomic_load_acq<T: Copy>(src: *const T) -> T;
-    pub fn atomic_load_relaxed<T: Copy>(src: *const T) -> T;
-    pub fn atomic_load_unordered<T: Copy>(src: *const T) -> T;
-    pub fn atomic_store<T: Copy>(dst: *mut T, val: T);
-    pub fn atomic_store_rel<T: Copy>(dst: *mut T, val: T);
-    pub fn atomic_store_relaxed<T: Copy>(dst: *mut T, val: T);
-    pub fn atomic_store_unordered<T: Copy>(dst: *mut T, val: T);
-    pub fn atomic_xchg<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_xchg_acq<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_xchg_rel<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_xchg_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_xchg_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_xadd<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_xadd_acq<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_xadd_rel<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_xadd_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_xadd_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_xsub<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_xsub_acq<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_xsub_rel<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_xsub_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_xsub_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_and<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_and_acq<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_and_rel<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_and_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_and_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_nand<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_nand_acq<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_nand_rel<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_nand_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_nand_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_or<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_or_acq<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_or_rel<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_or_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_or_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_xor<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_xor_acq<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_xor_rel<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_xor_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_xor_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_max<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_max_acq<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_max_rel<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_max_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_max_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_min<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_min_acq<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_min_rel<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_min_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_min_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_umin<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_umin_acq<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_umin_rel<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_umin_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_umin_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_umax<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_umax_acq<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_umax_rel<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_umax_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_umax_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_fence();
-    pub fn atomic_fence_acq();
-    pub fn atomic_fence_rel();
-    pub fn atomic_fence_acqrel();
-    pub fn atomic_singlethreadfence();
-    pub fn atomic_singlethreadfence_acq();
-    pub fn atomic_singlethreadfence_rel();
-    pub fn atomic_singlethreadfence_acqrel();
-}
-
-// These have been renamed.
-#[cfg(bootstrap)]
-mod atomics {
-    pub use super::atomic_cxchg as atomic_cxchg_seqcst_seqcst;
-    pub use super::atomic_cxchg_acq as atomic_cxchg_acquire_acquire;
-    pub use super::atomic_cxchg_acq_failrelaxed as atomic_cxchg_acquire_relaxed;
-    pub use super::atomic_cxchg_acqrel as atomic_cxchg_acqrel_acquire;
-    pub use super::atomic_cxchg_acqrel_failrelaxed as atomic_cxchg_acqrel_relaxed;
-    pub use super::atomic_cxchg_failacq as atomic_cxchg_seqcst_acquire;
-    pub use super::atomic_cxchg_failrelaxed as atomic_cxchg_seqcst_relaxed;
-    pub use super::atomic_cxchg_rel as atomic_cxchg_release_relaxed;
-    pub use super::atomic_cxchg_relaxed as atomic_cxchg_relaxed_relaxed;
-
-    pub use super::atomic_cxchgweak as atomic_cxchgweak_seqcst_seqcst;
-    pub use super::atomic_cxchgweak_acq as atomic_cxchgweak_acquire_acquire;
-    pub use super::atomic_cxchgweak_acq_failrelaxed as atomic_cxchgweak_acquire_relaxed;
-    pub use super::atomic_cxchgweak_acqrel as atomic_cxchgweak_acqrel_acquire;
-    pub use super::atomic_cxchgweak_acqrel_failrelaxed as atomic_cxchgweak_acqrel_relaxed;
-    pub use super::atomic_cxchgweak_failacq as atomic_cxchgweak_seqcst_acquire;
-    pub use super::atomic_cxchgweak_failrelaxed as atomic_cxchgweak_seqcst_relaxed;
-    pub use super::atomic_cxchgweak_rel as atomic_cxchgweak_release_relaxed;
-    pub use super::atomic_cxchgweak_relaxed as atomic_cxchgweak_relaxed_relaxed;
-
-    pub use super::atomic_load as atomic_load_seqcst;
-    pub use super::atomic_load_acq as atomic_load_acquire;
-    pub use super::atomic_load_relaxed;
-    pub use super::atomic_load_unordered;
-
-    pub use super::atomic_store as atomic_store_seqcst;
-    pub use super::atomic_store_rel as atomic_store_release;
-    pub use super::atomic_store_relaxed;
-    pub use super::atomic_store_unordered;
-
-    pub use super::atomic_xchg as atomic_xchg_seqcst;
-    pub use super::atomic_xchg_acq as atomic_xchg_acquire;
-    pub use super::atomic_xchg_acqrel;
-    pub use super::atomic_xchg_rel as atomic_xchg_release;
-    pub use super::atomic_xchg_relaxed;
-
-    pub use super::atomic_xadd as atomic_xadd_seqcst;
-    pub use super::atomic_xadd_acq as atomic_xadd_acquire;
-    pub use super::atomic_xadd_acqrel;
-    pub use super::atomic_xadd_rel as atomic_xadd_release;
-    pub use super::atomic_xadd_relaxed;
-
-    pub use super::atomic_xsub as atomic_xsub_seqcst;
-    pub use super::atomic_xsub_acq as atomic_xsub_acquire;
-    pub use super::atomic_xsub_acqrel;
-    pub use super::atomic_xsub_rel as atomic_xsub_release;
-    pub use super::atomic_xsub_relaxed;
-
-    pub use super::atomic_and as atomic_and_seqcst;
-    pub use super::atomic_and_acq as atomic_and_acquire;
-    pub use super::atomic_and_acqrel;
-    pub use super::atomic_and_rel as atomic_and_release;
-    pub use super::atomic_and_relaxed;
-
-    pub use super::atomic_nand as atomic_nand_seqcst;
-    pub use super::atomic_nand_acq as atomic_nand_acquire;
-    pub use super::atomic_nand_acqrel;
-    pub use super::atomic_nand_rel as atomic_nand_release;
-    pub use super::atomic_nand_relaxed;
-
-    pub use super::atomic_or as atomic_or_seqcst;
-    pub use super::atomic_or_acq as atomic_or_acquire;
-    pub use super::atomic_or_acqrel;
-    pub use super::atomic_or_rel as atomic_or_release;
-    pub use super::atomic_or_relaxed;
-
-    pub use super::atomic_xor as atomic_xor_seqcst;
-    pub use super::atomic_xor_acq as atomic_xor_acquire;
-    pub use super::atomic_xor_acqrel;
-    pub use super::atomic_xor_rel as atomic_xor_release;
-    pub use super::atomic_xor_relaxed;
-
-    pub use super::atomic_max as atomic_max_seqcst;
-    pub use super::atomic_max_acq as atomic_max_acquire;
-    pub use super::atomic_max_acqrel;
-    pub use super::atomic_max_rel as atomic_max_release;
-    pub use super::atomic_max_relaxed;
-
-    pub use super::atomic_min as atomic_min_seqcst;
-    pub use super::atomic_min_acq as atomic_min_acquire;
-    pub use super::atomic_min_acqrel;
-    pub use super::atomic_min_rel as atomic_min_release;
-    pub use super::atomic_min_relaxed;
-
-    pub use super::atomic_umin as atomic_umin_seqcst;
-    pub use super::atomic_umin_acq as atomic_umin_acquire;
-    pub use super::atomic_umin_acqrel;
-    pub use super::atomic_umin_rel as atomic_umin_release;
-    pub use super::atomic_umin_relaxed;
-
-    pub use super::atomic_umax as atomic_umax_seqcst;
-    pub use super::atomic_umax_acq as atomic_umax_acquire;
-    pub use super::atomic_umax_acqrel;
-    pub use super::atomic_umax_rel as atomic_umax_release;
-    pub use super::atomic_umax_relaxed;
-
-    pub use super::atomic_fence as atomic_fence_seqcst;
-    pub use super::atomic_fence_acq as atomic_fence_acquire;
-    pub use super::atomic_fence_acqrel;
-    pub use super::atomic_fence_rel as atomic_fence_release;
-
-    pub use super::atomic_singlethreadfence as atomic_singlethreadfence_seqcst;
-    pub use super::atomic_singlethreadfence_acq as atomic_singlethreadfence_acquire;
-    pub use super::atomic_singlethreadfence_acqrel;
-    pub use super::atomic_singlethreadfence_rel as atomic_singlethreadfence_release;
-}
-
-#[cfg(bootstrap)]
-pub use atomics::*;
-
-#[cfg(not(bootstrap))]
 extern "rust-intrinsic" {
     // N.B., these intrinsics take raw pointers because they mutate aliased
     // memory, which is not valid for either `&` or `&mut`.
@@ -20120,30 +20390,7 @@ extern "rust-intrinsic" {
     /// [`atomic::compiler_fence`] by passing [`Ordering::AcqRel`]
     /// as the `order`.
     pub fn atomic_singlethreadfence_acqrel();
-}
 
-// These have been renamed.
-//
-// These are the aliases for the old names.
-// To be removed when stdarch and panic_unwind have been updated.
-#[cfg(not(bootstrap))]
-mod atomics {
-    pub use super::atomic_cxchg_acqrel_acquire as atomic_cxchg_acqrel;
-    pub use super::atomic_cxchg_acqrel_relaxed as atomic_cxchg_acqrel_failrelaxed;
-    pub use super::atomic_cxchg_acquire_acquire as atomic_cxchg_acq;
-    pub use super::atomic_cxchg_acquire_relaxed as atomic_cxchg_acq_failrelaxed;
-    pub use super::atomic_cxchg_relaxed_relaxed as atomic_cxchg_relaxed;
-    pub use super::atomic_cxchg_release_relaxed as atomic_cxchg_rel;
-    pub use super::atomic_cxchg_seqcst_acquire as atomic_cxchg_failacq;
-    pub use super::atomic_cxchg_seqcst_relaxed as atomic_cxchg_failrelaxed;
-    pub use super::atomic_cxchg_seqcst_seqcst as atomic_cxchg;
-    pub use super::atomic_store_seqcst as atomic_store;
-}
-
-#[cfg(not(bootstrap))]
-pub use atomics::*;
-
-extern "rust-intrinsic" {
     /// The `prefetch` intrinsic is a hint to the code generator to insert a prefetch instruction
     /// if supported; otherwise, it is a no-op.
     /// Prefetches have no effect on the behavior of the program but can change its performance
@@ -20194,6 +20441,7 @@ extern "rust-intrinsic" {
     /// uninitialized at that point in the control flow.
     ///
     /// This intrinsic should not be used outside of the compiler.
+    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
     pub fn rustc_peek<T>(_: T) -> T;
 
     /// Aborts the execution of the process.
@@ -20211,6 +20459,7 @@ extern "rust-intrinsic" {
     /// On Unix, the
     /// process will probably terminate with a signal like `SIGABRT`, `SIGILL`, `SIGTRAP`, `SIGSEGV` or
     /// `SIGBUS`.  The precise behaviour is not guaranteed and not stable.
+    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
     pub fn abort() -> !;
 
     /// Informs the optimizer that this point in the code is not reachable,
@@ -20249,6 +20498,7 @@ extern "rust-intrinsic" {
     ///
     /// This intrinsic does not have a stable counterpart.
     #[rustc_const_unstable(feature = "const_likely", issue = "none")]
+    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
     pub fn likely(b: bool) -> bool;
 
     /// Hints to the compiler that branch condition is likely to be false.
@@ -20263,6 +20513,7 @@ extern "rust-intrinsic" {
     ///
     /// This intrinsic does not have a stable counterpart.
     #[rustc_const_unstable(feature = "const_likely", issue = "none")]
+    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
     pub fn unlikely(b: bool) -> bool;
 
     /// Executes a breakpoint trap, for inspection by a debugger.
@@ -20282,6 +20533,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is [`core::mem::size_of`].
     #[rustc_const_stable(feature = "const_size_of", since = "1.40.0")]
+    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
     pub fn size_of<T>() -> usize;
 
     /// The minimum alignment of a type.
@@ -20293,6 +20545,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is [`core::mem::align_of`].
     #[rustc_const_stable(feature = "const_min_align_of", since = "1.40.0")]
+    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
     pub fn min_align_of<T>() -> usize;
     /// The preferred alignment of a type.
     ///
@@ -20321,6 +20574,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is [`core::any::type_name`].
     #[rustc_const_unstable(feature = "const_type_name", issue = "63084")]
+    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
     pub fn type_name<T: ?Sized>() -> &'static str;
 
     /// Gets an identifier which is globally unique to the specified type. This
@@ -20334,6 +20588,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is [`core::any::TypeId::of`].
     #[rustc_const_unstable(feature = "const_type_id", issue = "77125")]
+    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
     pub fn type_id<T: ?Sized + 'static>() -> u64;
 
     /// A guard for unsafe functions that cannot ever be executed if `T` is uninhabited:
@@ -20341,6 +20596,7 @@ extern "rust-intrinsic" {
     ///
     /// This intrinsic does not have a stable counterpart.
     #[rustc_const_stable(feature = "const_assert_type", since = "1.59.0")]
+    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
     pub fn assert_inhabited<T>();
 
     /// A guard for unsafe functions that cannot ever be executed if `T` does not permit
@@ -20348,6 +20604,7 @@ extern "rust-intrinsic" {
     ///
     /// This intrinsic does not have a stable counterpart.
     #[rustc_const_unstable(feature = "const_assert_type2", issue = "none")]
+    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
     pub fn assert_zero_valid<T>();
 
     /// A guard for unsafe functions that cannot ever be executed if `T` has invalid
@@ -20355,6 +20612,7 @@ extern "rust-intrinsic" {
     ///
     /// This intrinsic does not have a stable counterpart.
     #[rustc_const_unstable(feature = "const_assert_type2", issue = "none")]
+    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
     pub fn assert_uninit_valid<T>();
 
     /// Gets a reference to a static `Location` indicating where it was called.
@@ -20366,6 +20624,7 @@ extern "rust-intrinsic" {
     ///
     /// Consider using [`core::panic::Location::caller`] instead.
     #[rustc_const_unstable(feature = "const_caller_location", issue = "76156")]
+    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
     pub fn caller_location() -> &'static crate::panic::Location<'static>;
 
     /// Moves a value out of scope without running drop glue.
@@ -20378,6 +20637,7 @@ extern "rust-intrinsic" {
     /// Therefore, implementations must not require the user to uphold
     /// any safety invariants.
     #[rustc_const_unstable(feature = "const_intrinsic_forget", issue = "none")]
+    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
     pub fn forget<T: ?Sized>(_: T);
 
     /// Reinterprets the bits of a value of one type as another type.
@@ -20387,14 +20647,14 @@ extern "rust-intrinsic" {
     /// `transmute` is semantically equivalent to a bitwise move of one type
     /// into another. It copies the bits from the source value into the
     /// destination value, then forgets the original. Note that source and destination
-    /// are passed by-value, which means if `T` or `U` contain padding, that padding
+    /// are passed by-value, which means if `Src` or `Dst` contain padding, that padding
     /// is *not* guaranteed to be preserved by `transmute`.
     ///
     /// Both the argument and the result must be [valid](../../nomicon/what-unsafe-does.html) at
     /// their given type. Violating this condition leads to [undefined behavior][ub]. The compiler
     /// will generate code *assuming that you, the programmer, ensure that there will never be
     /// undefined behavior*. It is therefore your responsibility to guarantee that every value
-    /// passed to `transmute` is valid at both types `T` and `U`. Failing to uphold this condition
+    /// passed to `transmute` is valid at both types `Src` and `Dst`. Failing to uphold this condition
     /// may lead to unexpected and unstable compilation results. This makes `transmute` **incredibly
     /// unsafe**. `transmute` should be the absolute last resort.
     ///
@@ -20405,7 +20665,7 @@ extern "rust-intrinsic" {
     ///
     /// Because `transmute` is a by-value operation, alignment of the *transmuted values
     /// themselves* is not a concern. As with any other function, the compiler already ensures
-    /// both `T` and `U` are properly aligned. However, when transmuting values that *point
+    /// both `Src` and `Dst` are properly aligned. However, when transmuting values that *point
     /// elsewhere* (such as pointers, references, boxes…), the caller has to ensure proper
     /// alignment of the pointed-to values.
     ///
@@ -20488,7 +20748,7 @@ extern "rust-intrinsic" {
     /// Note that using `transmute` to turn a pointer to a `usize` is (as noted above) [undefined
     /// behavior][ub] in `const` contexts. Also outside of consts, this operation might not behave
     /// as expected -- this is touching on many unspecified aspects of the Rust memory model.
-    /// Depending on what the code is doing, the following alternatives are preferrable to
+    /// Depending on what the code is doing, the following alternatives are preferable to
     /// pointer-to-integer transmutation:
     /// - If the code just wants to store data of arbitrary type in some buffer and needs to pick a
     ///   type for that buffer, it can use [`MaybeUninit`][mem::MaybeUninit].
@@ -20638,10 +20898,10 @@ extern "rust-intrinsic" {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg_attr(not(bootstrap), rustc_allowed_through_unstable_modules)]
+    #[rustc_allowed_through_unstable_modules]
     #[rustc_const_stable(feature = "const_transmute", since = "1.56.0")]
     #[rustc_diagnostic_item = "transmute"]
-    pub fn transmute<T, U>(e: T) -> U;
+    pub fn transmute<Src, Dst>(src: Src) -> Dst;
 
     /// Returns `true` if the actual type given as `T` requires drop
     /// glue; returns `false` if the actual type provided for `T`
@@ -20657,6 +20917,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is [`mem::needs_drop`](crate::mem::needs_drop).
     #[rustc_const_stable(feature = "const_needs_drop", since = "1.40.0")]
+    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
     pub fn needs_drop<T: ?Sized>() -> bool;
 
     /// Calculates the offset from a pointer.
@@ -20692,6 +20953,17 @@ extern "rust-intrinsic" {
     #[must_use = "returns a new pointer rather than modifying its argument"]
     #[rustc_const_stable(feature = "const_ptr_offset", since = "1.61.0")]
     pub fn arith_offset<T>(dst: *const T, offset: isize) -> *const T;
+
+    /// Masks out bits of the pointer according to a mask.
+    ///
+    /// Note that, unlike most intrinsics, this is safe to call;
+    /// it does not require an `unsafe` block.
+    /// Therefore, implementations must not require the user to uphold
+    /// any safety invariants.
+    ///
+    /// Consider using [`pointer::mask`] instead.
+    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
+    pub fn ptr_mask<T>(ptr: *const T, mask: usize) -> *const T;
 
     /// Equivalent to the appropriate `llvm.memcpy.p0i8.0i8.*` intrinsic, with
     /// a size of `count` * `size_of::<T>()` and an alignment of
@@ -20882,6 +21154,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is
     /// [`f32::min`]
+    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
     pub fn minnumf32(x: f32, y: f32) -> f32;
     /// Returns the minimum of two `f64` values.
     ///
@@ -20892,6 +21165,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is
     /// [`f64::min`]
+    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
     pub fn minnumf64(x: f64, y: f64) -> f64;
     /// Returns the maximum of two `f32` values.
     ///
@@ -20902,6 +21176,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is
     /// [`f32::max`]
+    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
     pub fn maxnumf32(x: f32, y: f32) -> f32;
     /// Returns the maximum of two `f64` values.
     ///
@@ -20912,6 +21187,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is
     /// [`f64::max`]
+    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
     pub fn maxnumf64(x: f64, y: f64) -> f64;
 
     /// Copies the sign from `y` to `x` for `f32` values.
@@ -21032,6 +21308,7 @@ extern "rust-intrinsic" {
     /// primitives via the `count_ones` method. For example,
     /// [`u32::count_ones`]
     #[rustc_const_stable(feature = "const_ctpop", since = "1.40.0")]
+    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
     pub fn ctpop<T: Copy>(x: T) -> T;
 
     /// Returns the number of leading unset bits (zeroes) in an integer type `T`.
@@ -21069,6 +21346,7 @@ extern "rust-intrinsic" {
     /// assert_eq!(num_leading, 16);
     /// ```
     #[rustc_const_stable(feature = "const_ctlz", since = "1.40.0")]
+    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
     pub fn ctlz<T: Copy>(x: T) -> T;
 
     /// Like `ctlz`, but extra-unsafe as it returns `undef` when
@@ -21125,6 +21403,7 @@ extern "rust-intrinsic" {
     /// assert_eq!(num_trailing, 16);
     /// ```
     #[rustc_const_stable(feature = "const_cttz", since = "1.40.0")]
+    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
     pub fn cttz<T: Copy>(x: T) -> T;
 
     /// Like `cttz`, but extra-unsafe as it returns `undef` when
@@ -21157,6 +21436,7 @@ extern "rust-intrinsic" {
     /// primitives via the `swap_bytes` method. For example,
     /// [`u32::swap_bytes`]
     #[rustc_const_stable(feature = "const_bswap", since = "1.40.0")]
+    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
     pub fn bswap<T: Copy>(x: T) -> T;
 
     /// Reverses the bits in an integer type `T`.
@@ -21170,6 +21450,7 @@ extern "rust-intrinsic" {
     /// primitives via the `reverse_bits` method. For example,
     /// [`u32::reverse_bits`]
     #[rustc_const_stable(feature = "const_bitreverse", since = "1.40.0")]
+    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
     pub fn bitreverse<T: Copy>(x: T) -> T;
 
     /// Performs checked integer addition.
@@ -21183,6 +21464,7 @@ extern "rust-intrinsic" {
     /// primitives via the `overflowing_add` method. For example,
     /// [`u32::overflowing_add`]
     #[rustc_const_stable(feature = "const_int_overflow", since = "1.40.0")]
+    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
     pub fn add_with_overflow<T: Copy>(x: T, y: T) -> (T, bool);
 
     /// Performs checked integer subtraction
@@ -21196,6 +21478,7 @@ extern "rust-intrinsic" {
     /// primitives via the `overflowing_sub` method. For example,
     /// [`u32::overflowing_sub`]
     #[rustc_const_stable(feature = "const_int_overflow", since = "1.40.0")]
+    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
     pub fn sub_with_overflow<T: Copy>(x: T, y: T) -> (T, bool);
 
     /// Performs checked integer multiplication
@@ -21209,6 +21492,7 @@ extern "rust-intrinsic" {
     /// primitives via the `overflowing_mul` method. For example,
     /// [`u32::overflowing_mul`]
     #[rustc_const_stable(feature = "const_int_overflow", since = "1.40.0")]
+    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
     pub fn mul_with_overflow<T: Copy>(x: T, y: T) -> (T, bool);
 
     /// Performs an exact division, resulting in undefined behavior where
@@ -21283,6 +21567,7 @@ extern "rust-intrinsic" {
     /// primitives via the `rotate_left` method. For example,
     /// [`u32::rotate_left`]
     #[rustc_const_stable(feature = "const_int_rotate", since = "1.40.0")]
+    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
     pub fn rotate_left<T: Copy>(x: T, y: T) -> T;
 
     /// Performs rotate right.
@@ -21296,6 +21581,7 @@ extern "rust-intrinsic" {
     /// primitives via the `rotate_right` method. For example,
     /// [`u32::rotate_right`]
     #[rustc_const_stable(feature = "const_int_rotate", since = "1.40.0")]
+    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
     pub fn rotate_right<T: Copy>(x: T, y: T) -> T;
 
     /// Returns (a + b) mod 2<sup>N</sup>, where N is the width of T in bits.
@@ -21309,6 +21595,7 @@ extern "rust-intrinsic" {
     /// primitives via the `wrapping_add` method. For example,
     /// [`u32::wrapping_add`]
     #[rustc_const_stable(feature = "const_int_wrapping", since = "1.40.0")]
+    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
     pub fn wrapping_add<T: Copy>(a: T, b: T) -> T;
     /// Returns (a - b) mod 2<sup>N</sup>, where N is the width of T in bits.
     ///
@@ -21321,6 +21608,7 @@ extern "rust-intrinsic" {
     /// primitives via the `wrapping_sub` method. For example,
     /// [`u32::wrapping_sub`]
     #[rustc_const_stable(feature = "const_int_wrapping", since = "1.40.0")]
+    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
     pub fn wrapping_sub<T: Copy>(a: T, b: T) -> T;
     /// Returns (a * b) mod 2<sup>N</sup>, where N is the width of T in bits.
     ///
@@ -21333,6 +21621,7 @@ extern "rust-intrinsic" {
     /// primitives via the `wrapping_mul` method. For example,
     /// [`u32::wrapping_mul`]
     #[rustc_const_stable(feature = "const_int_wrapping", since = "1.40.0")]
+    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
     pub fn wrapping_mul<T: Copy>(a: T, b: T) -> T;
 
     /// Computes `a + b`, saturating at numeric bounds.
@@ -21346,6 +21635,7 @@ extern "rust-intrinsic" {
     /// primitives via the `saturating_add` method. For example,
     /// [`u32::saturating_add`]
     #[rustc_const_stable(feature = "const_int_saturating", since = "1.40.0")]
+    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
     pub fn saturating_add<T: Copy>(a: T, b: T) -> T;
     /// Computes `a - b`, saturating at numeric bounds.
     ///
@@ -21358,6 +21648,7 @@ extern "rust-intrinsic" {
     /// primitives via the `saturating_sub` method. For example,
     /// [`u32::saturating_sub`]
     #[rustc_const_stable(feature = "const_int_saturating", since = "1.40.0")]
+    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
     pub fn saturating_sub<T: Copy>(a: T, b: T) -> T;
 
     /// Returns the value of the discriminant for the variant in 'v';
@@ -21370,6 +21661,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is [`core::mem::discriminant`].
     #[rustc_const_unstable(feature = "const_discriminant", issue = "69821")]
+    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
     pub fn discriminant_value<T>(v: &T) -> <T as DiscriminantKind>::Discriminant;
 
     /// Returns the number of variants of the type `T` cast to a `usize`;
@@ -21382,6 +21674,7 @@ extern "rust-intrinsic" {
     ///
     /// The to-be-stabilized version of this intrinsic is [`mem::variant_count`].
     #[rustc_const_unstable(feature = "variant_count", issue = "73662")]
+    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
     pub fn variant_count<T>() -> usize;
 
     /// Rust's "try catch" construct which invokes the function pointer `try_fn`
@@ -21398,30 +21691,25 @@ extern "rust-intrinsic" {
     pub fn nontemporal_store<T>(ptr: *mut T, val: T);
 
     /// See documentation of `<*const T>::offset_from` for details.
-    #[rustc_const_unstable(feature = "const_ptr_offset_from", issue = "92980")]
+    #[rustc_const_stable(feature = "const_ptr_offset_from", since = "1.65.0")]
     pub fn ptr_offset_from<T>(ptr: *const T, base: *const T) -> isize;
 
     /// See documentation of `<*const T>::sub_ptr` for details.
-    #[rustc_const_unstable(feature = "const_ptr_offset_from", issue = "92980")]
+    #[rustc_const_unstable(feature = "const_ptr_sub_ptr", issue = "95892")]
     pub fn ptr_offset_from_unsigned<T>(ptr: *const T, base: *const T) -> usize;
 
     /// See documentation of `<*const T>::guaranteed_eq` for details.
+    /// Returns `2` if the result is unknown.
+    /// Returns `1` if the pointers are guaranteed equal
+    /// Returns `0` if the pointers are guaranteed inequal
     ///
     /// Note that, unlike most intrinsics, this is safe to call;
     /// it does not require an `unsafe` block.
     /// Therefore, implementations must not require the user to uphold
     /// any safety invariants.
     #[rustc_const_unstable(feature = "const_raw_ptr_comparison", issue = "53020")]
-    pub fn ptr_guaranteed_eq<T>(ptr: *const T, other: *const T) -> bool;
-
-    /// See documentation of `<*const T>::guaranteed_ne` for details.
-    ///
-    /// Note that, unlike most intrinsics, this is safe to call;
-    /// it does not require an `unsafe` block.
-    /// Therefore, implementations must not require the user to uphold
-    /// any safety invariants.
-    #[rustc_const_unstable(feature = "const_raw_ptr_comparison", issue = "53020")]
-    pub fn ptr_guaranteed_ne<T>(ptr: *const T, other: *const T) -> bool;
+    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
+    pub fn ptr_guaranteed_cmp<T>(ptr: *const T, other: *const T) -> u8;
 
     /// Allocates a block of memory at compile time.
     /// At runtime, just returns a null pointer.
@@ -21457,7 +21745,8 @@ extern "rust-intrinsic" {
     ///
     /// # Safety
     ///
-    /// It's UB to call this if any of the *bytes* in `*a` or `*b` are uninitialized.
+    /// It's UB to call this if any of the *bytes* in `*a` or `*b` are uninitialized or carry a
+    /// pointer value.
     /// Note that this is a stricter criterion than just the *values* being
     /// fully-initialized: if `T` has padding, it's UB to call this intrinsic.
     ///
@@ -21470,17 +21759,74 @@ extern "rust-intrinsic" {
     ///
     /// [`std::hint::black_box`]: crate::hint::black_box
     #[rustc_const_unstable(feature = "const_black_box", issue = "none")]
+    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
     pub fn black_box<T>(dummy: T) -> T;
 
     /// `ptr` must point to a vtable.
     /// The intrinsic will return the size stored in that vtable.
-    #[cfg(not(bootstrap))]
     pub fn vtable_size(ptr: *const ()) -> usize;
 
     /// `ptr` must point to a vtable.
     /// The intrinsic will return the alignment stored in that vtable.
-    #[cfg(not(bootstrap))]
     pub fn vtable_align(ptr: *const ()) -> usize;
+
+    /// Selects which function to call depending on the context.
+    ///
+    /// If this function is evaluated at compile-time, then a call to this
+    /// intrinsic will be replaced with a call to `called_in_const`. It gets
+    /// replaced with a call to `called_at_rt` otherwise.
+    ///
+    /// # Type Requirements
+    ///
+    /// The two functions must be both function items. They cannot be function
+    /// pointers or closures. The first function must be a `const fn`.
+    ///
+    /// `arg` will be the tupled arguments that will be passed to either one of
+    /// the two functions, therefore, both functions must accept the same type of
+    /// arguments. Both functions must return RET.
+    ///
+    /// # Safety
+    ///
+    /// The two functions must behave observably equivalent. Safe code in other
+    /// crates may assume that calling a `const fn` at compile-time and at run-time
+    /// produces the same result. A function that produces a different result when
+    /// evaluated at run-time, or has any other observable side-effects, is
+    /// *unsound*.
+    ///
+    /// Here is an example of how this could cause a problem:
+    /// ```no_run
+    /// #![feature(const_eval_select)]
+    /// #![feature(core_intrinsics)]
+    /// use std::hint::unreachable_unchecked;
+    /// use std::intrinsics::const_eval_select;
+    ///
+    /// // Crate A
+    /// pub const fn inconsistent() -> i32 {
+    ///     fn runtime() -> i32 { 1 }
+    ///     const fn compiletime() -> i32 { 2 }
+    ///
+    ///     unsafe {
+    //          // ⚠ This code violates the required equivalence of `compiletime`
+    ///         // and `runtime`.
+    ///         const_eval_select((), compiletime, runtime)
+    ///     }
+    /// }
+    ///
+    /// // Crate B
+    /// const X: i32 = inconsistent();
+    /// let x = inconsistent();
+    /// if x != X { unsafe { unreachable_unchecked(); }}
+    /// ```
+    ///
+    /// This code causes Undefined Behavior when being run, since the
+    /// `unreachable_unchecked` is actually being reached. The bug is in *crate A*,
+    /// which violates the principle that a `const fn` must behave the same at
+    /// compile-time and at run-time. The unsafe code in crate B is fine.
+    #[rustc_const_unstable(feature = "const_eval_select", issue = "none")]
+    pub fn const_eval_select<ARG, F, G, RET>(arg: ARG, called_in_const: F, called_at_rt: G) -> RET
+    where
+        G: FnOnce<ARG, Output = RET>,
+        F: FnOnce<ARG, Output = RET>;
 }
 
 // Some functions are defined here because they accidentally got made
@@ -21490,6 +21836,11 @@ extern "rust-intrinsic" {
 
 /// Check that the preconditions of an unsafe function are followed, if debug_assertions are on,
 /// and only at runtime.
+///
+/// This macro should be called as `assert_unsafe_precondition!([Generics](name: Type) => Expression)`
+/// where the names specified will be moved into the macro as captured variables, and defines an item
+/// to call `const_eval_select` on. The tokens inside the square brackets are used to denote generics
+/// for the function declaractions and can be omitted if there is no generics.
 ///
 /// # Safety
 ///
@@ -21505,18 +21856,23 @@ extern "rust-intrinsic" {
 /// the occasional mistake, and this check should help them figure things out.
 #[allow_internal_unstable(const_eval_select)] // permit this to be called in stably-const fn
 macro_rules! assert_unsafe_precondition {
-    ($e:expr) => {
+    ($name:expr, $([$($tt:tt)*])?($($i:ident:$ty:ty),*$(,)?) => $e:expr) => {
         if cfg!(debug_assertions) {
-            // Use a closure so that we can capture arbitrary expressions from the invocation
-            let runtime = || {
+            // allow non_snake_case to allow capturing const generics
+            #[allow(non_snake_case)]
+            #[inline(always)]
+            fn runtime$(<$($tt)*>)?($($i:$ty),*) {
                 if !$e {
-                    // abort instead of panicking to reduce impact on code size
-                    ::core::intrinsics::abort();
+                    // don't unwind to reduce impact on code size
+                    ::core::panicking::panic_str_nounwind(
+                        concat!("unsafe precondition(s) violated: ", $name)
+                    );
                 }
-            };
-            const fn comptime() {}
+            }
+            #[allow(non_snake_case)]
+            const fn comptime$(<$($tt)*>)?($(_:$ty),*) {}
 
-            ::core::intrinsics::const_eval_select((), comptime, runtime);
+            ::core::intrinsics::const_eval_select(($($i,)*), comptime, runtime);
         }
     };
 }
@@ -21525,7 +21881,17 @@ pub(crate) use assert_unsafe_precondition;
 /// Checks whether `ptr` is properly aligned with respect to
 /// `align_of::<T>()`.
 pub(crate) fn is_aligned_and_not_null<T>(ptr: *const T) -> bool {
-    !ptr.is_null() && ptr.addr() % mem::align_of::<T>() == 0
+    !ptr.is_null() && ptr.is_aligned()
+}
+
+/// Checks whether an allocation of `len` instances of `T` exceeds
+/// the maximum allowed allocation size.
+pub(crate) fn is_valid_allocation_size<T>(len: usize) -> bool {
+    let max_len = const {
+        let size = crate::mem::size_of::<T>();
+        if size == 0 { usize::MAX } else { isize::MAX as usize / size }
+    };
+    len <= max_len
 }
 
 /// Checks whether the regions of memory starting at `src` and `dst` of size
@@ -21595,9 +21961,9 @@ pub(crate) fn is_nonoverlapping<T>(src: *const T, dst: *const T, count: usize) -
 ///     dst.reserve(src_len);
 ///
 ///     unsafe {
-///         // The call to offset is always safe because `Vec` will never
+///         // The call to add is always safe because `Vec` will never
 ///         // allocate more than `isize::MAX` bytes.
-///         let dst_ptr = dst.as_mut_ptr().offset(dst_len as isize);
+///         let dst_ptr = dst.as_mut_ptr().add(dst_len);
 ///         let src_ptr = src.as_ptr();
 ///
 ///         // Truncate `src` without dropping its contents. We do this first,
@@ -21626,7 +21992,7 @@ pub(crate) fn is_nonoverlapping<T>(src: *const T, dst: *const T, count: usize) -
 /// [`Vec::append`]: ../../std/vec/struct.Vec.html#method.append
 #[doc(alias = "memcpy")]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(bootstrap), rustc_allowed_through_unstable_modules)]
+#[rustc_allowed_through_unstable_modules]
 #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.63.0")]
 #[inline]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
@@ -21640,6 +22006,9 @@ pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: us
     // upheld by the caller.
     unsafe {
         assert_unsafe_precondition!(
+            "ptr::copy_nonoverlapping requires that both pointer arguments are aligned and non-null \
+            and the specified memory ranges do not overlap",
+            [T](src: *const T, dst: *mut T, count: usize) =>
             is_aligned_and_not_null(src)
                 && is_aligned_and_not_null(dst)
                 && is_nonoverlapping(src, dst, count)
@@ -21713,7 +22082,7 @@ pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: us
 /// ```
 #[doc(alias = "memmove")]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(bootstrap), rustc_allowed_through_unstable_modules)]
+#[rustc_allowed_through_unstable_modules]
 #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.63.0")]
 #[inline]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
@@ -21725,7 +22094,11 @@ pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
 
     // SAFETY: the safety contract for `copy` must be upheld by the caller.
     unsafe {
-        assert_unsafe_precondition!(is_aligned_and_not_null(src) && is_aligned_and_not_null(dst));
+        assert_unsafe_precondition!(
+            "ptr::copy requires that both pointer arguments are aligned aligned and non-null",
+            [T](src: *const T, dst: *mut T) =>
+            is_aligned_and_not_null(src) && is_aligned_and_not_null(dst)
+        );
         copy(src, dst, count)
     }
 }
@@ -21781,7 +22154,7 @@ pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
 /// ```
 #[doc(alias = "memset")]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(bootstrap), rustc_allowed_through_unstable_modules)]
+#[rustc_allowed_through_unstable_modules]
 #[rustc_const_unstable(feature = "const_ptr_write", issue = "86302")]
 #[inline]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
@@ -21793,101 +22166,12 @@ pub const unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
 
     // SAFETY: the safety contract for `write_bytes` must be upheld by the caller.
     unsafe {
-        assert_unsafe_precondition!(is_aligned_and_not_null(dst));
+        assert_unsafe_precondition!(
+            "ptr::write_bytes requires that the destination pointer is aligned and non-null",
+            [T](dst: *mut T) => is_aligned_and_not_null(dst)
+        );
         write_bytes(dst, val, count)
     }
-}
-
-/// Selects which function to call depending on the context.
-///
-/// If this function is evaluated at compile-time, then a call to this
-/// intrinsic will be replaced with a call to `called_in_const`. It gets
-/// replaced with a call to `called_at_rt` otherwise.
-///
-/// # Type Requirements
-///
-/// The two functions must be both function items. They cannot be function
-/// pointers or closures.
-///
-/// `arg` will be the arguments that will be passed to either one of the
-/// two functions, therefore, both functions must accept the same type of
-/// arguments. Both functions must return RET.
-///
-/// # Safety
-///
-/// The two functions must behave observably equivalent. Safe code in other
-/// crates may assume that calling a `const fn` at compile-time and at run-time
-/// produces the same result. A function that produces a different result when
-/// evaluated at run-time, or has any other observable side-effects, is
-/// *unsound*.
-///
-/// Here is an example of how this could cause a problem:
-/// ```no_run
-/// #![feature(const_eval_select)]
-/// #![feature(core_intrinsics)]
-/// use std::hint::unreachable_unchecked;
-/// use std::intrinsics::const_eval_select;
-///
-/// // Crate A
-/// pub const fn inconsistent() -> i32 {
-///     fn runtime() -> i32 { 1 }
-///     const fn compiletime() -> i32 { 2 }
-///
-///     unsafe {
-//          // ⚠ This code violates the required equivalence of `compiletime`
-///         // and `runtime`.
-///         const_eval_select((), compiletime, runtime)
-///     }
-/// }
-///
-/// // Crate B
-/// const X: i32 = inconsistent();
-/// let x = inconsistent();
-/// if x != X { unsafe { unreachable_unchecked(); }}
-/// ```
-///
-/// This code causes Undefined Behavior when being run, since the
-/// `unreachable_unchecked` is actually being reached. The bug is in *crate A*,
-/// which violates the principle that a `const fn` must behave the same at
-/// compile-time and at run-time. The unsafe code in crate B is fine.
-#[unstable(
-    feature = "const_eval_select",
-    issue = "none",
-    reason = "const_eval_select will never be stable"
-)]
-#[rustc_const_unstable(feature = "const_eval_select", issue = "none")]
-#[lang = "const_eval_select"]
-#[rustc_do_not_const_check]
-#[inline]
-pub const unsafe fn const_eval_select<ARG, F, G, RET>(
-    arg: ARG,
-    _called_in_const: F,
-    called_at_rt: G,
-) -> RET
-where
-    F: ~const FnOnce<ARG, Output = RET>,
-    G: FnOnce<ARG, Output = RET> + ~const Destruct,
-{
-    called_at_rt.call_once(arg)
-}
-
-#[unstable(
-    feature = "const_eval_select",
-    issue = "none",
-    reason = "const_eval_select will never be stable"
-)]
-#[rustc_const_unstable(feature = "const_eval_select", issue = "none")]
-#[lang = "const_eval_select_ct"]
-pub const unsafe fn const_eval_select_ct<ARG, F, G, RET>(
-    arg: ARG,
-    called_in_const: F,
-    _called_at_rt: G,
-) -> RET
-where
-    F: ~const FnOnce<ARG, Output = RET>,
-    G: FnOnce<ARG, Output = RET> + ~const Destruct,
-{
-    called_in_const.call_once(arg)
 }
 }
 pub mod mem {
@@ -22133,9 +22417,6 @@ use crate::slice;
 /// // The equivalent code with `MaybeUninit<i32>`:
 /// let x: i32 = unsafe { MaybeUninit::uninit().assume_init() }; // undefined behavior! ⚠️
 /// ```
-/// (Notice that the rules around uninitialized integers are not finalized yet, but
-/// until they are, it is advisable to avoid them.)
-///
 /// On top of that, remember that most types have additional invariants beyond merely
 /// being considered initialized at the type level. For example, a `1`-initialized [`Vec<T>`]
 /// is considered initialized (under the current implementation; this does not constitute
@@ -22209,11 +22490,8 @@ use crate::slice;
 ///         MaybeUninit::uninit().assume_init()
 ///     };
 ///
-///     // Dropping a `MaybeUninit` does nothing. Thus using raw pointer
-///     // assignment instead of `ptr::write` does not cause the old
-///     // uninitialized value to be dropped. Also if there is a panic during
-///     // this loop, we have a memory leak, but there is no memory safety
-///     // issue.
+///     // Dropping a `MaybeUninit` does nothing, so if there is a panic during this loop,
+///     // we have a memory leak, but there is no memory safety issue.
 ///     for elem in &mut data[..] {
 ///         elem.write(vec![42]);
 ///     }
@@ -22231,7 +22509,6 @@ use crate::slice;
 ///
 /// ```
 /// use std::mem::MaybeUninit;
-/// use std::ptr;
 ///
 /// // Create an uninitialized array of `MaybeUninit`. The `assume_init` is
 /// // safe because the type we are claiming to have initialized here is a
@@ -22247,7 +22524,7 @@ use crate::slice;
 ///
 /// // For each item in the array, drop if we allocated it.
 /// for elem in &mut data[0..data_len] {
-///     unsafe { ptr::drop_in_place(elem.as_mut_ptr()); }
+///     unsafe { elem.assume_init_drop(); }
 /// }
 /// ```
 ///
@@ -22732,7 +23009,7 @@ impl<T> MaybeUninit<T> {
     /// implements the [`Copy`] trait or not. When using multiple copies of the
     /// data (by calling `assume_init_read` multiple times, or first calling
     /// `assume_init_read` and then [`assume_init`]), it is your responsibility
-    /// to ensure that that data may indeed be duplicated.
+    /// to ensure that data may indeed be duplicated.
     ///
     /// [inv]: #initialization-invariant
     /// [`assume_init`]: MaybeUninit::assume_init
@@ -23369,263 +23646,53 @@ impl<T> MaybeUninit<T> {
         }
     }
 }
+
+impl<T, const N: usize> MaybeUninit<[T; N]> {
+    /// Transposes a `MaybeUninit<[T; N]>` into a `[MaybeUninit<T>; N]`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(maybe_uninit_uninit_array_transpose)]
+    /// # use std::mem::MaybeUninit;
+    ///
+    /// let data: [MaybeUninit<u8>; 1000] = MaybeUninit::uninit().transpose();
+    /// ```
+    #[unstable(feature = "maybe_uninit_uninit_array_transpose", issue = "96097")]
+    #[inline]
+    pub const fn transpose(self) -> [MaybeUninit<T>; N] {
+        // SAFETY: T and MaybeUninit<T> have the same layout
+        unsafe { super::transmute_copy(&ManuallyDrop::new(self)) }
+    }
+}
+
+impl<T, const N: usize> [MaybeUninit<T>; N] {
+    /// Transposes a `[MaybeUninit<T>; N]` into a `MaybeUninit<[T; N]>`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(maybe_uninit_uninit_array_transpose)]
+    /// # use std::mem::MaybeUninit;
+    ///
+    /// let data = [MaybeUninit::<u8>::uninit(); 1000];
+    /// let data: MaybeUninit<[u8; 1000]> = data.transpose();
+    /// ```
+    #[unstable(feature = "maybe_uninit_uninit_array_transpose", issue = "96097")]
+    #[inline]
+    pub const fn transpose(self) -> MaybeUninit<[T; N]> {
+        // SAFETY: T and MaybeUninit<T> have the same layout
+        unsafe { super::transmute_copy(&ManuallyDrop::new(self)) }
+    }
+}
 }
 #[stable(feature = "maybe_uninit", since = "1.36.0")]
 pub use maybe_uninit::MaybeUninit;
 
-mod valid_align {
-use crate::convert::TryFrom;
-use crate::num::NonZeroUsize;
-use crate::{cmp, fmt, hash, mem, num};
-
-/// A type storing a `usize` which is a power of two, and thus
-/// represents a possible alignment in the rust abstract machine.
-///
-/// Note that particularly large alignments, while representable in this type,
-/// are likely not to be supported by actual allocators and linkers.
-#[derive(Copy, Clone)]
-#[repr(transparent)]
-pub(crate) struct ValidAlign(ValidAlignEnum);
-
-// ValidAlign is `repr(usize)`, but via extra steps.
-const _: () = assert!(mem::size_of::<ValidAlign>() == mem::size_of::<usize>());
-const _: () = assert!(mem::align_of::<ValidAlign>() == mem::align_of::<usize>());
-
-impl ValidAlign {
-    /// Creates a `ValidAlign` from a power-of-two `usize`.
-    ///
-    /// # Safety
-    ///
-    /// `align` must be a power of two.
-    ///
-    /// Equivalently, it must be `1 << exp` for some `exp` in `0..usize::BITS`.
-    /// It must *not* be zero.
-    #[inline]
-    pub(crate) const unsafe fn new_unchecked(align: usize) -> Self {
-        debug_assert!(align.is_power_of_two());
-
-        // SAFETY: By precondition, this must be a power of two, and
-        // our variants encompass all possible powers of two.
-        unsafe { mem::transmute::<usize, ValidAlign>(align) }
-    }
-
-    #[inline]
-    pub(crate) const fn as_nonzero(self) -> NonZeroUsize {
-        // SAFETY: All the discriminants are non-zero.
-        unsafe { NonZeroUsize::new_unchecked(self.0 as usize) }
-    }
-
-    /// Returns the base 2 logarithm of the alignment.
-    ///
-    /// This is always exact, as `self` represents a power of two.
-    #[inline]
-    pub(crate) fn log2(self) -> u32 {
-        self.as_nonzero().trailing_zeros()
-    }
-}
-
-impl fmt::Debug for ValidAlign {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?} (1 << {:?})", self.as_nonzero(), self.log2())
-    }
-}
-
-impl TryFrom<NonZeroUsize> for ValidAlign {
-    type Error = num::TryFromIntError;
-
-    #[inline]
-    fn try_from(align: NonZeroUsize) -> Result<ValidAlign, Self::Error> {
-        if align.is_power_of_two() {
-            // SAFETY: Just checked for power-of-two
-            unsafe { Ok(ValidAlign::new_unchecked(align.get())) }
-        } else {
-            Err(num::TryFromIntError(()))
-        }
-    }
-}
-
-impl TryFrom<usize> for ValidAlign {
-    type Error = num::TryFromIntError;
-
-    #[inline]
-    fn try_from(align: usize) -> Result<ValidAlign, Self::Error> {
-        if align.is_power_of_two() {
-            // SAFETY: Just checked for power-of-two
-            unsafe { Ok(ValidAlign::new_unchecked(align)) }
-        } else {
-            Err(num::TryFromIntError(()))
-        }
-    }
-}
-
-impl cmp::Eq for ValidAlign {}
-
-impl cmp::PartialEq for ValidAlign {
-    #[inline]
-    fn eq(&self, other: &Self) -> bool {
-        self.as_nonzero() == other.as_nonzero()
-    }
-}
-
-impl cmp::Ord for ValidAlign {
-    #[inline]
-    fn cmp(&self, other: &Self) -> cmp::Ordering {
-        self.as_nonzero().cmp(&other.as_nonzero())
-    }
-}
-
-impl cmp::PartialOrd for ValidAlign {
-    #[inline]
-    fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl hash::Hash for ValidAlign {
-    #[inline]
-    fn hash<H: hash::Hasher>(&self, state: &mut H) {
-        self.as_nonzero().hash(state)
-    }
-}
-
-#[cfg(target_pointer_width = "16")]
-type ValidAlignEnum = ValidAlignEnum16;
-#[cfg(target_pointer_width = "32")]
-type ValidAlignEnum = ValidAlignEnum32;
-#[cfg(target_pointer_width = "64")]
-type ValidAlignEnum = ValidAlignEnum64;
-
-#[derive(Copy, Clone)]
-#[repr(u16)]
-enum ValidAlignEnum16 {
-    _Align1Shl0 = 1 << 0,
-    _Align1Shl1 = 1 << 1,
-    _Align1Shl2 = 1 << 2,
-    _Align1Shl3 = 1 << 3,
-    _Align1Shl4 = 1 << 4,
-    _Align1Shl5 = 1 << 5,
-    _Align1Shl6 = 1 << 6,
-    _Align1Shl7 = 1 << 7,
-    _Align1Shl8 = 1 << 8,
-    _Align1Shl9 = 1 << 9,
-    _Align1Shl10 = 1 << 10,
-    _Align1Shl11 = 1 << 11,
-    _Align1Shl12 = 1 << 12,
-    _Align1Shl13 = 1 << 13,
-    _Align1Shl14 = 1 << 14,
-    _Align1Shl15 = 1 << 15,
-}
-
-#[derive(Copy, Clone)]
-#[repr(u32)]
-enum ValidAlignEnum32 {
-    _Align1Shl0 = 1 << 0,
-    _Align1Shl1 = 1 << 1,
-    _Align1Shl2 = 1 << 2,
-    _Align1Shl3 = 1 << 3,
-    _Align1Shl4 = 1 << 4,
-    _Align1Shl5 = 1 << 5,
-    _Align1Shl6 = 1 << 6,
-    _Align1Shl7 = 1 << 7,
-    _Align1Shl8 = 1 << 8,
-    _Align1Shl9 = 1 << 9,
-    _Align1Shl10 = 1 << 10,
-    _Align1Shl11 = 1 << 11,
-    _Align1Shl12 = 1 << 12,
-    _Align1Shl13 = 1 << 13,
-    _Align1Shl14 = 1 << 14,
-    _Align1Shl15 = 1 << 15,
-    _Align1Shl16 = 1 << 16,
-    _Align1Shl17 = 1 << 17,
-    _Align1Shl18 = 1 << 18,
-    _Align1Shl19 = 1 << 19,
-    _Align1Shl20 = 1 << 20,
-    _Align1Shl21 = 1 << 21,
-    _Align1Shl22 = 1 << 22,
-    _Align1Shl23 = 1 << 23,
-    _Align1Shl24 = 1 << 24,
-    _Align1Shl25 = 1 << 25,
-    _Align1Shl26 = 1 << 26,
-    _Align1Shl27 = 1 << 27,
-    _Align1Shl28 = 1 << 28,
-    _Align1Shl29 = 1 << 29,
-    _Align1Shl30 = 1 << 30,
-    _Align1Shl31 = 1 << 31,
-}
-
-#[derive(Copy, Clone)]
-#[repr(u64)]
-enum ValidAlignEnum64 {
-    _Align1Shl0 = 1 << 0,
-    _Align1Shl1 = 1 << 1,
-    _Align1Shl2 = 1 << 2,
-    _Align1Shl3 = 1 << 3,
-    _Align1Shl4 = 1 << 4,
-    _Align1Shl5 = 1 << 5,
-    _Align1Shl6 = 1 << 6,
-    _Align1Shl7 = 1 << 7,
-    _Align1Shl8 = 1 << 8,
-    _Align1Shl9 = 1 << 9,
-    _Align1Shl10 = 1 << 10,
-    _Align1Shl11 = 1 << 11,
-    _Align1Shl12 = 1 << 12,
-    _Align1Shl13 = 1 << 13,
-    _Align1Shl14 = 1 << 14,
-    _Align1Shl15 = 1 << 15,
-    _Align1Shl16 = 1 << 16,
-    _Align1Shl17 = 1 << 17,
-    _Align1Shl18 = 1 << 18,
-    _Align1Shl19 = 1 << 19,
-    _Align1Shl20 = 1 << 20,
-    _Align1Shl21 = 1 << 21,
-    _Align1Shl22 = 1 << 22,
-    _Align1Shl23 = 1 << 23,
-    _Align1Shl24 = 1 << 24,
-    _Align1Shl25 = 1 << 25,
-    _Align1Shl26 = 1 << 26,
-    _Align1Shl27 = 1 << 27,
-    _Align1Shl28 = 1 << 28,
-    _Align1Shl29 = 1 << 29,
-    _Align1Shl30 = 1 << 30,
-    _Align1Shl31 = 1 << 31,
-    _Align1Shl32 = 1 << 32,
-    _Align1Shl33 = 1 << 33,
-    _Align1Shl34 = 1 << 34,
-    _Align1Shl35 = 1 << 35,
-    _Align1Shl36 = 1 << 36,
-    _Align1Shl37 = 1 << 37,
-    _Align1Shl38 = 1 << 38,
-    _Align1Shl39 = 1 << 39,
-    _Align1Shl40 = 1 << 40,
-    _Align1Shl41 = 1 << 41,
-    _Align1Shl42 = 1 << 42,
-    _Align1Shl43 = 1 << 43,
-    _Align1Shl44 = 1 << 44,
-    _Align1Shl45 = 1 << 45,
-    _Align1Shl46 = 1 << 46,
-    _Align1Shl47 = 1 << 47,
-    _Align1Shl48 = 1 << 48,
-    _Align1Shl49 = 1 << 49,
-    _Align1Shl50 = 1 << 50,
-    _Align1Shl51 = 1 << 51,
-    _Align1Shl52 = 1 << 52,
-    _Align1Shl53 = 1 << 53,
-    _Align1Shl54 = 1 << 54,
-    _Align1Shl55 = 1 << 55,
-    _Align1Shl56 = 1 << 56,
-    _Align1Shl57 = 1 << 57,
-    _Align1Shl58 = 1 << 58,
-    _Align1Shl59 = 1 << 59,
-    _Align1Shl60 = 1 << 60,
-    _Align1Shl61 = 1 << 61,
-    _Align1Shl62 = 1 << 62,
-    _Align1Shl63 = 1 << 63,
-}
-}
-// For now this type is left crate-local.  It could potentially make sense to expose
-// it publicly, as it would be a nice parameter type for methods which need to take
-// alignment as a parameter, such as `Layout::padding_needed_for`.
-pub(crate) use valid_align::ValidAlign;
+// FIXME: This is left here for now to avoid complications around pending reverts.
+// Once <https://github.com/rust-lang/rust/issues/101899> is fully resolved,
+// this should be removed and the references in `alloc::Layout` updated.
+pub(crate) use ptr::Alignment as ValidAlign;
 
 mod transmutability {
 /// Are values of a type transmutable into values of another type?
@@ -23634,25 +23701,20 @@ mod transmutability {
 /// any value of type `Self` are safely transmutable into a value of type `Dst`, in a given `Context`,
 /// notwithstanding whatever safety checks you have asked the compiler to [`Assume`] are satisfied.
 #[unstable(feature = "transmutability", issue = "99571")]
-#[cfg_attr(not(bootstrap), lang = "transmute_trait")]
+#[lang = "transmute_trait"]
 #[rustc_on_unimplemented(
     message = "`{Src}` cannot be safely transmuted into `{Self}` in the defining scope of `{Context}`.",
     label = "`{Src}` cannot be safely transmuted into `{Self}` in the defining scope of `{Context}`."
 )]
-pub unsafe trait BikeshedIntrinsicFrom<
-    Src,
-    Context,
-    const ASSUME_ALIGNMENT: bool,
-    const ASSUME_LIFETIMES: bool,
-    const ASSUME_VALIDITY: bool,
-    const ASSUME_VISIBILITY: bool,
-> where
+pub unsafe trait BikeshedIntrinsicFrom<Src, Context, const ASSUME: Assume = { Assume::NOTHING }>
+where
     Src: ?Sized,
 {
 }
 
 /// What transmutation safety conditions shall the compiler assume that *you* are checking?
 #[unstable(feature = "transmutability", issue = "99571")]
+#[lang = "transmute_opts"]
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub struct Assume {
     /// When `true`, the compiler assumes that *you* are ensuring (either dynamically or statically) that
@@ -23663,13 +23725,82 @@ pub struct Assume {
     /// that violates Rust's memory model.
     pub lifetimes: bool,
 
+    /// When `true`, the compiler assumes that *you* have ensured that it is safe for you to violate the
+    /// type and field privacy of the destination type (and sometimes of the source type, too).
+    pub safety: bool,
+
     /// When `true`, the compiler assumes that *you* are ensuring that the source type is actually a valid
     /// instance of the destination type.
     pub validity: bool,
+}
 
-    /// When `true`, the compiler assumes that *you* have ensured that it is safe for you to violate the
-    /// type and field privacy of the destination type (and sometimes of the source type, too).
-    pub visibility: bool,
+impl Assume {
+    /// Do not assume that *you* have ensured any safety properties are met.
+    #[unstable(feature = "transmutability", issue = "99571")]
+    pub const NOTHING: Self =
+        Self { alignment: false, lifetimes: false, safety: false, validity: false };
+
+    /// Assume only that alignment conditions are met.
+    #[unstable(feature = "transmutability", issue = "99571")]
+    pub const ALIGNMENT: Self = Self { alignment: true, ..Self::NOTHING };
+
+    /// Assume only that lifetime conditions are met.
+    #[unstable(feature = "transmutability", issue = "99571")]
+    pub const LIFETIMES: Self = Self { lifetimes: true, ..Self::NOTHING };
+
+    /// Assume only that safety conditions are met.
+    #[unstable(feature = "transmutability", issue = "99571")]
+    pub const SAFETY: Self = Self { safety: true, ..Self::NOTHING };
+
+    /// Assume only that dynamically-satisfiable validity conditions are met.
+    #[unstable(feature = "transmutability", issue = "99571")]
+    pub const VALIDITY: Self = Self { validity: true, ..Self::NOTHING };
+
+    /// Assume both `self` and `other_assumptions`.
+    #[unstable(feature = "transmutability", issue = "99571")]
+    pub const fn and(self, other_assumptions: Self) -> Self {
+        Self {
+            alignment: self.alignment || other_assumptions.alignment,
+            lifetimes: self.lifetimes || other_assumptions.lifetimes,
+            safety: self.safety || other_assumptions.safety,
+            validity: self.validity || other_assumptions.validity,
+        }
+    }
+
+    /// Assume `self`, excepting `other_assumptions`.
+    #[unstable(feature = "transmutability", issue = "99571")]
+    pub const fn but_not(self, other_assumptions: Self) -> Self {
+        Self {
+            alignment: self.alignment && !other_assumptions.alignment,
+            lifetimes: self.lifetimes && !other_assumptions.lifetimes,
+            safety: self.safety && !other_assumptions.safety,
+            validity: self.validity && !other_assumptions.validity,
+        }
+    }
+}
+
+// FIXME(jswrenn): This const op is not actually usable. Why?
+// https://github.com/rust-lang/rust/pull/100726#issuecomment-1219928926
+#[unstable(feature = "transmutability", issue = "99571")]
+#[rustc_const_unstable(feature = "transmutability", issue = "99571")]
+impl const core::ops::Add for Assume {
+    type Output = Assume;
+
+    fn add(self, other_assumptions: Assume) -> Assume {
+        self.and(other_assumptions)
+    }
+}
+
+// FIXME(jswrenn): This const op is not actually usable. Why?
+// https://github.com/rust-lang/rust/pull/100726#issuecomment-1219928926
+#[unstable(feature = "transmutability", issue = "99571")]
+#[rustc_const_unstable(feature = "transmutability", issue = "99571")]
+impl const core::ops::Sub for Assume {
+    type Output = Assume;
+
+    fn sub(self, other_assumptions: Assume) -> Assume {
+        self.but_not(other_assumptions)
+    }
 }
 }
 #[unstable(feature = "transmutability", issue = "99571")]
@@ -24309,14 +24440,14 @@ pub unsafe fn zeroed<T>() -> T {
 /// correctly: it has the same effect as [`MaybeUninit::uninit().assume_init()`][uninit].
 /// As the [`assume_init` documentation][assume_init] explains,
 /// [the Rust compiler assumes][inv] that values are properly initialized.
-/// As a consequence, calling e.g. `mem::uninitialized::<bool>()` causes immediate
-/// undefined behavior for returning a `bool` that is not definitely either `true`
-/// or `false`. Worse, truly uninitialized memory like what gets returned here
+///
+/// Truly uninitialized memory like what gets returned here
 /// is special in that the compiler knows that it does not have a fixed value.
 /// This makes it undefined behavior to have uninitialized data in a variable even
 /// if that variable has an integer type.
-/// (Notice that the rules around uninitialized integers are not finalized yet, but
-/// until they are, it is advisable to avoid them.)
+///
+/// Therefore, it is immediate undefined behavior to call this function on nearly all types,
+/// including integer types and arrays of integer types, and even if the result is unused.
 ///
 /// [uninit]: MaybeUninit::uninit
 /// [assume_init]: MaybeUninit::assume_init
@@ -24653,18 +24784,18 @@ pub fn copy<T: Copy>(x: &T) -> T {
     *x
 }
 
-/// Interprets `src` as having type `&U`, and then reads `src` without moving
+/// Interprets `src` as having type `&Dst`, and then reads `src` without moving
 /// the contained value.
 ///
-/// This function will unsafely assume the pointer `src` is valid for [`size_of::<U>`][size_of]
-/// bytes by transmuting `&T` to `&U` and then reading the `&U` (except that this is done in a way
-/// that is correct even when `&U` has stricter alignment requirements than `&T`). It will also
-/// unsafely create a copy of the contained value instead of moving out of `src`.
+/// This function will unsafely assume the pointer `src` is valid for [`size_of::<Dst>`][size_of]
+/// bytes by transmuting `&Src` to `&Dst` and then reading the `&Dst` (except that this is done
+/// in a way that is correct even when `&Dst` has stricter alignment requirements than `&Src`).
+/// It will also unsafely create a copy of the contained value instead of moving out of `src`.
 ///
-/// It is not a compile-time error if `T` and `U` have different sizes, but it
-/// is highly encouraged to only invoke this function where `T` and `U` have the
-/// same size. This function triggers [undefined behavior][ub] if `U` is larger than
-/// `T`.
+/// It is not a compile-time error if `Src` and `Dst` have different sizes, but it
+/// is highly encouraged to only invoke this function where `Src` and `Dst` have the
+/// same size. This function triggers [undefined behavior][ub] if `Dst` is larger than
+/// `Src`.
 ///
 /// [ub]: ../../reference/behavior-considered-undefined.html
 ///
@@ -24697,19 +24828,22 @@ pub fn copy<T: Copy>(x: &T) -> T {
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_transmute_copy", issue = "83165")]
-pub const unsafe fn transmute_copy<T, U>(src: &T) -> U {
-    assert!(size_of::<T>() >= size_of::<U>(), "cannot transmute_copy if U is larger than T");
+pub const unsafe fn transmute_copy<Src, Dst>(src: &Src) -> Dst {
+    assert!(
+        size_of::<Src>() >= size_of::<Dst>(),
+        "cannot transmute_copy if Dst is larger than Src"
+    );
 
-    // If U has a higher alignment requirement, src might not be suitably aligned.
-    if align_of::<U>() > align_of::<T>() {
+    // If Dst has a higher alignment requirement, src might not be suitably aligned.
+    if align_of::<Dst>() > align_of::<Src>() {
         // SAFETY: `src` is a reference which is guaranteed to be valid for reads.
         // The caller must guarantee that the actual transmutation is safe.
-        unsafe { ptr::read_unaligned(src as *const T as *const U) }
+        unsafe { ptr::read_unaligned(src as *const Src as *const Dst) }
     } else {
         // SAFETY: `src` is a reference which is guaranteed to be valid for reads.
-        // We just checked that `src as *const U` was properly aligned.
+        // We just checked that `src as *const Dst` was properly aligned.
         // The caller must guarantee that the actual transmutation is safe.
-        unsafe { ptr::read(src as *const T as *const U) }
+        unsafe { ptr::read(src as *const Src as *const Dst) }
     }
 }
 
@@ -24822,6 +24956,47 @@ pub const fn discriminant<T>(v: &T) -> Discriminant<T> {
 pub const fn variant_count<T>() -> usize {
     intrinsics::variant_count::<T>()
 }
+
+/// Provides associated constants for various useful properties of types,
+/// to give them a canonical form in our code and make them easier to read.
+///
+/// This is here only to simplify all the ZST checks we need in the library.
+/// It's not on a stabilization track right now.
+#[doc(hidden)]
+#[unstable(feature = "sized_type_properties", issue = "none")]
+pub trait SizedTypeProperties: Sized {
+    /// `true` if this type requires no storage.
+    /// `false` if its [size](size_of) is greater than zero.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(sized_type_properties)]
+    /// use core::mem::SizedTypeProperties;
+    ///
+    /// fn do_something_with<T>() {
+    ///     if T::IS_ZST {
+    ///         // ... special approach ...
+    ///     } else {
+    ///         // ... the normal thing ...
+    ///     }
+    /// }
+    ///
+    /// struct MyUnit;
+    /// assert!(MyUnit::IS_ZST);
+    ///
+    /// // For negative checks, consider using UFCS to emphasize the negation
+    /// assert!(!<i32>::IS_ZST);
+    /// // As it can sometimes hide in the type otherwise
+    /// assert!(!String::IS_ZST);
+    /// ```
+    #[doc(hidden)]
+    #[unstable(feature = "sized_type_properties", issue = "none")]
+    const IS_ZST: bool = size_of::<Self>() == 0;
+}
+#[doc(hidden)]
+#[unstable(feature = "sized_type_properties", issue = "none")]
+impl<T> SizedTypeProperties for T {}
 }
 pub mod ptr {
 //! Manually manage memory through raw pointers.
@@ -24916,7 +25091,7 @@ pub mod ptr {
 //! isn't *pointer*-sized but address-space/offset/allocation-sized (we'll probably continue
 //! to conflate these notions). This would potentially make it possible to more efficiently
 //! target platforms where pointers are larger than offsets, such as CHERI and maybe some
-//! segmented architecures.
+//! segmented architectures.
 //!
 //! ## Provenance
 //!
@@ -24998,7 +25173,7 @@ pub mod ptr {
 //! a pointer to a usize is generally an operation which *only* extracts the address. It is
 //! therefore *impossible* to construct a valid pointer from a usize because there is no way
 //! to restore the address-space and provenance. In other words, pointer-integer-pointer
-//! roundtrips are not possible (in the sense that the resulting pointer is not dereferencable).
+//! roundtrips are not possible (in the sense that the resulting pointer is not dereferenceable).
 //!
 //! The key insight to making this model *at all* viable is the [`with_addr`][] method:
 //!
@@ -25098,7 +25273,7 @@ pub mod ptr {
 //!
 //! * Create an invalid pointer from just an address (see [`ptr::invalid`][]). This can
 //!   be used for sentinel values like `null` *or* to represent a tagged pointer that will
-//!   never be dereferencable. In general, it is always sound for an integer to pretend
+//!   never be dereferenceable. In general, it is always sound for an integer to pretend
 //!   to be a pointer "for fun" as long as you don't use operations on it which require
 //!   it to be valid (offset, read, write, etc).
 //!
@@ -25202,6 +25377,337 @@ use crate::intrinsics::{
 };
 
 use crate::mem::{self, MaybeUninit};
+
+mod alignment {
+use crate::convert::{TryFrom, TryInto};
+use crate::intrinsics::assert_unsafe_precondition;
+use crate::num::NonZeroUsize;
+use crate::{cmp, fmt, hash, mem, num};
+
+/// A type storing a `usize` which is a power of two, and thus
+/// represents a possible alignment in the rust abstract machine.
+///
+/// Note that particularly large alignments, while representable in this type,
+/// are likely not to be supported by actual allocators and linkers.
+#[unstable(feature = "ptr_alignment_type", issue = "102070")]
+#[derive(Copy, Clone, Eq, PartialEq)]
+#[repr(transparent)]
+pub struct Alignment(AlignmentEnum);
+
+// Alignment is `repr(usize)`, but via extra steps.
+const _: () = assert!(mem::size_of::<Alignment>() == mem::size_of::<usize>());
+const _: () = assert!(mem::align_of::<Alignment>() == mem::align_of::<usize>());
+
+fn _alignment_can_be_structurally_matched(a: Alignment) -> bool {
+    matches!(a, Alignment::MIN)
+}
+
+impl Alignment {
+    /// The smallest possible alignment, 1.
+    ///
+    /// All addresses are always aligned at least this much.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ptr_alignment_type)]
+    /// use std::ptr::Alignment;
+    ///
+    /// assert_eq!(Alignment::MIN.as_usize(), 1);
+    /// ```
+    #[unstable(feature = "ptr_alignment_type", issue = "102070")]
+    pub const MIN: Self = Self(AlignmentEnum::_Align1Shl0);
+
+    /// Returns the alignment for a type.
+    ///
+    /// This provides the same numerical value as [`mem::align_of`],
+    /// but in an `Alignment` instead of a `usize.
+    #[unstable(feature = "ptr_alignment_type", issue = "102070")]
+    #[inline]
+    pub const fn of<T>() -> Self {
+        // SAFETY: rustc ensures that type alignment is always a power of two.
+        unsafe { Alignment::new_unchecked(mem::align_of::<T>()) }
+    }
+
+    /// Creates an `Alignment` from a `usize`, or returns `None` if it's
+    /// not a power of two.
+    ///
+    /// Note that `0` is not a power of two, nor a valid alignment.
+    #[unstable(feature = "ptr_alignment_type", issue = "102070")]
+    #[inline]
+    pub const fn new(align: usize) -> Option<Self> {
+        if align.is_power_of_two() {
+            // SAFETY: Just checked it only has one bit set
+            Some(unsafe { Self::new_unchecked(align) })
+        } else {
+            None
+        }
+    }
+
+    /// Creates an `Alignment` from a power-of-two `usize`.
+    ///
+    /// # Safety
+    ///
+    /// `align` must be a power of two.
+    ///
+    /// Equivalently, it must be `1 << exp` for some `exp` in `0..usize::BITS`.
+    /// It must *not* be zero.
+    #[unstable(feature = "ptr_alignment_type", issue = "102070")]
+    #[rustc_const_unstable(feature = "ptr_alignment_type", issue = "102070")]
+    #[inline]
+    pub const unsafe fn new_unchecked(align: usize) -> Self {
+        // SAFETY: Precondition passed to the caller.
+        unsafe {
+            assert_unsafe_precondition!(
+               "Alignment::new_unchecked requires a power of two",
+                (align: usize) => align.is_power_of_two()
+            )
+        };
+
+        // SAFETY: By precondition, this must be a power of two, and
+        // our variants encompass all possible powers of two.
+        unsafe { mem::transmute::<usize, Alignment>(align) }
+    }
+
+    /// Returns the alignment as a [`usize`]
+    #[unstable(feature = "ptr_alignment_type", issue = "102070")]
+    #[rustc_const_unstable(feature = "ptr_alignment_type", issue = "102070")]
+    #[inline]
+    pub const fn as_usize(self) -> usize {
+        self.0 as usize
+    }
+
+    /// Returns the alignment as a [`NonZeroUsize`]
+    #[unstable(feature = "ptr_alignment_type", issue = "102070")]
+    #[inline]
+    pub const fn as_nonzero(self) -> NonZeroUsize {
+        // SAFETY: All the discriminants are non-zero.
+        unsafe { NonZeroUsize::new_unchecked(self.as_usize()) }
+    }
+
+    /// Returns the base-2 logarithm of the alignment.
+    ///
+    /// This is always exact, as `self` represents a power of two.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ptr_alignment_type)]
+    /// use std::ptr::Alignment;
+    ///
+    /// assert_eq!(Alignment::of::<u8>().log2(), 0);
+    /// assert_eq!(Alignment::new(1024).unwrap().log2(), 10);
+    /// ```
+    #[unstable(feature = "ptr_alignment_type", issue = "102070")]
+    #[inline]
+    pub fn log2(self) -> u32 {
+        self.as_nonzero().trailing_zeros()
+    }
+}
+
+#[unstable(feature = "ptr_alignment_type", issue = "102070")]
+impl fmt::Debug for Alignment {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?} (1 << {:?})", self.as_nonzero(), self.log2())
+    }
+}
+
+#[unstable(feature = "ptr_alignment_type", issue = "102070")]
+impl TryFrom<NonZeroUsize> for Alignment {
+    type Error = num::TryFromIntError;
+
+    #[inline]
+    fn try_from(align: NonZeroUsize) -> Result<Alignment, Self::Error> {
+        align.get().try_into()
+    }
+}
+
+#[unstable(feature = "ptr_alignment_type", issue = "102070")]
+impl TryFrom<usize> for Alignment {
+    type Error = num::TryFromIntError;
+
+    #[inline]
+    fn try_from(align: usize) -> Result<Alignment, Self::Error> {
+        Self::new(align).ok_or(num::TryFromIntError(()))
+    }
+}
+
+#[unstable(feature = "ptr_alignment_type", issue = "102070")]
+impl From<Alignment> for NonZeroUsize {
+    #[inline]
+    fn from(align: Alignment) -> NonZeroUsize {
+        align.as_nonzero()
+    }
+}
+
+#[unstable(feature = "ptr_alignment_type", issue = "102070")]
+impl From<Alignment> for usize {
+    #[inline]
+    fn from(align: Alignment) -> usize {
+        align.as_usize()
+    }
+}
+
+#[unstable(feature = "ptr_alignment_type", issue = "102070")]
+impl cmp::Ord for Alignment {
+    #[inline]
+    fn cmp(&self, other: &Self) -> cmp::Ordering {
+        self.as_nonzero().cmp(&other.as_nonzero())
+    }
+}
+
+#[unstable(feature = "ptr_alignment_type", issue = "102070")]
+impl cmp::PartialOrd for Alignment {
+    #[inline]
+    fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+#[unstable(feature = "ptr_alignment_type", issue = "102070")]
+impl hash::Hash for Alignment {
+    #[inline]
+    fn hash<H: hash::Hasher>(&self, state: &mut H) {
+        self.as_nonzero().hash(state)
+    }
+}
+
+#[cfg(target_pointer_width = "16")]
+type AlignmentEnum = AlignmentEnum16;
+#[cfg(target_pointer_width = "32")]
+type AlignmentEnum = AlignmentEnum32;
+#[cfg(target_pointer_width = "64")]
+type AlignmentEnum = AlignmentEnum64;
+
+#[derive(Copy, Clone, Eq, PartialEq)]
+#[repr(u16)]
+enum AlignmentEnum16 {
+    _Align1Shl0 = 1 << 0,
+    _Align1Shl1 = 1 << 1,
+    _Align1Shl2 = 1 << 2,
+    _Align1Shl3 = 1 << 3,
+    _Align1Shl4 = 1 << 4,
+    _Align1Shl5 = 1 << 5,
+    _Align1Shl6 = 1 << 6,
+    _Align1Shl7 = 1 << 7,
+    _Align1Shl8 = 1 << 8,
+    _Align1Shl9 = 1 << 9,
+    _Align1Shl10 = 1 << 10,
+    _Align1Shl11 = 1 << 11,
+    _Align1Shl12 = 1 << 12,
+    _Align1Shl13 = 1 << 13,
+    _Align1Shl14 = 1 << 14,
+    _Align1Shl15 = 1 << 15,
+}
+
+#[derive(Copy, Clone, Eq, PartialEq)]
+#[repr(u32)]
+enum AlignmentEnum32 {
+    _Align1Shl0 = 1 << 0,
+    _Align1Shl1 = 1 << 1,
+    _Align1Shl2 = 1 << 2,
+    _Align1Shl3 = 1 << 3,
+    _Align1Shl4 = 1 << 4,
+    _Align1Shl5 = 1 << 5,
+    _Align1Shl6 = 1 << 6,
+    _Align1Shl7 = 1 << 7,
+    _Align1Shl8 = 1 << 8,
+    _Align1Shl9 = 1 << 9,
+    _Align1Shl10 = 1 << 10,
+    _Align1Shl11 = 1 << 11,
+    _Align1Shl12 = 1 << 12,
+    _Align1Shl13 = 1 << 13,
+    _Align1Shl14 = 1 << 14,
+    _Align1Shl15 = 1 << 15,
+    _Align1Shl16 = 1 << 16,
+    _Align1Shl17 = 1 << 17,
+    _Align1Shl18 = 1 << 18,
+    _Align1Shl19 = 1 << 19,
+    _Align1Shl20 = 1 << 20,
+    _Align1Shl21 = 1 << 21,
+    _Align1Shl22 = 1 << 22,
+    _Align1Shl23 = 1 << 23,
+    _Align1Shl24 = 1 << 24,
+    _Align1Shl25 = 1 << 25,
+    _Align1Shl26 = 1 << 26,
+    _Align1Shl27 = 1 << 27,
+    _Align1Shl28 = 1 << 28,
+    _Align1Shl29 = 1 << 29,
+    _Align1Shl30 = 1 << 30,
+    _Align1Shl31 = 1 << 31,
+}
+
+#[derive(Copy, Clone, Eq, PartialEq)]
+#[repr(u64)]
+enum AlignmentEnum64 {
+    _Align1Shl0 = 1 << 0,
+    _Align1Shl1 = 1 << 1,
+    _Align1Shl2 = 1 << 2,
+    _Align1Shl3 = 1 << 3,
+    _Align1Shl4 = 1 << 4,
+    _Align1Shl5 = 1 << 5,
+    _Align1Shl6 = 1 << 6,
+    _Align1Shl7 = 1 << 7,
+    _Align1Shl8 = 1 << 8,
+    _Align1Shl9 = 1 << 9,
+    _Align1Shl10 = 1 << 10,
+    _Align1Shl11 = 1 << 11,
+    _Align1Shl12 = 1 << 12,
+    _Align1Shl13 = 1 << 13,
+    _Align1Shl14 = 1 << 14,
+    _Align1Shl15 = 1 << 15,
+    _Align1Shl16 = 1 << 16,
+    _Align1Shl17 = 1 << 17,
+    _Align1Shl18 = 1 << 18,
+    _Align1Shl19 = 1 << 19,
+    _Align1Shl20 = 1 << 20,
+    _Align1Shl21 = 1 << 21,
+    _Align1Shl22 = 1 << 22,
+    _Align1Shl23 = 1 << 23,
+    _Align1Shl24 = 1 << 24,
+    _Align1Shl25 = 1 << 25,
+    _Align1Shl26 = 1 << 26,
+    _Align1Shl27 = 1 << 27,
+    _Align1Shl28 = 1 << 28,
+    _Align1Shl29 = 1 << 29,
+    _Align1Shl30 = 1 << 30,
+    _Align1Shl31 = 1 << 31,
+    _Align1Shl32 = 1 << 32,
+    _Align1Shl33 = 1 << 33,
+    _Align1Shl34 = 1 << 34,
+    _Align1Shl35 = 1 << 35,
+    _Align1Shl36 = 1 << 36,
+    _Align1Shl37 = 1 << 37,
+    _Align1Shl38 = 1 << 38,
+    _Align1Shl39 = 1 << 39,
+    _Align1Shl40 = 1 << 40,
+    _Align1Shl41 = 1 << 41,
+    _Align1Shl42 = 1 << 42,
+    _Align1Shl43 = 1 << 43,
+    _Align1Shl44 = 1 << 44,
+    _Align1Shl45 = 1 << 45,
+    _Align1Shl46 = 1 << 46,
+    _Align1Shl47 = 1 << 47,
+    _Align1Shl48 = 1 << 48,
+    _Align1Shl49 = 1 << 49,
+    _Align1Shl50 = 1 << 50,
+    _Align1Shl51 = 1 << 51,
+    _Align1Shl52 = 1 << 52,
+    _Align1Shl53 = 1 << 53,
+    _Align1Shl54 = 1 << 54,
+    _Align1Shl55 = 1 << 55,
+    _Align1Shl56 = 1 << 56,
+    _Align1Shl57 = 1 << 57,
+    _Align1Shl58 = 1 << 58,
+    _Align1Shl59 = 1 << 59,
+    _Align1Shl60 = 1 << 60,
+    _Align1Shl61 = 1 << 61,
+    _Align1Shl62 = 1 << 62,
+    _Align1Shl63 = 1 << 63,
+}
+}
+#[unstable(feature = "ptr_alignment_type", issue = "102070")]
+pub use alignment::Alignment;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(inline)]
@@ -25353,16 +25859,16 @@ pub const fn from_raw_parts_mut<T: ?Sized>(
 }
 
 #[repr(C)]
-pub(crate) union PtrRepr<T: ?Sized> {
-    pub(crate) const_ptr: *const T,
-    pub(crate) mut_ptr: *mut T,
-    pub(crate) components: PtrComponents<T>,
+union PtrRepr<T: ?Sized> {
+    const_ptr: *const T,
+    mut_ptr: *mut T,
+    components: PtrComponents<T>,
 }
 
 #[repr(C)]
-pub(crate) struct PtrComponents<T: ?Sized> {
-    pub(crate) data_address: *const (),
-    pub(crate) metadata: <T as Pointee>::Metadata,
+struct PtrComponents<T: ?Sized> {
+    data_address: *const (),
+    metadata: <T as Pointee>::Metadata,
 }
 
 // Manual impl needed to avoid `T: Copy` bound.
@@ -25398,19 +25904,7 @@ pub struct DynMetadata<Dyn: ?Sized> {
     phantom: crate::marker::PhantomData<Dyn>,
 }
 
-#[cfg(not(bootstrap))]
 extern "C" {
-}
-
-/// The common prefix of all vtables. It is followed by function pointers for trait methods.
-///
-/// Private implementation detail of `DynMetadata::size_of` etc.
-#[repr(C)]
-#[cfg(bootstrap)]
-struct VTable {
-    drop_in_place: fn(*mut ()),
-    size_of: usize,
-    align_of: usize,
 }
 
 impl<Dyn: ?Sized> DynMetadata<Dyn> {
@@ -25420,9 +25914,6 @@ impl<Dyn: ?Sized> DynMetadata<Dyn> {
         // Note that "size stored in vtable" is *not* the same as "result of size_of_val_raw".
         // Consider a reference like `&(i32, dyn Send)`: the vtable will only store the size of the
         // `Send` part!
-        #[cfg(bootstrap)]
-        return self.vtable_ptr.size_of;
-        #[cfg(not(bootstrap))]
         // SAFETY: DynMetadata always contains a valid vtable pointer
         return unsafe {
             crate::intrinsics::vtable_size(self.vtable_ptr as *const VTable as *const ())
@@ -25432,9 +25923,6 @@ impl<Dyn: ?Sized> DynMetadata<Dyn> {
     /// Returns the alignment of the type associated with this vtable.
     #[inline]
     pub fn align_of(self) -> usize {
-        #[cfg(bootstrap)]
-        return self.vtable_ptr.align_of;
-        #[cfg(not(bootstrap))]
         // SAFETY: DynMetadata always contains a valid vtable pointer
         return unsafe {
             crate::intrinsics::vtable_align(self.vtable_ptr as *const VTable as *const ())
@@ -25502,7 +25990,6 @@ impl<Dyn: ?Sized> Hash for DynMetadata<Dyn> {
     }
 }
 }
-pub(crate) use metadata::PtrRepr;
 #[unstable(feature = "ptr_metadata", issue = "81513")]
 pub use metadata::{from_raw_parts, from_raw_parts_mut, metadata, DynMetadata, Pointee, Thin};
 
@@ -25511,6 +25998,7 @@ use crate::cmp::Ordering;
 use crate::convert::From;
 use crate::fmt;
 use crate::hash;
+use crate::intrinsics::assert_unsafe_precondition;
 use crate::marker::Unsize;
 use crate::mem::{self, MaybeUninit};
 use crate::num::NonZeroUsize;
@@ -25704,7 +26192,10 @@ impl<T: ?Sized> NonNull<T> {
     #[inline]
     pub const unsafe fn new_unchecked(ptr: *mut T) -> Self {
         // SAFETY: the caller must guarantee that `ptr` is non-null.
-        unsafe { NonNull { pointer: ptr as _ } }
+        unsafe {
+            assert_unsafe_precondition!("NonNull::new_unchecked requires that the pointer is non-null", [T: ?Sized](ptr: *mut T) => !ptr.is_null());
+            NonNull { pointer: ptr as _ }
+        }
     }
 
     /// Creates a new `NonNull` if `ptr` is non-null.
@@ -26550,7 +27041,10 @@ impl<T: ?Sized> *const T {
     pub const fn is_null(self) -> bool {
         // Compare via a cast to a thin pointer, so fat pointers are only
         // considering their "data" part for null-ness.
-        (self as *const u8).guaranteed_eq(null())
+        match (self as *const u8).guaranteed_eq(null()) {
+            None => false,
+            Some(res) => res,
+        }
     }
 
     /// Casts to a pointer of another type.
@@ -26609,8 +27103,8 @@ impl<T: ?Sized> *const T {
     ///
     /// This is a bit safer than `as` because it wouldn't silently change the type if the code is
     /// refactored.
-    #[unstable(feature = "ptr_const_cast", issue = "92675")]
-    #[rustc_const_unstable(feature = "ptr_const_cast", issue = "92675")]
+    #[stable(feature = "ptr_const_cast", since = "1.65.0")]
+    #[rustc_const_stable(feature = "ptr_const_cast", since = "1.65.0")]
     pub const fn cast_mut(self) -> *mut T {
         self as _
     }
@@ -26668,7 +27162,7 @@ impl<T: ?Sized> *const T {
     /// This is similar to `self as usize`, which semantically discards *provenance* and
     /// *address-space* information. However, unlike `self as usize`, casting the returned address
     /// back to a pointer yields [`invalid`][], which is undefined behavior to dereference. To
-    /// properly restore the lost information and obtain a dereferencable pointer, use
+    /// properly restore the lost information and obtain a dereferenceable pointer, use
     /// [`with_addr`][pointer::with_addr] or [`map_addr`][pointer::map_addr].
     ///
     /// If using those APIs is not possible because there is no way to preserve a pointer with the
@@ -26763,7 +27257,7 @@ impl<T: ?Sized> *const T {
         let offset = dest_addr.wrapping_sub(self_addr);
 
         // This is the canonical desugarring of this operation
-        self.cast::<u8>().wrapping_offset(offset).cast::<T>()
+        self.wrapping_byte_offset(offset)
     }
 
     /// Creates a new pointer by mapping `self`'s address to a new one.
@@ -27073,6 +27567,20 @@ impl<T: ?Sized> *const T {
         from_raw_parts::<T>(self.cast::<u8>().wrapping_offset(count).cast::<()>(), metadata(self))
     }
 
+    /// Masks out bits of the pointer according to a mask.
+    ///
+    /// This is convenience for `ptr.map_addr(|a| a & mask)`.
+    ///
+    /// For non-`Sized` pointees this operation changes only the data pointer,
+    /// leaving the metadata untouched.
+    #[unstable(feature = "ptr_mask", issue = "98290")]
+    #[must_use = "returns a new pointer rather than modifying its argument"]
+    #[inline(always)]
+    pub fn mask(self, mask: usize) -> *const T {
+        let this = intrinsics::ptr_mask(self.cast::<()>(), mask);
+        from_raw_parts::<T>(this, metadata(self))
+    }
+
     /// Calculates the distance between two pointers. The returned value is in
     /// units of T: the distance in bytes divided by `mem::size_of::<T>()`.
     ///
@@ -27155,7 +27663,7 @@ impl<T: ?Sized> *const T {
     /// }
     /// ```
     #[stable(feature = "ptr_offset_from", since = "1.47.0")]
-    #[rustc_const_unstable(feature = "const_ptr_offset_from", issue = "92980")]
+    #[rustc_const_stable(feature = "const_ptr_offset_from", since = "1.65.0")]
     #[inline]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn offset_from(self, origin: *const T) -> isize
@@ -27191,7 +27699,7 @@ impl<T: ?Sized> *const T {
     /// units of T: the distance in bytes is divided by `mem::size_of::<T>()`.
     ///
     /// This computes the same value that [`offset_from`](#method.offset_from)
-    /// would compute, but with the added precondition that that the offset is
+    /// would compute, but with the added precondition that the offset is
     /// guaranteed to be non-negative.  This method is equivalent to
     /// `usize::from(self.offset_from(origin)).unwrap_unchecked()`,
     /// but it provides slightly more information to the optimizer, which can
@@ -27254,9 +27762,15 @@ impl<T: ?Sized> *const T {
     where
         T: Sized,
     {
+        let this = self;
         // SAFETY: The comparison has no side-effects, and the intrinsic
         // does this check internally in the CTFE implementation.
-        unsafe { assert_unsafe_precondition!(self >= origin) };
+        unsafe {
+            assert_unsafe_precondition!(
+                "ptr::sub_ptr requires `this >= origin`",
+                [T](this: *const T, origin: *const T) => this >= origin
+            )
+        };
 
         let pointee_size = mem::size_of::<T>();
         assert!(0 < pointee_size && pointee_size <= isize::MAX as usize);
@@ -27266,20 +27780,16 @@ impl<T: ?Sized> *const T {
 
     /// Returns whether two pointers are guaranteed to be equal.
     ///
-    /// At runtime this function behaves like `self == other`.
+    /// At runtime this function behaves like `Some(self == other)`.
     /// However, in some contexts (e.g., compile-time evaluation),
     /// it is not always possible to determine equality of two pointers, so this function may
-    /// spuriously return `false` for pointers that later actually turn out to be equal.
-    /// But when it returns `true`, the pointers are guaranteed to be equal.
+    /// spuriously return `None` for pointers that later actually turn out to have its equality known.
+    /// But when it returns `Some`, the pointers' equality is guaranteed to be known.
     ///
-    /// This function is the mirror of [`guaranteed_ne`], but not its inverse. There are pointer
-    /// comparisons for which both functions return `false`.
-    ///
-    /// [`guaranteed_ne`]: #method.guaranteed_ne
-    ///
-    /// The return value may change depending on the compiler version and unsafe code must not
+    /// The return value may change from `Some` to `None` and vice versa depending on the compiler
+    /// version and unsafe code must not
     /// rely on the result of this function for soundness. It is suggested to only use this function
-    /// for performance optimizations where spurious `false` return values by this function do not
+    /// for performance optimizations where spurious `None` return values by this function do not
     /// affect the outcome, but just the performance.
     /// The consequences of using this method to make runtime and compile-time code behave
     /// differently have not been explored. This method should not be used to introduce such
@@ -27288,29 +27798,28 @@ impl<T: ?Sized> *const T {
     #[unstable(feature = "const_raw_ptr_comparison", issue = "53020")]
     #[rustc_const_unstable(feature = "const_raw_ptr_comparison", issue = "53020")]
     #[inline]
-    pub const fn guaranteed_eq(self, other: *const T) -> bool
+    pub const fn guaranteed_eq(self, other: *const T) -> Option<bool>
     where
         T: Sized,
     {
-        intrinsics::ptr_guaranteed_eq(self, other)
+        match intrinsics::ptr_guaranteed_cmp(self as _, other as _) {
+            2 => None,
+            other => Some(other == 1),
+        }
     }
 
-    /// Returns whether two pointers are guaranteed to be unequal.
+    /// Returns whether two pointers are guaranteed to be inequal.
     ///
-    /// At runtime this function behaves like `self != other`.
+    /// At runtime this function behaves like `Some(self != other)`.
     /// However, in some contexts (e.g., compile-time evaluation),
-    /// it is not always possible to determine the inequality of two pointers, so this function may
-    /// spuriously return `false` for pointers that later actually turn out to be unequal.
-    /// But when it returns `true`, the pointers are guaranteed to be unequal.
+    /// it is not always possible to determine inequality of two pointers, so this function may
+    /// spuriously return `None` for pointers that later actually turn out to have its inequality known.
+    /// But when it returns `Some`, the pointers' inequality is guaranteed to be known.
     ///
-    /// This function is the mirror of [`guaranteed_eq`], but not its inverse. There are pointer
-    /// comparisons for which both functions return `false`.
-    ///
-    /// [`guaranteed_eq`]: #method.guaranteed_eq
-    ///
-    /// The return value may change depending on the compiler version and unsafe code must not
+    /// The return value may change from `Some` to `None` and vice versa depending on the compiler
+    /// version and unsafe code must not
     /// rely on the result of this function for soundness. It is suggested to only use this function
-    /// for performance optimizations where spurious `false` return values by this function do not
+    /// for performance optimizations where spurious `None` return values by this function do not
     /// affect the outcome, but just the performance.
     /// The consequences of using this method to make runtime and compile-time code behave
     /// differently have not been explored. This method should not be used to introduce such
@@ -27319,11 +27828,14 @@ impl<T: ?Sized> *const T {
     #[unstable(feature = "const_raw_ptr_comparison", issue = "53020")]
     #[rustc_const_unstable(feature = "const_raw_ptr_comparison", issue = "53020")]
     #[inline]
-    pub const fn guaranteed_ne(self, other: *const T) -> bool
+    pub const fn guaranteed_ne(self, other: *const T) -> Option<bool>
     where
         T: Sized,
     {
-        intrinsics::ptr_guaranteed_ne(self, other)
+        match self.guaranteed_eq(other) {
+            None => None,
+            Some(eq) => Some(!eq),
+        }
     }
 
     /// Calculates the offset from a pointer (convenience for `.offset(count as isize)`).
@@ -27781,20 +28293,21 @@ impl<T: ?Sized> *const T {
     /// Accessing adjacent `u8` as `u16`
     ///
     /// ```
-    /// # fn foo(n: usize) {
-    /// # use std::mem::align_of;
+    /// use std::mem::align_of;
+    ///
     /// # unsafe {
-    /// let x = [5u8, 6u8, 7u8, 8u8, 9u8];
-    /// let ptr = x.as_ptr().add(n) as *const u8;
+    /// let x = [5_u8, 6, 7, 8, 9];
+    /// let ptr = x.as_ptr();
     /// let offset = ptr.align_offset(align_of::<u16>());
-    /// if offset < x.len() - n - 1 {
-    ///     let u16_ptr = ptr.add(offset) as *const u16;
-    ///     assert_ne!(*u16_ptr, 500);
+    ///
+    /// if offset < x.len() - 1 {
+    ///     let u16_ptr = ptr.add(offset).cast::<u16>();
+    ///     assert!(*u16_ptr == u16::from_ne_bytes([5, 6]) || *u16_ptr == u16::from_ne_bytes([6, 7]));
     /// } else {
     ///     // while the pointer can be aligned via `offset`, it would point
     ///     // outside the allocation
     /// }
-    /// # } }
+    /// # }
     /// ```
     #[stable(feature = "align_offset", since = "1.36.0")]
     #[rustc_const_unstable(feature = "const_align_offset", issue = "90962")]
@@ -27850,11 +28363,8 @@ impl<T: ?Sized> *const T {
             panic!("is_aligned_to: align is not a power-of-two");
         }
 
-        // SAFETY: `is_power_of_two()` will return `false` for zero.
-        unsafe { core::intrinsics::assume(align != 0) };
-
         // Cast is needed for `T: !Sized`
-        self.cast::<u8>().addr() % align == 0
+        self.cast::<u8>().addr() & align - 1 == 0
     }
 }
 
@@ -28076,7 +28586,10 @@ impl<T: ?Sized> *mut T {
     pub const fn is_null(self) -> bool {
         // Compare via a cast to a thin pointer, so fat pointers are only
         // considering their "data" part for null-ness.
-        (self as *mut u8).guaranteed_eq(null_mut())
+        match (self as *mut u8).guaranteed_eq(null_mut()) {
+            None => false,
+            Some(res) => res,
+        }
     }
 
     /// Casts to a pointer of another type.
@@ -28118,10 +28631,14 @@ impl<T: ?Sized> *mut T {
     #[unstable(feature = "set_ptr_value", issue = "75091")]
     #[must_use = "returns a new pointer rather than modifying its argument"]
     #[inline]
-    pub fn with_metadata_of<U>(self, mut val: *mut U) -> *mut U
+    pub fn with_metadata_of<U>(self, val: *const U) -> *mut U
     where
         U: ?Sized,
     {
+        // Prepare in the type system that we will replace the pointer value with a mutable
+        // pointer, taking the mutable provenance from the `self` pointer.
+        let mut val = val as *mut U;
+        // Pointer to the pointer value within the value.
         let target = &mut val as *mut *mut U as *mut *mut u8;
         // SAFETY: In case of a thin pointer, this operations is identical
         // to a simple assignment. In case of a fat pointer, with the current
@@ -28141,8 +28658,8 @@ impl<T: ?Sized> *mut T {
     /// coercion.
     ///
     /// [`cast_mut`]: #method.cast_mut
-    #[unstable(feature = "ptr_const_cast", issue = "92675")]
-    #[rustc_const_unstable(feature = "ptr_const_cast", issue = "92675")]
+    #[stable(feature = "ptr_const_cast", since = "1.65.0")]
+    #[rustc_const_stable(feature = "ptr_const_cast", since = "1.65.0")]
     pub const fn cast_const(self) -> *const T {
         self as _
     }
@@ -28201,7 +28718,7 @@ impl<T: ?Sized> *mut T {
     /// This is similar to `self as usize`, which semantically discards *provenance* and
     /// *address-space* information. However, unlike `self as usize`, casting the returned address
     /// back to a pointer yields [`invalid`][], which is undefined behavior to dereference. To
-    /// properly restore the lost information and obtain a dereferencable pointer, use
+    /// properly restore the lost information and obtain a dereferenceable pointer, use
     /// [`with_addr`][pointer::with_addr] or [`map_addr`][pointer::map_addr].
     ///
     /// If using those APIs is not possible because there is no way to preserve a pointer with the
@@ -28296,7 +28813,7 @@ impl<T: ?Sized> *mut T {
         let offset = dest_addr.wrapping_sub(self_addr);
 
         // This is the canonical desugarring of this operation
-        self.cast::<u8>().wrapping_offset(offset).cast::<T>()
+        self.wrapping_byte_offset(offset)
     }
 
     /// Creates a new pointer by mapping `self`'s address to a new one.
@@ -28616,6 +29133,20 @@ impl<T: ?Sized> *mut T {
         )
     }
 
+    /// Masks out bits of the pointer according to a mask.
+    ///
+    /// This is convenience for `ptr.map_addr(|a| a & mask)`.
+    ///
+    /// For non-`Sized` pointees this operation changes only the data pointer,
+    /// leaving the metadata untouched.
+    #[unstable(feature = "ptr_mask", issue = "98290")]
+    #[must_use = "returns a new pointer rather than modifying its argument"]
+    #[inline(always)]
+    pub fn mask(self, mask: usize) -> *mut T {
+        let this = intrinsics::ptr_mask(self.cast::<()>(), mask) as *mut ();
+        from_raw_parts_mut::<T>(this, metadata(self))
+    }
+
     /// Returns `None` if the pointer is null, or else returns a unique reference to
     /// the value wrapped in `Some`. If the value may be uninitialized, [`as_uninit_mut`]
     /// must be used instead.
@@ -28723,20 +29254,16 @@ impl<T: ?Sized> *mut T {
 
     /// Returns whether two pointers are guaranteed to be equal.
     ///
-    /// At runtime this function behaves like `self == other`.
+    /// At runtime this function behaves like `Some(self == other)`.
     /// However, in some contexts (e.g., compile-time evaluation),
     /// it is not always possible to determine equality of two pointers, so this function may
-    /// spuriously return `false` for pointers that later actually turn out to be equal.
-    /// But when it returns `true`, the pointers are guaranteed to be equal.
+    /// spuriously return `None` for pointers that later actually turn out to have its equality known.
+    /// But when it returns `Some`, the pointers' equality is guaranteed to be known.
     ///
-    /// This function is the mirror of [`guaranteed_ne`], but not its inverse. There are pointer
-    /// comparisons for which both functions return `false`.
-    ///
-    /// [`guaranteed_ne`]: #method.guaranteed_ne
-    ///
-    /// The return value may change depending on the compiler version and unsafe code might not
+    /// The return value may change from `Some` to `None` and vice versa depending on the compiler
+    /// version and unsafe code must not
     /// rely on the result of this function for soundness. It is suggested to only use this function
-    /// for performance optimizations where spurious `false` return values by this function do not
+    /// for performance optimizations where spurious `None` return values by this function do not
     /// affect the outcome, but just the performance.
     /// The consequences of using this method to make runtime and compile-time code behave
     /// differently have not been explored. This method should not be used to introduce such
@@ -28745,29 +29272,25 @@ impl<T: ?Sized> *mut T {
     #[unstable(feature = "const_raw_ptr_comparison", issue = "53020")]
     #[rustc_const_unstable(feature = "const_raw_ptr_comparison", issue = "53020")]
     #[inline]
-    pub const fn guaranteed_eq(self, other: *mut T) -> bool
+    pub const fn guaranteed_eq(self, other: *mut T) -> Option<bool>
     where
         T: Sized,
     {
-        intrinsics::ptr_guaranteed_eq(self as *const _, other as *const _)
+        (self as *const T).guaranteed_eq(other as _)
     }
 
-    /// Returns whether two pointers are guaranteed to be unequal.
+    /// Returns whether two pointers are guaranteed to be inequal.
     ///
-    /// At runtime this function behaves like `self != other`.
+    /// At runtime this function behaves like `Some(self != other)`.
     /// However, in some contexts (e.g., compile-time evaluation),
-    /// it is not always possible to determine the inequality of two pointers, so this function may
-    /// spuriously return `false` for pointers that later actually turn out to be unequal.
-    /// But when it returns `true`, the pointers are guaranteed to be unequal.
+    /// it is not always possible to determine inequality of two pointers, so this function may
+    /// spuriously return `None` for pointers that later actually turn out to have its inequality known.
+    /// But when it returns `Some`, the pointers' inequality is guaranteed to be known.
     ///
-    /// This function is the mirror of [`guaranteed_eq`], but not its inverse. There are pointer
-    /// comparisons for which both functions return `false`.
-    ///
-    /// [`guaranteed_eq`]: #method.guaranteed_eq
-    ///
-    /// The return value may change depending on the compiler version and unsafe code might not
+    /// The return value may change from `Some` to `None` and vice versa depending on the compiler
+    /// version and unsafe code must not
     /// rely on the result of this function for soundness. It is suggested to only use this function
-    /// for performance optimizations where spurious `false` return values by this function do not
+    /// for performance optimizations where spurious `None` return values by this function do not
     /// affect the outcome, but just the performance.
     /// The consequences of using this method to make runtime and compile-time code behave
     /// differently have not been explored. This method should not be used to introduce such
@@ -28776,11 +29299,11 @@ impl<T: ?Sized> *mut T {
     #[unstable(feature = "const_raw_ptr_comparison", issue = "53020")]
     #[rustc_const_unstable(feature = "const_raw_ptr_comparison", issue = "53020")]
     #[inline]
-    pub const unsafe fn guaranteed_ne(self, other: *mut T) -> bool
+    pub const fn guaranteed_ne(self, other: *mut T) -> Option<bool>
     where
         T: Sized,
     {
-        intrinsics::ptr_guaranteed_ne(self as *const _, other as *const _)
+        (self as *const T).guaranteed_ne(other as _)
     }
 
     /// Calculates the distance between two pointers. The returned value is in
@@ -28865,7 +29388,7 @@ impl<T: ?Sized> *mut T {
     /// }
     /// ```
     #[stable(feature = "ptr_offset_from", since = "1.47.0")]
-    #[rustc_const_unstable(feature = "const_ptr_offset_from", issue = "92980")]
+    #[rustc_const_stable(feature = "const_ptr_offset_from", since = "1.65.0")]
     #[inline(always)]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn offset_from(self, origin: *const T) -> isize
@@ -28899,7 +29422,7 @@ impl<T: ?Sized> *mut T {
     /// units of T: the distance in bytes is divided by `mem::size_of::<T>()`.
     ///
     /// This computes the same value that [`offset_from`](#method.offset_from)
-    /// would compute, but with the added precondition that that the offset is
+    /// would compute, but with the added precondition that the offset is
     /// guaranteed to be non-negative.  This method is equivalent to
     /// `usize::from(self.offset_from(origin)).unwrap_unchecked()`,
     /// but it provides slightly more information to the optimizer, which can
@@ -29586,20 +30109,23 @@ impl<T: ?Sized> *mut T {
     /// Accessing adjacent `u8` as `u16`
     ///
     /// ```
-    /// # fn foo(n: usize) {
-    /// # use std::mem::align_of;
+    /// use std::mem::align_of;
+    ///
     /// # unsafe {
-    /// let x = [5u8, 6u8, 7u8, 8u8, 9u8];
-    /// let ptr = x.as_ptr().add(n) as *const u8;
+    /// let mut x = [5_u8, 6, 7, 8, 9];
+    /// let ptr = x.as_mut_ptr();
     /// let offset = ptr.align_offset(align_of::<u16>());
-    /// if offset < x.len() - n - 1 {
-    ///     let u16_ptr = ptr.add(offset) as *const u16;
-    ///     assert_ne!(*u16_ptr, 500);
+    ///
+    /// if offset < x.len() - 1 {
+    ///     let u16_ptr = ptr.add(offset).cast::<u16>();
+    ///     *u16_ptr = 0;
+    ///
+    ///     assert!(x == [0, 0, 7, 8, 9] || x == [5, 0, 0, 8, 9]);
     /// } else {
     ///     // while the pointer can be aligned via `offset`, it would point
     ///     // outside the allocation
     /// }
-    /// # } }
+    /// # }
     /// ```
     #[stable(feature = "align_offset", since = "1.36.0")]
     #[rustc_const_unstable(feature = "const_align_offset", issue = "90962")]
@@ -29655,11 +30181,8 @@ impl<T: ?Sized> *mut T {
             panic!("is_aligned_to: align is not a power-of-two");
         }
 
-        // SAFETY: `is_power_of_two()` will return `false` for zero.
-        unsafe { core::intrinsics::assume(align != 0) };
-
         // Cast is needed for `T: !Sized`
-        self.cast::<u8>().addr() % align == 0
+        self.cast::<u8>().addr() & align - 1 == 0
     }
 }
 
@@ -30187,12 +30710,21 @@ pub const fn invalid_mut<T>(addr: usize) -> *mut T {
 /// Convert an address back to a pointer, picking up a previously 'exposed' provenance.
 ///
 /// This is equivalent to `addr as *const T`. The provenance of the returned pointer is that of *any*
-/// pointer that was previously passed to [`expose_addr`][pointer::expose_addr] or a `ptr as usize`
-/// cast. If there is no previously 'exposed' provenance that justifies the way this pointer will be
-/// used, the program has undefined behavior. Note that there is no algorithm that decides which
-/// provenance will be used. You can think of this as "guessing" the right provenance, and the guess
-/// will be "maximally in your favor", in the sense that if there is any way to avoid undefined
-/// behavior, then that is the guess that will be taken.
+/// pointer that was previously exposed by passing it to [`expose_addr`][pointer::expose_addr],
+/// or a `ptr as usize` cast. In addition, memory which is outside the control of the Rust abstract
+/// machine (MMIO registers, for example) is always considered to be exposed, so long as this memory
+/// is disjoint from memory that will be used by the abstract machine such as the stack, heap,
+/// and statics.
+///
+/// If there is no 'exposed' provenance that justifies the way this pointer will be used,
+/// the program has undefined behavior. In particular, the aliasing rules still apply: pointers
+/// and references that have been invalidated due to aliasing accesses cannot be used any more,
+/// even if they have been exposed!
+///
+/// Note that there is no algorithm that decides which provenance will be used. You can think of this
+/// as "guessing" the right provenance, and the guess will be "maximally in your favor", in the sense
+/// that if there is any way to avoid undefined behavior (while upholding all aliasing requirements),
+/// then that is the guess that will be taken.
 ///
 /// On platforms with multiple address spaces, it is your responsibility to ensure that the
 /// address makes sense in the address space that this pointer will be used with.
@@ -30212,6 +30744,7 @@ pub const fn invalid_mut<T>(addr: usize) -> *mut T {
 #[must_use]
 #[inline]
 #[unstable(feature = "strict_provenance", issue = "95228")]
+#[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 pub fn from_exposed_addr<T>(addr: usize) -> *const T
 where
     T: Sized,
@@ -30248,6 +30781,7 @@ where
 #[must_use]
 #[inline]
 #[unstable(feature = "strict_provenance", issue = "95228")]
+#[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 pub fn from_exposed_addr_mut<T>(addr: usize) -> *mut T
 where
     T: Sized,
@@ -30494,6 +31028,9 @@ pub const unsafe fn swap_nonoverlapping<T>(x: *mut T, y: *mut T, count: usize) {
     // valid for writes and properly aligned.
     unsafe {
         assert_unsafe_precondition!(
+            "ptr::swap_nonoverlapping requires that both pointer arguments are aligned and non-null \
+            and the specified memory ranges do not overlap",
+            [T](x: *mut T, y: *mut T, count: usize) =>
             is_aligned_and_not_null(x)
                 && is_aligned_and_not_null(y)
                 && is_nonoverlapping(x, y, count)
@@ -30590,7 +31127,10 @@ pub const unsafe fn replace<T>(dst: *mut T, mut src: T) -> T {
     // and cannot overlap `src` since `dst` must point to a distinct
     // allocated object.
     unsafe {
-        assert_unsafe_precondition!(is_aligned_and_not_null(dst));
+        assert_unsafe_precondition!(
+            "ptr::replace requires that the pointer argument is aligned and non-null",
+            [T](dst: *mut T) => is_aligned_and_not_null(dst)
+        );
         mem::swap(&mut *dst, &mut src); // cannot overlap
     }
     src
@@ -30721,6 +31261,10 @@ pub const unsafe fn read<T>(src: *const T) -> T {
     // Also, since we just wrote a valid value into `tmp`, it is guaranteed
     // to be properly initialized.
     unsafe {
+        assert_unsafe_precondition!(
+            "ptr::read requires that the pointer argument is aligned and non-null",
+            [T](src: *const T) => is_aligned_and_not_null(src)
+        );
         copy_nonoverlapping(src, tmp.as_mut_ptr(), 1);
         tmp.assume_init()
     }
@@ -30914,6 +31458,10 @@ pub const unsafe fn write<T>(dst: *mut T, src: T) {
     // `dst` cannot overlap `src` because the caller has mutable access
     // to `dst` while `src` is owned by this function.
     unsafe {
+        assert_unsafe_precondition!(
+            "ptr::write requires that the pointer argument is aligned and non-null",
+            [T](dst: *mut T) => is_aligned_and_not_null(dst)
+        );
         copy_nonoverlapping(&src as *const T, dst, 1);
         intrinsics::forget(src);
     }
@@ -31077,7 +31625,10 @@ pub const unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
 pub unsafe fn read_volatile<T>(src: *const T) -> T {
     // SAFETY: the caller must uphold the safety contract for `volatile_load`.
     unsafe {
-        assert_unsafe_precondition!(is_aligned_and_not_null(src));
+        assert_unsafe_precondition!(
+            "ptr::read_volatile requires that the pointer argument is aligned and non-null",
+            [T](src: *const T) => is_aligned_and_not_null(src)
+        );
         intrinsics::volatile_load(src)
     }
 }
@@ -31148,7 +31699,10 @@ pub unsafe fn read_volatile<T>(src: *const T) -> T {
 pub unsafe fn write_volatile<T>(dst: *mut T, src: T) {
     // SAFETY: the caller must uphold the safety contract for `volatile_store`.
     unsafe {
-        assert_unsafe_precondition!(is_aligned_and_not_null(dst));
+        assert_unsafe_precondition!(
+            "ptr::write_volatile requires that the pointer argument is aligned and non-null",
+            [T](dst: *mut T) => is_aligned_and_not_null(dst)
+        );
         intrinsics::volatile_store(dst, src);
     }
 }
@@ -31335,6 +31889,12 @@ pub(crate) unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
 /// by their address rather than comparing the values they point to
 /// (which is what the `PartialEq for &T` implementation does).
 ///
+/// When comparing wide pointers, both the address and the metadata are tested for equality.
+/// However, note that comparing trait object pointers (`*const dyn Trait`) is unrealiable: pointers
+/// to values of the same underlying type can compare inequal (because vtables are duplicated in
+/// multiple codegen units), and pointers to values of *different* underlying type can compare equal
+/// (since identical vtables can be deduplicated within a codegen unit).
+///
 /// # Examples
 ///
 /// ```
@@ -31360,41 +31920,6 @@ pub(crate) unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
 /// assert!(std::ptr::eq(&a[..3], &a[..3]));
 /// assert!(!std::ptr::eq(&a[..2], &a[..3]));
 /// assert!(!std::ptr::eq(&a[0..2], &a[1..3]));
-/// ```
-///
-/// Traits are also compared by their implementation:
-///
-/// ```
-/// #[repr(transparent)]
-/// struct Wrapper { member: i32 }
-///
-/// trait Trait {}
-/// impl Trait for Wrapper {}
-/// impl Trait for i32 {}
-///
-/// let wrapper = Wrapper { member: 10 };
-///
-/// // Pointers have equal addresses.
-/// assert!(std::ptr::eq(
-///     &wrapper as *const Wrapper as *const u8,
-///     &wrapper.member as *const i32 as *const u8
-/// ));
-///
-/// // Objects have equal addresses, but `Trait` has different implementations.
-/// assert!(!std::ptr::eq(
-///     &wrapper as &dyn Trait,
-///     &wrapper.member as &dyn Trait,
-/// ));
-/// assert!(!std::ptr::eq(
-///     &wrapper as &dyn Trait as *const dyn Trait,
-///     &wrapper.member as &dyn Trait as *const dyn Trait,
-/// ));
-///
-/// // Converting the reference to a `*const u8` compares by address.
-/// assert!(std::ptr::eq(
-///     &wrapper as &dyn Trait as *const dyn Trait as *const u8,
-///     &wrapper.member as &dyn Trait as *const dyn Trait as *const u8,
-/// ));
 /// ```
 #[stable(feature = "ptr_eq", since = "1.17.0")]
 #[inline]
@@ -31443,7 +31968,7 @@ macro_rules! maybe_fnptr_doc {
         $item
     };
     ($a:ident @ #[$meta:meta] $item:item) => {
-        #[cfg_attr(not(bootstrap), doc(fake_variadic))]
+        #[doc(fake_variadic)]
         #[doc = "This trait is implemented for function pointers with up to twelve arguments."]
         #[$meta]
         $item
@@ -31463,9 +31988,16 @@ macro_rules! maybe_fnptr_doc {
 // Impls for function pointers
 macro_rules! fnptr_impls_safety_abi {
     ($FnTy: ty, $($Arg: ident),*) => {
+        fnptr_impls_safety_abi! { #[stable(feature = "fnptr_impls", since = "1.4.0")] $FnTy, $($Arg),* }
+    };
+    (@c_unwind $FnTy: ty, $($Arg: ident),*) => {
+        #[cfg(not(bootstrap))]
+        fnptr_impls_safety_abi! { #[unstable(feature = "c_unwind", issue = "74990")] $FnTy, $($Arg),* }
+    };
+    (#[$meta:meta] $FnTy: ty, $($Arg: ident),*) => {
         maybe_fnptr_doc! {
             $($Arg)* @
-            #[stable(feature = "fnptr_impls", since = "1.4.0")]
+            #[$meta]
             impl<Ret, $($Arg),*> PartialEq for $FnTy {
                 #[inline]
                 fn eq(&self, other: &Self) -> bool {
@@ -31476,13 +32008,13 @@ macro_rules! fnptr_impls_safety_abi {
 
         maybe_fnptr_doc! {
             $($Arg)* @
-            #[stable(feature = "fnptr_impls", since = "1.4.0")]
+            #[$meta]
             impl<Ret, $($Arg),*> Eq for $FnTy {}
         }
 
         maybe_fnptr_doc! {
             $($Arg)* @
-            #[stable(feature = "fnptr_impls", since = "1.4.0")]
+            #[$meta]
             impl<Ret, $($Arg),*> PartialOrd for $FnTy {
                 #[inline]
                 fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
@@ -31493,7 +32025,7 @@ macro_rules! fnptr_impls_safety_abi {
 
         maybe_fnptr_doc! {
             $($Arg)* @
-            #[stable(feature = "fnptr_impls", since = "1.4.0")]
+            #[$meta]
             impl<Ret, $($Arg),*> Ord for $FnTy {
                 #[inline]
                 fn cmp(&self, other: &Self) -> Ordering {
@@ -31504,7 +32036,7 @@ macro_rules! fnptr_impls_safety_abi {
 
         maybe_fnptr_doc! {
             $($Arg)* @
-            #[stable(feature = "fnptr_impls", since = "1.4.0")]
+            #[$meta]
             impl<Ret, $($Arg),*> hash::Hash for $FnTy {
                 fn hash<HH: hash::Hasher>(&self, state: &mut HH) {
                     state.write_usize(*self as usize)
@@ -31514,7 +32046,7 @@ macro_rules! fnptr_impls_safety_abi {
 
         maybe_fnptr_doc! {
             $($Arg)* @
-            #[stable(feature = "fnptr_impls", since = "1.4.0")]
+            #[$meta]
             impl<Ret, $($Arg),*> fmt::Pointer for $FnTy {
                 fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                     fmt::pointer_fmt_inner(*self as usize, f)
@@ -31524,7 +32056,7 @@ macro_rules! fnptr_impls_safety_abi {
 
         maybe_fnptr_doc! {
             $($Arg)* @
-            #[stable(feature = "fnptr_impls", since = "1.4.0")]
+            #[$meta]
             impl<Ret, $($Arg),*> fmt::Debug for $FnTy {
                 fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                     fmt::pointer_fmt_inner(*self as usize, f)
@@ -31540,15 +32072,21 @@ macro_rules! fnptr_impls_args {
         fnptr_impls_safety_abi! { extern "C" fn($($Arg),+) -> Ret, $($Arg),+ }
         fnptr_impls_safety_abi! { }
         fnptr_impls_safety_abi! { }
+        fnptr_impls_safety_abi! { @c_unwind extern "C-unwind" fn($($Arg),+ , ...) -> Ret, $($Arg),+ }
+        fnptr_impls_safety_abi! { unsafe extern "Rust" fn($($Arg),+) -> Ret, $($Arg),+ }
         fnptr_impls_safety_abi! { unsafe extern "C" fn($($Arg),+) -> Ret, $($Arg),+ }
         fnptr_impls_safety_abi! { }
+        fnptr_impls_safety_abi! { }
+        fnptr_impls_safety_abi! { @c_unwind unsafe extern "C-unwind" fn($($Arg),+ , ...) -> Ret, $($Arg),+ }
     };
     () => {
         // No variadic functions with 0 parameters
         fnptr_impls_safety_abi! { extern "Rust" fn() -> Ret, }
         fnptr_impls_safety_abi! { extern "C" fn() -> Ret, }
         fnptr_impls_safety_abi! { }
+        fnptr_impls_safety_abi! { unsafe extern "Rust" fn() -> Ret, }
         fnptr_impls_safety_abi! { unsafe extern "C" fn() -> Ret, }
+        fnptr_impls_safety_abi! { }
     };
 }
 
@@ -31666,7 +32204,7 @@ pub macro addr_of_mut($place:expr) {
 /* Core language traits */
 
 pub mod borrow {
-//! A module for working with borrowed data.
+//! Utilities for working with borrowed data.
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -31822,6 +32360,7 @@ pub mod borrow {
 /// [`String`]: ../../std/string/struct.String.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "Borrow"]
+#[const_trait]
 pub trait Borrow<Borrowed: ?Sized> {
     /// Immutably borrows from an owned value.
     ///
@@ -31852,6 +32391,7 @@ pub trait Borrow<Borrowed: ?Sized> {
 /// an underlying type by providing a mutable reference. See [`Borrow<T>`]
 /// for more information on borrowing as another type.
 #[stable(feature = "rust1", since = "1.0.0")]
+#[const_trait]
 pub trait BorrowMut<Borrowed: ?Sized>: Borrow<Borrowed> {
     /// Mutably borrows from an owned value.
     ///
@@ -32161,9 +32701,9 @@ mod impls {
 }
 }
 pub mod cmp {
-//! Functionality for ordering and comparison.
+//! Utilities for comparing and ordering values.
 //!
-//! This module contains various tools for ordering and comparing values. In
+//! This module contains various tools for comparing and ordering values. In
 //! summary:
 //!
 //! * [`Eq`] and [`PartialEq`] are traits that allow you to define total and
@@ -32185,7 +32725,9 @@ pub mod cmp {
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use crate::const_closure::ConstFnMutClosure;
 use crate::marker::Destruct;
+use crate::marker::StructuralPartialEq;
 
 use self::Ordering::*;
 
@@ -32201,8 +32743,10 @@ use self::Ordering::*;
 ///
 /// Implementations must ensure that `eq` and `ne` are consistent with each other:
 ///
-/// - `a != b` if and only if `!(a == b)`
-///   (ensured by the default implementation).
+/// - `a != b` if and only if `!(a == b)`.
+///
+/// The default implementation of `ne` provides this consistency and is almost
+/// always sufficient. It should not be overridden without very good reason.
 ///
 /// If [`PartialOrd`] or [`Ord`] are also implemented for `Self` and `Rhs`, their methods must also
 /// be consistent with `PartialEq` (see the documentation of those traits for the exact
@@ -32364,20 +32908,10 @@ use self::Ordering::*;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(alias = "==")]
 #[doc(alias = "!=")]
-#[cfg_attr(
-    bootstrap,
-    rustc_on_unimplemented(
-        message = "can't compare `{Self}` with `{Rhs}`",
-        label = "no implementation for `{Self} == {Rhs}`"
-    )
-)]
-#[cfg_attr(
-    not(bootstrap),
-    rustc_on_unimplemented(
-        message = "can't compare `{Self}` with `{Rhs}`",
-        label = "no implementation for `{Self} == {Rhs}`",
-        append_const_msg,
-    )
+#[rustc_on_unimplemented(
+    message = "can't compare `{Self}` with `{Rhs}`",
+    label = "no implementation for `{Self} == {Rhs}`",
+    append_const_msg
 )]
 #[const_trait]
 #[rustc_diagnostic_item = "PartialEq"]
@@ -32388,7 +32922,8 @@ pub trait PartialEq<Rhs: ?Sized = Self> {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn eq(&self, other: &Rhs) -> bool;
 
-    /// This method tests for `!=`.
+    /// This method tests for `!=`. The default implementation is almost always
+    /// sufficient, and should not be overridden without very good reason.
     #[inline]
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -32498,7 +33033,7 @@ pub struct AssertParamIsEq<T: Eq + ?Sized> {
 /// let result = 2.cmp(&1);
 /// assert_eq!(Ordering::Greater, result);
 /// ```
-#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
+#[derive(Clone, Copy, Eq, Debug, Hash)]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[repr(i8)]
 pub enum Ordering {
@@ -33045,6 +33580,18 @@ pub macro Ord($item:item) {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+impl StructuralPartialEq for Ordering {}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_const_unstable(feature = "const_cmp", issue = "92391")]
+impl const PartialEq for Ordering {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        (*self as i32).eq(&(*other as i32))
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_cmp", issue = "92391")]
 impl const Ord for Ordering {
     #[inline]
@@ -33223,20 +33770,10 @@ impl const PartialOrd for Ordering {
 #[doc(alias = "<")]
 #[doc(alias = "<=")]
 #[doc(alias = ">=")]
-#[cfg_attr(
-    bootstrap,
-    rustc_on_unimplemented(
-        message = "can't compare `{Self}` with `{Rhs}`",
-        label = "no implementation for `{Self} < {Rhs}` and `{Self} > {Rhs}`",
-    )
-)]
-#[cfg_attr(
-    not(bootstrap),
-    rustc_on_unimplemented(
-        message = "can't compare `{Self}` with `{Rhs}`",
-        label = "no implementation for `{Self} < {Rhs}` and `{Self} > {Rhs}`",
-        append_const_msg,
-    )
+#[rustc_on_unimplemented(
+    message = "can't compare `{Self}` with `{Rhs}`",
+    label = "no implementation for `{Self} < {Rhs}` and `{Self} > {Rhs}`",
+    append_const_msg
 )]
 #[const_trait]
 #[rustc_diagnostic_item = "PartialOrd"]
@@ -33302,11 +33839,7 @@ pub trait PartialOrd<Rhs: ?Sized = Self>: PartialEq<Rhs> {
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn le(&self, other: &Rhs) -> bool {
-        // Pattern `Some(Less | Eq)` optimizes worse than negating `None | Some(Greater)`.
-        // FIXME: The root cause was fixed upstream in LLVM with:
-        // https://github.com/llvm/llvm-project/commit/9bad7de9a3fb844f1ca2965f35d0c2a3d1e11775
-        // Revert this workaround once support for LLVM 12 gets dropped.
-        !matches!(self.partial_cmp(other), None | Some(Greater))
+        matches!(self.partial_cmp(other), Some(Less | Equal))
     }
 
     /// This method tests greater than (for `self` and `other`) and is used by the `>` operator.
@@ -33393,7 +33926,12 @@ pub const fn min<T: ~const Ord + ~const Destruct>(v1: T, v2: T) -> T {
 #[inline]
 #[must_use]
 #[stable(feature = "cmp_min_max_by", since = "1.53.0")]
-pub fn min_by<T, F: FnOnce(&T, &T) -> Ordering>(v1: T, v2: T, compare: F) -> T {
+#[rustc_const_unstable(feature = "const_cmp", issue = "92391")]
+pub const fn min_by<T, F: ~const FnOnce(&T, &T) -> Ordering>(v1: T, v2: T, compare: F) -> T
+where
+    T: ~const Destruct,
+    F: ~const Destruct,
+{
     match compare(&v1, &v2) {
         Ordering::Less | Ordering::Equal => v1,
         Ordering::Greater => v2,
@@ -33415,8 +33953,24 @@ pub fn min_by<T, F: FnOnce(&T, &T) -> Ordering>(v1: T, v2: T, compare: F) -> T {
 #[inline]
 #[must_use]
 #[stable(feature = "cmp_min_max_by", since = "1.53.0")]
-pub fn min_by_key<T, F: FnMut(&T) -> K, K: Ord>(v1: T, v2: T, mut f: F) -> T {
-    min_by(v1, v2, |v1, v2| f(v1).cmp(&f(v2)))
+#[rustc_const_unstable(feature = "const_cmp", issue = "92391")]
+pub const fn min_by_key<T, F: ~const FnMut(&T) -> K, K: ~const Ord>(v1: T, v2: T, mut f: F) -> T
+where
+    T: ~const Destruct,
+    F: ~const Destruct,
+    K: ~const Destruct,
+{
+    const fn imp<T, F: ~const FnMut(&T) -> K, K: ~const Ord>(
+        f: &mut F,
+        (v1, v2): (&T, &T),
+    ) -> Ordering
+    where
+        T: ~const Destruct,
+        K: ~const Destruct,
+    {
+        f(v1).cmp(&f(v2))
+    }
+    min_by(v1, v2, ConstFnMutClosure::new(&mut f, imp))
 }
 
 /// Compares and returns the maximum of two values.
@@ -33457,7 +34011,12 @@ pub const fn max<T: ~const Ord + ~const Destruct>(v1: T, v2: T) -> T {
 #[inline]
 #[must_use]
 #[stable(feature = "cmp_min_max_by", since = "1.53.0")]
-pub fn max_by<T, F: FnOnce(&T, &T) -> Ordering>(v1: T, v2: T, compare: F) -> T {
+#[rustc_const_unstable(feature = "const_cmp", issue = "92391")]
+pub const fn max_by<T, F: ~const FnOnce(&T, &T) -> Ordering>(v1: T, v2: T, compare: F) -> T
+where
+    T: ~const Destruct,
+    F: ~const Destruct,
+{
     match compare(&v1, &v2) {
         Ordering::Less | Ordering::Equal => v2,
         Ordering::Greater => v1,
@@ -33479,8 +34038,24 @@ pub fn max_by<T, F: FnOnce(&T, &T) -> Ordering>(v1: T, v2: T, compare: F) -> T {
 #[inline]
 #[must_use]
 #[stable(feature = "cmp_min_max_by", since = "1.53.0")]
-pub fn max_by_key<T, F: FnMut(&T) -> K, K: Ord>(v1: T, v2: T, mut f: F) -> T {
-    max_by(v1, v2, |v1, v2| f(v1).cmp(&f(v2)))
+#[rustc_const_unstable(feature = "const_cmp", issue = "92391")]
+pub const fn max_by_key<T, F: ~const FnMut(&T) -> K, K: ~const Ord>(v1: T, v2: T, mut f: F) -> T
+where
+    T: ~const Destruct,
+    F: ~const Destruct,
+    K: ~const Destruct,
+{
+    const fn imp<T, F: ~const FnMut(&T) -> K, K: ~const Ord>(
+        f: &mut F,
+        (v1, v2): (&T, &T),
+    ) -> Ordering
+    where
+        T: ~const Destruct,
+        K: ~const Destruct,
+    {
+        f(v1).cmp(&f(v2))
+    }
+    max_by(v1, v2, ConstFnMutClosure::new(&mut f, imp))
 }
 
 // Implementation of PartialEq, Eq, PartialOrd and Ord for primitive types
@@ -33833,6 +34408,7 @@ pub mod convert {
 //! # Generic Implementations
 //!
 //! - [`AsRef`] and [`AsMut`] auto-dereference if the inner type is a reference
+//!   (but not generally for all [dereferenceable types][core::ops::Deref])
 //! - [`From`]`<U> for T` implies [`Into`]`<T> for U`
 //! - [`TryFrom`]`<U> for T` implies [`TryInto`]`<T> for U`
 //! - [`From`] and [`Into`] are reflexive, which means that all types can
@@ -33842,6 +34418,7 @@ pub mod convert {
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use crate::error::Error;
 use crate::fmt;
 use crate::hash::{Hash, Hasher};
 
@@ -34463,10 +35040,12 @@ pub const fn identity<T>(x: T) -> T {
 /// If you need to do a costly conversion it is better to implement [`From`] with type
 /// `&T` or write a custom function.
 ///
+/// # Relation to `Borrow`
+///
 /// `AsRef` has the same signature as [`Borrow`], but [`Borrow`] is different in a few aspects:
 ///
 /// - Unlike `AsRef`, [`Borrow`] has a blanket impl for any `T`, and can be used to accept either
-///   a reference or a value.
+///   a reference or a value. (See also note on `AsRef`'s reflexibility below.)
 /// - [`Borrow`] also requires that [`Hash`], [`Eq`] and [`Ord`] for a borrowed value are
 ///   equivalent to those of the owned value. For this reason, if you want to
 ///   borrow only a single field of a struct you can implement `AsRef`, but not [`Borrow`].
@@ -34476,9 +35055,66 @@ pub const fn identity<T>(x: T) -> T {
 ///
 /// # Generic Implementations
 ///
-/// - `AsRef` auto-dereferences if the inner type is a reference or a mutable
-///   reference (e.g.: `foo.as_ref()` will work the same if `foo` has type
-///   `&mut Foo` or `&&mut Foo`)
+/// `AsRef` auto-dereferences if the inner type is a reference or a mutable reference
+/// (e.g.: `foo.as_ref()` will work the same if `foo` has type `&mut Foo` or `&&mut Foo`).
+///
+/// Note that due to historic reasons, the above currently does not hold generally for all
+/// [dereferenceable types], e.g. `foo.as_ref()` will *not* work the same as
+/// `Box::new(foo).as_ref()`. Instead, many smart pointers provide an `as_ref` implementation which
+/// simply returns a reference to the [pointed-to value] (but do not perform a cheap
+/// reference-to-reference conversion for that value). However, [`AsRef::as_ref`] should not be
+/// used for the sole purpose of dereferencing; instead ['`Deref` coercion'] can be used:
+///
+/// [dereferenceable types]: core::ops::Deref
+/// [pointed-to value]: core::ops::Deref::Target
+/// ['`Deref` coercion']: core::ops::Deref#more-on-deref-coercion
+///
+/// ```
+/// let x = Box::new(5i32);
+/// // Avoid this:
+/// // let y: &i32 = x.as_ref();
+/// // Better just write:
+/// let y: &i32 = &x;
+/// ```
+///
+/// Types which implement [`Deref`] should consider implementing `AsRef<T>` as follows:
+///
+/// [`Deref`]: core::ops::Deref
+///
+/// ```
+/// # use core::ops::Deref;
+/// # struct SomeType;
+/// # impl Deref for SomeType {
+/// #     type Target = [u8];
+/// #     fn deref(&self) -> &[u8] {
+/// #         &[]
+/// #     }
+/// # }
+/// impl<T> AsRef<T> for SomeType
+/// where
+///     T: ?Sized,
+///     <SomeType as Deref>::Target: AsRef<T>,
+/// {
+///     fn as_ref(&self) -> &T {
+///         self.deref().as_ref()
+///     }
+/// }
+/// ```
+///
+/// # Reflexivity
+///
+/// Ideally, `AsRef` would be reflexive, i.e. there would be an `impl<T: ?Sized> AsRef<T> for T`
+/// with [`as_ref`] simply returning its argument unchanged.
+/// Such a blanket implementation is currently *not* provided due to technical restrictions of
+/// Rust's type system (it would be overlapping with another existing blanket implementation for
+/// `&T where T: AsRef<U>` which allows `AsRef` to auto-dereference, see "Generic Implementations"
+/// above).
+///
+/// [`as_ref`]: AsRef::as_ref
+///
+/// A trivial implementation of `AsRef<T> for T` must be added explicitly for a particular type `T`
+/// where needed or desired. Note, however, that not all types from `std` contain such an
+/// implementation, and those cannot be added by external code due to orphan rules.
 ///
 /// # Examples
 ///
@@ -34508,6 +35144,7 @@ pub const fn identity<T>(x: T) -> T {
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "AsRef")]
+#[const_trait]
 pub trait AsRef<T: ?Sized> {
     /// Converts this type into a shared reference of the (usually inferred) input type.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -34525,31 +35162,141 @@ pub trait AsRef<T: ?Sized> {
 ///
 /// # Generic Implementations
 ///
-/// - `AsMut` auto-dereferences if the inner type is a mutable reference
-///   (e.g.: `foo.as_mut()` will work the same if `foo` has type `&mut Foo`
-///   or `&mut &mut Foo`)
+/// `AsMut` auto-dereferences if the inner type is a mutable reference
+/// (e.g.: `foo.as_mut()` will work the same if `foo` has type `&mut Foo` or `&mut &mut Foo`).
+///
+/// Note that due to historic reasons, the above currently does not hold generally for all
+/// [mutably dereferenceable types], e.g. `foo.as_mut()` will *not* work the same as
+/// `Box::new(foo).as_mut()`. Instead, many smart pointers provide an `as_mut` implementation which
+/// simply returns a reference to the [pointed-to value] (but do not perform a cheap
+/// reference-to-reference conversion for that value). However, [`AsMut::as_mut`] should not be
+/// used for the sole purpose of mutable dereferencing; instead ['`Deref` coercion'] can be used:
+///
+/// [mutably dereferenceable types]: core::ops::DerefMut
+/// [pointed-to value]: core::ops::Deref::Target
+/// ['`Deref` coercion']: core::ops::DerefMut#more-on-deref-coercion
+///
+/// ```
+/// let mut x = Box::new(5i32);
+/// // Avoid this:
+/// // let y: &mut i32 = x.as_mut();
+/// // Better just write:
+/// let y: &mut i32 = &mut x;
+/// ```
+///
+/// Types which implement [`DerefMut`] should consider to add an implementation of `AsMut<T>` as
+/// follows:
+///
+/// [`DerefMut`]: core::ops::DerefMut
+///
+/// ```
+/// # use core::ops::{Deref, DerefMut};
+/// # struct SomeType;
+/// # impl Deref for SomeType {
+/// #     type Target = [u8];
+/// #     fn deref(&self) -> &[u8] {
+/// #         &[]
+/// #     }
+/// # }
+/// # impl DerefMut for SomeType {
+/// #     fn deref_mut(&mut self) -> &mut [u8] {
+/// #         &mut []
+/// #     }
+/// # }
+/// impl<T> AsMut<T> for SomeType
+/// where
+///     <SomeType as Deref>::Target: AsMut<T>,
+/// {
+///     fn as_mut(&mut self) -> &mut T {
+///         self.deref_mut().as_mut()
+///     }
+/// }
+/// ```
+///
+/// # Reflexivity
+///
+/// Ideally, `AsMut` would be reflexive, i.e. there would be an `impl<T: ?Sized> AsMut<T> for T`
+/// with [`as_mut`] simply returning its argument unchanged.
+/// Such a blanket implementation is currently *not* provided due to technical restrictions of
+/// Rust's type system (it would be overlapping with another existing blanket implementation for
+/// `&mut T where T: AsMut<U>` which allows `AsMut` to auto-dereference, see "Generic
+/// Implementations" above).
+///
+/// [`as_mut`]: AsMut::as_mut
+///
+/// A trivial implementation of `AsMut<T> for T` must be added explicitly for a particular type `T`
+/// where needed or desired. Note, however, that not all types from `std` contain such an
+/// implementation, and those cannot be added by external code due to orphan rules.
 ///
 /// # Examples
 ///
-/// Using `AsMut` as trait bound for a generic function we can accept all mutable references
-/// that can be converted to type `&mut T`. Because [`Box<T>`] implements `AsMut<T>` we can
-/// write a function `add_one` that takes all arguments that can be converted to `&mut u64`.
-/// Because [`Box<T>`] implements `AsMut<T>`, `add_one` accepts arguments of type
-/// `&mut Box<u64>` as well:
+/// Using `AsMut` as trait bound for a generic function, we can accept all mutable references that
+/// can be converted to type `&mut T`. Unlike [dereference], which has a single [target type],
+/// there can be multiple implementations of `AsMut` for a type. In particular, `Vec<T>` implements
+/// both `AsMut<Vec<T>>` and `AsMut<[T]>`.
+///
+/// In the following, the example functions `caesar` and `null_terminate` provide a generic
+/// interface which work with any type that can be converted by cheap mutable-to-mutable conversion
+/// into a byte slice (`[u8]`) or byte vector (`Vec<u8>`), respectively.
+///
+/// [dereference]: core::ops::DerefMut
+/// [target type]: core::ops::Deref::Target
 ///
 /// ```
-/// fn add_one<T: AsMut<u64>>(num: &mut T) {
-///     *num.as_mut() += 1;
+/// struct Document {
+///     info: String,
+///     content: Vec<u8>,
 /// }
 ///
-/// let mut boxed_num = Box::new(0);
-/// add_one(&mut boxed_num);
-/// assert_eq!(*boxed_num, 1);
+/// impl<T: ?Sized> AsMut<T> for Document
+/// where
+///     Vec<u8>: AsMut<T>,
+/// {
+///     fn as_mut(&mut self) -> &mut T {
+///         self.content.as_mut()
+///     }
+/// }
+///
+/// fn caesar<T: AsMut<[u8]>>(data: &mut T, key: u8) {
+///     for byte in data.as_mut() {
+///         *byte = byte.wrapping_add(key);
+///     }
+/// }
+///
+/// fn null_terminate<T: AsMut<Vec<u8>>>(data: &mut T) {
+///     // Using a non-generic inner function, which contains most of the
+///     // functionality, helps to minimize monomorphization overhead.
+///     fn doit(data: &mut Vec<u8>) {
+///         let len = data.len();
+///         if len == 0 || data[len-1] != 0 {
+///             data.push(0);
+///         }
+///     }
+///     doit(data.as_mut());
+/// }
+///
+/// fn main() {
+///     let mut v: Vec<u8> = vec![1, 2, 3];
+///     caesar(&mut v, 5);
+///     assert_eq!(v, [6, 7, 8]);
+///     null_terminate(&mut v);
+///     assert_eq!(v, [6, 7, 8, 0]);
+///     let mut doc = Document {
+///         info: String::from("Example"),
+///         content: vec![17, 19, 8],
+///     };
+///     caesar(&mut doc, 1);
+///     assert_eq!(doc.content, [18, 20, 9]);
+///     null_terminate(&mut doc);
+///     assert_eq!(doc.content, [18, 20, 9, 0]);
+/// }
 /// ```
 ///
-/// [`Box<T>`]: ../../std/boxed/struct.Box.html
+/// Note, however, that APIs don't need to be generic. In many cases taking a `&mut [u8]` or
+/// `&mut Vec<u8>`, for example, is the better choice (callers need to pass the correct type then).
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "AsMut")]
+#[const_trait]
 pub trait AsMut<T: ?Sized> {
     /// Converts this type into a mutable reference of the (usually inferred) input type.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -34626,6 +35373,7 @@ pub trait AsMut<T: ?Sized> {
 /// [`Vec`]: ../../std/vec/struct.Vec.html
 #[rustc_diagnostic_item = "Into"]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[const_trait]
 pub trait Into<T>: Sized {
     /// Converts this type into the (usually inferred) input type.
     #[must_use]
@@ -34721,12 +35469,13 @@ pub trait Into<T>: Sized {
     all(_Self = "&str", T = "std::string::String"),
     note = "to coerce a `{T}` into a `{Self}`, use `&*` as a prefix",
 ))]
+#[const_trait]
 pub trait From<T>: Sized {
     /// Converts to this type from the input type.
     #[lang = "from"]
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn from(_: T) -> Self;
+    fn from(value: T) -> Self;
 }
 
 /// An attempted conversion that consumes `self`, which may or may not be
@@ -34745,6 +35494,7 @@ pub trait From<T>: Sized {
 /// [`Into`], see there for details.
 #[rustc_diagnostic_item = "TryInto"]
 #[stable(feature = "try_from", since = "1.34.0")]
+#[const_trait]
 pub trait TryInto<T>: Sized {
     /// The type returned in the event of a conversion error.
     #[stable(feature = "try_from", since = "1.34.0")]
@@ -34789,7 +35539,7 @@ pub trait TryInto<T>: Sized {
 ///
 ///     fn try_from(value: i32) -> Result<Self, Self::Error> {
 ///         if value <= 0 {
-///             Err("GreaterThanZero only accepts value superior than zero!")
+///             Err("GreaterThanZero only accepts values greater than zero!")
 ///         } else {
 ///             Ok(GreaterThanZero(value))
 ///         }
@@ -34821,6 +35571,7 @@ pub trait TryInto<T>: Sized {
 /// [`try_from`]: TryFrom::try_from
 #[rustc_diagnostic_item = "TryFrom"]
 #[stable(feature = "try_from", since = "1.34.0")]
+#[const_trait]
 pub trait TryFrom<T>: Sized {
     /// The type returned in the event of a conversion error.
     #[stable(feature = "try_from", since = "1.34.0")]
@@ -34911,6 +35662,7 @@ where
 #[rustc_const_unstable(feature = "const_convert", issue = "88674")]
 impl<T> const From<T> for T {
     /// Returns the argument unchanged.
+    #[inline(always)]
     fn from(t: T) -> T {
         t
     }
@@ -35070,6 +35822,13 @@ impl fmt::Display for Infallible {
     }
 }
 
+#[stable(feature = "str_parse_error2", since = "1.8.0")]
+impl Error for Infallible {
+    fn description(&self) -> &str {
+        match *self {}
+    }
+}
+
 #[stable(feature = "convert_infallible", since = "1.34.0")]
 impl PartialEq for Infallible {
     fn eq(&self, _: &Infallible) -> bool {
@@ -35110,7 +35869,7 @@ impl Hash for Infallible {
 }
 }
 pub mod default {
-//! The `Default` trait for types which may have meaningful default values.
+//! The `Default` trait for types with a default value.
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -35211,6 +35970,7 @@ pub mod default {
 /// ```
 #[cfg_attr(not(test), rustc_diagnostic_item = "Default")]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(bootstrap), const_trait)]
 pub trait Default: Sized {
     /// Returns the "default value" for a type.
     ///
@@ -35333,6 +36093,517 @@ default_impl! { i128, 0, "Returns the default value of `0`" }
 default_impl! { f32, 0.0f32, "Returns the default value of `0.0`" }
 default_impl! { f64, 0.0f64, "Returns the default value of `0.0`" }
 }
+pub mod error {
+#![doc = include_str!("error.md")]
+#![unstable(feature = "error_in_core", issue = "none")]
+
+#[cfg(test)]
+mod tests {
+}
+
+use crate::any::{Demand, Provider, TypeId};
+use crate::fmt::{Debug, Display};
+
+/// `Error` is a trait representing the basic expectations for error values,
+/// i.e., values of type `E` in [`Result<T, E>`].
+///
+/// Errors must describe themselves through the [`Display`] and [`Debug`]
+/// traits. Error messages are typically concise lowercase sentences without
+/// trailing punctuation:
+///
+/// ```
+/// let err = "NaN".parse::<u32>().unwrap_err();
+/// assert_eq!(err.to_string(), "invalid digit found in string");
+/// ```
+///
+/// Errors may provide cause information. [`Error::source()`] is generally
+/// used when errors cross "abstraction boundaries". If one module must report
+/// an error that is caused by an error from a lower-level module, it can allow
+/// accessing that error via [`Error::source()`]. This makes it possible for the
+/// high-level module to provide its own errors while also revealing some of the
+/// implementation for debugging.
+#[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "Error")]
+#[rustc_has_incoherent_inherent_impls]
+pub trait Error: Debug + Display {
+    /// The lower-level source of this error, if any.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::error::Error;
+    /// use std::fmt;
+    ///
+    /// #[derive(Debug)]
+    /// struct SuperError {
+    ///     source: SuperErrorSideKick,
+    /// }
+    ///
+    /// impl fmt::Display for SuperError {
+    ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    ///         write!(f, "SuperError is here!")
+    ///     }
+    /// }
+    ///
+    /// impl Error for SuperError {
+    ///     fn source(&self) -> Option<&(dyn Error + 'static)> {
+    ///         Some(&self.source)
+    ///     }
+    /// }
+    ///
+    /// #[derive(Debug)]
+    /// struct SuperErrorSideKick;
+    ///
+    /// impl fmt::Display for SuperErrorSideKick {
+    ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    ///         write!(f, "SuperErrorSideKick is here!")
+    ///     }
+    /// }
+    ///
+    /// impl Error for SuperErrorSideKick {}
+    ///
+    /// fn get_super_error() -> Result<(), SuperError> {
+    ///     Err(SuperError { source: SuperErrorSideKick })
+    /// }
+    ///
+    /// fn main() {
+    ///     match get_super_error() {
+    ///         Err(e) => {
+    ///             println!("Error: {e}");
+    ///             println!("Caused by: {}", e.source().unwrap());
+    ///         }
+    ///         _ => println!("No error"),
+    ///     }
+    /// }
+    /// ```
+    #[stable(feature = "error_source", since = "1.30.0")]
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        None
+    }
+
+    /// Gets the `TypeId` of `self`.
+    #[doc(hidden)]
+    #[unstable(
+        feature = "error_type_id",
+        reason = "this is memory-unsafe to override in user code",
+        issue = "60784"
+    )]
+    fn type_id(&self, _: private::Internal) -> TypeId
+    where
+        Self: 'static,
+    {
+        TypeId::of::<Self>()
+    }
+
+    /// ```
+    /// if let Err(e) = "xc".parse::<u32>() {
+    ///     // Print `e` itself, no need for description().
+    ///     eprintln!("Error: {e}");
+    /// }
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[deprecated(since = "1.42.0", note = "use the Display impl or to_string()")]
+    fn description(&self) -> &str {
+        "description() is deprecated; use Display"
+    }
+
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[deprecated(
+        since = "1.33.0",
+        note = "replaced by Error::source, which can support downcasting"
+    )]
+    #[allow(missing_docs)]
+    fn cause(&self) -> Option<&dyn Error> {
+        self.source()
+    }
+
+    /// Provides type based access to context intended for error reports.
+    ///
+    /// Used in conjunction with [`Demand::provide_value`] and [`Demand::provide_ref`] to extract
+    /// references to member variables from `dyn Error` trait objects.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// #![feature(provide_any)]
+    /// #![feature(error_generic_member_access)]
+    /// use core::fmt;
+    /// use core::any::Demand;
+    ///
+    /// #[derive(Debug)]
+    /// struct MyBacktrace {
+    ///     // ...
+    /// }
+    ///
+    /// impl MyBacktrace {
+    ///     fn new() -> MyBacktrace {
+    ///         // ...
+    ///         # MyBacktrace {}
+    ///     }
+    /// }
+    ///
+    /// #[derive(Debug)]
+    /// struct SourceError {
+    ///     // ...
+    /// }
+    ///
+    /// impl fmt::Display for SourceError {
+    ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    ///         write!(f, "Example Source Error")
+    ///     }
+    /// }
+    ///
+    /// impl std::error::Error for SourceError {}
+    ///
+    /// #[derive(Debug)]
+    /// struct Error {
+    ///     source: SourceError,
+    ///     backtrace: MyBacktrace,
+    /// }
+    ///
+    /// impl fmt::Display for Error {
+    ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    ///         write!(f, "Example Error")
+    ///     }
+    /// }
+    ///
+    /// impl std::error::Error for Error {
+    ///     fn provide<'a>(&'a self, demand: &mut Demand<'a>) {
+    ///         demand
+    ///             .provide_ref::<MyBacktrace>(&self.backtrace)
+    ///             .provide_ref::<dyn std::error::Error + 'static>(&self.source);
+    ///     }
+    /// }
+    ///
+    /// fn main() {
+    ///     let backtrace = MyBacktrace::new();
+    ///     let source = SourceError {};
+    ///     let error = Error { source, backtrace };
+    ///     let dyn_error = &error as &dyn std::error::Error;
+    ///     let backtrace_ref = dyn_error.request_ref::<MyBacktrace>().unwrap();
+    ///
+    ///     assert!(core::ptr::eq(&error.backtrace, backtrace_ref));
+    /// }
+    /// ```
+    #[unstable(feature = "error_generic_member_access", issue = "99301")]
+    #[allow(unused_variables)]
+    fn provide<'a>(&'a self, demand: &mut Demand<'a>) {}
+}
+
+#[unstable(feature = "error_generic_member_access", issue = "99301")]
+impl<E> Provider for E
+where
+    E: Error + ?Sized,
+{
+    fn provide<'a>(&'a self, demand: &mut Demand<'a>) {
+        self.provide(demand)
+    }
+}
+
+mod private {
+    // This is a hack to prevent `type_id` from being overridden by `Error`
+    // implementations, since that can enable unsound downcasting.
+    #[unstable(feature = "error_type_id", issue = "60784")]
+    #[derive(Debug)]
+    pub struct Internal;
+}
+
+#[unstable(feature = "never_type", issue = "35121")]
+impl Error for ! {}
+
+impl<'a> dyn Error + 'a {
+    /// Request a reference of type `T` as context about this error.
+    #[unstable(feature = "error_generic_member_access", issue = "99301")]
+    pub fn request_ref<T: ?Sized + 'static>(&'a self) -> Option<&'a T> {
+        core::any::request_ref(self)
+    }
+
+    /// Request a value of type `T` as context about this error.
+    #[unstable(feature = "error_generic_member_access", issue = "99301")]
+    pub fn request_value<T: 'static>(&'a self) -> Option<T> {
+        core::any::request_value(self)
+    }
+}
+
+// Copied from `any.rs`.
+impl dyn Error + 'static {
+    /// Returns `true` if the inner type is the same as `T`.
+    #[stable(feature = "error_downcast", since = "1.3.0")]
+    #[inline]
+    pub fn is<T: Error + 'static>(&self) -> bool {
+        // Get `TypeId` of the type this function is instantiated with.
+        let t = TypeId::of::<T>();
+
+        // Get `TypeId` of the type in the trait object (`self`).
+        let concrete = self.type_id(private::Internal);
+
+        // Compare both `TypeId`s on equality.
+        t == concrete
+    }
+
+    /// Returns some reference to the inner value if it is of type `T`, or
+    /// `None` if it isn't.
+    #[stable(feature = "error_downcast", since = "1.3.0")]
+    #[inline]
+    pub fn downcast_ref<T: Error + 'static>(&self) -> Option<&T> {
+        if self.is::<T>() {
+            // SAFETY: `is` ensures this type cast is correct
+            unsafe { Some(&*(self as *const dyn Error as *const T)) }
+        } else {
+            None
+        }
+    }
+
+    /// Returns some mutable reference to the inner value if it is of type `T`, or
+    /// `None` if it isn't.
+    #[stable(feature = "error_downcast", since = "1.3.0")]
+    #[inline]
+    pub fn downcast_mut<T: Error + 'static>(&mut self) -> Option<&mut T> {
+        if self.is::<T>() {
+            // SAFETY: `is` ensures this type cast is correct
+            unsafe { Some(&mut *(self as *mut dyn Error as *mut T)) }
+        } else {
+            None
+        }
+    }
+}
+
+impl dyn Error + 'static + Send {
+    /// Forwards to the method defined on the type `dyn Error`.
+    #[stable(feature = "error_downcast", since = "1.3.0")]
+    #[inline]
+    pub fn is<T: Error + 'static>(&self) -> bool {
+        <dyn Error + 'static>::is::<T>(self)
+    }
+
+    /// Forwards to the method defined on the type `dyn Error`.
+    #[stable(feature = "error_downcast", since = "1.3.0")]
+    #[inline]
+    pub fn downcast_ref<T: Error + 'static>(&self) -> Option<&T> {
+        <dyn Error + 'static>::downcast_ref::<T>(self)
+    }
+
+    /// Forwards to the method defined on the type `dyn Error`.
+    #[stable(feature = "error_downcast", since = "1.3.0")]
+    #[inline]
+    pub fn downcast_mut<T: Error + 'static>(&mut self) -> Option<&mut T> {
+        <dyn Error + 'static>::downcast_mut::<T>(self)
+    }
+
+    /// Request a reference of type `T` as context about this error.
+    #[unstable(feature = "error_generic_member_access", issue = "99301")]
+    pub fn request_ref<T: ?Sized + 'static>(&self) -> Option<&T> {
+        <dyn Error>::request_ref(self)
+    }
+
+    /// Request a value of type `T` as context about this error.
+    #[unstable(feature = "error_generic_member_access", issue = "99301")]
+    pub fn request_value<T: 'static>(&self) -> Option<T> {
+        <dyn Error>::request_value(self)
+    }
+}
+
+impl dyn Error + 'static + Send + Sync {
+    /// Forwards to the method defined on the type `dyn Error`.
+    #[stable(feature = "error_downcast", since = "1.3.0")]
+    #[inline]
+    pub fn is<T: Error + 'static>(&self) -> bool {
+        <dyn Error + 'static>::is::<T>(self)
+    }
+
+    /// Forwards to the method defined on the type `dyn Error`.
+    #[stable(feature = "error_downcast", since = "1.3.0")]
+    #[inline]
+    pub fn downcast_ref<T: Error + 'static>(&self) -> Option<&T> {
+        <dyn Error + 'static>::downcast_ref::<T>(self)
+    }
+
+    /// Forwards to the method defined on the type `dyn Error`.
+    #[stable(feature = "error_downcast", since = "1.3.0")]
+    #[inline]
+    pub fn downcast_mut<T: Error + 'static>(&mut self) -> Option<&mut T> {
+        <dyn Error + 'static>::downcast_mut::<T>(self)
+    }
+
+    /// Request a reference of type `T` as context about this error.
+    #[unstable(feature = "error_generic_member_access", issue = "99301")]
+    pub fn request_ref<T: ?Sized + 'static>(&self) -> Option<&T> {
+        <dyn Error>::request_ref(self)
+    }
+
+    /// Request a value of type `T` as context about this error.
+    #[unstable(feature = "error_generic_member_access", issue = "99301")]
+    pub fn request_value<T: 'static>(&self) -> Option<T> {
+        <dyn Error>::request_value(self)
+    }
+}
+
+impl dyn Error {
+    /// Returns an iterator starting with the current error and continuing with
+    /// recursively calling [`Error::source`].
+    ///
+    /// If you want to omit the current error and only use its sources,
+    /// use `skip(1)`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(error_iter)]
+    /// use std::error::Error;
+    /// use std::fmt;
+    ///
+    /// #[derive(Debug)]
+    /// struct A;
+    ///
+    /// #[derive(Debug)]
+    /// struct B(Option<Box<dyn Error + 'static>>);
+    ///
+    /// impl fmt::Display for A {
+    ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    ///         write!(f, "A")
+    ///     }
+    /// }
+    ///
+    /// impl fmt::Display for B {
+    ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    ///         write!(f, "B")
+    ///     }
+    /// }
+    ///
+    /// impl Error for A {}
+    ///
+    /// impl Error for B {
+    ///     fn source(&self) -> Option<&(dyn Error + 'static)> {
+    ///         self.0.as_ref().map(|e| e.as_ref())
+    ///     }
+    /// }
+    ///
+    /// let b = B(Some(Box::new(A)));
+    ///
+    /// // let err : Box<Error> = b.into(); // or
+    /// let err = &b as &(dyn Error);
+    ///
+    /// let mut iter = err.sources();
+    ///
+    /// assert_eq!("B".to_string(), iter.next().unwrap().to_string());
+    /// assert_eq!("A".to_string(), iter.next().unwrap().to_string());
+    /// assert!(iter.next().is_none());
+    /// assert!(iter.next().is_none());
+    /// ```
+    #[unstable(feature = "error_iter", issue = "58520")]
+    #[inline]
+    pub fn sources(&self) -> Source<'_> {
+        // You may think this method would be better in the Error trait, and you'd be right.
+        // Unfortunately that doesn't work, not because of the object safety rules but because we
+        // save a reference to self in Sources below as a trait object. If this method was
+        // declared in Error, then self would have the type &T where T is some concrete type which
+        // implements Error. We would need to coerce self to have type &dyn Error, but that requires
+        // that Self has a known size (i.e., Self: Sized). We can't put that bound on Error
+        // since that would forbid Error trait objects, and we can't put that bound on the method
+        // because that means the method can't be called on trait objects (we'd also need the
+        // 'static bound, but that isn't allowed because methods with bounds on Self other than
+        // Sized are not object-safe). Requiring an Unsize bound is not backwards compatible.
+
+        Source { current: Some(self) }
+    }
+}
+
+/// An iterator over an [`Error`] and its sources.
+///
+/// If you want to omit the initial error and only process
+/// its sources, use `skip(1)`.
+#[unstable(feature = "error_iter", issue = "58520")]
+#[derive(Clone, Debug)]
+pub struct Source<'a> {
+    current: Option<&'a (dyn Error + 'static)>,
+}
+
+#[unstable(feature = "error_iter", issue = "58520")]
+impl<'a> Iterator for Source<'a> {
+    type Item = &'a (dyn Error + 'static);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let current = self.current;
+        self.current = self.current.and_then(Error::source);
+        current
+    }
+}
+
+#[stable(feature = "error_by_ref", since = "1.51.0")]
+impl<'a, T: Error + ?Sized> Error for &'a T {
+    #[allow(deprecated, deprecated_in_future)]
+    fn description(&self) -> &str {
+        Error::description(&**self)
+    }
+
+    #[allow(deprecated)]
+    fn cause(&self) -> Option<&dyn Error> {
+        Error::cause(&**self)
+    }
+
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        Error::source(&**self)
+    }
+
+    fn provide<'b>(&'b self, demand: &mut Demand<'b>) {
+        Error::provide(&**self, demand);
+    }
+}
+
+#[stable(feature = "fmt_error", since = "1.11.0")]
+impl Error for crate::fmt::Error {
+    #[allow(deprecated)]
+    fn description(&self) -> &str {
+        "an error occurred when formatting an argument"
+    }
+}
+
+#[stable(feature = "try_borrow", since = "1.13.0")]
+impl Error for crate::cell::BorrowError {
+    #[allow(deprecated)]
+    fn description(&self) -> &str {
+        "already mutably borrowed"
+    }
+}
+
+#[stable(feature = "try_borrow", since = "1.13.0")]
+impl Error for crate::cell::BorrowMutError {
+    #[allow(deprecated)]
+    fn description(&self) -> &str {
+        "already borrowed"
+    }
+}
+
+#[stable(feature = "try_from", since = "1.34.0")]
+impl Error for crate::char::CharTryFromError {
+    #[allow(deprecated)]
+    fn description(&self) -> &str {
+        "converted integer out of range for `char`"
+    }
+}
+
+#[stable(feature = "char_from_str", since = "1.20.0")]
+impl Error for crate::char::ParseCharError {
+    #[allow(deprecated)]
+    fn description(&self) -> &str {
+        self.__description()
+    }
+}
+
+#[stable(feature = "duration_checked_float", since = "1.66.0")]
+impl Error for crate::time::TryFromFloatSecsError {}
+
+#[stable(feature = "frombyteswithnulerror_impls", since = "1.17.0")]
+impl Error for crate::ffi::FromBytesWithNulError {
+    #[allow(deprecated)]
+    fn description(&self) -> &str {
+        self.__description()
+    }
+}
+
+#[unstable(feature = "cstr_from_bytes_until_nul", issue = "95027")]
+impl Error for crate::ffi::FromBytesUntilNulError {}
+}
 pub mod marker {
 //! Primitive traits and types representing basic properties of types.
 //!
@@ -35380,6 +36651,12 @@ impl<T: ?Sized> !Send for *const T {}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> !Send for *mut T {}
 
+// Most instances arise automatically, but this instance is needed to link up `T: Sync` with
+// `&T: Send` (and it also removes the unsound default instance `T Send` -> `&T: Send` that would
+// otherwise exist).
+#[stable(feature = "rust1", since = "1.0.0")]
+unsafe impl<T: Sync + ?Sized> Send for &T {}
+
 /// Types with a constant size known at compile time.
 ///
 /// All type parameters have an implicit bound of `Sized`. The special syntax
@@ -35417,6 +36694,7 @@ impl<T: ?Sized> !Send for *mut T {}
 /// ```
 ///
 /// [trait object]: ../../book/ch17-02-trait-objects.html
+#[doc(alias = "?", alias = "?Sized")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[lang = "sized"]
 #[rustc_on_unimplemented(
@@ -35679,7 +36957,7 @@ pub trait StructuralEq {
 /// If you try to implement `Copy` on a struct or enum containing non-`Copy` data, you will get
 /// the error [E0204].
 ///
-/// [E0204]: ../../error-index.html#E0204
+/// [E0204]: ../../error_codes/E0204.html
 ///
 /// ## When *should* my type be `Copy`?
 ///
@@ -35818,64 +37096,6 @@ impl<T: ?Sized> !Sync for *const T {}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> !Sync for *mut T {}
 
-macro_rules! impls {
-    ($t: ident) => {
-        #[stable(feature = "rust1", since = "1.0.0")]
-        impl<T: ?Sized> Hash for $t<T> {
-            #[inline]
-            fn hash<H: Hasher>(&self, _: &mut H) {}
-        }
-
-        #[stable(feature = "rust1", since = "1.0.0")]
-        impl<T: ?Sized> cmp::PartialEq for $t<T> {
-            fn eq(&self, _other: &$t<T>) -> bool {
-                true
-            }
-        }
-
-        #[stable(feature = "rust1", since = "1.0.0")]
-        impl<T: ?Sized> cmp::Eq for $t<T> {}
-
-        #[stable(feature = "rust1", since = "1.0.0")]
-        impl<T: ?Sized> cmp::PartialOrd for $t<T> {
-            fn partial_cmp(&self, _other: &$t<T>) -> Option<cmp::Ordering> {
-                Option::Some(cmp::Ordering::Equal)
-            }
-        }
-
-        #[stable(feature = "rust1", since = "1.0.0")]
-        impl<T: ?Sized> cmp::Ord for $t<T> {
-            fn cmp(&self, _other: &$t<T>) -> cmp::Ordering {
-                cmp::Ordering::Equal
-            }
-        }
-
-        #[stable(feature = "rust1", since = "1.0.0")]
-        impl<T: ?Sized> Copy for $t<T> {}
-
-        #[stable(feature = "rust1", since = "1.0.0")]
-        impl<T: ?Sized> Clone for $t<T> {
-            fn clone(&self) -> Self {
-                Self
-            }
-        }
-
-        #[stable(feature = "rust1", since = "1.0.0")]
-        #[rustc_const_unstable(feature = "const_default_impls", issue = "87864")]
-        impl<T: ?Sized> const Default for $t<T> {
-            fn default() -> Self {
-                Self
-            }
-        }
-
-        #[unstable(feature = "structural_match", issue = "31434")]
-        impl<T: ?Sized> StructuralPartialEq for $t<T> {}
-
-        #[unstable(feature = "structural_match", issue = "31434")]
-        impl<T: ?Sized> StructuralEq for $t<T> {}
-    };
-}
-
 /// Zero-sized type used to mark things that "act like" they own a `T`.
 ///
 /// Adding a `PhantomData<T>` field to your type tells the compiler that your
@@ -36013,14 +37233,59 @@ macro_rules! impls {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct PhantomData<T: ?Sized>;
 
-impls! { PhantomData }
-
-mod impls {
-    #[stable(feature = "rust1", since = "1.0.0")]
-    unsafe impl<T: Sync + ?Sized> Send for &T {}
-    #[stable(feature = "rust1", since = "1.0.0")]
-    unsafe impl<T: Send + ?Sized> Send for &mut T {}
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: ?Sized> Hash for PhantomData<T> {
+    #[inline]
+    fn hash<H: Hasher>(&self, _: &mut H) {}
 }
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: ?Sized> cmp::PartialEq for PhantomData<T> {
+    fn eq(&self, _other: &PhantomData<T>) -> bool {
+        true
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: ?Sized> cmp::Eq for PhantomData<T> {}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: ?Sized> cmp::PartialOrd for PhantomData<T> {
+    fn partial_cmp(&self, _other: &PhantomData<T>) -> Option<cmp::Ordering> {
+        Option::Some(cmp::Ordering::Equal)
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: ?Sized> cmp::Ord for PhantomData<T> {
+    fn cmp(&self, _other: &PhantomData<T>) -> cmp::Ordering {
+        cmp::Ordering::Equal
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: ?Sized> Copy for PhantomData<T> {}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: ?Sized> Clone for PhantomData<T> {
+    fn clone(&self) -> Self {
+        Self
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_const_unstable(feature = "const_default_impls", issue = "87864")]
+impl<T: ?Sized> const Default for PhantomData<T> {
+    fn default() -> Self {
+        Self
+    }
+}
+
+#[unstable(feature = "structural_match", issue = "31434")]
+impl<T: ?Sized> StructuralPartialEq for PhantomData<T> {}
+
+#[unstable(feature = "structural_match", issue = "31434")]
+impl<T: ?Sized> StructuralEq for PhantomData<T> {}
 
 /// Compiler-internal trait used to indicate the type of enum discriminants.
 ///
@@ -36134,7 +37399,17 @@ impl<T: ?Sized> Unpin for *mut T {}
 #[unstable(feature = "const_trait_impl", issue = "67792")]
 #[lang = "destruct"]
 #[rustc_on_unimplemented(message = "can't drop `{Self}`", append_const_msg)]
+#[const_trait]
 pub trait Destruct {}
+
+/// A marker for tuple types.
+///
+/// The implementation of this trait is built-in and cannot be implemented
+/// for any user type.
+#[unstable(feature = "tuple_trait", issue = "none")]
+#[lang = "tuple_trait"]
+#[rustc_on_unimplemented(message = "`{Self}` is not a tuple")]
+pub trait Tuple {}
 
 /// Implementations of `Copy` for primitive types.
 ///
@@ -36384,38 +37659,15 @@ mod arith {
 /// ```
 #[lang = "add"]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(
-    bootstrap,
-    rustc_on_unimplemented(
-        on(
-            all(_Self = "{integer}", Rhs = "{float}"),
-            message = "cannot add a float to an integer",
-        ),
-        on(
-            all(_Self = "{float}", Rhs = "{integer}"),
-            message = "cannot add an integer to a float",
-        ),
-        message = "cannot add `{Rhs}` to `{Self}`",
-        label = "no implementation for `{Self} + {Rhs}`"
-    )
-)]
-#[cfg_attr(
-    not(bootstrap),
-    rustc_on_unimplemented(
-        on(
-            all(_Self = "{integer}", Rhs = "{float}"),
-            message = "cannot add a float to an integer",
-        ),
-        on(
-            all(_Self = "{float}", Rhs = "{integer}"),
-            message = "cannot add an integer to a float",
-        ),
-        message = "cannot add `{Rhs}` to `{Self}`",
-        label = "no implementation for `{Self} + {Rhs}`",
-        append_const_msg,
-    )
+#[rustc_on_unimplemented(
+    on(all(_Self = "{integer}", Rhs = "{float}"), message = "cannot add a float to an integer",),
+    on(all(_Self = "{float}", Rhs = "{integer}"), message = "cannot add an integer to a float",),
+    message = "cannot add `{Rhs}` to `{Self}`",
+    label = "no implementation for `{Self} + {Rhs}`",
+    append_const_msg
 )]
 #[doc(alias = "+")]
+#[const_trait]
 pub trait Add<Rhs = Self> {
     /// The resulting type after applying the `+` operator.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -36520,9 +37772,11 @@ add_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_on_unimplemented(
     message = "cannot subtract `{Rhs}` from `{Self}`",
-    label = "no implementation for `{Self} - {Rhs}`"
+    label = "no implementation for `{Self} - {Rhs}`",
+    append_const_msg
 )]
 #[doc(alias = "-")]
+#[const_trait]
 pub trait Sub<Rhs = Self> {
     /// The resulting type after applying the `-` operator.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -36652,6 +37906,7 @@ sub_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
     label = "no implementation for `{Self} * {Rhs}`"
 )]
 #[doc(alias = "*")]
+#[const_trait]
 pub trait Mul<Rhs = Self> {
     /// The resulting type after applying the `*` operator.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -36785,6 +38040,7 @@ mul_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
     label = "no implementation for `{Self} / {Rhs}`"
 )]
 #[doc(alias = "/")]
+#[const_trait]
 pub trait Div<Rhs = Self> {
     /// The resulting type after applying the `/` operator.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -36887,6 +38143,7 @@ div_impl_float! { f32 f64 }
     label = "no implementation for `{Self} % {Rhs}`"
 )]
 #[doc(alias = "%")]
+#[const_trait]
 pub trait Rem<Rhs = Self> {
     /// The resulting type after applying the `%` operator.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -37001,6 +38258,7 @@ rem_impl_float! { f32 f64 }
 #[lang = "neg"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(alias = "-")]
+#[const_trait]
 pub trait Neg {
     /// The resulting type after applying the `-` operator.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -37074,6 +38332,7 @@ neg_impl! { isize i8 i16 i32 i64 i128 f32 f64 }
 )]
 #[doc(alias = "+")]
 #[doc(alias = "+=")]
+#[const_trait]
 pub trait AddAssign<Rhs = Self> {
     /// Performs the `+=` operation.
     ///
@@ -37141,6 +38400,7 @@ add_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 )]
 #[doc(alias = "-")]
 #[doc(alias = "-=")]
+#[const_trait]
 pub trait SubAssign<Rhs = Self> {
     /// Performs the `-=` operation.
     ///
@@ -37199,6 +38459,7 @@ sub_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 )]
 #[doc(alias = "*")]
 #[doc(alias = "*=")]
+#[const_trait]
 pub trait MulAssign<Rhs = Self> {
     /// Performs the `*=` operation.
     ///
@@ -37257,6 +38518,7 @@ mul_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 )]
 #[doc(alias = "/")]
 #[doc(alias = "/=")]
+#[const_trait]
 pub trait DivAssign<Rhs = Self> {
     /// Performs the `/=` operation.
     ///
@@ -37318,6 +38580,7 @@ div_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 )]
 #[doc(alias = "%")]
 #[doc(alias = "%=")]
+#[const_trait]
 pub trait RemAssign<Rhs = Self> {
     /// Performs the `%=` operation.
     ///
@@ -37381,6 +38644,7 @@ mod bit {
 #[lang = "not"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(alias = "!")]
+#[const_trait]
 pub trait Not {
     /// The resulting type after applying the `!` operator.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -37493,6 +38757,7 @@ impl const Not for ! {
     message = "no implementation for `{Self} & {Rhs}`",
     label = "no implementation for `{Self} & {Rhs}`"
 )]
+#[const_trait]
 pub trait BitAnd<Rhs = Self> {
     /// The resulting type after applying the `&` operator.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -37594,6 +38859,7 @@ bitand_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
     message = "no implementation for `{Self} | {Rhs}`",
     label = "no implementation for `{Self} | {Rhs}`"
 )]
+#[const_trait]
 pub trait BitOr<Rhs = Self> {
     /// The resulting type after applying the `|` operator.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -37695,6 +38961,7 @@ bitor_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
     message = "no implementation for `{Self} ^ {Rhs}`",
     label = "no implementation for `{Self} ^ {Rhs}`"
 )]
+#[const_trait]
 pub trait BitXor<Rhs = Self> {
     /// The resulting type after applying the `^` operator.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -37795,6 +39062,7 @@ bitxor_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
     message = "no implementation for `{Self} << {Rhs}`",
     label = "no implementation for `{Self} << {Rhs}`"
 )]
+#[const_trait]
 pub trait Shl<Rhs = Self> {
     /// The resulting type after applying the `<<` operator.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -37914,6 +39182,7 @@ shl_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 isize i128 }
     message = "no implementation for `{Self} >> {Rhs}`",
     label = "no implementation for `{Self} >> {Rhs}`"
 )]
+#[const_trait]
 pub trait Shr<Rhs = Self> {
     /// The resulting type after applying the `>>` operator.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -38042,6 +39311,7 @@ shr_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 i128 isize }
     message = "no implementation for `{Self} &= {Rhs}`",
     label = "no implementation for `{Self} &= {Rhs}`"
 )]
+#[const_trait]
 pub trait BitAndAssign<Rhs = Self> {
     /// Performs the `&=` operation.
     ///
@@ -38114,6 +39384,7 @@ bitand_assign_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
     message = "no implementation for `{Self} |= {Rhs}`",
     label = "no implementation for `{Self} |= {Rhs}`"
 )]
+#[const_trait]
 pub trait BitOrAssign<Rhs = Self> {
     /// Performs the `|=` operation.
     ///
@@ -38186,6 +39457,7 @@ bitor_assign_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
     message = "no implementation for `{Self} ^= {Rhs}`",
     label = "no implementation for `{Self} ^= {Rhs}`"
 )]
+#[const_trait]
 pub trait BitXorAssign<Rhs = Self> {
     /// Performs the `^=` operation.
     ///
@@ -38256,6 +39528,7 @@ bitxor_assign_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
     message = "no implementation for `{Self} <<= {Rhs}`",
     label = "no implementation for `{Self} <<= {Rhs}`"
 )]
+#[const_trait]
 pub trait ShlAssign<Rhs = Self> {
     /// Performs the `<<=` operation.
     ///
@@ -38339,6 +39612,7 @@ shl_assign_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 i128 isize }
     message = "no implementation for `{Self} >>= {Rhs}`",
     label = "no implementation for `{Self} >>= {Rhs}`"
 )]
+#[const_trait]
 pub trait ShrAssign<Rhs = Self> {
     /// Performs the `>>=` operation.
     ///
@@ -38491,7 +39765,8 @@ pub enum ControlFlow<B, C = ()> {
 }
 
 #[unstable(feature = "try_trait_v2", issue = "84277")]
-impl<B, C> ops::Try for ControlFlow<B, C> {
+#[rustc_const_unstable(feature = "const_convert", issue = "88674")]
+impl<B, C> const ops::Try for ControlFlow<B, C> {
     type Output = C;
     type Residual = ControlFlow<B, convert::Infallible>;
 
@@ -38510,7 +39785,8 @@ impl<B, C> ops::Try for ControlFlow<B, C> {
 }
 
 #[unstable(feature = "try_trait_v2", issue = "84277")]
-impl<B, C> ops::FromResidual for ControlFlow<B, C> {
+#[rustc_const_unstable(feature = "const_convert", issue = "88674")]
+impl<B, C> const ops::FromResidual for ControlFlow<B, C> {
     #[inline]
     fn from_residual(residual: ControlFlow<B, convert::Infallible>) -> Self {
         match residual {
@@ -38520,7 +39796,8 @@ impl<B, C> ops::FromResidual for ControlFlow<B, C> {
 }
 
 #[unstable(feature = "try_trait_v2_residual", issue = "91285")]
-impl<B, C> ops::Residual<C> for ControlFlow<B, convert::Infallible> {
+#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+impl<B, C> const ops::Residual<C> for ControlFlow<B, convert::Infallible> {
     type TryType = ControlFlow<B, C>;
 }
 
@@ -38758,6 +40035,7 @@ mod deref {
 #[doc(alias = "&*")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "Deref"]
+#[cfg_attr(not(bootstrap), const_trait)]
 pub trait Deref {
     /// The resulting type after dereferencing.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -38866,6 +40144,7 @@ impl<T: ?Sized> const Deref for &mut T {
 #[lang = "deref_mut"]
 #[doc(alias = "*")]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[const_trait]
 pub trait DerefMut: Deref {
     /// Mutably dereferences the value.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -39032,6 +40311,7 @@ mod drop {
 /// these types cannot have destructors.
 #[lang = "drop"]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[const_trait]
 pub trait Drop {
     /// Executes the destructor for this type.
     ///
@@ -39054,7 +40334,7 @@ pub trait Drop {
     /// handled by the compiler, but when using unsafe code, can sometimes occur
     /// unintentionally, particularly when using [`ptr::drop_in_place`].
     ///
-    /// [E0040]: ../../error-index.html#E0040
+    /// [E0040]: ../../error_codes/E0040.html
     /// [`panic!`]: crate::panic!
     /// [`mem::drop`]: drop
     /// [`ptr::drop_in_place`]: crate::ptr::drop_in_place
@@ -39136,6 +40416,7 @@ mod function {
 )]
 #[fundamental] // so that regex can rely that `&str: !FnMut`
 #[must_use = "closures are lazy and do nothing unless called"]
+#[cfg_attr(not(bootstrap), const_trait)]
 pub trait Fn<Args>: FnMut<Args> {
     /// Performs the call operation.
     #[unstable(feature = "fn_traits", issue = "29625")]
@@ -39223,6 +40504,7 @@ pub trait Fn<Args>: FnMut<Args> {
 )]
 #[fundamental] // so that regex can rely that `&str: !FnMut`
 #[must_use = "closures are lazy and do nothing unless called"]
+#[cfg_attr(not(bootstrap), const_trait)]
 pub trait FnMut<Args>: FnOnce<Args> {
     /// Performs the call operation.
     #[unstable(feature = "fn_traits", issue = "29625")]
@@ -39302,6 +40584,7 @@ pub trait FnMut<Args>: FnOnce<Args> {
 )]
 #[fundamental] // so that regex can rely that `&str: !FnMut`
 #[must_use = "closures are lazy and do nothing unless called"]
+#[cfg_attr(not(bootstrap), const_trait)]
 pub trait FnOnce<Args> {
     /// The returned type after the call operator is used.
     #[lang = "fn_once_output"]
@@ -39315,9 +40598,10 @@ pub trait FnOnce<Args> {
 
 mod impls {
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<A, F: ?Sized> Fn<A> for &F
+    #[rustc_const_unstable(feature = "const_fn_trait_ref_impls", issue = "101803")]
+    impl<A, F: ?Sized> const Fn<A> for &F
     where
-        F: Fn<A>,
+        F: ~const Fn<A>,
     {
         extern "rust-call" fn call(&self, args: A) -> F::Output {
             (**self).call(args)
@@ -39325,9 +40609,10 @@ mod impls {
     }
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<A, F: ?Sized> FnMut<A> for &F
+    #[rustc_const_unstable(feature = "const_fn_trait_ref_impls", issue = "101803")]
+    impl<A, F: ?Sized> const FnMut<A> for &F
     where
-        F: Fn<A>,
+        F: ~const Fn<A>,
     {
         extern "rust-call" fn call_mut(&mut self, args: A) -> F::Output {
             (**self).call(args)
@@ -39335,9 +40620,10 @@ mod impls {
     }
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<A, F: ?Sized> FnOnce<A> for &F
+    #[rustc_const_unstable(feature = "const_fn_trait_ref_impls", issue = "101803")]
+    impl<A, F: ?Sized> const FnOnce<A> for &F
     where
-        F: Fn<A>,
+        F: ~const Fn<A>,
     {
         type Output = F::Output;
 
@@ -39347,9 +40633,10 @@ mod impls {
     }
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<A, F: ?Sized> FnMut<A> for &mut F
+    #[rustc_const_unstable(feature = "const_fn_trait_ref_impls", issue = "101803")]
+    impl<A, F: ?Sized> const FnMut<A> for &mut F
     where
-        F: FnMut<A>,
+        F: ~const FnMut<A>,
     {
         extern "rust-call" fn call_mut(&mut self, args: A) -> F::Output {
             (*self).call_mut(args)
@@ -39357,9 +40644,10 @@ mod impls {
     }
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<A, F: ?Sized> FnOnce<A> for &mut F
+    #[rustc_const_unstable(feature = "const_fn_trait_ref_impls", issue = "101803")]
+    impl<A, F: ?Sized> const FnOnce<A> for &mut F
     where
-        F: FnMut<A>,
+        F: ~const FnMut<A>,
     {
         type Output = F::Output;
         extern "rust-call" fn call_once(self, args: A) -> F::Output {
@@ -39454,7 +40742,6 @@ pub trait Generator<R = ()> {
     /// `return` statement or implicitly as the last expression of a generator
     /// literal. For example futures would use this as `Result<T, E>` as it
     /// represents a completed future.
-    #[lang = "generator_return"]
     type Return;
 
     /// Resumes the execution of this generator.
@@ -39564,6 +40851,7 @@ mod index {
 #[doc(alias = "]")]
 #[doc(alias = "[")]
 #[doc(alias = "[]")]
+#[cfg_attr(not(bootstrap), const_trait)]
 pub trait Index<Idx: ?Sized> {
     /// The returned type after indexing.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -39672,6 +40960,7 @@ see chapter in The Book <https://doc.rust-lang.org/book/ch08-02-strings.html#ind
 #[doc(alias = "[")]
 #[doc(alias = "]")]
 #[doc(alias = "[]")]
+#[cfg_attr(not(bootstrap), const_trait)]
 pub trait IndexMut<Idx: ?Sized>: Index<Idx> {
     /// Performs the mutable indexing (`container[index]`) operation.
     ///
@@ -39682,6 +40971,179 @@ pub trait IndexMut<Idx: ?Sized>: Index<Idx> {
     #[track_caller]
     fn index_mut(&mut self, index: Idx) -> &mut Self::Output;
 }
+}
+mod index_range {
+use crate::intrinsics::{assert_unsafe_precondition, unchecked_add, unchecked_sub};
+use crate::iter::{FusedIterator, TrustedLen};
+
+/// Like a `Range<usize>`, but with a safety invariant that `start <= end`.
+///
+/// This means that `end - start` cannot overflow, allowing some μoptimizations.
+///
+/// (Normal `Range` code needs to handle degenerate ranges like `10..0`,
+///  which takes extra checks compared to only handling the canonical form.)
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct IndexRange {
+    start: usize,
+    end: usize,
+}
+
+impl IndexRange {
+    /// # Safety
+    /// - `start <= end`
+    #[inline]
+    pub const unsafe fn new_unchecked(start: usize, end: usize) -> Self {
+        // SAFETY: comparisons on usize are pure
+        unsafe {
+            assert_unsafe_precondition!(
+               "IndexRange::new_unchecked requires `start <= end`",
+                (start: usize, end: usize) => start <= end
+            )
+        };
+        IndexRange { start, end }
+    }
+
+    #[inline]
+    pub const fn zero_to(end: usize) -> Self {
+        IndexRange { start: 0, end }
+    }
+
+    #[inline]
+    pub const fn start(&self) -> usize {
+        self.start
+    }
+
+    #[inline]
+    pub const fn end(&self) -> usize {
+        self.end
+    }
+
+    #[inline]
+    pub const fn len(&self) -> usize {
+        // SAFETY: By invariant, this cannot wrap
+        unsafe { unchecked_sub(self.end, self.start) }
+    }
+
+    /// # Safety
+    /// - Can only be called when `start < end`, aka when `len > 0`.
+    #[inline]
+    unsafe fn next_unchecked(&mut self) -> usize {
+        debug_assert!(self.start < self.end);
+
+        let value = self.start;
+        // SAFETY: The range isn't empty, so this cannot overflow
+        self.start = unsafe { unchecked_add(value, 1) };
+        value
+    }
+
+    /// # Safety
+    /// - Can only be called when `start < end`, aka when `len > 0`.
+    #[inline]
+    unsafe fn next_back_unchecked(&mut self) -> usize {
+        debug_assert!(self.start < self.end);
+
+        // SAFETY: The range isn't empty, so this cannot overflow
+        let value = unsafe { unchecked_sub(self.end, 1) };
+        self.end = value;
+        value
+    }
+
+    /// Removes the first `n` items from this range, returning them as an `IndexRange`.
+    /// If there are fewer than `n`, then the whole range is returned and
+    /// `self` is left empty.
+    ///
+    /// This is designed to help implement `Iterator::advance_by`.
+    #[inline]
+    pub fn take_prefix(&mut self, n: usize) -> Self {
+        let mid = if n <= self.len() {
+            // SAFETY: We just checked that this will be between start and end,
+            // and thus the addition cannot overflow.
+            unsafe { unchecked_add(self.start, n) }
+        } else {
+            self.end
+        };
+        let prefix = Self { start: self.start, end: mid };
+        self.start = mid;
+        prefix
+    }
+
+    /// Removes the last `n` items from this range, returning them as an `IndexRange`.
+    /// If there are fewer than `n`, then the whole range is returned and
+    /// `self` is left empty.
+    ///
+    /// This is designed to help implement `Iterator::advance_back_by`.
+    #[inline]
+    pub fn take_suffix(&mut self, n: usize) -> Self {
+        let mid = if n <= self.len() {
+            // SAFETY: We just checked that this will be between start and end,
+            // and thus the addition cannot overflow.
+            unsafe { unchecked_sub(self.end, n) }
+        } else {
+            self.start
+        };
+        let suffix = Self { start: mid, end: self.end };
+        self.end = mid;
+        suffix
+    }
+}
+
+impl Iterator for IndexRange {
+    type Item = usize;
+
+    #[inline]
+    fn next(&mut self) -> Option<usize> {
+        if self.len() > 0 {
+            // SAFETY: We just checked that the range is non-empty
+            unsafe { Some(self.next_unchecked()) }
+        } else {
+            None
+        }
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let len = self.len();
+        (len, Some(len))
+    }
+
+    #[inline]
+    fn advance_by(&mut self, n: usize) -> Result<(), usize> {
+        let original_len = self.len();
+        self.take_prefix(n);
+        if n > original_len { Err(original_len) } else { Ok(()) }
+    }
+}
+
+impl DoubleEndedIterator for IndexRange {
+    #[inline]
+    fn next_back(&mut self) -> Option<usize> {
+        if self.len() > 0 {
+            // SAFETY: We just checked that the range is non-empty
+            unsafe { Some(self.next_back_unchecked()) }
+        } else {
+            None
+        }
+    }
+
+    #[inline]
+    fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {
+        let original_len = self.len();
+        self.take_suffix(n);
+        if n > original_len { Err(original_len) } else { Ok(()) }
+    }
+}
+
+impl ExactSizeIterator for IndexRange {
+    #[inline]
+    fn len(&self) -> usize {
+        self.len()
+    }
+}
+
+// SAFETY: Because we only deal in `usize`, our `len` is always perfect.
+unsafe impl TrustedLen for IndexRange {}
+
+impl FusedIterator for IndexRange {}
 }
 mod range {
 use crate::fmt;
@@ -40363,7 +41825,7 @@ pub enum Bound<T> {
 impl<T> Bound<T> {
     /// Converts from `&Bound<T>` to `Bound<&T>`.
     #[inline]
-    #[unstable(feature = "bound_as_ref", issue = "80996")]
+    #[stable(feature = "bound_as_ref_shared", since = "1.65.0")]
     pub fn as_ref(&self) -> Bound<&T> {
         match *self {
             Included(ref x) => Included(x),
@@ -40807,7 +42269,8 @@ use crate::ops::ControlFlow;
 )]
 #[doc(alias = "?")]
 #[lang = "Try"]
-pub trait Try: FromResidual {
+#[const_trait]
+pub trait Try: ~const FromResidual {
     /// The type of the value produced by `?` when *not* short-circuiting.
     #[unstable(feature = "try_trait_v2", issue = "84277")]
     type Output;
@@ -40911,7 +42374,7 @@ pub trait Try: FromResidual {
         message = "the `?` operator can only be used on `Result`s, not `Option`s, \
             in {ItemContext} that returns `Result`",
         label = "use `.ok_or(...)?` to provide an error compatible with `{Self}`",
-        enclosing_scope = "this function returns a `Result`"
+        parent_label = "this function returns a `Result`"
     ),
     on(
         all(
@@ -40924,7 +42387,7 @@ pub trait Try: FromResidual {
         message = "the `?` operator can only be used on `Result`s \
             in {ItemContext} that returns `Result`",
         label = "this `?` produces `{R}`, which is incompatible with `{Self}`",
-        enclosing_scope = "this function returns a `Result`"
+        parent_label = "this function returns a `Result`"
     ),
     on(
         all(
@@ -40935,7 +42398,7 @@ pub trait Try: FromResidual {
         message = "the `?` operator can only be used on `Option`s, not `Result`s, \
             in {ItemContext} that returns `Option`",
         label = "use `.ok()?` if you want to discard the `{R}` error information",
-        enclosing_scope = "this function returns an `Option`"
+        parent_label = "this function returns an `Option`"
     ),
     on(
         all(
@@ -40947,7 +42410,7 @@ pub trait Try: FromResidual {
         message = "the `?` operator can only be used on `Option`s \
             in {ItemContext} that returns `Option`",
         label = "this `?` produces `{R}`, which is incompatible with `{Self}`",
-        enclosing_scope = "this function returns an `Option`"
+        parent_label = "this function returns an `Option`"
     ),
     on(
         all(
@@ -40958,7 +42421,7 @@ pub trait Try: FromResidual {
         message = "the `?` operator in {ItemContext} that returns `ControlFlow<B, _>` \
             can only be used on other `ControlFlow<B, _>`s (with the same Break type)",
         label = "this `?` produces `{R}`, which is incompatible with `{Self}`",
-        enclosing_scope = "this function returns a `ControlFlow`",
+        parent_label = "this function returns a `ControlFlow`",
         note = "unlike `Result`, there's no `From`-conversion performed for `ControlFlow`"
     ),
     on(
@@ -40970,7 +42433,7 @@ pub trait Try: FromResidual {
         message = "the `?` operator can only be used on `ControlFlow`s \
             in {ItemContext} that returns `ControlFlow`",
         label = "this `?` produces `{R}`, which is incompatible with `{Self}`",
-        enclosing_scope = "this function returns a `ControlFlow`",
+        parent_label = "this function returns a `ControlFlow`",
     ),
     on(
         all(from_desugaring = "QuestionMark"),
@@ -40978,11 +42441,12 @@ pub trait Try: FromResidual {
                     that returns `Result` or `Option` \
                     (or another type that implements `{FromResidual}`)",
         label = "cannot use the `?` operator in {ItemContext} that returns `{Self}`",
-        enclosing_scope = "this function should return `Result` or `Option` to accept `?`"
+        parent_label = "this function should return `Result` or `Option` to accept `?`"
     ),
 )]
 #[rustc_diagnostic_item = "FromResidual"]
 #[unstable(feature = "try_trait_v2", issue = "84277")]
+#[const_trait]
 pub trait FromResidual<R = <Self as Try>::Residual> {
     /// Constructs the type from a compatible `Residual` type.
     ///
@@ -41035,10 +42499,11 @@ where
 /// and in the other direction,
 /// `<Result<Infallible, E> as Residual<T>>::TryType = Result<T, E>`.
 #[unstable(feature = "try_trait_v2_residual", issue = "91285")]
+#[const_trait]
 pub trait Residual<O> {
     /// The "return" type of this meta-function.
     #[unstable(feature = "try_trait_v2_residual", issue = "91285")]
-    type TryType: Try<Output = O, Residual = Self>;
+    type TryType: ~const Try<Output = O, Residual = Self>;
 }
 
 #[unstable(feature = "pub_crate_should_not_need_unstable_attr", issue = "none")]
@@ -41055,16 +42520,19 @@ pub(crate) type ChangeOutputType<T, V> = <<T as Try>::Residual as Residual<V>>::
 pub(crate) struct NeverShortCircuit<T>(pub T);
 
 impl<T> NeverShortCircuit<T> {
-    /// Wrap a binary `FnMut` to return its result wrapped in a `NeverShortCircuit`.
+    /// Implementation for building `ConstFnMutClosure` for wrapping the output of a ~const FnMut in a `NeverShortCircuit`.
     #[inline]
-    pub fn wrap_mut_2<A, B>(mut f: impl FnMut(A, B) -> T) -> impl FnMut(A, B) -> Self {
-        move |a, b| NeverShortCircuit(f(a, b))
+    pub const fn wrap_mut_2_imp<A, B, F: ~const FnMut(A, B) -> T>(
+        f: &mut F,
+        (a, b): (A, B),
+    ) -> NeverShortCircuit<T> {
+        NeverShortCircuit(f(a, b))
     }
 }
 
 pub(crate) enum NeverShortCircuitResidual {}
 
-impl<T> Try for NeverShortCircuit<T> {
+impl<T> const Try for NeverShortCircuit<T> {
     type Output = T;
     type Residual = NeverShortCircuitResidual;
 
@@ -41079,14 +42547,14 @@ impl<T> Try for NeverShortCircuit<T> {
     }
 }
 
-impl<T> FromResidual for NeverShortCircuit<T> {
+impl<T> const FromResidual for NeverShortCircuit<T> {
     #[inline]
     fn from_residual(never: NeverShortCircuitResidual) -> Self {
         match never {}
     }
 }
 
-impl<T> Residual<T> for NeverShortCircuitResidual {
+impl<T> const Residual<T> for NeverShortCircuitResidual {
     type TryType = NeverShortCircuit<T>;
 }
 
@@ -41259,6 +42727,8 @@ pub use self::index::{Index, IndexMut};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::range::{Range, RangeFrom, RangeFull, RangeTo};
 
+pub(crate) use self::index_range::IndexRange;
+
 #[stable(feature = "inclusive_range", since = "1.26.0")]
 pub use self::range::{Bound, RangeBounds, RangeInclusive, RangeToInclusive};
 
@@ -41292,10 +42762,7 @@ pub use self::control_flow::ControlFlow;
 /* Core types and methods on primitives */
 
 pub mod any {
-//! This module contains the `Any` trait, which enables dynamic typing
-//! of any `'static` type through runtime reflection. It also contains the
-//! `Provider` trait and accompanying API, which enable trait objects to provide
-//! data based on typed requests, an alternate form of runtime reflection.
+//! Utilities for dynamic typing or type reflection.
 //!
 //! # `Any` and `TypeId`
 //!
@@ -42093,7 +43560,7 @@ pub trait Provider {
     /// impl Provider for SomeConcreteType {
     ///     fn provide<'a>(&'a self, demand: &mut Demand<'a>) {
     ///         demand.provide_ref::<str>(&self.field)
-    ///             .provide_value::<i32>(|| self.num_field);
+    ///             .provide_value::<i32>(self.num_field);
     ///     }
     /// }
     /// ```
@@ -42178,28 +43645,55 @@ impl<'a> Demand<'a> {
     ///
     /// # Examples
     ///
+    /// Provides an `u8`.
+    ///
+    /// ```rust
+    /// #![feature(provide_any)]
+    ///
+    /// use std::any::{Provider, Demand};
+    /// # struct SomeConcreteType { field: u8 }
+    ///
+    /// impl Provider for SomeConcreteType {
+    ///     fn provide<'a>(&'a self, demand: &mut Demand<'a>) {
+    ///         demand.provide_value::<u8>(self.field);
+    ///     }
+    /// }
+    /// ```
+    #[unstable(feature = "provide_any", issue = "96024")]
+    pub fn provide_value<T>(&mut self, value: T) -> &mut Self
+    where
+        T: 'static,
+    {
+        self.provide::<tags::Value<T>>(value)
+    }
+
+    /// Provide a value or other type with only static lifetimes computed using a closure.
+    ///
+    /// # Examples
+    ///
     /// Provides a `String` by cloning.
     ///
     /// ```rust
-    /// # #![feature(provide_any)]
+    /// #![feature(provide_any)]
+    ///
     /// use std::any::{Provider, Demand};
     /// # struct SomeConcreteType { field: String }
     ///
     /// impl Provider for SomeConcreteType {
     ///     fn provide<'a>(&'a self, demand: &mut Demand<'a>) {
-    ///         demand.provide_value::<String>(|| self.field.clone());
+    ///         demand.provide_value_with::<String>(|| self.field.clone());
     ///     }
     /// }
     /// ```
     #[unstable(feature = "provide_any", issue = "96024")]
-    pub fn provide_value<T>(&mut self, fulfil: impl FnOnce() -> T) -> &mut Self
+    pub fn provide_value_with<T>(&mut self, fulfil: impl FnOnce() -> T) -> &mut Self
     where
         T: 'static,
     {
         self.provide_with::<tags::Value<T>>(fulfil)
     }
 
-    /// Provide a reference, note that the referee type must be bounded by `'static`,
+    /// Provide a reference. The referee type must be bounded by `'static`,
     /// but may be unsized.
     ///
     /// # Examples
@@ -42207,7 +43701,8 @@ impl<'a> Demand<'a> {
     /// Provides a reference to a field as a `&str`.
     ///
     /// ```rust
-    /// # #![feature(provide_any)]
+    /// #![feature(provide_any)]
+    ///
     /// use std::any::{Provider, Demand};
     /// # struct SomeConcreteType { field: String }
     ///
@@ -42220,6 +43715,40 @@ impl<'a> Demand<'a> {
     #[unstable(feature = "provide_any", issue = "96024")]
     pub fn provide_ref<T: ?Sized + 'static>(&mut self, value: &'a T) -> &mut Self {
         self.provide::<tags::Ref<tags::MaybeSizedValue<T>>>(value)
+    }
+
+    /// Provide a reference computed using a closure. The referee type
+    /// must be bounded by `'static`, but may be unsized.
+    ///
+    /// # Examples
+    ///
+    /// Provides a reference to a field as a `&str`.
+    ///
+    /// ```rust
+    /// #![feature(provide_any)]
+    ///
+    /// use std::any::{Provider, Demand};
+    /// # struct SomeConcreteType { business: String, party: String }
+    /// # fn today_is_a_weekday() -> bool { true }
+    ///
+    /// impl Provider for SomeConcreteType {
+    ///     fn provide<'a>(&'a self, demand: &mut Demand<'a>) {
+    ///         demand.provide_ref_with::<str>(|| {
+    ///             if today_is_a_weekday() {
+    ///                 &self.business
+    ///             } else {
+    ///                 &self.party
+    ///             }
+    ///         });
+    ///     }
+    /// }
+    /// ```
+    #[unstable(feature = "provide_any", issue = "96024")]
+    pub fn provide_ref_with<T: ?Sized + 'static>(
+        &mut self,
+        fulfil: impl FnOnce() -> &'a T,
+    ) -> &mut Self {
+        self.provide_with::<tags::Ref<tags::MaybeSizedValue<T>>>(fulfil)
     }
 
     /// Provide a value with the given `Type` tag.
@@ -42242,6 +43771,156 @@ impl<'a> Demand<'a> {
             res.0 = Some(fulfil());
         }
         self
+    }
+
+    /// Check if the `Demand` would be satisfied if provided with a
+    /// value of the specified type. If the type does not match or has
+    /// already been provided, returns false.
+    ///
+    /// # Examples
+    ///
+    /// Check if an `u8` still needs to be provided and then provides
+    /// it.
+    ///
+    /// ```rust
+    /// #![feature(provide_any)]
+    ///
+    /// use std::any::{Provider, Demand};
+    ///
+    /// struct Parent(Option<u8>);
+    ///
+    /// impl Provider for Parent {
+    ///     fn provide<'a>(&'a self, demand: &mut Demand<'a>) {
+    ///         if let Some(v) = self.0 {
+    ///             demand.provide_value::<u8>(v);
+    ///         }
+    ///     }
+    /// }
+    ///
+    /// struct Child {
+    ///     parent: Parent,
+    /// }
+    ///
+    /// impl Child {
+    ///     // Pretend that this takes a lot of resources to evaluate.
+    ///     fn an_expensive_computation(&self) -> Option<u8> {
+    ///         Some(99)
+    ///     }
+    /// }
+    ///
+    /// impl Provider for Child {
+    ///     fn provide<'a>(&'a self, demand: &mut Demand<'a>) {
+    ///         // In general, we don't know if this call will provide
+    ///         // an `u8` value or not...
+    ///         self.parent.provide(demand);
+    ///
+    ///         // ...so we check to see if the `u8` is needed before
+    ///         // we run our expensive computation.
+    ///         if demand.would_be_satisfied_by_value_of::<u8>() {
+    ///             if let Some(v) = self.an_expensive_computation() {
+    ///                 demand.provide_value::<u8>(v);
+    ///             }
+    ///         }
+    ///
+    ///         // The demand will be satisfied now, regardless of if
+    ///         // the parent provided the value or we did.
+    ///         assert!(!demand.would_be_satisfied_by_value_of::<u8>());
+    ///     }
+    /// }
+    ///
+    /// let parent = Parent(Some(42));
+    /// let child = Child { parent };
+    /// assert_eq!(Some(42), std::any::request_value::<u8>(&child));
+    ///
+    /// let parent = Parent(None);
+    /// let child = Child { parent };
+    /// assert_eq!(Some(99), std::any::request_value::<u8>(&child));
+    /// ```
+    #[unstable(feature = "provide_any", issue = "96024")]
+    pub fn would_be_satisfied_by_value_of<T>(&self) -> bool
+    where
+        T: 'static,
+    {
+        self.would_be_satisfied_by::<tags::Value<T>>()
+    }
+
+    /// Check if the `Demand` would be satisfied if provided with a
+    /// reference to a value of the specified type. If the type does
+    /// not match or has already been provided, returns false.
+    ///
+    /// # Examples
+    ///
+    /// Check if a `&str` still needs to be provided and then provides
+    /// it.
+    ///
+    /// ```rust
+    /// #![feature(provide_any)]
+    ///
+    /// use std::any::{Provider, Demand};
+    ///
+    /// struct Parent(Option<String>);
+    ///
+    /// impl Provider for Parent {
+    ///     fn provide<'a>(&'a self, demand: &mut Demand<'a>) {
+    ///         if let Some(v) = &self.0 {
+    ///             demand.provide_ref::<str>(v);
+    ///         }
+    ///     }
+    /// }
+    ///
+    /// struct Child {
+    ///     parent: Parent,
+    ///     name: String,
+    /// }
+    ///
+    /// impl Child {
+    ///     // Pretend that this takes a lot of resources to evaluate.
+    ///     fn an_expensive_computation(&self) -> Option<&str> {
+    ///         Some(&self.name)
+    ///     }
+    /// }
+    ///
+    /// impl Provider for Child {
+    ///     fn provide<'a>(&'a self, demand: &mut Demand<'a>) {
+    ///         // In general, we don't know if this call will provide
+    ///         // a `str` reference or not...
+    ///         self.parent.provide(demand);
+    ///
+    ///         // ...so we check to see if the `&str` is needed before
+    ///         // we run our expensive computation.
+    ///         if demand.would_be_satisfied_by_ref_of::<str>() {
+    ///             if let Some(v) = self.an_expensive_computation() {
+    ///                 demand.provide_ref::<str>(v);
+    ///             }
+    ///         }
+    ///
+    ///         // The demand will be satisfied now, regardless of if
+    ///         // the parent provided the reference or we did.
+    ///         assert!(!demand.would_be_satisfied_by_ref_of::<str>());
+    ///     }
+    /// }
+    ///
+    /// let parent = Parent(Some("parent".into()));
+    /// let child = Child { parent, name: "child".into() };
+    /// assert_eq!(Some("parent"), std::any::request_ref::<str>(&child));
+    ///
+    /// let parent = Parent(None);
+    /// let child = Child { parent, name: "child".into() };
+    /// assert_eq!(Some("child"), std::any::request_ref::<str>(&child));
+    /// ```
+    #[unstable(feature = "provide_any", issue = "96024")]
+    pub fn would_be_satisfied_by_ref_of<T>(&self) -> bool
+    where
+        T: ?Sized + 'static,
+    {
+        self.would_be_satisfied_by::<tags::Ref<tags::MaybeSizedValue<T>>>()
+    }
+
+    fn would_be_satisfied_by<I>(&self) -> bool
+    where
+        I: tags::Type<'a>,
+    {
+        matches!(self.0.downcast::<I>(), Some(TaggedOption(None)))
     }
 }
 
@@ -42347,6 +44026,21 @@ impl<'a> dyn Erased<'a> + 'a {
     /// Returns some reference to the dynamic value if it is tagged with `I`,
     /// or `None` otherwise.
     #[inline]
+    fn downcast<I>(&self) -> Option<&TaggedOption<'a, I>>
+    where
+        I: tags::Type<'a>,
+    {
+        if self.tag_id() == TypeId::of::<I>() {
+            // SAFETY: Just checked whether we're pointing to an I.
+            Some(unsafe { &*(self as *const Self).cast::<TaggedOption<'a, I>>() })
+        } else {
+            None
+        }
+    }
+
+    /// Returns some mutable reference to the dynamic value if it is tagged with `I`,
+    /// or `None` otherwise.
+    #[inline]
     fn downcast_mut<I>(&mut self) -> Option<&mut TaggedOption<'a, I>>
     where
         I: tags::Type<'a>,
@@ -42361,7 +44055,7 @@ impl<'a> dyn Erased<'a> + 'a {
 }
 }
 pub mod array {
-//! Helper functions and types for fixed-length arrays.
+//! Utilities for the array primitive type.
 //!
 //! *[See also the array primitive type](array).*
 
@@ -42370,6 +44064,7 @@ pub mod array {
 use crate::borrow::{Borrow, BorrowMut};
 use crate::cmp::Ordering;
 use crate::convert::{Infallible, TryFrom};
+use crate::error::Error;
 use crate::fmt;
 use crate::hash::{self, Hash};
 use crate::iter::TrustedLen;
@@ -42555,13 +44250,14 @@ macro_rules! is_raw_eq_comparable {
     )+};
 }
 
-// SAFETY: All the ordinary integer types allow all bit patterns as distinct values
+// SAFETY: All the ordinary integer types have no padding, and are not pointers.
 is_raw_eq_comparable!(u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize);
 
-// SAFETY: bool and char have *niches*, but no *padding*, so this is sound
+// SAFETY: bool and char have *niches*, but no *padding* (and these are not pointer types), so this
+// is sound
 is_raw_eq_comparable!(bool, char);
 
-// SAFETY: Similarly, the non-zero types have a niche, but no undef,
+// SAFETY: Similarly, the non-zero types have a niche, but no undef and no pointers,
 // and they compare like their underlying numeric type.
 is_raw_eq_comparable!(
     NonZeroU8,
@@ -42601,10 +44297,10 @@ mod iter {
 //! Defines the `IntoIter` owned iterator for arrays.
 
 use crate::{
-    cmp, fmt,
+    fmt,
     iter::{self, ExactSizeIterator, FusedIterator, TrustedLen},
     mem::{self, MaybeUninit},
-    ops::Range,
+    ops::{IndexRange, Range},
     ptr,
 };
 
@@ -42629,9 +44325,10 @@ pub struct IntoIter<T, const N: usize> {
     /// The elements in `data` that have not been yielded yet.
     ///
     /// Invariants:
-    /// - `alive.start <= alive.end`
     /// - `alive.end <= N`
-    alive: Range<usize>,
+    ///
+    /// (And the `IndexRange` type requires `alive.start <= alive.end`.)
+    alive: IndexRange,
 }
 
 // Note: the `#[rustc_skip_array_during_method_dispatch]` on `trait IntoIterator`
@@ -42669,7 +44366,7 @@ impl<T, const N: usize> IntoIterator for [T; N] {
         // Until then, we can use `mem::transmute_copy` to create a bitwise copy
         // as a different type, then forget `array` so that it is not dropped.
         unsafe {
-            let iter = IntoIter { data: mem::transmute_copy(&self), alive: 0..N };
+            let iter = IntoIter { data: mem::transmute_copy(&self), alive: IndexRange::zero_to(N) };
             mem::forget(self);
             iter
         }
@@ -42703,8 +44400,7 @@ impl<T, const N: usize> IntoIter<T, N> {
     ///
     /// ```
     /// #![feature(array_into_iter_constructors)]
-    ///
-    /// #![feature(maybe_uninit_array_assume_init)]
+    /// #![feature(maybe_uninit_uninit_array_transpose)]
     /// #![feature(maybe_uninit_uninit_array)]
     /// use std::array::IntoIter;
     /// use std::mem::MaybeUninit;
@@ -42733,7 +44429,7 @@ impl<T, const N: usize> IntoIter<T, N> {
     ///     }
     ///
     ///     // SAFETY: We've initialized all N items
-    ///     unsafe { Ok(MaybeUninit::array_assume_init(buffer)) }
+    ///     unsafe { Ok(buffer.transpose().assume_init()) }
     /// }
     ///
     /// let r: [_; 4] = next_chunk(&mut (10..16)).unwrap();
@@ -42747,7 +44443,9 @@ impl<T, const N: usize> IntoIter<T, N> {
         buffer: [MaybeUninit<T>; N],
         initialized: Range<usize>,
     ) -> Self {
-        Self { data: buffer, alive: initialized }
+        // SAFETY: one of our safety conditions is that the range is canonical.
+        let alive = unsafe { IndexRange::new_unchecked(initialized.start, initialized.end) };
+        Self { data: buffer, alive }
     }
 
     /// Creates an iterator over `T` which returns no elements.
@@ -42883,16 +44581,11 @@ impl<T, const N: usize> Iterator for IntoIter<T, N> {
     }
 
     fn advance_by(&mut self, n: usize) -> Result<(), usize> {
-        let len = self.len();
+        let original_len = self.len();
 
-        // The number of elements to drop.  Always in-bounds by construction.
-        let delta = cmp::min(n, len);
-
-        let range_to_drop = self.alive.start..(self.alive.start + delta);
-
-        // Moving the start marks them as conceptually "dropped", so if anything
-        // goes bad then our drop impl won't double-free them.
-        self.alive.start += delta;
+        // This also moves the start, which marks them as conceptually "dropped",
+        // so if anything goes bad then our drop impl won't double-free them.
+        let range_to_drop = self.alive.take_prefix(n);
 
         // SAFETY: These elements are currently initialized, so it's fine to drop them.
         unsafe {
@@ -42900,7 +44593,7 @@ impl<T, const N: usize> Iterator for IntoIter<T, N> {
             ptr::drop_in_place(MaybeUninit::slice_assume_init_mut(slice));
         }
 
-        if n > len { Err(len) } else { Ok(()) }
+        if n > original_len { Err(original_len) } else { Ok(()) }
     }
 }
 
@@ -42938,16 +44631,11 @@ impl<T, const N: usize> DoubleEndedIterator for IntoIter<T, N> {
     }
 
     fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {
-        let len = self.len();
+        let original_len = self.len();
 
-        // The number of elements to drop.  Always in-bounds by construction.
-        let delta = cmp::min(n, len);
-
-        let range_to_drop = (self.alive.end - delta)..self.alive.end;
-
-        // Moving the end marks them as conceptually "dropped", so if anything
-        // goes bad then our drop impl won't double-free them.
-        self.alive.end -= delta;
+        // This also moves the end, which marks them as conceptually "dropped",
+        // so if anything goes bad then our drop impl won't double-free them.
+        let range_to_drop = self.alive.take_suffix(n);
 
         // SAFETY: These elements are currently initialized, so it's fine to drop them.
         unsafe {
@@ -42955,7 +44643,7 @@ impl<T, const N: usize> DoubleEndedIterator for IntoIter<T, N> {
             ptr::drop_in_place(MaybeUninit::slice_assume_init_mut(slice));
         }
 
-        if n > len { Err(len) } else { Ok(()) }
+        if n > original_len { Err(original_len) } else { Ok(()) }
     }
 }
 
@@ -42972,9 +44660,7 @@ impl<T, const N: usize> Drop for IntoIter<T, N> {
 #[stable(feature = "array_value_iter_impls", since = "1.40.0")]
 impl<T, const N: usize> ExactSizeIterator for IntoIter<T, N> {
     fn len(&self) -> usize {
-        // Will never underflow due to the invariant `alive.start <=
-        // alive.end`.
-        self.alive.end - self.alive.start
+        self.alive.len()
     }
     fn is_empty(&self) -> bool {
         self.alive.is_empty()
@@ -42996,14 +44682,15 @@ impl<T: Clone, const N: usize> Clone for IntoIter<T, N> {
     fn clone(&self) -> Self {
         // Note, we don't really need to match the exact same alive range, so
         // we can just clone into offset 0 regardless of where `self` is.
-        let mut new = Self { data: MaybeUninit::uninit_array(), alive: 0..0 };
+        let mut new = Self { data: MaybeUninit::uninit_array(), alive: IndexRange::zero_to(0) };
 
         // Clone all alive elements.
         for (src, dst) in iter::zip(self.as_slice(), &mut new.data) {
             // Write a clone into the new array, then update its alive range.
             // If cloning panics, we'll correctly drop the previous items.
             dst.write(src.clone());
-            new.alive.end += 1;
+            // This addition cannot overflow as we're iterating a slice
+            new.alive = IndexRange::zero_to(new.alive.end() + 1);
         }
 
         new
@@ -43032,6 +44719,10 @@ pub use iter::IntoIter;
 /// # Example
 ///
 /// ```rust
+/// // type inference is helping us here, the way `from_fn` knows how many
+/// // elements to produce is the length of array down there: only arrays of
+/// // equal lengths can be compared, so the const generic parameter `N` is
+/// // inferred to be 5, thus creating array of 5 elements.
 /// let array = core::array::from_fn(|i| i);
 /// assert_eq!(array, [0, 1, 2, 3, 4]);
 /// ```
@@ -43120,6 +44811,14 @@ impl fmt::Display for TryFromSliceError {
     }
 }
 
+#[stable(feature = "try_from", since = "1.34.0")]
+impl Error for TryFromSliceError {
+    #[allow(deprecated)]
+    fn description(&self) -> &str {
+        self.__description()
+    }
+}
+
 impl TryFromSliceError {
     #[unstable(
         feature = "array_error_internals",
@@ -43174,6 +44873,18 @@ impl<T, const N: usize> const BorrowMut<[T]> for [T; N] {
     }
 }
 
+/// Tries to create an array `[T; N]` by copying from a slice `&[T]`. Succeeds if
+/// `slice.len() == N`.
+///
+/// ```
+/// let bytes: [u8; 3] = [1, 0, 2];
+///
+/// let bytes_head: [u8; 2] = <[u8; 2]>::try_from(&bytes[0..2]).unwrap();
+/// assert_eq!(1, u16::from_le_bytes(bytes_head));
+///
+/// let bytes_tail: [u8; 2] = bytes[1..3].try_into().unwrap();
+/// assert_eq!(512, u16::from_le_bytes(bytes_tail));
+/// ```
 #[stable(feature = "try_from", since = "1.34.0")]
 impl<T, const N: usize> TryFrom<&[T]> for [T; N]
 where
@@ -43186,6 +44897,18 @@ where
     }
 }
 
+/// Tries to create an array `[T; N]` by copying from a mutable slice `&mut [T]`.
+/// Succeeds if `slice.len() == N`.
+///
+/// ```
+/// let mut bytes: [u8; 3] = [1, 0, 2];
+///
+/// let bytes_head: [u8; 2] = <[u8; 2]>::try_from(&mut bytes[0..2]).unwrap();
+/// assert_eq!(1, u16::from_le_bytes(bytes_head));
+///
+/// let bytes_tail: [u8; 2] = (&mut bytes[1..3]).try_into().unwrap();
+/// assert_eq!(512, u16::from_le_bytes(bytes_tail));
+/// ```
 #[stable(feature = "try_from_mut_slice_to_array", since = "1.59.0")]
 impl<T, const N: usize> TryFrom<&mut [T]> for [T; N]
 where
@@ -43198,6 +44921,18 @@ where
     }
 }
 
+/// Tries to create an array ref `&[T; N]` from a slice ref `&[T]`. Succeeds if
+/// `slice.len() == N`.
+///
+/// ```
+/// let bytes: [u8; 3] = [1, 0, 2];
+///
+/// let bytes_head: &[u8; 2] = <&[u8; 2]>::try_from(&bytes[0..2]).unwrap();
+/// assert_eq!(1, u16::from_le_bytes(*bytes_head));
+///
+/// let bytes_tail: &[u8; 2] = bytes[1..3].try_into().unwrap();
+/// assert_eq!(512, u16::from_le_bytes(*bytes_tail));
+/// ```
 #[stable(feature = "try_from", since = "1.34.0")]
 impl<'a, T, const N: usize> TryFrom<&'a [T]> for &'a [T; N] {
     type Error = TryFromSliceError;
@@ -43213,6 +44948,18 @@ impl<'a, T, const N: usize> TryFrom<&'a [T]> for &'a [T; N] {
     }
 }
 
+/// Tries to create a mutable array ref `&mut [T; N]` from a mutable slice ref
+/// `&mut [T]`. Succeeds if `slice.len() == N`.
+///
+/// ```
+/// let mut bytes: [u8; 3] = [1, 0, 2];
+///
+/// let bytes_head: &mut [u8; 2] = <&mut [u8; 2]>::try_from(&mut bytes[0..2]).unwrap();
+/// assert_eq!(1, u16::from_le_bytes(*bytes_head));
+///
+/// let bytes_tail: &mut [u8; 2] = (&mut bytes[1..3]).try_into().unwrap();
+/// assert_eq!(512, u16::from_le_bytes(*bytes_tail));
+/// ```
 #[stable(feature = "try_from", since = "1.34.0")]
 impl<'a, T, const N: usize> TryFrom<&'a mut [T]> for &'a mut [T; N] {
     type Error = TryFromSliceError;
@@ -43376,7 +45123,8 @@ impl<T: Copy> SpecArrayClone for T {
 macro_rules! array_impl_default {
     {$n:expr, $t:ident $($ts:ident)*} => {
         #[stable(since = "1.4.0", feature = "array_default")]
-        impl<T> Default for [T; $n] where T: Default {
+        #[rustc_const_unstable(feature = "const_default_impls", issue = "87864")]
+        impl<T> const Default for [T; $n] where T: ~const Default {
             fn default() -> [T; $n] {
                 [$t::default(), $($ts::default()),*]
             }
@@ -43855,7 +45603,7 @@ where
 
     mem::forget(guard);
     // SAFETY: All elements of the array were populated in the loop above.
-    let output = unsafe { MaybeUninit::array_assume_init(array) };
+    let output = unsafe { array.transpose().assume_init() };
     Ok(Try::from_output(output))
 }
 
@@ -45215,6 +46963,7 @@ impl<T> Cell<T> {
     /// assert_eq!(cell.replace(10), 5);
     /// assert_eq!(cell.get(), 10);
     /// ```
+    #[inline]
     #[stable(feature = "move_cell", since = "1.17.0")]
     pub fn replace(&self, val: T) -> T {
         // SAFETY: This can cause data races if called from a separate thread,
@@ -45424,6 +47173,7 @@ impl<T, const N: usize> Cell<[T; N]> {
 /// A mutable memory location with dynamically checked borrow rules
 ///
 /// See the [module-level documentation](self) for more.
+#[cfg_attr(not(test), rustc_diagnostic_item = "RefCell")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RefCell<T: ?Sized> {
     borrow: Cell<BorrowFlag>,
@@ -45831,15 +47581,18 @@ impl<T: ?Sized> RefCell<T> {
 
     /// Returns a mutable reference to the underlying data.
     ///
-    /// This call borrows `RefCell` mutably (at compile-time) so there is no
-    /// need for dynamic checks.
+    /// Since this method borrows `RefCell` mutably, it is statically guaranteed
+    /// that no borrows to the underlying data exist. The dynamic checks inherent
+    /// in [`borrow_mut`] and most other methods of `RefCell` are therefor
+    /// unnecessary.
     ///
-    /// However be cautious: this method expects `self` to be mutable, which is
-    /// generally not the case when using a `RefCell`. Take a look at the
-    /// [`borrow_mut`] method instead if `self` isn't mutable.
+    /// This method can only be called if `RefCell` can be mutably borrowed,
+    /// which in general is only the case directly after the `RefCell` has
+    /// been created. In these situations, skipping the aforementioned dynamic
+    /// borrowing checks may yield better ergonomics and runtime-performance.
     ///
-    /// Also, please be aware that this method is only for special circumstances and is usually
-    /// not what you want. In case of doubt, use [`borrow_mut`] instead.
+    /// In most situations where `RefCell` is used, it can't be borrowed mutably.
+    /// Use [`borrow_mut`] to get mutable access to the underlying data then.
     ///
     /// [`borrow_mut`]: RefCell::borrow_mut()
     ///
@@ -46621,6 +48374,61 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 ///
 /// [`.get_mut()`]: `UnsafeCell::get_mut`
 ///
+/// # Memory layout
+///
+/// `UnsafeCell<T>` has the same in-memory representation as its inner type `T`. A consequence
+/// of this guarantee is that it is possible to convert between `T` and `UnsafeCell<T>`.
+/// Special care has to be taken when converting a nested `T` inside of an `Outer<T>` type
+/// to an `Outer<UnsafeCell<T>>` type: this is not sound when the `Outer<T>` type enables [niche]
+/// optimizations. For example, the type `Option<NonNull<u8>>` is typically 8 bytes large on
+/// 64-bit platforms, but the type `Option<UnsafeCell<NonNull<u8>>>` takes up 16 bytes of space.
+/// Therefore this is not a valid conversion, despite `NonNull<u8>` and `UnsafeCell<NonNull<u8>>>`
+/// having the same memory layout. This is because `UnsafeCell` disables niche optimizations in
+/// order to avoid its interior mutability property from spreading from `T` into the `Outer` type,
+/// thus this can cause distortions in the type size in these cases.
+///
+/// Note that the only valid way to obtain a `*mut T` pointer to the contents of a
+/// _shared_ `UnsafeCell<T>` is through [`.get()`]  or [`.raw_get()`]. A `&mut T` reference
+/// can be obtained by either dereferencing this pointer or by calling [`.get_mut()`]
+/// on an _exclusive_ `UnsafeCell<T>`. Even though `T` and `UnsafeCell<T>` have the
+/// same memory layout, the following is not allowed and undefined behavior:
+///
+/// ```rust,no_run
+/// # use std::cell::UnsafeCell;
+/// unsafe fn not_allowed<T>(ptr: &UnsafeCell<T>) -> &mut T {
+///   let t = ptr as *const UnsafeCell<T> as *mut T;
+///   // This is undefined behavior, because the `*mut T` pointer
+///   // was not obtained through `.get()` nor `.raw_get()`:
+///   unsafe { &mut *t }
+/// }
+/// ```
+///
+/// Instead, do this:
+///
+/// ```rust
+/// # use std::cell::UnsafeCell;
+/// // Safety: the caller must ensure that there are no references that
+/// // point to the *contents* of the `UnsafeCell`.
+/// unsafe fn get_mut<T>(ptr: &UnsafeCell<T>) -> &mut T {
+///   unsafe { &mut *ptr.get() }
+/// }
+/// ```
+///
+/// Coverting in the other direction from a `&mut T`
+/// to an `&UnsafeCell<T>` is allowed:
+///
+/// ```rust
+/// # use std::cell::UnsafeCell;
+/// fn get_shared<T>(ptr: &mut T) -> &UnsafeCell<T> {
+///   let t = ptr as *mut T as *const UnsafeCell<T>;
+///   // SAFETY: `T` and `UnsafeCell<T>` have the same memory layout
+///   unsafe { &*t }
+/// }
+/// ```
+///
+/// [niche]: https://rust-lang.github.io/unsafe-code-guidelines/glossary.html#niche
+/// [`.raw_get()`]: `UnsafeCell::raw_get`
+///
 /// # Examples
 ///
 /// Here is an example showcasing how to soundly mutate the contents of an `UnsafeCell<_>` despite
@@ -46932,7 +48740,9 @@ fn assert_coerce_unsized(
 }
 }
 pub mod char {
-//! A character type.
+//! Utilities for the `char` primitive type.
+//!
+//! *[See also the `char` primitive type](primitive@char).*
 //!
 //! The `char` type represents a single character. More specifically, since
 //! 'character' isn't a well-defined concept in Unicode, `char` is a '[Unicode
@@ -47215,6 +49025,7 @@ pub(super) const fn from_digit(num: u32, radix: u32) -> Option<char> {
 mod decode {
 //! UTF-8 and UTF-16 decoding iterators
 
+use crate::error::Error;
 use crate::fmt;
 
 use super::from_u32_unchecked;
@@ -47334,6 +49145,14 @@ impl DecodeUtf16Error {
 impl fmt::Display for DecodeUtf16Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "unpaired surrogate found: {:x}", self.code)
+    }
+}
+
+#[stable(feature = "decode_utf16", since = "1.9.0")]
+impl Error for DecodeUtf16Error {
+    #[allow(deprecated)]
+    fn description(&self) -> &str {
+        "unpaired surrogate found"
     }
 }
 }
@@ -47937,9 +49756,14 @@ impl char {
     /// Returns the number of 16-bit code units this `char` would need if
     /// encoded in UTF-16.
     ///
+    /// That number of code units is always either 1 or 2, for unicode scalar values in
+    /// the [basic multilingual plane] or [supplementary planes] respectively.
+    ///
     /// See the documentation for [`len_utf8()`] for more explanation of this
     /// concept. This function is a mirror, but for UTF-16 instead of UTF-8.
     ///
+    /// [basic multilingual plane]: http://www.unicode.org/glossary/#basic_multilingual_plane
+    /// [supplementary planes]: http://www.unicode.org/glossary/#supplementary_planes
     /// [`len_utf8()`]: #method.len_utf8
     ///
     /// # Examples
@@ -48086,10 +49910,19 @@ impl char {
     /// assert!(!'中'.is_lowercase());
     /// assert!(!' '.is_lowercase());
     /// ```
+    ///
+    /// In a const context:
+    ///
+    /// ```
+    /// #![feature(const_unicode_case_lookup)]
+    /// const CAPITAL_DELTA_IS_LOWERCASE: bool = 'Δ'.is_lowercase();
+    /// assert!(!CAPITAL_DELTA_IS_LOWERCASE);
+    /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_unicode_case_lookup", issue = "101400")]
     #[inline]
-    pub fn is_lowercase(self) -> bool {
+    pub const fn is_lowercase(self) -> bool {
         match self {
             'a'..='z' => true,
             c => c > '\x7f' && unicode::Lowercase(c),
@@ -48119,10 +49952,19 @@ impl char {
     /// assert!(!'中'.is_uppercase());
     /// assert!(!' '.is_uppercase());
     /// ```
+    ///
+    /// In a const context:
+    ///
+    /// ```
+    /// #![feature(const_unicode_case_lookup)]
+    /// const CAPITAL_DELTA_IS_UPPERCASE: bool = 'Δ'.is_uppercase();
+    /// assert!(CAPITAL_DELTA_IS_UPPERCASE);
+    /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_unicode_case_lookup", issue = "101400")]
     #[inline]
-    pub fn is_uppercase(self) -> bool {
+    pub const fn is_uppercase(self) -> bool {
         match self {
             'A'..='Z' => true,
             c => c > '\x7f' && unicode::Uppercase(c),
@@ -48232,8 +50074,7 @@ impl char {
     ///
     /// The general categories for numbers (`Nd` for decimal digits, `Nl` for letter-like numeric
     /// characters, and `No` for other numeric characters) are specified in the [Unicode Character
-    /// Database][ucd] [`UnicodeData.txt`]. Note that this means ideographic numbers like '三'
-    /// are considered alphabetic, not numeric. Please consider to use `is_ascii_digit` or `is_digit`.
+    /// Database][ucd] [`UnicodeData.txt`].
     ///
     /// This method doesn't cover everything that could be considered a number, e.g. ideographic numbers like '三'.
     /// If you want everything including characters with overlapping purposes then you might want to use
@@ -48767,6 +50608,38 @@ impl char {
         matches!(*self, '0'..='9')
     }
 
+    /// Checks if the value is an ASCII octal digit:
+    /// U+0030 '0' ..= U+0037 '7'.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(is_ascii_octdigit)]
+    ///
+    /// let uppercase_a = 'A';
+    /// let a = 'a';
+    /// let zero = '0';
+    /// let seven = '7';
+    /// let nine = '9';
+    /// let percent = '%';
+    /// let lf = '\n';
+    ///
+    /// assert!(!uppercase_a.is_ascii_octdigit());
+    /// assert!(!a.is_ascii_octdigit());
+    /// assert!(zero.is_ascii_octdigit());
+    /// assert!(seven.is_ascii_octdigit());
+    /// assert!(!nine.is_ascii_octdigit());
+    /// assert!(!percent.is_ascii_octdigit());
+    /// assert!(!lf.is_ascii_octdigit());
+    /// ```
+    #[must_use]
+    #[unstable(feature = "is_ascii_octdigit", issue = "101288")]
+    #[rustc_const_unstable(feature = "is_ascii_octdigit", issue = "101288")]
+    #[inline]
+    pub const fn is_ascii_octdigit(&self) -> bool {
+        matches!(*self, '0'..='7')
+    }
+
     /// Checks if the value is an ASCII hexadecimal digit:
     ///
     /// - U+0030 '0' ..= U+0039 '9', or
@@ -49095,6 +50968,7 @@ pub use self::methods::encode_utf16_raw;
 #[unstable(feature = "char_internals", reason = "exposed only for libstd", issue = "none")]
 pub use self::methods::encode_utf8_raw;
 
+use crate::error::Error;
 use crate::fmt::{self, Write};
 use crate::iter::FusedIterator;
 
@@ -49641,6 +51515,9 @@ impl fmt::Display for TryFromCharError {
         "unicode code point out of range".fmt(fmt)
     }
 }
+
+#[stable(feature = "u8_from_char", since = "1.59.0")]
+impl Error for TryFromCharError {}
 }
 pub mod ffi {
 //! Platform-specific types, as defined by C.
@@ -49663,10 +51540,9 @@ use crate::ops::{Deref, DerefMut};
 pub use self::c_str::{CStr, FromBytesUntilNulError, FromBytesWithNulError};
 
 mod c_str {
-use crate::ascii;
 use crate::cmp::Ordering;
 use crate::ffi::c_char;
-use crate::fmt::{self, Write};
+use crate::fmt;
 use crate::intrinsics;
 use crate::ops;
 use crate::slice;
@@ -49786,10 +51662,10 @@ enum FromBytesWithNulErrorKind {
 }
 
 impl FromBytesWithNulError {
-    fn interior_nul(pos: usize) -> FromBytesWithNulError {
+    const fn interior_nul(pos: usize) -> FromBytesWithNulError {
         FromBytesWithNulError { kind: FromBytesWithNulErrorKind::InteriorNul(pos) }
     }
-    fn not_nul_terminated() -> FromBytesWithNulError {
+    const fn not_nul_terminated() -> FromBytesWithNulError {
         FromBytesWithNulError { kind: FromBytesWithNulErrorKind::NotNulTerminated }
     }
 
@@ -49826,11 +51702,7 @@ impl fmt::Display for FromBytesUntilNulError {
 #[stable(feature = "cstr_debug", since = "1.3.0")]
 impl fmt::Debug for CStr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "\"")?;
-        for byte in self.to_bytes().iter().flat_map(|&b| ascii::escape_default(b)) {
-            f.write_char(byte as char)?;
-        }
-        write!(f, "\"")
+        write!(f, "\"{}\"", self.to_bytes().escape_ascii())
     }
 }
 
@@ -49891,9 +51763,7 @@ impl CStr {
     /// # Examples
     ///
     /// ```ignore (extern-declaration)
-    /// # fn main() {
-    /// use std::ffi::CStr;
-    /// use std::os::raw::c_char;
+    /// use std::ffi::{c_char, CStr};
     ///
     /// extern "C" {
     ///     fn my_string() -> *const c_char;
@@ -49903,14 +51773,26 @@ impl CStr {
     ///     let slice = CStr::from_ptr(my_string());
     ///     println!("string returned: {}", slice.to_str().unwrap());
     /// }
-    /// # }
+    /// ```
+    ///
+    /// ```
+    /// #![feature(const_cstr_methods)]
+    ///
+    /// use std::ffi::{c_char, CStr};
+    ///
+    /// const HELLO_PTR: *const c_char = {
+    ///     const BYTES: &[u8] = b"Hello, world!\0";
+    ///     BYTES.as_ptr().cast()
+    /// };
+    /// const HELLO: &CStr = unsafe { CStr::from_ptr(HELLO_PTR) };
     /// ```
     ///
     /// [valid]: core::ptr#safety
     #[inline]
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub unsafe fn from_ptr<'a>(ptr: *const c_char) -> &'a CStr {
+    #[rustc_const_unstable(feature = "const_cstr_methods", issue = "101719")]
+    pub const unsafe fn from_ptr<'a>(ptr: *const c_char) -> &'a CStr {
         // SAFETY: The caller has provided a pointer that points to a valid C
         // string with a NUL terminator of size less than `isize::MAX`, whose
         // content remain valid and doesn't change for the lifetime of the
@@ -49922,11 +51804,27 @@ impl CStr {
         //
         // The cast from c_char to u8 is ok because a c_char is always one byte.
         unsafe {
-            extern "C" {
+            const fn strlen_ct(s: *const c_char) -> usize {
+                let mut len = 0;
+
+                // SAFETY: Outer caller has provided a pointer to a valid C string.
+                while unsafe { *s.add(len) } != 0 {
+                    len += 1;
+                }
+
+                len
+            }
+
+            fn strlen_rt(s: *const c_char) -> usize {
+                extern "C" {
 }
-            let len = strlen(ptr);
-            let ptr = ptr as *const u8;
-            CStr::from_bytes_with_nul_unchecked(slice::from_raw_parts(ptr, len as usize + 1))
+
+                // SAFETY: Outer caller has provided a pointer to a valid C string.
+                unsafe { strlen(s) }
+            }
+
+            let len = intrinsics::const_eval_select((ptr,), strlen_ct, strlen_rt);
+            Self::from_bytes_with_nul_unchecked(slice::from_raw_parts(ptr.cast(), len + 1))
         }
     }
 
@@ -49962,7 +51860,8 @@ impl CStr {
     /// ```
     ///
     #[unstable(feature = "cstr_from_bytes_until_nul", issue = "95027")]
-    pub fn from_bytes_until_nul(bytes: &[u8]) -> Result<&CStr, FromBytesUntilNulError> {
+    #[rustc_const_unstable(feature = "cstr_from_bytes_until_nul", issue = "95027")]
+    pub const fn from_bytes_until_nul(bytes: &[u8]) -> Result<&CStr, FromBytesUntilNulError> {
         let nul_pos = memchr::memchr(0, bytes);
         match nul_pos {
             Some(nul_pos) => {
@@ -50011,7 +51910,8 @@ impl CStr {
     /// assert!(cstr.is_err());
     /// ```
     #[stable(feature = "cstr_from_bytes", since = "1.10.0")]
-    pub fn from_bytes_with_nul(bytes: &[u8]) -> Result<&Self, FromBytesWithNulError> {
+    #[rustc_const_unstable(feature = "const_cstr_methods", issue = "101719")]
+    pub const fn from_bytes_with_nul(bytes: &[u8]) -> Result<&Self, FromBytesWithNulError> {
         let nul_pos = memchr::memchr(0, bytes);
         match nul_pos {
             Some(nul_pos) if nul_pos + 1 == bytes.len() => {
@@ -50050,6 +51950,7 @@ impl CStr {
     #[rustc_const_stable(feature = "const_cstr_unchecked", since = "1.59.0")]
     #[rustc_allow_const_fn_unstable(const_eval_select)]
     pub const unsafe fn from_bytes_with_nul_unchecked(bytes: &[u8]) -> &CStr {
+        #[inline]
         fn rt_impl(bytes: &[u8]) -> &CStr {
             // Chance at catching some UB at runtime with debug builds.
             debug_assert!(!bytes.is_empty() && bytes[bytes.len() - 1] == 0);
@@ -50139,6 +52040,34 @@ impl CStr {
         self.inner.as_ptr()
     }
 
+    /// Returns `true` if `self.to_bytes()` has a length of 0.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(cstr_is_empty)]
+    ///
+    /// use std::ffi::CStr;
+    /// # use std::ffi::FromBytesWithNulError;
+    ///
+    /// # fn main() { test().unwrap(); }
+    /// # fn test() -> Result<(), FromBytesWithNulError> {
+    /// let cstr = CStr::from_bytes_with_nul(b"foo\0")?;
+    /// assert!(!cstr.is_empty());
+    ///
+    /// let empty_cstr = CStr::from_bytes_with_nul(b"\0")?;
+    /// assert!(empty_cstr.is_empty());
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[inline]
+    #[unstable(feature = "cstr_is_empty", issue = "102444")]
+    pub const fn is_empty(&self) -> bool {
+        // SAFETY: We know there is at least one byte; for empty strings it
+        // is the NUL terminator.
+        (unsafe { self.inner.get_unchecked(0) }) == &0
+    }
+
     /// Converts this C string to a byte slice.
     ///
     /// The returned slice will **not** contain the trailing nul terminator that this C
@@ -50160,7 +52089,8 @@ impl CStr {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn to_bytes(&self) -> &[u8] {
+    #[rustc_const_unstable(feature = "const_cstr_methods", issue = "101719")]
+    pub const fn to_bytes(&self) -> &[u8] {
         let bytes = self.to_bytes_with_nul();
         // SAFETY: to_bytes_with_nul returns slice with length at least 1
         unsafe { bytes.get_unchecked(..bytes.len() - 1) }
@@ -50187,7 +52117,8 @@ impl CStr {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn to_bytes_with_nul(&self) -> &[u8] {
+    #[rustc_const_unstable(feature = "const_cstr_methods", issue = "101719")]
+    pub const fn to_bytes_with_nul(&self) -> &[u8] {
         // SAFETY: Transmuting a slice of `c_char`s to a slice of `u8`s
         // is safe on all supported targets.
         unsafe { &*(&self.inner as *const [c_char] as *const [u8]) }
@@ -50210,7 +52141,8 @@ impl CStr {
     /// assert_eq!(cstr.to_str(), Ok("foo"));
     /// ```
     #[stable(feature = "cstr_to_str", since = "1.4.0")]
-    pub fn to_str(&self) -> Result<&str, str::Utf8Error> {
+    #[rustc_const_unstable(feature = "const_cstr_methods", issue = "101719")]
+    pub const fn to_str(&self) -> Result<&str, str::Utf8Error> {
         // N.B., when `CStr` is changed to perform the length check in `.to_bytes()`
         // instead of in `from_ptr()`, it may be worth considering if this should
         // be rewritten to do the UTF-8 check inline with the length calculation
@@ -51186,6 +53118,29 @@ pub mod iter {
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+// This needs to be up here in order to be usable in the child modules
+macro_rules! impl_fold_via_try_fold {
+    (fold -> try_fold) => {
+        impl_fold_via_try_fold! { @internal fold -> try_fold }
+    };
+    (rfold -> try_rfold) => {
+        impl_fold_via_try_fold! { @internal rfold -> try_rfold }
+    };
+    (@internal $fold:ident -> $try_fold:ident) => {
+        #[inline]
+        fn $fold<AAA, FFF>(mut self, init: AAA, mut fold: FFF) -> AAA
+        where
+            FFF: FnMut(AAA, Self::Item) -> AAA,
+        {
+            use crate::const_closure::ConstFnMutClosure;
+            use crate::ops::NeverShortCircuit;
+
+            let fold = ConstFnMutClosure::new(&mut fold, NeverShortCircuit::wrap_mut_2_imp);
+            self.$try_fold(init, fold).0
+        }
+    };
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::traits::Iterator;
 
@@ -51232,6 +53187,8 @@ pub use self::traits::{
 
 #[stable(feature = "iter_zip", since = "1.59.0")]
 pub use self::adapters::zip;
+#[unstable(feature = "iter_array_chunks", reason = "recently added", issue = "100450")]
+pub use self::adapters::ArrayChunks;
 #[unstable(feature = "std_internals", issue = "none")]
 pub use self::adapters::ByRefSized;
 #[stable(feature = "iter_cloned", since = "1.1.0")]
@@ -51262,10 +53219,185 @@ pub(crate) use self::adapters::try_process;
 
 mod adapters {
 use crate::iter::{InPlaceIterable, Iterator};
-use crate::ops::{ChangeOutputType, ControlFlow, FromResidual, NeverShortCircuit, Residual, Try};
+use crate::ops::{ChangeOutputType, ControlFlow, FromResidual, Residual, Try};
 
+mod array_chunks {
+use crate::array;
+use crate::iter::{ByRefSized, FusedIterator, Iterator};
+use crate::ops::{ControlFlow, Try};
+
+/// An iterator over `N` elements of the iterator at a time.
+///
+/// The chunks do not overlap. If `N` does not divide the length of the
+/// iterator, then the last up to `N-1` elements will be omitted.
+///
+/// This `struct` is created by the [`array_chunks`][Iterator::array_chunks]
+/// method on [`Iterator`]. See its documentation for more.
+#[derive(Debug, Clone)]
+#[must_use = "iterators are lazy and do nothing unless consumed"]
+#[unstable(feature = "iter_array_chunks", reason = "recently added", issue = "100450")]
+pub struct ArrayChunks<I: Iterator, const N: usize> {
+    iter: I,
+    remainder: Option<array::IntoIter<I::Item, N>>,
+}
+
+impl<I, const N: usize> ArrayChunks<I, N>
+where
+    I: Iterator,
+{
+    #[track_caller]
+    pub(in crate::iter) fn new(iter: I) -> Self {
+        assert!(N != 0, "chunk size must be non-zero");
+        Self { iter, remainder: None }
+    }
+
+    /// Returns an iterator over the remaining elements of the original iterator
+    /// that are not going to be returned by this iterator. The returned
+    /// iterator will yield at most `N-1` elements.
+    #[unstable(feature = "iter_array_chunks", reason = "recently added", issue = "100450")]
+    #[inline]
+    pub fn into_remainder(self) -> Option<array::IntoIter<I::Item, N>> {
+        self.remainder
+    }
+}
+
+#[unstable(feature = "iter_array_chunks", reason = "recently added", issue = "100450")]
+impl<I, const N: usize> Iterator for ArrayChunks<I, N>
+where
+    I: Iterator,
+{
+    type Item = [I::Item; N];
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        self.try_for_each(ControlFlow::Break).break_value()
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let (lower, upper) = self.iter.size_hint();
+
+        (lower / N, upper.map(|n| n / N))
+    }
+
+    #[inline]
+    fn count(self) -> usize {
+        self.iter.count() / N
+    }
+
+    fn try_fold<B, F, R>(&mut self, init: B, mut f: F) -> R
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> R,
+        R: Try<Output = B>,
+    {
+        let mut acc = init;
+        loop {
+            match self.iter.next_chunk() {
+                Ok(chunk) => acc = f(acc, chunk)?,
+                Err(remainder) => {
+                    // Make sure to not override `self.remainder` with an empty array
+                    // when `next` is called after `ArrayChunks` exhaustion.
+                    self.remainder.get_or_insert(remainder);
+
+                    break try { acc };
+                }
+            }
+        }
+    }
+
+    impl_fold_via_try_fold! { fold -> try_fold }
+}
+
+#[unstable(feature = "iter_array_chunks", reason = "recently added", issue = "100450")]
+impl<I, const N: usize> DoubleEndedIterator for ArrayChunks<I, N>
+where
+    I: DoubleEndedIterator + ExactSizeIterator,
+{
+    #[inline]
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.try_rfold((), |(), x| ControlFlow::Break(x)).break_value()
+    }
+
+    fn try_rfold<B, F, R>(&mut self, init: B, mut f: F) -> R
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> R,
+        R: Try<Output = B>,
+    {
+        // We are iterating from the back we need to first handle the remainder.
+        self.next_back_remainder();
+
+        let mut acc = init;
+        let mut iter = ByRefSized(&mut self.iter).rev();
+
+        // NB remainder is handled by `next_back_remainder`, so
+        // `next_chunk` can't return `Err` with non-empty remainder
+        // (assuming correct `I as ExactSizeIterator` impl).
+        while let Ok(mut chunk) = iter.next_chunk() {
+            // FIXME: do not do double reverse
+            //        (we could instead add `next_chunk_back` for example)
+            chunk.reverse();
+            acc = f(acc, chunk)?
+        }
+
+        try { acc }
+    }
+
+    impl_fold_via_try_fold! { rfold -> try_rfold }
+}
+
+impl<I, const N: usize> ArrayChunks<I, N>
+where
+    I: DoubleEndedIterator + ExactSizeIterator,
+{
+    /// Updates `self.remainder` such that `self.iter.len` is divisible by `N`.
+    fn next_back_remainder(&mut self) {
+        // Make sure to not override `self.remainder` with an empty array
+        // when `next_back` is called after `ArrayChunks` exhaustion.
+        if self.remainder.is_some() {
+            return;
+        }
+
+        // We use the `ExactSizeIterator` implementation of the underlying
+        // iterator to know how many remaining elements there are.
+        let rem = self.iter.len() % N;
+
+        // Take the last `rem` elements out of `self.iter`.
+        let mut remainder =
+            // SAFETY: `unwrap_err` always succeeds because x % N < N for all x.
+            unsafe { self.iter.by_ref().rev().take(rem).next_chunk().unwrap_err_unchecked() };
+
+        // We used `.rev()` above, so we need to re-reverse the reminder
+        remainder.as_mut_slice().reverse();
+        self.remainder = Some(remainder);
+    }
+}
+
+#[unstable(feature = "iter_array_chunks", reason = "recently added", issue = "100450")]
+impl<I, const N: usize> FusedIterator for ArrayChunks<I, N> where I: FusedIterator {}
+
+#[unstable(feature = "iter_array_chunks", reason = "recently added", issue = "100450")]
+impl<I, const N: usize> ExactSizeIterator for ArrayChunks<I, N>
+where
+    I: ExactSizeIterator,
+{
+    #[inline]
+    fn len(&self) -> usize {
+        self.iter.len() / N
+    }
+
+    #[inline]
+    fn is_empty(&self) -> bool {
+        self.iter.len() < N
+    }
+}
+}
 mod by_ref_sized {
-use crate::ops::Try;
+use crate::{
+    const_closure::ConstFnMutClosure,
+    ops::{NeverShortCircuit, Try},
+};
 
 /// Like `Iterator::by_ref`, but requiring `Sized` so it can forward generics.
 ///
@@ -51275,36 +53407,41 @@ use crate::ops::Try;
 #[derive(Debug)]
 pub struct ByRefSized<'a, I>(pub &'a mut I);
 
+// The following implementations use UFCS-style, rather than trusting autoderef,
+// to avoid accidentally calling the `&mut Iterator` implementations.
+
 #[unstable(feature = "std_internals", issue = "none")]
 impl<I: Iterator> Iterator for ByRefSized<'_, I> {
     type Item = I::Item;
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        self.0.next()
+        I::next(self.0)
     }
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        self.0.size_hint()
+        I::size_hint(self.0)
     }
 
     #[inline]
     fn advance_by(&mut self, n: usize) -> Result<(), usize> {
-        self.0.advance_by(n)
+        I::advance_by(self.0, n)
     }
 
     #[inline]
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
-        self.0.nth(n)
+        I::nth(self.0, n)
     }
 
     #[inline]
-    fn fold<B, F>(self, init: B, f: F) -> B
+    fn fold<B, F>(self, init: B, mut f: F) -> B
     where
         F: FnMut(B, Self::Item) -> B,
     {
-        self.0.fold(init, f)
+        // `fold` needs ownership, so this can't forward directly.
+        I::try_fold(self.0, init, ConstFnMutClosure::new(&mut f, NeverShortCircuit::wrap_mut_2_imp))
+            .0
     }
 
     #[inline]
@@ -51313,7 +53450,7 @@ impl<I: Iterator> Iterator for ByRefSized<'_, I> {
         F: FnMut(B, Self::Item) -> R,
         R: Try<Output = B>,
     {
-        self.0.try_fold(init, f)
+        I::try_fold(self.0, init, f)
     }
 }
 
@@ -51321,25 +53458,31 @@ impl<I: Iterator> Iterator for ByRefSized<'_, I> {
 impl<I: DoubleEndedIterator> DoubleEndedIterator for ByRefSized<'_, I> {
     #[inline]
     fn next_back(&mut self) -> Option<Self::Item> {
-        self.0.next_back()
+        I::next_back(self.0)
     }
 
     #[inline]
     fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {
-        self.0.advance_back_by(n)
+        I::advance_back_by(self.0, n)
     }
 
     #[inline]
     fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
-        self.0.nth_back(n)
+        I::nth_back(self.0, n)
     }
 
     #[inline]
-    fn rfold<B, F>(self, init: B, f: F) -> B
+    fn rfold<B, F>(self, init: B, mut f: F) -> B
     where
         F: FnMut(B, Self::Item) -> B,
     {
-        self.0.rfold(init, f)
+        // `rfold` needs ownership, so this can't forward directly.
+        I::try_rfold(
+            self.0,
+            init,
+            ConstFnMutClosure::new(&mut f, NeverShortCircuit::wrap_mut_2_imp),
+        )
+        .0
     }
 
     #[inline]
@@ -51348,7 +53491,7 @@ impl<I: DoubleEndedIterator> DoubleEndedIterator for ByRefSized<'_, I> {
         F: FnMut(B, Self::Item) -> R,
         R: Try<Output = B>,
     {
-        self.0.try_rfold(init, f)
+        I::try_rfold(self.0, init, f)
     }
 }
 }
@@ -51795,7 +53938,10 @@ use crate::iter::adapters::{
     zip::try_get_unchecked, TrustedRandomAccess, TrustedRandomAccessNoCoerce,
 };
 use crate::iter::{FusedIterator, TrustedLen};
+use crate::mem::MaybeUninit;
+use crate::mem::SizedTypeProperties;
 use crate::ops::Try;
+use crate::{array, ptr};
 
 /// An iterator that copies the elements of an underlying iterator.
 ///
@@ -51835,6 +53981,15 @@ where
 
     fn next(&mut self) -> Option<T> {
         self.it.next().copied()
+    }
+
+    fn next_chunk<const N: usize>(
+        &mut self,
+    ) -> Result<[Self::Item; N], array::IntoIter<Self::Item, N>>
+    where
+        Self: Sized,
+    {
+        <I as SpecNextChunk<'_, N, T>>::spec_next_chunk(&mut self.it)
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -51958,6 +54113,68 @@ where
     I: TrustedLen<Item = &'a T>,
     T: Copy,
 {
+}
+
+trait SpecNextChunk<'a, const N: usize, T: 'a>: Iterator<Item = &'a T>
+where
+    T: Copy,
+{
+    fn spec_next_chunk(&mut self) -> Result<[T; N], array::IntoIter<T, N>>;
+}
+
+impl<'a, const N: usize, I, T: 'a> SpecNextChunk<'a, N, T> for I
+where
+    I: Iterator<Item = &'a T>,
+    T: Copy,
+{
+    default fn spec_next_chunk(&mut self) -> Result<[T; N], array::IntoIter<T, N>> {
+        array::iter_next_chunk(&mut self.map(|e| *e))
+    }
+}
+
+impl<'a, const N: usize, T: 'a> SpecNextChunk<'a, N, T> for crate::slice::Iter<'a, T>
+where
+    T: Copy,
+{
+    fn spec_next_chunk(&mut self) -> Result<[T; N], array::IntoIter<T, N>> {
+        let mut raw_array = MaybeUninit::uninit_array();
+
+        let len = self.len();
+
+        if T::IS_ZST {
+            if len < N {
+                let _ = self.advance_by(len);
+                // SAFETY: ZSTs can be conjured ex nihilo; only the amount has to be correct
+                return Err(unsafe { array::IntoIter::new_unchecked(raw_array, 0..len) });
+            }
+
+            let _ = self.advance_by(N);
+            // SAFETY: ditto
+            return Ok(unsafe { MaybeUninit::array_assume_init(raw_array) });
+        }
+
+        if len < N {
+            // SAFETY: `len` indicates that this many elements are available and we just checked that
+            // it fits into the array.
+            unsafe {
+                ptr::copy_nonoverlapping(
+                    self.as_ref().as_ptr(),
+                    raw_array.as_mut_ptr() as *mut T,
+                    len,
+                );
+                let _ = self.advance_by(len);
+                return Err(array::IntoIter::new_unchecked(raw_array, 0..len));
+            }
+        }
+
+        // SAFETY: `len` is larger than the array size. Copy a fixed amount here to fully initialize
+        // the array.
+        unsafe {
+            ptr::copy_nonoverlapping(self.as_ref().as_ptr(), raw_array.as_mut_ptr() as *mut T, N);
+            let _ = self.advance_by(N);
+            Ok(MaybeUninit::array_assume_init(raw_array))
+        }
+    }
 }
 }
 mod cycle {
@@ -52646,7 +54863,7 @@ unsafe impl<B, I: InPlaceIterable, F> InPlaceIterable for FilterMap<I, F> where
 mod flatten {
 use crate::fmt;
 use crate::iter::{DoubleEndedIterator, Fuse, FusedIterator, Iterator, Map, TrustedLen};
-use crate::ops::Try;
+use crate::ops::{ControlFlow, Try};
 
 /// An iterator that maps each element to an iterator, and yields the elements
 /// of the produced iterators.
@@ -52719,6 +54936,21 @@ where
     {
         self.inner.fold(init, fold)
     }
+
+    #[inline]
+    fn advance_by(&mut self, n: usize) -> Result<(), usize> {
+        self.inner.advance_by(n)
+    }
+
+    #[inline]
+    fn count(self) -> usize {
+        self.inner.count()
+    }
+
+    #[inline]
+    fn last(self) -> Option<Self::Item> {
+        self.inner.last()
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -52748,6 +54980,11 @@ where
         Fold: FnMut(Acc, Self::Item) -> Acc,
     {
         self.inner.rfold(init, fold)
+    }
+
+    #[inline]
+    fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {
+        self.inner.advance_back_by(n)
     }
 }
 
@@ -52860,6 +55097,21 @@ where
     {
         self.inner.fold(init, fold)
     }
+
+    #[inline]
+    fn advance_by(&mut self, n: usize) -> Result<(), usize> {
+        self.inner.advance_by(n)
+    }
+
+    #[inline]
+    fn count(self) -> usize {
+        self.inner.count()
+    }
+
+    #[inline]
+    fn last(self) -> Option<Self::Item> {
+        self.inner.last()
+    }
 }
 
 #[stable(feature = "iterator_flatten", since = "1.29.0")]
@@ -52889,6 +55141,11 @@ where
         Fold: FnMut(Acc, Self::Item) -> Acc,
     {
         self.inner.rfold(init, fold)
+    }
+
+    #[inline]
+    fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {
+        self.inner.advance_back_by(n)
     }
 }
 
@@ -52923,6 +55180,144 @@ where
     /// Adapts an iterator by flattening it, for use in `flatten()` and `flat_map()`.
     fn new(iter: I) -> FlattenCompat<I, U> {
         FlattenCompat { iter: iter.fuse(), frontiter: None, backiter: None }
+    }
+}
+
+impl<I, U> FlattenCompat<I, U>
+where
+    I: Iterator<Item: IntoIterator<IntoIter = U>>,
+{
+    /// Folds the inner iterators into an accumulator by applying an operation.
+    ///
+    /// Folds over the inner iterators, not over their elements. Is used by the `fold`, `count`,
+    /// and `last` methods.
+    #[inline]
+    fn iter_fold<Acc, Fold>(self, mut acc: Acc, mut fold: Fold) -> Acc
+    where
+        Fold: FnMut(Acc, U) -> Acc,
+    {
+        #[inline]
+        fn flatten<T: IntoIterator, Acc>(
+            fold: &mut impl FnMut(Acc, T::IntoIter) -> Acc,
+        ) -> impl FnMut(Acc, T) -> Acc + '_ {
+            move |acc, iter| fold(acc, iter.into_iter())
+        }
+
+        if let Some(iter) = self.frontiter {
+            acc = fold(acc, iter);
+        }
+
+        acc = self.iter.fold(acc, flatten(&mut fold));
+
+        if let Some(iter) = self.backiter {
+            acc = fold(acc, iter);
+        }
+
+        acc
+    }
+
+    /// Folds over the inner iterators as long as the given function returns successfully,
+    /// always storing the most recent inner iterator in `self.frontiter`.
+    ///
+    /// Folds over the inner iterators, not over their elements. Is used by the `try_fold` and
+    /// `advance_by` methods.
+    #[inline]
+    fn iter_try_fold<Acc, Fold, R>(&mut self, mut acc: Acc, mut fold: Fold) -> R
+    where
+        Fold: FnMut(Acc, &mut U) -> R,
+        R: Try<Output = Acc>,
+    {
+        #[inline]
+        fn flatten<'a, T: IntoIterator, Acc, R: Try<Output = Acc>>(
+            frontiter: &'a mut Option<T::IntoIter>,
+            fold: &'a mut impl FnMut(Acc, &mut T::IntoIter) -> R,
+        ) -> impl FnMut(Acc, T) -> R + 'a {
+            move |acc, iter| fold(acc, frontiter.insert(iter.into_iter()))
+        }
+
+        if let Some(iter) = &mut self.frontiter {
+            acc = fold(acc, iter)?;
+        }
+        self.frontiter = None;
+
+        acc = self.iter.try_fold(acc, flatten(&mut self.frontiter, &mut fold))?;
+        self.frontiter = None;
+
+        if let Some(iter) = &mut self.backiter {
+            acc = fold(acc, iter)?;
+        }
+        self.backiter = None;
+
+        try { acc }
+    }
+}
+
+impl<I, U> FlattenCompat<I, U>
+where
+    I: DoubleEndedIterator<Item: IntoIterator<IntoIter = U>>,
+{
+    /// Folds the inner iterators into an accumulator by applying an operation, starting form the
+    /// back.
+    ///
+    /// Folds over the inner iterators, not over their elements. Is used by the `rfold` method.
+    #[inline]
+    fn iter_rfold<Acc, Fold>(self, mut acc: Acc, mut fold: Fold) -> Acc
+    where
+        Fold: FnMut(Acc, U) -> Acc,
+    {
+        #[inline]
+        fn flatten<T: IntoIterator, Acc>(
+            fold: &mut impl FnMut(Acc, T::IntoIter) -> Acc,
+        ) -> impl FnMut(Acc, T) -> Acc + '_ {
+            move |acc, iter| fold(acc, iter.into_iter())
+        }
+
+        if let Some(iter) = self.backiter {
+            acc = fold(acc, iter);
+        }
+
+        acc = self.iter.rfold(acc, flatten(&mut fold));
+
+        if let Some(iter) = self.frontiter {
+            acc = fold(acc, iter);
+        }
+
+        acc
+    }
+
+    /// Folds over the inner iterators in reverse order as long as the given function returns
+    /// successfully, always storing the most recent inner iterator in `self.backiter`.
+    ///
+    /// Folds over the inner iterators, not over their elements. Is used by the `try_rfold` and
+    /// `advance_back_by` methods.
+    #[inline]
+    fn iter_try_rfold<Acc, Fold, R>(&mut self, mut acc: Acc, mut fold: Fold) -> R
+    where
+        Fold: FnMut(Acc, &mut U) -> R,
+        R: Try<Output = Acc>,
+    {
+        #[inline]
+        fn flatten<'a, T: IntoIterator, Acc, R: Try>(
+            backiter: &'a mut Option<T::IntoIter>,
+            fold: &'a mut impl FnMut(Acc, &mut T::IntoIter) -> R,
+        ) -> impl FnMut(Acc, T) -> R + 'a {
+            move |acc, iter| fold(acc, backiter.insert(iter.into_iter()))
+        }
+
+        if let Some(iter) = &mut self.backiter {
+            acc = fold(acc, iter)?;
+        }
+        self.backiter = None;
+
+        acc = self.iter.try_rfold(acc, flatten(&mut self.backiter, &mut fold))?;
+        self.backiter = None;
+
+        if let Some(iter) = &mut self.frontiter {
+            acc = fold(acc, iter)?;
+        }
+        self.frontiter = None;
+
+        try { acc }
     }
 }
 
@@ -52969,99 +55364,74 @@ where
     }
 
     #[inline]
-    fn try_fold<Acc, Fold, R>(&mut self, mut init: Acc, mut fold: Fold) -> R
+    fn try_fold<Acc, Fold, R>(&mut self, init: Acc, fold: Fold) -> R
     where
         Self: Sized,
         Fold: FnMut(Acc, Self::Item) -> R,
         R: Try<Output = Acc>,
     {
         #[inline]
-        fn flatten<'a, T: IntoIterator, Acc, R: Try<Output = Acc>>(
-            frontiter: &'a mut Option<T::IntoIter>,
-            fold: &'a mut impl FnMut(Acc, T::Item) -> R,
-        ) -> impl FnMut(Acc, T) -> R + 'a {
-            move |acc, x| {
-                let mut mid = x.into_iter();
-                let r = mid.try_fold(acc, &mut *fold);
-                *frontiter = Some(mid);
-                r
-            }
+        fn flatten<U: Iterator, Acc, R: Try<Output = Acc>>(
+            mut fold: impl FnMut(Acc, U::Item) -> R,
+        ) -> impl FnMut(Acc, &mut U) -> R {
+            move |acc, iter| iter.try_fold(acc, &mut fold)
         }
 
-        if let Some(ref mut front) = self.frontiter {
-            init = front.try_fold(init, &mut fold)?;
-        }
-        self.frontiter = None;
-
-        init = self.iter.try_fold(init, flatten(&mut self.frontiter, &mut fold))?;
-        self.frontiter = None;
-
-        if let Some(ref mut back) = self.backiter {
-            init = back.try_fold(init, &mut fold)?;
-        }
-        self.backiter = None;
-
-        try { init }
+        self.iter_try_fold(init, flatten(fold))
     }
 
     #[inline]
-    fn fold<Acc, Fold>(self, mut init: Acc, mut fold: Fold) -> Acc
+    fn fold<Acc, Fold>(self, init: Acc, fold: Fold) -> Acc
     where
         Fold: FnMut(Acc, Self::Item) -> Acc,
     {
         #[inline]
-        fn flatten<T: IntoIterator, Acc>(
-            fold: &mut impl FnMut(Acc, T::Item) -> Acc,
-        ) -> impl FnMut(Acc, T) -> Acc + '_ {
-            move |acc, x| x.into_iter().fold(acc, &mut *fold)
+        fn flatten<U: Iterator, Acc>(
+            mut fold: impl FnMut(Acc, U::Item) -> Acc,
+        ) -> impl FnMut(Acc, U) -> Acc {
+            move |acc, iter| iter.fold(acc, &mut fold)
         }
 
-        if let Some(front) = self.frontiter {
-            init = front.fold(init, &mut fold);
-        }
-
-        init = self.iter.fold(init, flatten(&mut fold));
-
-        if let Some(back) = self.backiter {
-            init = back.fold(init, &mut fold);
-        }
-
-        init
+        self.iter_fold(init, flatten(fold))
     }
 
     #[inline]
     #[rustc_inherit_overflow_checks]
     fn advance_by(&mut self, n: usize) -> Result<(), usize> {
-        let mut rem = n;
-        loop {
-            if let Some(ref mut front) = self.frontiter {
-                match front.advance_by(rem) {
-                    ret @ Ok(_) => return ret,
-                    Err(advanced) => rem -= advanced,
-                }
-            }
-            self.frontiter = match self.iter.next() {
-                Some(iterable) => Some(iterable.into_iter()),
-                _ => break,
+        #[inline]
+        #[rustc_inherit_overflow_checks]
+        fn advance<U: Iterator>(n: usize, iter: &mut U) -> ControlFlow<(), usize> {
+            match iter.advance_by(n) {
+                Ok(()) => ControlFlow::BREAK,
+                Err(advanced) => ControlFlow::Continue(n - advanced),
             }
         }
 
-        self.frontiter = None;
+        match self.iter_try_fold(n, advance) {
+            ControlFlow::Continue(remaining) if remaining > 0 => Err(n - remaining),
+            _ => Ok(()),
+        }
+    }
 
-        if let Some(ref mut back) = self.backiter {
-            match back.advance_by(rem) {
-                ret @ Ok(_) => return ret,
-                Err(advanced) => rem -= advanced,
-            }
+    #[inline]
+    fn count(self) -> usize {
+        #[inline]
+        #[rustc_inherit_overflow_checks]
+        fn count<U: Iterator>(acc: usize, iter: U) -> usize {
+            acc + iter.count()
         }
 
-        if rem > 0 {
-            return Err(n - rem);
+        self.iter_fold(0, count)
+    }
+
+    #[inline]
+    fn last(self) -> Option<Self::Item> {
+        #[inline]
+        fn last<U: Iterator>(last: Option<U::Item>, iter: U) -> Option<U::Item> {
+            iter.last().or(last)
         }
 
-        self.backiter = None;
-
-        Ok(())
+        self.iter_fold(None, last)
     }
 }
 
@@ -53084,105 +55454,53 @@ where
     }
 
     #[inline]
-    fn try_rfold<Acc, Fold, R>(&mut self, mut init: Acc, mut fold: Fold) -> R
+    fn try_rfold<Acc, Fold, R>(&mut self, init: Acc, fold: Fold) -> R
     where
         Self: Sized,
         Fold: FnMut(Acc, Self::Item) -> R,
         R: Try<Output = Acc>,
     {
         #[inline]
-        fn flatten<'a, T: IntoIterator, Acc, R: Try<Output = Acc>>(
-            backiter: &'a mut Option<T::IntoIter>,
-            fold: &'a mut impl FnMut(Acc, T::Item) -> R,
-        ) -> impl FnMut(Acc, T) -> R + 'a
-        where
-            T::IntoIter: DoubleEndedIterator,
-        {
-            move |acc, x| {
-                let mut mid = x.into_iter();
-                let r = mid.try_rfold(acc, &mut *fold);
-                *backiter = Some(mid);
-                r
-            }
+        fn flatten<U: DoubleEndedIterator, Acc, R: Try<Output = Acc>>(
+            mut fold: impl FnMut(Acc, U::Item) -> R,
+        ) -> impl FnMut(Acc, &mut U) -> R {
+            move |acc, iter| iter.try_rfold(acc, &mut fold)
         }
 
-        if let Some(ref mut back) = self.backiter {
-            init = back.try_rfold(init, &mut fold)?;
-        }
-        self.backiter = None;
-
-        init = self.iter.try_rfold(init, flatten(&mut self.backiter, &mut fold))?;
-        self.backiter = None;
-
-        if let Some(ref mut front) = self.frontiter {
-            init = front.try_rfold(init, &mut fold)?;
-        }
-        self.frontiter = None;
-
-        try { init }
+        self.iter_try_rfold(init, flatten(fold))
     }
 
     #[inline]
-    fn rfold<Acc, Fold>(self, mut init: Acc, mut fold: Fold) -> Acc
+    fn rfold<Acc, Fold>(self, init: Acc, fold: Fold) -> Acc
     where
         Fold: FnMut(Acc, Self::Item) -> Acc,
     {
         #[inline]
-        fn flatten<T: IntoIterator, Acc>(
-            fold: &mut impl FnMut(Acc, T::Item) -> Acc,
-        ) -> impl FnMut(Acc, T) -> Acc + '_
-        where
-            T::IntoIter: DoubleEndedIterator,
-        {
-            move |acc, x| x.into_iter().rfold(acc, &mut *fold)
+        fn flatten<U: DoubleEndedIterator, Acc>(
+            mut fold: impl FnMut(Acc, U::Item) -> Acc,
+        ) -> impl FnMut(Acc, U) -> Acc {
+            move |acc, iter| iter.rfold(acc, &mut fold)
         }
 
-        if let Some(back) = self.backiter {
-            init = back.rfold(init, &mut fold);
-        }
-
-        init = self.iter.rfold(init, flatten(&mut fold));
-
-        if let Some(front) = self.frontiter {
-            init = front.rfold(init, &mut fold);
-        }
-
-        init
+        self.iter_rfold(init, flatten(fold))
     }
 
     #[inline]
     #[rustc_inherit_overflow_checks]
     fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {
-        let mut rem = n;
-        loop {
-            if let Some(ref mut back) = self.backiter {
-                match back.advance_back_by(rem) {
-                    ret @ Ok(_) => return ret,
-                    Err(advanced) => rem -= advanced,
-                }
-            }
-            match self.iter.next_back() {
-                Some(iterable) => self.backiter = Some(iterable.into_iter()),
-                _ => break,
+        #[inline]
+        #[rustc_inherit_overflow_checks]
+        fn advance<U: DoubleEndedIterator>(n: usize, iter: &mut U) -> ControlFlow<(), usize> {
+            match iter.advance_back_by(n) {
+                Ok(()) => ControlFlow::BREAK,
+                Err(advanced) => ControlFlow::Continue(n - advanced),
             }
         }
 
-        self.backiter = None;
-
-        if let Some(ref mut front) = self.frontiter {
-            match front.advance_back_by(rem) {
-                ret @ Ok(_) => return ret,
-                Err(advanced) => rem -= advanced,
-            }
+        match self.iter_try_rfold(n, advance) {
+            ControlFlow::Continue(remaining) if remaining > 0 => Err(n - remaining),
+            _ => Ok(()),
         }
-
-        if rem > 0 {
-            return Err(n - rem);
-        }
-
-        self.frontiter = None;
-
-        Ok(())
     }
 }
 
@@ -54303,19 +56621,7 @@ where
         .into_try()
     }
 
-    #[inline]
-    fn fold<Acc, Fold>(mut self, init: Acc, fold: Fold) -> Acc
-    where
-        Self: Sized,
-        Fold: FnMut(Acc, Self::Item) -> Acc,
-    {
-        #[inline]
-        fn ok<B, T>(mut f: impl FnMut(B, T) -> B) -> impl FnMut(B, T) -> Result<B, !> {
-            move |acc, x| Ok(f(acc, x))
-        }
-
-        self.try_fold(init, ok(fold)).unwrap()
-    }
+    impl_fold_via_try_fold! { fold -> try_fold }
 }
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
@@ -54891,19 +57197,7 @@ where
         self.iter.try_fold(init, scan(state, f, fold)).into_try()
     }
 
-    #[inline]
-    fn fold<Acc, Fold>(mut self, init: Acc, fold: Fold) -> Acc
-    where
-        Self: Sized,
-        Fold: FnMut(Acc, Self::Item) -> Acc,
-    {
-        #[inline]
-        fn ok<B, T>(mut f: impl FnMut(B, T) -> B) -> impl FnMut(B, T) -> Result<B, !> {
-            move |acc, x| Ok(f(acc, x))
-        }
-
-        self.try_fold(init, ok(fold)).unwrap()
-    }
+    impl_fold_via_try_fold! { fold -> try_fold }
 }
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
@@ -54962,21 +57256,32 @@ where
     #[inline]
     fn next(&mut self) -> Option<I::Item> {
         if unlikely(self.n > 0) {
-            self.iter.nth(crate::mem::take(&mut self.n) - 1)?;
+            self.iter.nth(crate::mem::take(&mut self.n))
+        } else {
+            self.iter.next()
         }
-        self.iter.next()
     }
 
     #[inline]
     fn nth(&mut self, n: usize) -> Option<I::Item> {
-        // Can't just add n + self.n due to overflow.
         if self.n > 0 {
-            let to_skip = self.n;
-            self.n = 0;
-            // nth(n) skips n+1
-            self.iter.nth(to_skip - 1)?;
+            let skip: usize = crate::mem::take(&mut self.n);
+            // Checked add to handle overflow case.
+            let n = match skip.checked_add(n) {
+                Some(nth) => nth,
+                None => {
+                    // In case of overflow, load skip value, before loading `n`.
+                    // Because the amount of elements to iterate is beyond `usize::MAX`, this
+                    // is split into two `nth` calls where the `skip` `nth` call is discarded.
+                    self.iter.nth(skip - 1)?;
+                    n
+                }
+            };
+            // Load nth element including skip.
+            self.iter.nth(n)
+        } else {
+            self.iter.nth(n)
         }
-        self.iter.nth(n)
     }
 
     #[inline]
@@ -55124,17 +57429,7 @@ where
         if n == 0 { try { init } } else { self.iter.try_rfold(init, check(n, fold)).into_try() }
     }
 
-    fn rfold<Acc, Fold>(mut self, init: Acc, fold: Fold) -> Acc
-    where
-        Fold: FnMut(Acc, Self::Item) -> Acc,
-    {
-        #[inline]
-        fn ok<Acc, T>(mut f: impl FnMut(Acc, T) -> Acc) -> impl FnMut(Acc, T) -> Result<Acc, !> {
-            move |acc, x| Ok(f(acc, x))
-        }
-
-        self.try_rfold(init, ok(fold)).unwrap()
-    }
+    impl_fold_via_try_fold! { rfold -> try_rfold }
 
     #[inline]
     fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {
@@ -55632,19 +57927,7 @@ where
         }
     }
 
-    #[inline]
-    fn fold<Acc, Fold>(mut self, init: Acc, fold: Fold) -> Acc
-    where
-        Self: Sized,
-        Fold: FnMut(Acc, Self::Item) -> Acc,
-    {
-        #[inline]
-        fn ok<B, T>(mut f: impl FnMut(B, T) -> B) -> impl FnMut(B, T) -> Result<B, !> {
-            move |acc, x| Ok(f(acc, x))
-        }
-
-        self.try_fold(init, ok(fold)).unwrap()
-    }
+    impl_fold_via_try_fold! { fold -> try_fold }
 
     #[inline]
     #[rustc_inherit_overflow_checks]
@@ -55874,19 +58157,7 @@ where
         }
     }
 
-    #[inline]
-    fn fold<Acc, Fold>(mut self, init: Acc, fold: Fold) -> Acc
-    where
-        Self: Sized,
-        Fold: FnMut(Acc, Self::Item) -> Acc,
-    {
-        #[inline]
-        fn ok<B, T>(mut f: impl FnMut(B, T) -> B) -> impl FnMut(B, T) -> Result<B, !> {
-            move |acc, x| Ok(f(acc, x))
-        }
-
-        self.try_fold(init, ok(fold)).unwrap()
-    }
+    impl_fold_via_try_fold! { fold -> try_fold }
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -56512,6 +58783,9 @@ pub use self::{
     scan::Scan, skip::Skip, skip_while::SkipWhile, take::Take, take_while::TakeWhile, zip::Zip,
 };
 
+#[unstable(feature = "iter_array_chunks", reason = "recently added", issue = "100450")]
+pub use self::array_chunks::ArrayChunks;
+
 #[unstable(feature = "std_internals", issue = "none")]
 pub use self::by_ref_sized::ByRefSized;
 
@@ -56679,13 +58953,7 @@ where
             .into_try()
     }
 
-    fn fold<B, F>(mut self, init: B, fold: F) -> B
-    where
-        Self: Sized,
-        F: FnMut(B, Self::Item) -> B,
-    {
-        self.try_fold(init, NeverShortCircuit::wrap_mut_2(fold)).0
-    }
+    impl_fold_via_try_fold! { fold -> try_fold }
 }
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
@@ -57864,19 +60132,7 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
         self.spec_try_fold(init, f)
     }
 
-    #[inline]
-    fn fold<B, F>(mut self, init: B, f: F) -> B
-    where
-        Self: Sized,
-        F: FnMut(B, Self::Item) -> B,
-    {
-        #[inline]
-        fn ok<B, T>(mut f: impl FnMut(B, T) -> B) -> impl FnMut(B, T) -> Result<B, !> {
-            move |acc, x| Ok(f(acc, x))
-        }
-
-        self.try_fold(init, ok(f)).unwrap()
-    }
+    impl_fold_via_try_fold! { fold -> try_fold }
 
     #[inline]
     fn last(mut self) -> Option<A> {
@@ -57944,19 +60200,7 @@ impl<A: Step> DoubleEndedIterator for ops::RangeInclusive<A> {
         self.spec_try_rfold(init, f)
     }
 
-    #[inline]
-    fn rfold<B, F>(mut self, init: B, f: F) -> B
-    where
-        Self: Sized,
-        F: FnMut(B, Self::Item) -> B,
-    {
-        #[inline]
-        fn ok<B, T>(mut f: impl FnMut(B, T) -> B) -> impl FnMut(B, T) -> Result<B, !> {
-            move |acc, x| Ok(f(acc, x))
-        }
-
-        self.try_rfold(init, ok(f)).unwrap()
-    }
+    impl_fold_via_try_fold! { rfold -> try_rfold }
 }
 
 // Safety: See above implementation for `ops::Range<A>`
@@ -59193,6 +61437,7 @@ pub trait FromIterator<A>: Sized {
 #[rustc_diagnostic_item = "IntoIterator"]
 #[rustc_skip_array_during_method_dispatch]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[const_trait]
 pub trait IntoIterator {
     /// The type of the elements being iterated over.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -59228,7 +61473,7 @@ pub trait IntoIterator {
 
 #[rustc_const_unstable(feature = "const_intoiterator_identity", issue = "90603")]
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<I: ~const Iterator> const IntoIterator for I {
+impl<I: Iterator> const IntoIterator for I {
     type Item = I::Item;
     type IntoIter = I;
 
@@ -59951,7 +62196,7 @@ use crate::ops::{ChangeOutputType, ControlFlow, FromResidual, Residual, Try};
 use super::super::try_process;
 use super::super::ByRefSized;
 use super::super::TrustedRandomAccessNoCoerce;
-use super::super::{Chain, Cloned, Copied, Cycle, Enumerate, Filter, FilterMap, Fuse};
+use super::super::{ArrayChunks, Chain, Cloned, Copied, Cycle, Enumerate, Filter, FilterMap, Fuse};
 use super::super::{FlatMap, Flatten};
 use super::super::{FromIterator, Intersperse, IntersperseWith, Product, Sum, Zip};
 use super::super::{
@@ -60638,7 +62883,7 @@ pub trait Iterator {
     /// assert_eq!(it.next(), Some(NotClone(99))); // The separator.
     /// assert_eq!(it.next(), Some(NotClone(1)));  // The next element from `v`.
     /// assert_eq!(it.next(), Some(NotClone(99))); // The separator.
-    /// assert_eq!(it.next(), Some(NotClone(2)));  // The last element from from `v`.
+    /// assert_eq!(it.next(), Some(NotClone(2)));  // The last element from `v`.
     /// assert_eq!(it.next(), None);               // The iterator is finished.
     /// ```
     ///
@@ -62377,22 +64622,13 @@ pub trait Iterator {
     ///
     /// # Example
     ///
-    /// Find the maximum value:
-    ///
     /// ```
-    /// fn find_max<I>(iter: I) -> Option<I::Item>
-    ///     where I: Iterator,
-    ///           I::Item: Ord,
-    /// {
-    ///     iter.reduce(|accum, item| {
-    ///         if accum >= item { accum } else { item }
-    ///     })
-    /// }
-    /// let a = [10, 20, 5, -23, 0];
-    /// let b: [u32; 0] = [];
+    /// let reduced: i32 = (1..10).reduce(|acc, e| acc + e).unwrap();
+    /// assert_eq!(reduced, 45);
     ///
-    /// assert_eq!(find_max(a.iter()), Some(&20));
-    /// assert_eq!(find_max(b.iter()), None);
+    /// // Which is equivalent to doing it with `fold`:
+    /// let folded: i32 = (1..10).fold(0, |acc, e| acc + e);
+    /// assert_eq!(reduced, folded);
     /// ```
     #[inline]
     #[stable(feature = "iterator_fold_self", since = "1.51.0")]
@@ -62852,14 +65088,14 @@ pub trait Iterator {
     /// Stopping at the first `true`:
     ///
     /// ```
-    /// let a = [1, 2, 3];
+    /// let a = [-1, 2, 3, 4];
     ///
     /// let mut iter = a.iter();
     ///
-    /// assert_eq!(iter.rposition(|&x| x == 2), Some(1));
+    /// assert_eq!(iter.rposition(|&x| x >= 2), Some(3));
     ///
     /// // we can still use `iter`, as there are more elements.
-    /// assert_eq!(iter.next(), Some(&1));
+    /// assert_eq!(iter.next(), Some(&-1));
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -63262,6 +65498,49 @@ pub trait Iterator {
         Cycle::new(self)
     }
 
+    /// Returns an iterator over `N` elements of the iterator at a time.
+    ///
+    /// The chunks do not overlap. If `N` does not divide the length of the
+    /// iterator, then the last up to `N-1` elements will be omitted and can be
+    /// retrieved from the [`.into_remainder()`][ArrayChunks::into_remainder]
+    /// function of the iterator.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `N` is 0.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(iter_array_chunks)]
+    ///
+    /// let mut iter = "lorem".chars().array_chunks();
+    /// assert_eq!(iter.next(), Some(['l', 'o']));
+    /// assert_eq!(iter.next(), Some(['r', 'e']));
+    /// assert_eq!(iter.next(), None);
+    /// assert_eq!(iter.into_remainder().unwrap().as_slice(), &['m']);
+    /// ```
+    ///
+    /// ```
+    /// #![feature(iter_array_chunks)]
+    ///
+    /// let data = [1, 1, 2, -2, 6, 0, 3, 1];
+    /// //          ^-----^  ^------^
+    /// for [x, y, z] in data.iter().array_chunks() {
+    ///     assert_eq!(x + y + z, 4);
+    /// }
+    /// ```
+    #[track_caller]
+    #[unstable(feature = "iter_array_chunks", reason = "recently added", issue = "100450")]
+    fn array_chunks<const N: usize>(self) -> ArrayChunks<Self, N>
+    where
+        Self: Sized,
+    {
+        ArrayChunks::new(self)
+    }
+
     /// Sums the elements of an iterator.
     ///
     /// Takes each element, adds them together, and returns the result.
@@ -63364,35 +65643,26 @@ pub trait Iterator {
     /// assert_eq!(xs.iter().cmp_by(&ys, |&x, &y| (2 * x).cmp(&y)), Ordering::Greater);
     /// ```
     #[unstable(feature = "iter_order_by", issue = "64295")]
-    fn cmp_by<I, F>(mut self, other: I, mut cmp: F) -> Ordering
+    fn cmp_by<I, F>(self, other: I, cmp: F) -> Ordering
     where
         Self: Sized,
         I: IntoIterator,
         F: FnMut(Self::Item, I::Item) -> Ordering,
     {
-        let mut other = other.into_iter();
-
-        loop {
-            let x = match self.next() {
-                None => {
-                    if other.next().is_none() {
-                        return Ordering::Equal;
-                    } else {
-                        return Ordering::Less;
-                    }
-                }
-                Some(val) => val,
-            };
-
-            let y = match other.next() {
-                None => return Ordering::Greater,
-                Some(val) => val,
-            };
-
-            match cmp(x, y) {
-                Ordering::Equal => (),
-                non_eq => return non_eq,
+        #[inline]
+        fn compare<X, Y, F>(mut cmp: F) -> impl FnMut(X, Y) -> ControlFlow<Ordering>
+        where
+            F: FnMut(X, Y) -> Ordering,
+        {
+            move |x, y| match cmp(x, y) {
+                Ordering::Equal => ControlFlow::CONTINUE,
+                non_eq => ControlFlow::Break(non_eq),
             }
+        }
+
+        match iter_compare(self, other.into_iter(), compare(cmp)) {
+            ControlFlow::Continue(ord) => ord,
+            ControlFlow::Break(ord) => ord,
         }
     }
 
@@ -63449,35 +65719,26 @@ pub trait Iterator {
     /// );
     /// ```
     #[unstable(feature = "iter_order_by", issue = "64295")]
-    fn partial_cmp_by<I, F>(mut self, other: I, mut partial_cmp: F) -> Option<Ordering>
+    fn partial_cmp_by<I, F>(self, other: I, partial_cmp: F) -> Option<Ordering>
     where
         Self: Sized,
         I: IntoIterator,
         F: FnMut(Self::Item, I::Item) -> Option<Ordering>,
     {
-        let mut other = other.into_iter();
-
-        loop {
-            let x = match self.next() {
-                None => {
-                    if other.next().is_none() {
-                        return Some(Ordering::Equal);
-                    } else {
-                        return Some(Ordering::Less);
-                    }
-                }
-                Some(val) => val,
-            };
-
-            let y = match other.next() {
-                None => return Some(Ordering::Greater),
-                Some(val) => val,
-            };
-
-            match partial_cmp(x, y) {
-                Some(Ordering::Equal) => (),
-                non_eq => return non_eq,
+        #[inline]
+        fn compare<X, Y, F>(mut partial_cmp: F) -> impl FnMut(X, Y) -> ControlFlow<Option<Ordering>>
+        where
+            F: FnMut(X, Y) -> Option<Ordering>,
+        {
+            move |x, y| match partial_cmp(x, y) {
+                Some(Ordering::Equal) => ControlFlow::CONTINUE,
+                non_eq => ControlFlow::Break(non_eq),
             }
+        }
+
+        match iter_compare(self, other.into_iter(), compare(partial_cmp)) {
+            ControlFlow::Continue(ord) => Some(ord),
+            ControlFlow::Break(ord) => ord,
         }
     }
 
@@ -63516,28 +65777,25 @@ pub trait Iterator {
     /// assert!(xs.iter().eq_by(&ys, |&x, &y| x * x == y));
     /// ```
     #[unstable(feature = "iter_order_by", issue = "64295")]
-    fn eq_by<I, F>(mut self, other: I, mut eq: F) -> bool
+    fn eq_by<I, F>(self, other: I, eq: F) -> bool
     where
         Self: Sized,
         I: IntoIterator,
         F: FnMut(Self::Item, I::Item) -> bool,
     {
-        let mut other = other.into_iter();
-
-        loop {
-            let x = match self.next() {
-                None => return other.next().is_none(),
-                Some(val) => val,
-            };
-
-            let y = match other.next() {
-                None => return false,
-                Some(val) => val,
-            };
-
-            if !eq(x, y) {
-                return false;
+        #[inline]
+        fn compare<X, Y, F>(mut eq: F) -> impl FnMut(X, Y) -> ControlFlow<()>
+        where
+            F: FnMut(X, Y) -> bool,
+        {
+            move |x, y| {
+                if eq(x, y) { ControlFlow::CONTINUE } else { ControlFlow::BREAK }
             }
+        }
+
+        match iter_compare(self, other.into_iter(), compare(eq)) {
+            ControlFlow::Continue(ord) => ord == Ordering::Equal,
+            ControlFlow::Break(()) => false,
         }
     }
 
@@ -63763,6 +66021,46 @@ pub trait Iterator {
     }
 }
 
+/// Compares two iterators element-wise using the given function.
+///
+/// If `ControlFlow::CONTINUE` is returned from the function, the comparison moves on to the next
+/// elements of both iterators. Returning `ControlFlow::Break(x)` short-circuits the iteration and
+/// returns `ControlFlow::Break(x)`. If one of the iterators runs out of elements,
+/// `ControlFlow::Continue(ord)` is returned where `ord` is the result of comparing the lengths of
+/// the iterators.
+///
+/// Isolates the logic shared by ['cmp_by'](Iterator::cmp_by),
+/// ['partial_cmp_by'](Iterator::partial_cmp_by), and ['eq_by'](Iterator::eq_by).
+#[inline]
+fn iter_compare<A, B, F, T>(mut a: A, mut b: B, f: F) -> ControlFlow<T, Ordering>
+where
+    A: Iterator,
+    B: Iterator,
+    F: FnMut(A::Item, B::Item) -> ControlFlow<T>,
+{
+    #[inline]
+    fn compare<'a, B, X, T>(
+        b: &'a mut B,
+        mut f: impl FnMut(X, B::Item) -> ControlFlow<T> + 'a,
+    ) -> impl FnMut(X) -> ControlFlow<ControlFlow<T, Ordering>> + 'a
+    where
+        B: Iterator,
+    {
+        move |x| match b.next() {
+            None => ControlFlow::Break(ControlFlow::Continue(Ordering::Greater)),
+            Some(y) => f(x, y).map_break(ControlFlow::Break),
+        }
+    }
+
+    match a.try_for_each(compare(&mut b, f)) {
+        ControlFlow::Continue(()) => ControlFlow::Continue(match b.next() {
+            None => Ordering::Equal,
+            Some(_) => Ordering::Less,
+        }),
+        ControlFlow::Break(x) => x,
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<I: Iterator + ?Sized> Iterator for &mut I {
     type Item = I::Item;
@@ -63877,10 +66175,6 @@ pub use self::marker::InPlaceIterable;
 #[unstable(feature = "trusted_step", issue = "85731")]
 pub use self::marker::TrustedStep;
 }
-}
-#[unstable(feature = "once_cell", issue = "74465")]
-pub mod lazy {
-//! Lazy values and one-time initialization of static data.
 }
 pub mod option {
 //! Optional values.
@@ -64444,22 +66738,25 @@ impl<T> Option<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(is_some_with)]
+    /// #![feature(is_some_and)]
     ///
     /// let x: Option<u32> = Some(2);
-    /// assert_eq!(x.is_some_and(|&x| x > 1), true);
+    /// assert_eq!(x.is_some_and(|x| x > 1), true);
     ///
     /// let x: Option<u32> = Some(0);
-    /// assert_eq!(x.is_some_and(|&x| x > 1), false);
+    /// assert_eq!(x.is_some_and(|x| x > 1), false);
     ///
     /// let x: Option<u32> = None;
-    /// assert_eq!(x.is_some_and(|&x| x > 1), false);
+    /// assert_eq!(x.is_some_and(|x| x > 1), false);
     /// ```
     #[must_use]
     #[inline]
-    #[unstable(feature = "is_some_with", issue = "93050")]
-    pub fn is_some_and(&self, f: impl FnOnce(&T) -> bool) -> bool {
-        matches!(self, Some(x) if f(x))
+    #[unstable(feature = "is_some_and", issue = "93050")]
+    pub fn is_some_and(self, f: impl FnOnce(T) -> bool) -> bool {
+        match self {
+            None => false,
+            Some(x) => f(x),
+        }
     }
 
     /// Returns `true` if the option is a [`None`] value.
@@ -64719,19 +67016,12 @@ impl<T> Option<T> {
     ///
     /// # Examples
     ///
-    /// Converts a string to an integer, turning poorly-formed strings
-    /// into 0 (the default value for integers). [`parse`] converts
-    /// a string to any other type that implements [`FromStr`], returning
-    /// [`None`] on error.
-    ///
     /// ```
-    /// let good_year_from_input = "1909";
-    /// let bad_year_from_input = "190blarg";
-    /// let good_year = good_year_from_input.parse().ok().unwrap_or_default();
-    /// let bad_year = bad_year_from_input.parse().ok().unwrap_or_default();
+    /// let x: Option<u32> = None;
+    /// let y: Option<u32> = Some(12);
     ///
-    /// assert_eq!(1909, good_year);
-    /// assert_eq!(0, bad_year);
+    /// assert_eq!(x.unwrap_or_default(), 0);
+    /// assert_eq!(y.unwrap_or_default(), 12);
     /// ```
     ///
     /// [default value]: Default::default
@@ -65073,6 +67363,12 @@ impl<T> Option<T> {
     /////////////////////////////////////////////////////////////////////////
 
     /// Returns [`None`] if the option is [`None`], otherwise returns `optb`.
+    ///
+    /// Arguments passed to `and` are eagerly evaluated; if you are passing the
+    /// result of a function call, it is recommended to use [`and_then`], which is
+    /// lazily evaluated.
+    ///
+    /// [`and_then`]: Option::and_then
     ///
     /// # Examples
     ///
@@ -65596,8 +67892,6 @@ impl<T, U> Option<(T, U)> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(unzip_option)]
-    ///
     /// let x = Some((1, "hi"));
     /// let y = None::<(u8, u32)>;
     ///
@@ -65605,8 +67899,13 @@ impl<T, U> Option<(T, U)> {
     /// assert_eq!(y.unzip(), (None, None));
     /// ```
     #[inline]
-    #[unstable(feature = "unzip_option", issue = "87800", reason = "recently added")]
-    pub const fn unzip(self) -> (Option<T>, Option<U>) {
+    #[stable(feature = "unzip_option", since = "1.66.0")]
+    #[rustc_const_unstable(feature = "const_option", issue = "67441")]
+    pub const fn unzip(self) -> (Option<T>, Option<U>)
+    where
+        T: ~const Destruct,
+        U: ~const Destruct,
+    {
         match self {
             Some((a, b)) => (Some(a), Some(b)),
             None => (None, None),
@@ -66200,7 +68499,8 @@ impl<T> ops::FromResidual<ops::Yeet<()>> for Option<T> {
 }
 
 #[unstable(feature = "try_trait_v2_residual", issue = "91285")]
-impl<T> ops::Residual<T> for Option<convert::Infallible> {
+#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+impl<T> const ops::Residual<T> for Option<convert::Infallible> {
     type TryType = Option<T>;
 }
 
@@ -66371,8 +68671,9 @@ impl<'a> Location<'a> {
     /// ```
     #[must_use]
     #[stable(feature = "panic_hooks", since = "1.10.0")]
+    #[rustc_const_unstable(feature = "const_location_fields", issue = "102911")]
     #[inline]
-    pub fn file(&self) -> &str {
+    pub const fn file(&self) -> &str {
         self.file
     }
 
@@ -66395,8 +68696,9 @@ impl<'a> Location<'a> {
     /// ```
     #[must_use]
     #[stable(feature = "panic_hooks", since = "1.10.0")]
+    #[rustc_const_unstable(feature = "const_location_fields", issue = "102911")]
     #[inline]
-    pub fn line(&self) -> u32 {
+    pub const fn line(&self) -> u32 {
         self.line
     }
 
@@ -66419,8 +68721,9 @@ impl<'a> Location<'a> {
     /// ```
     #[must_use]
     #[stable(feature = "panic_col", since = "1.25.0")]
+    #[rustc_const_unstable(feature = "const_location_fields", issue = "102911")]
     #[inline]
-    pub fn column(&self) -> u32 {
+    pub const fn column(&self) -> u32 {
         self.col
     }
 }
@@ -67064,6 +69367,73 @@ pub mod panicking {
 use crate::fmt;
 use crate::panic::{Location, PanicInfo};
 
+// First we define the two main entry points that all panics go through.
+// In the end both are just convenience wrappers around `panic_impl`.
+
+/// The entry point for panicking with a formatted message.
+///
+/// This is designed to reduce the amount of code required at the call
+/// site as much as possible (so that `panic!()` has as low an impact
+/// on (e.g.) the inlining of other functions as possible), by moving
+/// the actual formatting into this shared place.
+#[cold]
+// If panic_immediate_abort, inline the abort call,
+// otherwise avoid inlining because of it is cold path.
+#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
+#[cfg_attr(feature = "panic_immediate_abort", inline)]
+#[track_caller]
+#[lang = "panic_fmt"] // needed for const-evaluated panics
+#[rustc_do_not_const_check] // hooked by const-eval
+#[rustc_const_unstable(feature = "core_panic", issue = "none")]
+pub const fn panic_fmt(fmt: fmt::Arguments<'_>) -> ! {
+    if cfg!(feature = "panic_immediate_abort") {
+        super::intrinsics::abort()
+    }
+
+    // NOTE This function never crosses the FFI boundary; it's a Rust-to-Rust call
+    // that gets resolved to the `#[panic_handler]` function.
+    extern "Rust" {
+        #[lang = "panic_impl"]
+        fn panic_impl(pi: &PanicInfo<'_>) -> !;
+    }
+
+    let pi = PanicInfo::internal_constructor(Some(&fmt), Location::caller(), true);
+
+    // SAFETY: `panic_impl` is defined in safe Rust code and thus is safe to call.
+    unsafe { panic_impl(&pi) }
+}
+
+/// Like panic_fmt, but without unwinding and track_caller to reduce the impact on codesize.
+/// Also just works on `str`, as a `fmt::Arguments` needs more space to be passed.
+#[cold]
+#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
+#[cfg_attr(feature = "panic_immediate_abort", inline)]
+#[cfg_attr(not(bootstrap), rustc_nounwind)]
+#[cfg_attr(bootstrap, rustc_allocator_nounwind)]
+pub fn panic_str_nounwind(msg: &'static str) -> ! {
+    if cfg!(feature = "panic_immediate_abort") {
+        super::intrinsics::abort()
+    }
+
+    // NOTE This function never crosses the FFI boundary; it's a Rust-to-Rust call
+    // that gets resolved to the `#[panic_handler]` function.
+    extern "Rust" {
+        #[lang = "panic_impl"]
+        fn panic_impl(pi: &PanicInfo<'_>) -> !;
+    }
+
+    // PanicInfo with the `can_unwind` flag set to false forces an abort.
+    let pieces = [msg];
+    let fmt = fmt::Arguments::new_v1(&pieces, &[]);
+    let pi = PanicInfo::internal_constructor(Some(&fmt), Location::caller(), false);
+
+    // SAFETY: `panic_impl` is defined in safe Rust code and thus is safe to call.
+    unsafe { panic_impl(&pi) }
+}
+
+// Next we define a bunch of higher-level wrappers that all bottom out in the two core functions
+// above.
+
 /// The underlying implementation of libcore's `panic!` macro when no formatting is used.
 #[cold]
 // never inline unless panic_immediate_abort to avoid code
@@ -67119,62 +69489,17 @@ fn panic_bounds_check(index: usize, len: usize) -> ! {
     panic!("index out of bounds: the len is {len} but the index is {index}")
 }
 
-// This function is called directly by the codegen backend, and must not have
-// any extra arguments (including those synthesized by track_caller).
+/// Panic because we cannot unwind out of a function.
+///
+/// This function is called directly by the codegen backend, and must not have
+/// any extra arguments (including those synthesized by track_caller).
 #[cold]
 #[inline(never)]
 #[lang = "panic_no_unwind"] // needed by codegen for panic in nounwind function
+#[cfg_attr(not(bootstrap), rustc_nounwind)]
+#[cfg_attr(bootstrap, rustc_allocator_nounwind)]
 fn panic_no_unwind() -> ! {
-    if cfg!(feature = "panic_immediate_abort") {
-        super::intrinsics::abort()
-    }
-
-    // NOTE This function never crosses the FFI boundary; it's a Rust-to-Rust call
-    // that gets resolved to the `#[panic_handler]` function.
-    extern "Rust" {
-        #[lang = "panic_impl"]
-        fn panic_impl(pi: &PanicInfo<'_>) -> !;
-    }
-
-    // PanicInfo with the `can_unwind` flag set to false forces an abort.
-    let fmt = format_args!("panic in a function that cannot unwind");
-    let pi = PanicInfo::internal_constructor(Some(&fmt), Location::caller(), false);
-
-    // SAFETY: `panic_impl` is defined in safe Rust code and thus is safe to call.
-    unsafe { panic_impl(&pi) }
-}
-
-/// The entry point for panicking with a formatted message.
-///
-/// This is designed to reduce the amount of code required at the call
-/// site as much as possible (so that `panic!()` has as low an impact
-/// on (e.g.) the inlining of other functions as possible), by moving
-/// the actual formatting into this shared place.
-#[cold]
-// If panic_immediate_abort, inline the abort call,
-// otherwise avoid inlining because of it is cold path.
-#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
-#[cfg_attr(feature = "panic_immediate_abort", inline)]
-#[track_caller]
-#[lang = "panic_fmt"] // needed for const-evaluated panics
-#[rustc_do_not_const_check] // hooked by const-eval
-#[rustc_const_unstable(feature = "core_panic", issue = "none")]
-pub const fn panic_fmt(fmt: fmt::Arguments<'_>) -> ! {
-    if cfg!(feature = "panic_immediate_abort") {
-        super::intrinsics::abort()
-    }
-
-    // NOTE This function never crosses the FFI boundary; it's a Rust-to-Rust call
-    // that gets resolved to the `#[panic_handler]` function.
-    extern "Rust" {
-        #[lang = "panic_impl"]
-        fn panic_impl(pi: &PanicInfo<'_>) -> !;
-    }
-
-    let pi = PanicInfo::internal_constructor(Some(&fmt), Location::caller(), true);
-
-    // SAFETY: `panic_impl` is defined in safe Rust code and thus is safe to call.
-    unsafe { panic_impl(&pi) }
+    panic_str_nounwind("panic in a function that cannot unwind")
 }
 
 /// This function is used instead of panic_fmt in const eval.
@@ -67225,11 +69550,11 @@ pub fn assert_matches_failed<T: fmt::Debug + ?Sized>(
     right: &str,
     args: Option<fmt::Arguments<'_>>,
 ) -> ! {
-    // Use the Display implementation to display the pattern.
+    // The pattern is a string so it can be displayed directly.
     struct Pattern<'a>(&'a str);
     impl fmt::Debug for Pattern<'_> {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            fmt::Display::fmt(self.0, f)
+            f.write_str(self.0)
         }
     }
     assert_failed_inner(AssertKind::Match, &left, &Pattern(right), args);
@@ -68977,22 +71302,25 @@ impl<T, E> Result<T, E> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(is_some_with)]
+    /// #![feature(is_some_and)]
     ///
     /// let x: Result<u32, &str> = Ok(2);
-    /// assert_eq!(x.is_ok_and(|&x| x > 1), true);
+    /// assert_eq!(x.is_ok_and(|x| x > 1), true);
     ///
     /// let x: Result<u32, &str> = Ok(0);
-    /// assert_eq!(x.is_ok_and(|&x| x > 1), false);
+    /// assert_eq!(x.is_ok_and(|x| x > 1), false);
     ///
     /// let x: Result<u32, &str> = Err("hey");
-    /// assert_eq!(x.is_ok_and(|&x| x > 1), false);
+    /// assert_eq!(x.is_ok_and(|x| x > 1), false);
     /// ```
     #[must_use]
     #[inline]
-    #[unstable(feature = "is_some_with", issue = "93050")]
-    pub fn is_ok_and(&self, f: impl FnOnce(&T) -> bool) -> bool {
-        matches!(self, Ok(x) if f(x))
+    #[unstable(feature = "is_some_and", issue = "93050")]
+    pub fn is_ok_and(self, f: impl FnOnce(T) -> bool) -> bool {
+        match self {
+            Err(_) => false,
+            Ok(x) => f(x),
+        }
     }
 
     /// Returns `true` if the result is [`Err`].
@@ -69021,7 +71349,7 @@ impl<T, E> Result<T, E> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(is_some_with)]
+    /// #![feature(is_some_and)]
     /// use std::io::{Error, ErrorKind};
     ///
     /// let x: Result<u32, Error> = Err(Error::new(ErrorKind::NotFound, "!"));
@@ -69035,9 +71363,12 @@ impl<T, E> Result<T, E> {
     /// ```
     #[must_use]
     #[inline]
-    #[unstable(feature = "is_some_with", issue = "93050")]
-    pub fn is_err_and(&self, f: impl FnOnce(&E) -> bool) -> bool {
-        matches!(self, Err(x) if f(x))
+    #[unstable(feature = "is_some_and", issue = "93050")]
+    pub fn is_err_and(self, f: impl FnOnce(E) -> bool) -> bool {
+        match self {
+            Ok(_) => false,
+            Err(e) => f(e),
+        }
     }
 
     /////////////////////////////////////////////////////////////////////////
@@ -69714,6 +72045,11 @@ impl<T, E> Result<T, E> {
 
     /// Returns `res` if the result is [`Ok`], otherwise returns the [`Err`] value of `self`.
     ///
+    /// Arguments passed to `and` are eagerly evaluated; if you are passing the
+    /// result of a function call, it is recommended to use [`and_then`], which is
+    /// lazily evaluated.
+    ///
+    /// [`and_then`]: Result::and_then
     ///
     /// # Examples
     ///
@@ -70200,40 +72536,6 @@ impl<T, E> Result<Result<T, E>, E> {
     }
 }
 
-impl<T> Result<T, T> {
-    /// Returns the [`Ok`] value if `self` is `Ok`, and the [`Err`] value if
-    /// `self` is `Err`.
-    ///
-    /// In other words, this function returns the value (the `T`) of a
-    /// `Result<T, T>`, regardless of whether or not that result is `Ok` or
-    /// `Err`.
-    ///
-    /// This can be useful in conjunction with APIs such as
-    /// [`Atomic*::compare_exchange`], or [`slice::binary_search`], but only in
-    /// cases where you don't care if the result was `Ok` or not.
-    ///
-    /// [`Atomic*::compare_exchange`]: crate::sync::atomic::AtomicBool::compare_exchange
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(result_into_ok_or_err)]
-    /// let ok: Result<u32, u32> = Ok(3);
-    /// let err: Result<u32, u32> = Err(4);
-    ///
-    /// assert_eq!(ok.into_ok_or_err(), 3);
-    /// assert_eq!(err.into_ok_or_err(), 4);
-    /// ```
-    #[inline]
-    #[unstable(feature = "result_into_ok_or_err", reason = "newly added", issue = "82223")]
-    pub const fn into_ok_or_err(self) -> T {
-        match self {
-            Ok(v) => v,
-            Err(v) => v,
-        }
-    }
-}
-
 // This is a separate function to reduce the code size of the methods
 #[cfg(not(feature = "panic_immediate_abort"))]
 #[inline(never)]
@@ -70524,9 +72826,6 @@ impl<A, E, V: FromIterator<A>> FromIterator<Result<A, E>> for Result<V, E> {
     /// so the final value of `shared` is 6 (= `3 + 2 + 1`), not 16.
     #[inline]
     fn from_iter<I: IntoIterator<Item = Result<A, E>>>(iter: I) -> Result<V, E> {
-        // FIXME(#11084): This could be replaced with Iterator::scan when this
-        // performance bug is closed.
-
         iter::try_process(iter.into_iter(), |i| i.collect())
     }
 }
@@ -70574,7 +72873,8 @@ impl<T, E, F: From<E>> ops::FromResidual<ops::Yeet<E>> for Result<T, F> {
 }
 
 #[unstable(feature = "try_trait_v2_residual", issue = "91285")]
-impl<T, E> ops::Residual<T> for Result<convert::Infallible, E> {
+#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+impl<T, E> const ops::Residual<T> for Result<convert::Infallible, E> {
     type TryType = Result<T, E>;
 }
 }
@@ -70880,7 +73180,7 @@ impl AtomicBool {
     /// ```
     /// use std::sync::atomic::AtomicBool;
     ///
-    /// let atomic_true  = AtomicBool::new(true);
+    /// let atomic_true = AtomicBool::new(true);
     /// let atomic_false = AtomicBool::new(false);
     /// ```
     #[inline]
@@ -71541,6 +73841,14 @@ impl AtomicBool {
     /// **Note:** This method is only available on platforms that support atomic
     /// operations on `u8`.
     ///
+    /// # Considerations
+    ///
+    /// This method is not magic;  it is not provided by the hardware.
+    /// It is implemented in terms of [`AtomicBool::compare_exchange_weak`], and suffers from the same drawbacks.
+    /// In particular, this method will not circumvent the [ABA Problem].
+    ///
+    /// [ABA Problem]: https://en.wikipedia.org/wiki/ABA_problem
+    ///
     /// # Examples
     ///
     /// ```rust
@@ -71757,7 +74065,7 @@ impl<T> AtomicPtr<T> {
     /// use std::sync::atomic::{AtomicPtr, Ordering};
     ///
     /// let ptr = &mut 5;
-    /// let some_ptr  = AtomicPtr::new(ptr);
+    /// let some_ptr = AtomicPtr::new(ptr);
     ///
     /// let value = some_ptr.load(Ordering::Relaxed);
     /// ```
@@ -71784,7 +74092,7 @@ impl<T> AtomicPtr<T> {
     /// use std::sync::atomic::{AtomicPtr, Ordering};
     ///
     /// let ptr = &mut 5;
-    /// let some_ptr  = AtomicPtr::new(ptr);
+    /// let some_ptr = AtomicPtr::new(ptr);
     ///
     /// let other_ptr = &mut 10;
     ///
@@ -71816,7 +74124,7 @@ impl<T> AtomicPtr<T> {
     /// use std::sync::atomic::{AtomicPtr, Ordering};
     ///
     /// let ptr = &mut 5;
-    /// let some_ptr  = AtomicPtr::new(ptr);
+    /// let some_ptr = AtomicPtr::new(ptr);
     ///
     /// let other_ptr = &mut 10;
     ///
@@ -71827,9 +74135,7 @@ impl<T> AtomicPtr<T> {
     #[cfg(target_has_atomic = "ptr")]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn swap(&self, ptr: *mut T, order: Ordering) -> *mut T {
-        // SAFETY: data races are prevented by atomic intrinsics.
-        unsafe { atomic_swap(self.p.get(), ptr, order) }
-    }
+}
 
     /// Stores a value into the pointer if the current value is the same as the `current` value.
     ///
@@ -71868,9 +74174,9 @@ impl<T> AtomicPtr<T> {
     /// use std::sync::atomic::{AtomicPtr, Ordering};
     ///
     /// let ptr = &mut 5;
-    /// let some_ptr  = AtomicPtr::new(ptr);
+    /// let some_ptr = AtomicPtr::new(ptr);
     ///
-    /// let other_ptr   = &mut 10;
+    /// let other_ptr = &mut 10;
     ///
     /// let value = some_ptr.compare_and_swap(ptr, other_ptr, Ordering::Relaxed);
     /// ```
@@ -71883,11 +74189,7 @@ impl<T> AtomicPtr<T> {
     #[cfg(target_has_atomic = "ptr")]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn compare_and_swap(&self, current: *mut T, new: *mut T, order: Ordering) -> *mut T {
-        match self.compare_exchange(current, new, order, strongest_failure_ordering(order)) {
-            Ok(x) => x,
-            Err(x) => x,
-        }
-    }
+}
 
     /// Stores a value into the pointer if the current value is the same as the `current` value.
     ///
@@ -71911,9 +74213,9 @@ impl<T> AtomicPtr<T> {
     /// use std::sync::atomic::{AtomicPtr, Ordering};
     ///
     /// let ptr = &mut 5;
-    /// let some_ptr  = AtomicPtr::new(ptr);
+    /// let some_ptr = AtomicPtr::new(ptr);
     ///
-    /// let other_ptr   = &mut 10;
+    /// let other_ptr = &mut 10;
     ///
     /// let value = some_ptr.compare_exchange(ptr, other_ptr,
     ///                                       Ordering::SeqCst, Ordering::Relaxed);
@@ -71929,9 +74231,7 @@ impl<T> AtomicPtr<T> {
         success: Ordering,
         failure: Ordering,
     ) -> Result<*mut T, *mut T> {
-        // SAFETY: data races are prevented by atomic intrinsics.
-        unsafe { atomic_compare_exchange(self.p.get(), current, new, success, failure) }
-    }
+}
 
     /// Stores a value into the pointer if the current value is the same as the `current` value.
     ///
@@ -71978,12 +74278,7 @@ impl<T> AtomicPtr<T> {
         success: Ordering,
         failure: Ordering,
     ) -> Result<*mut T, *mut T> {
-        // SAFETY: This intrinsic is unsafe because it operates on a raw pointer
-        // but we know for sure that the pointer is valid (we just got it from
-        // an `UnsafeCell` that we have by reference) and the atomic operation
-        // itself allows us to safely mutate the `UnsafeCell` contents.
-        unsafe { atomic_compare_exchange_weak(self.p.get(), current, new, success, failure) }
-    }
+}
 
     /// Fetches the value, and applies a function to it that returns an optional
     /// new value. Returns a `Result` of `Ok(previous_value)` if the function
@@ -72007,6 +74302,14 @@ impl<T> AtomicPtr<T> {
     ///
     /// **Note:** This method is only available on platforms that support atomic
     /// operations on pointers.
+    ///
+    /// # Considerations
+    ///
+    /// This method is not magic;  it is not provided by the hardware.
+    /// It is implemented in terms of [`AtomicPtr::compare_exchange_weak`], and suffers from the same drawbacks.
+    /// In particular, this method will not circumvent the [ABA Problem].
+    ///
+    /// [ABA Problem]: https://en.wikipedia.org/wiki/ABA_problem
     ///
     /// # Examples
     ///
@@ -72041,15 +74344,7 @@ impl<T> AtomicPtr<T> {
     where
         F: FnMut(*mut T) -> Option<*mut T>,
     {
-        let mut prev = self.load(fetch_order);
-        while let Some(next) = f(prev) {
-            match self.compare_exchange_weak(prev, next, set_order, fetch_order) {
-                x @ Ok(_) => return x,
-                Err(next_prev) => prev = next_prev,
-            }
-        }
-        Err(prev)
-    }
+}
 
     /// Offsets the pointer's address by adding `val` (in units of `T`),
     /// returning the previous pointer.
@@ -72089,8 +74384,7 @@ impl<T> AtomicPtr<T> {
     #[unstable(feature = "strict_provenance_atomic_ptr", issue = "99108")]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn fetch_ptr_add(&self, val: usize, order: Ordering) -> *mut T {
-        self.fetch_byte_add(val.wrapping_mul(core::mem::size_of::<T>()), order)
-    }
+}
 
     /// Offsets the pointer's address by subtracting `val` (in units of `T`),
     /// returning the previous pointer.
@@ -72134,14 +74428,13 @@ impl<T> AtomicPtr<T> {
     #[unstable(feature = "strict_provenance_atomic_ptr", issue = "99108")]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn fetch_ptr_sub(&self, val: usize, order: Ordering) -> *mut T {
-        self.fetch_byte_sub(val.wrapping_mul(core::mem::size_of::<T>()), order)
-    }
+}
 
     /// Offsets the pointer's address by adding `val` *bytes*, returning the
     /// previous pointer.
     ///
-    /// This is equivalent to using [`wrapping_add`] and [`cast`] to atomically
-    /// perform `ptr = ptr.cast::<u8>().wrapping_add(val).cast::<T>()`.
+    /// This is equivalent to using [`wrapping_byte_add`] to atomically
+    /// perform `ptr = ptr.wrapping_byte_add(val)`.
     ///
     /// `fetch_byte_add` takes an [`Ordering`] argument which describes the
     /// memory ordering of this operation. All ordering modes are possible. Note
@@ -72151,8 +74444,7 @@ impl<T> AtomicPtr<T> {
     /// **Note**: This method is only available on platforms that support atomic
     /// operations on [`AtomicPtr`].
     ///
-    /// [`wrapping_add`]: pointer::wrapping_add
-    /// [`cast`]: pointer::cast
+    /// [`wrapping_byte_add`]: pointer::wrapping_byte_add
     ///
     /// # Examples
     ///
@@ -72170,23 +74462,13 @@ impl<T> AtomicPtr<T> {
     #[unstable(feature = "strict_provenance_atomic_ptr", issue = "99108")]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn fetch_byte_add(&self, val: usize, order: Ordering) -> *mut T {
-        #[cfg(not(bootstrap))]
-        // SAFETY: data races are prevented by atomic intrinsics.
-        unsafe {
-            atomic_add(self.p.get(), core::ptr::invalid_mut(val), order).cast()
-        }
-        #[cfg(bootstrap)]
-        // SAFETY: data races are prevented by atomic intrinsics.
-        unsafe {
-            atomic_add(self.p.get().cast::<usize>(), val, order) as *mut T
-        }
-    }
+}
 
     /// Offsets the pointer's address by subtracting `val` *bytes*, returning the
     /// previous pointer.
     ///
-    /// This is equivalent to using [`wrapping_sub`] and [`cast`] to atomically
-    /// perform `ptr = ptr.cast::<u8>().wrapping_sub(val).cast::<T>()`.
+    /// This is equivalent to using [`wrapping_byte_sub`] to atomically
+    /// perform `ptr = ptr.wrapping_byte_sub(val)`.
     ///
     /// `fetch_byte_sub` takes an [`Ordering`] argument which describes the
     /// memory ordering of this operation. All ordering modes are possible. Note
@@ -72196,8 +74478,7 @@ impl<T> AtomicPtr<T> {
     /// **Note**: This method is only available on platforms that support atomic
     /// operations on [`AtomicPtr`].
     ///
-    /// [`wrapping_sub`]: pointer::wrapping_sub
-    /// [`cast`]: pointer::cast
+    /// [`wrapping_byte_sub`]: pointer::wrapping_byte_sub
     ///
     /// # Examples
     ///
@@ -72214,24 +74495,14 @@ impl<T> AtomicPtr<T> {
     #[unstable(feature = "strict_provenance_atomic_ptr", issue = "99108")]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn fetch_byte_sub(&self, val: usize, order: Ordering) -> *mut T {
-        #[cfg(not(bootstrap))]
-        // SAFETY: data races are prevented by atomic intrinsics.
-        unsafe {
-            atomic_sub(self.p.get(), core::ptr::invalid_mut(val), order).cast()
-        }
-        #[cfg(bootstrap)]
-        // SAFETY: data races are prevented by atomic intrinsics.
-        unsafe {
-            atomic_sub(self.p.get().cast::<usize>(), val, order) as *mut T
-        }
-    }
+}
 
     /// Performs a bitwise "or" operation on the address of the current pointer,
     /// and the argument `val`, and stores a pointer with provenance of the
     /// current pointer and the resulting address.
     ///
-    /// This is equivalent equivalent to using [`map_addr`] to atomically
-    /// perform `ptr = ptr.map_addr(|a| a | val)`. This can be used in tagged
+    /// This is equivalent to using [`map_addr`] to atomically perform
+    /// `ptr = ptr.map_addr(|a| a | val)`. This can be used in tagged
     /// pointer schemes to atomically set tag bits.
     ///
     /// **Caveat**: This operation returns the previous value. To compute the
@@ -72273,24 +74544,14 @@ impl<T> AtomicPtr<T> {
     #[unstable(feature = "strict_provenance_atomic_ptr", issue = "99108")]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn fetch_or(&self, val: usize, order: Ordering) -> *mut T {
-        #[cfg(not(bootstrap))]
-        // SAFETY: data races are prevented by atomic intrinsics.
-        unsafe {
-            atomic_or(self.p.get(), core::ptr::invalid_mut(val), order).cast()
-        }
-        #[cfg(bootstrap)]
-        // SAFETY: data races are prevented by atomic intrinsics.
-        unsafe {
-            atomic_or(self.p.get().cast::<usize>(), val, order) as *mut T
-        }
-    }
+}
 
     /// Performs a bitwise "and" operation on the address of the current
     /// pointer, and the argument `val`, and stores a pointer with provenance of
     /// the current pointer and the resulting address.
     ///
-    /// This is equivalent equivalent to using [`map_addr`] to atomically
-    /// perform `ptr = ptr.map_addr(|a| a & val)`. This can be used in tagged
+    /// This is equivalent to using [`map_addr`] to atomically perform
+    /// `ptr = ptr.map_addr(|a| a & val)`. This can be used in tagged
     /// pointer schemes to atomically unset tag bits.
     ///
     /// **Caveat**: This operation returns the previous value. To compute the
@@ -72331,24 +74592,14 @@ impl<T> AtomicPtr<T> {
     #[unstable(feature = "strict_provenance_atomic_ptr", issue = "99108")]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn fetch_and(&self, val: usize, order: Ordering) -> *mut T {
-        #[cfg(not(bootstrap))]
-        // SAFETY: data races are prevented by atomic intrinsics.
-        unsafe {
-            atomic_and(self.p.get(), core::ptr::invalid_mut(val), order).cast()
-        }
-        #[cfg(bootstrap)]
-        // SAFETY: data races are prevented by atomic intrinsics.
-        unsafe {
-            atomic_and(self.p.get().cast::<usize>(), val, order) as *mut T
-        }
-    }
+}
 
     /// Performs a bitwise "xor" operation on the address of the current
     /// pointer, and the argument `val`, and stores a pointer with provenance of
     /// the current pointer and the resulting address.
     ///
-    /// This is equivalent equivalent to using [`map_addr`] to atomically
-    /// perform `ptr = ptr.map_addr(|a| a ^ val)`. This can be used in tagged
+    /// This is equivalent to using [`map_addr`] to atomically perform
+    /// `ptr = ptr.map_addr(|a| a ^ val)`. This can be used in tagged
     /// pointer schemes to atomically toggle tag bits.
     ///
     /// **Caveat**: This operation returns the previous value. To compute the
@@ -72387,17 +74638,7 @@ impl<T> AtomicPtr<T> {
     #[unstable(feature = "strict_provenance_atomic_ptr", issue = "99108")]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn fetch_xor(&self, val: usize, order: Ordering) -> *mut T {
-        #[cfg(not(bootstrap))]
-        // SAFETY: data races are prevented by atomic intrinsics.
-        unsafe {
-            atomic_xor(self.p.get(), core::ptr::invalid_mut(val), order).cast()
-        }
-        #[cfg(bootstrap)]
-        // SAFETY: data races are prevented by atomic intrinsics.
-        unsafe {
-            atomic_xor(self.p.get().cast::<usize>(), val, order) as *mut T
-        }
-    }
+}
 }
 
 #[cfg(target_has_atomic_load_store = "8")]
@@ -72415,8 +74656,7 @@ impl const From<bool> for AtomicBool {
     /// ```
     #[inline]
     fn from(b: bool) -> Self {
-        Self::new(b)
-    }
+}
 }
 
 #[cfg(target_has_atomic_load_store = "ptr")]
@@ -72426,8 +74666,7 @@ impl<T> const From<*mut T> for AtomicPtr<T> {
     /// Converts a `*mut T` into an `AtomicPtr<T>`.
     #[inline]
     fn from(p: *mut T) -> Self {
-        Self::new(p)
-    }
+}
 }
 
 #[allow(unused_macros)] // This macro ends up being unused on some architectures.
@@ -72492,8 +74731,7 @@ macro_rules! atomic_int {
         impl const Default for $atomic_type {
             #[inline]
             fn default() -> Self {
-                Self::new(Default::default())
-            }
+}
         }
 
         #[$stable_from]
@@ -72501,14 +74739,13 @@ macro_rules! atomic_int {
         impl const From<$int_type> for $atomic_type {
             #[doc = concat!("Converts an `", stringify!($int_type), "` into an `", stringify!($atomic_type), "`.")]
             #[inline]
-            fn from(v: $int_type) -> Self { Self::new(v) }
+            fn from(v: $int_type) -> Self { }
         }
 
         #[$stable_debug]
         impl fmt::Debug for $atomic_type {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                fmt::Debug::fmt(&self.load(Ordering::Relaxed), f)
-            }
+}
         }
 
         // Send is implicitly implemented.
@@ -72530,8 +74767,7 @@ macro_rules! atomic_int {
             #[$const_stable]
             #[must_use]
             pub const fn new(v: $int_type) -> Self {
-                Self {v: UnsafeCell::new(v)}
-            }
+}
 
             /// Returns a mutable reference to the underlying integer.
             ///
@@ -72551,8 +74787,7 @@ macro_rules! atomic_int {
             #[inline]
             #[$stable_access]
             pub fn get_mut(&mut self) -> &mut $int_type {
-                self.v.get_mut()
-            }
+}
 
             #[doc = concat!("Get atomic access to a `&mut ", stringify!($int_type), "`.")]
             ///
@@ -72580,14 +74815,7 @@ macro_rules! atomic_int {
             #[$cfg_align]
             #[unstable(feature = "atomic_from_mut", issue = "76314")]
             pub fn from_mut(v: &mut $int_type) -> &mut Self {
-                use crate::mem::align_of;
-                let [] = [(); align_of::<Self>() - align_of::<$int_type>()];
-                // SAFETY:
-                //  - the mutable reference guarantees unique ownership.
-                //  - the alignment of `$int_type` and `Self` is the
-                //    same, as promised by $cfg_align and verified above.
-                unsafe { &mut *(v as *mut $int_type as *mut Self) }
-            }
+}
 
             #[doc = concat!("Get non-atomic access to a `&mut [", stringify!($atomic_type), "]` slice")]
             ///
@@ -72621,9 +74849,7 @@ macro_rules! atomic_int {
             #[inline]
             #[unstable(feature = "atomic_from_mut", issue = "76314")]
             pub fn get_mut_slice(this: &mut [Self]) -> &mut [$int_type] {
-                // SAFETY: the mutable reference guarantees unique ownership.
-                unsafe { &mut *(this as *mut [Self] as *mut [$int_type]) }
-            }
+}
 
             #[doc = concat!("Get atomic access to a `&mut [", stringify!($int_type), "]` slice.")]
             ///
@@ -72648,14 +74874,7 @@ macro_rules! atomic_int {
             #[$cfg_align]
             #[unstable(feature = "atomic_from_mut", issue = "76314")]
             pub fn from_mut_slice(v: &mut [$int_type]) -> &mut [Self] {
-                use crate::mem::align_of;
-                let [] = [(); align_of::<Self>() - align_of::<$int_type>()];
-                // SAFETY:
-                //  - the mutable reference guarantees unique ownership.
-                //  - the alignment of `$int_type` and `Self` is the
-                //    same, as promised by $cfg_align and verified above.
-                unsafe { &mut *(v as *mut [$int_type] as *mut [Self]) }
-            }
+}
 
             /// Consumes the atomic and returns the contained value.
             ///
@@ -72674,8 +74893,7 @@ macro_rules! atomic_int {
             #[$stable_access]
             #[rustc_const_unstable(feature = "const_cell_into_inner", issue = "78729")]
             pub const fn into_inner(self) -> $int_type {
-                self.v.into_inner()
-            }
+}
 
             /// Loads a value from the atomic integer.
             ///
@@ -72699,9 +74917,7 @@ macro_rules! atomic_int {
             #[$stable]
             #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
             pub fn load(&self, order: Ordering) -> $int_type {
-                // SAFETY: data races are prevented by atomic intrinsics.
-                unsafe { atomic_load(self.v.get(), order) }
-            }
+}
 
             /// Stores a value into the atomic integer.
             ///
@@ -72726,9 +74942,7 @@ macro_rules! atomic_int {
             #[$stable]
             #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
             pub fn store(&self, val: $int_type, order: Ordering) {
-                // SAFETY: data races are prevented by atomic intrinsics.
-                unsafe { atomic_store(self.v.get(), val, order); }
-            }
+}
 
             /// Stores a value into the atomic integer, returning the previous value.
             ///
@@ -72754,9 +74968,7 @@ macro_rules! atomic_int {
             #[$cfg_cas]
             #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
             pub fn swap(&self, val: $int_type, order: Ordering) -> $int_type {
-                // SAFETY: data races are prevented by atomic intrinsics.
-                unsafe { atomic_swap(self.v.get(), val, order) }
-            }
+}
 
             /// Stores a value into the atomic integer if the current value is the same as
             /// the `current` value.
@@ -72815,14 +75027,7 @@ macro_rules! atomic_int {
                                     current: $int_type,
                                     new: $int_type,
                                     order: Ordering) -> $int_type {
-                match self.compare_exchange(current,
-                                            new,
-                                            order,
-                                            strongest_failure_ordering(order)) {
-                    Ok(x) => x,
-                    Err(x) => x,
-                }
-            }
+}
 
             /// Stores a value into the atomic integer if the current value is the same as
             /// the `current` value.
@@ -72870,9 +75075,7 @@ macro_rules! atomic_int {
                                     new: $int_type,
                                     success: Ordering,
                                     failure: Ordering) -> Result<$int_type, $int_type> {
-                // SAFETY: data races are prevented by atomic intrinsics.
-                unsafe { atomic_compare_exchange(self.v.get(), current, new, success, failure) }
-            }
+}
 
             /// Stores a value into the atomic integer if the current value is the same as
             /// the `current` value.
@@ -72919,11 +75122,7 @@ macro_rules! atomic_int {
                                          new: $int_type,
                                          success: Ordering,
                                          failure: Ordering) -> Result<$int_type, $int_type> {
-                // SAFETY: data races are prevented by atomic intrinsics.
-                unsafe {
-                    atomic_compare_exchange_weak(self.v.get(), current, new, success, failure)
-                }
-            }
+}
 
             /// Adds to the current value, returning the previous value.
             ///
@@ -73125,6 +75324,16 @@ macro_rules! atomic_int {
             ///
             /// **Note**: This method is only available on platforms that support atomic operations on
             #[doc = concat!("[`", $s_int_type, "`].")]
+            ///
+            /// # Considerations
+            ///
+            /// This method is not magic;  it is not provided by the hardware.
+            /// It is implemented in terms of
+            #[doc = concat!("[`", stringify!($atomic_type), "::compare_exchange_weak`],")]
+            /// and suffers from the same drawbacks.
+            /// In particular, this method will not circumvent the [ABA Problem].
+            ///
+            /// [ABA Problem]: https://en.wikipedia.org/wiki/ABA_problem
             ///
             /// # Examples
             ///
@@ -73962,7 +76171,7 @@ impl<'buf, 'state> PadAdapter<'buf, 'state> {
 }
 
 impl fmt::Write for PadAdapter<'_, '_> {
-    fn write_str(&mut self, mut s: &str) -> fmt::Result {
+    fn write_str(&mut self, s: &str) -> fmt::Result {
 }
 }
 
@@ -74810,7 +77019,7 @@ mod imp {
 impl_Exp!(i128, u128 as u128 via to_u128 named exp_u128);
 
 /// Helper function for writing a u64 into `buf` going from last to first, with `curr`.
-fn parse_u64_into<const N: usize>(mut n: u64, buf: &mut [MaybeUninit<u8>; N], curr: &mut isize) {
+fn parse_u64_into<const N: usize>(mut n: u64, buf: &mut [MaybeUninit<u8>; N], curr: &mut usize) {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -74947,6 +77156,10 @@ pub trait Write {
     /// # Errors
     ///
     /// This function will return an instance of [`Error`] on error.
+    ///
+    /// The purpose of std::fmt::Error is to abort the formatting operation when the underlying
+    /// destination encounters some error preventing it from accepting more text; it should
+    /// generally be propagated rather than handled, at least when implementing formatting traits.
     ///
     /// # Examples
     ///
@@ -75464,12 +77677,19 @@ pub use macros::Debug;
 
 /// Format trait for an empty format, `{}`.
 ///
+/// Implementing this trait for a type will automatically implement the
+/// [`ToString`][tostring] trait for the type, allowing the usage
+/// of the [`.to_string()`][tostring_function] method. Prefer implementing
+/// the `Display` trait for a type, rather than [`ToString`][tostring].
+///
 /// `Display` is similar to [`Debug`], but `Display` is for user-facing
 /// output, and so cannot be derived.
 ///
 /// For more information on formatters, see [the module-level documentation][module].
 ///
 /// [module]: ../../std/fmt/index.html
+/// [tostring]: ../../std/string/trait.ToString.html
+/// [tostring_function]: ../../std/string/trait.ToString.html#tymethod.to_string
 ///
 /// # Examples
 ///
@@ -76275,7 +78495,7 @@ impl<'a> Formatter<'a> {
     ///             write!(formatter,
     ///                    "Foo({}{})",
     ///                    if self.0 < 0 { '-' } else { '+' },
-    ///                    self.0)
+    ///                    self.0.abs())
     ///         } else {
     ///             write!(formatter, "Foo({})", self.0)
     ///         }
@@ -76283,6 +78503,7 @@ impl<'a> Formatter<'a> {
     /// }
     ///
     /// assert_eq!(&format!("{:+}", Foo(23)), "Foo(+23)");
+    /// assert_eq!(&format!("{:+}", Foo(-23)), "Foo(-23)");
     /// assert_eq!(&format!("{}", Foo(23)), "Foo(23)");
     /// ```
     #[must_use]
@@ -76868,7 +79089,7 @@ macro_rules! tuple {
 
 macro_rules! maybe_tuple_doc {
     ($a:ident @ #[$meta:meta] $item:item) => {
-        #[cfg_attr(not(bootstrap), doc(fake_variadic))]
+        #[doc(fake_variadic)]
         #[doc = "This trait is implemented for tuples up to twelve items long."]
         #[$meta]
         $item
@@ -78052,7 +80273,7 @@ mod impls {
 
     macro_rules! maybe_tuple_doc {
         ($a:ident @ #[$meta:meta] $item:item) => {
-            #[cfg_attr(not(bootstrap), doc(fake_variadic))]
+            #[doc(fake_variadic)]
             #[doc = "This trait is implemented for tuples up to twelve items long."]
             #[$meta]
             $item
@@ -78131,7 +80352,7 @@ pub mod slice {
 use crate::cmp::Ordering::{self, Greater, Less};
 use crate::intrinsics::{assert_unsafe_precondition, exact_div};
 use crate::marker::Copy;
-use crate::mem;
+use crate::mem::{self, SizedTypeProperties};
 use crate::num::NonZeroUsize;
 use crate::ops::{Bound, FnMut, OneSidedRange, Range, RangeBounds};
 use crate::option::Option;
@@ -78167,26 +80388,30 @@ const USIZE_BYTES: usize = mem::size_of::<usize>();
 /// bytes where the borrow propagated all the way to the most significant
 /// bit."
 #[inline]
-fn contains_zero_byte(x: usize) -> bool {
+const fn contains_zero_byte(x: usize) -> bool {
 }
 
 #[cfg(target_pointer_width = "16")]
 #[inline]
-fn repeat_byte(b: u8) -> usize {
+const fn repeat_byte(b: u8) -> usize {
 }
 
 #[cfg(not(target_pointer_width = "16"))]
 #[inline]
-fn repeat_byte(b: u8) -> usize {
+const fn repeat_byte(b: u8) -> usize {
 }
 
 /// Returns the first index matching the byte `x` in `text`.
 #[must_use]
 #[inline]
-pub fn memchr(x: u8, text: &[u8]) -> Option<usize> {
+pub const fn memchr(x: u8, text: &[u8]) -> Option<usize> {
 }
 
-fn memchr_general_case(x: u8, text: &[u8]) -> Option<usize> {
+#[inline]
+const fn memchr_naive(x: u8, text: &[u8]) -> Option<usize> {
+}
+
+const fn memchr_aligned(x: u8, text: &[u8]) -> Option<usize> {
 }
 
 /// Returns the last index matching the byte `x` in `text`.
@@ -78373,8 +80598,6 @@ impl<'a> iter::DoubleEndedIterator for EscapeAscii<'a> {
     fn next_back(&mut self) -> Option<u8> {
 }
 }
-#[stable(feature = "inherent_ascii_escape", since = "1.60.0")]
-impl<'a> iter::ExactSizeIterator for EscapeAscii<'a> {}
 #[stable(feature = "inherent_ascii_escape", since = "1.60.0")]
 impl<'a> iter::FusedIterator for EscapeAscii<'a> {}
 #[stable(feature = "inherent_ascii_escape", since = "1.60.0")]
@@ -78634,9 +80857,11 @@ const fn slice_start_index_len_fail(index: usize, len: usize) -> ! {
 }
 
 // FIXME const-hack
+#[track_caller]
 fn slice_start_index_len_fail_rt(index: usize, len: usize) -> ! {
 }
 
+#[track_caller]
 const fn slice_start_index_len_fail_ct(_: usize, _: usize) -> ! {
 }
 
@@ -78649,9 +80874,11 @@ const fn slice_end_index_len_fail(index: usize, len: usize) -> ! {
 }
 
 // FIXME const-hack
+#[track_caller]
 fn slice_end_index_len_fail_rt(index: usize, len: usize) -> ! {
 }
 
+#[track_caller]
 const fn slice_end_index_len_fail_ct(_: usize, _: usize) -> ! {
 }
 
@@ -78664,9 +80891,11 @@ const fn slice_index_order_fail(index: usize, end: usize) -> ! {
 }
 
 // FIXME const-hack
+#[track_caller]
 fn slice_index_order_fail_rt(index: usize, end: usize) -> ! {
 }
 
+#[track_caller]
 const fn slice_index_order_fail_ct(_: usize, _: usize) -> ! {
 }
 
@@ -78705,6 +80934,8 @@ mod private_slice_index {
     impl Sealed for ops::RangeToInclusive<usize> {}
     #[stable(feature = "slice_index_with_ops_bound_pair", since = "1.53.0")]
     impl Sealed for (ops::Bound<usize>, ops::Bound<usize>) {}
+
+    impl Sealed for ops::IndexRange {}
 }
 
 /// A helper trait used for indexing operations.
@@ -78724,6 +80955,7 @@ mod private_slice_index {
     message = "the type `{T}` cannot be indexed by `{Self}`",
     label = "slice indices are of type `usize` or ranges of `usize`"
 )]
+#[const_trait]
 pub unsafe trait SliceIndex<T: ?Sized>: private_slice_index::Sealed {
     /// The output type returned by methods.
     #[stable(feature = "slice_get_slice", since = "1.28.0")]
@@ -78797,6 +81029,37 @@ unsafe impl<T> const SliceIndex<[T]> for usize {
 
     #[inline]
     fn index_mut(self, slice: &mut [T]) -> &mut T {
+}
+}
+
+/// Because `IndexRange` guarantees `start <= end`, fewer checks are needed here
+/// than there are for a general `Range<usize>` (which might be `100..3`).
+#[rustc_const_unstable(feature = "const_index_range_slice_index", issue = "none")]
+unsafe impl<T> const SliceIndex<[T]> for ops::IndexRange {
+    type Output = [T];
+
+    #[inline]
+    fn get(self, slice: &[T]) -> Option<&[T]> {
+}
+
+    #[inline]
+    fn get_mut(self, slice: &mut [T]) -> Option<&mut [T]> {
+}
+
+    #[inline]
+    unsafe fn get_unchecked(self, slice: *const [T]) -> *const [T] {
+}
+
+    #[inline]
+    unsafe fn get_unchecked_mut(self, slice: *mut [T]) -> *mut [T] {
+}
+
+    #[inline]
+    fn index(self, slice: &[T]) -> &[T] {
+}
+
+    #[inline]
+    fn index_mut(self, slice: &mut [T]) -> &mut [T] {
 }
 }
 
@@ -79173,7 +81436,7 @@ macro_rules! iterator {
         // backwards by `n`. `n` must not exceed `self.len()`.
         macro_rules! zst_shrink {
             ($self: ident, $n: ident) => {
-                $self.end = ($self.end as * $raw_mut u8).wrapping_offset(-$n) as * $raw_mut T;
+                $self.end = $self.end.wrapping_byte_sub($n);
             }
         }
 
@@ -79187,14 +81450,14 @@ macro_rules! iterator {
             // returning the old start.
             // Unsafe because the offset must not exceed `self.len()`.
             #[inline(always)]
-            unsafe fn post_inc_start(&mut self, offset: isize) -> * $raw_mut T {
+            unsafe fn post_inc_start(&mut self, offset: usize) -> * $raw_mut T {
 }
 
             // Helper function for moving the end of the iterator backwards by `offset` elements,
             // returning the new end.
             // Unsafe because the offset must not exceed `self.len()`.
             #[inline(always)]
-            unsafe fn pre_dec_end(&mut self, offset: isize) -> * $raw_mut T {
+            unsafe fn pre_dec_end(&mut self, offset: usize) -> * $raw_mut T {
 }
         }
 
@@ -79372,7 +81635,7 @@ use crate::fmt;
 use crate::intrinsics::{assume, exact_div, unchecked_sub};
 use crate::iter::{FusedIterator, TrustedLen, TrustedRandomAccess, TrustedRandomAccessNoCoerce};
 use crate::marker::{PhantomData, Send, Sized, Sync};
-use crate::mem;
+use crate::mem::{self, SizedTypeProperties};
 use crate::num::NonZeroUsize;
 use crate::ptr::NonNull;
 
@@ -79473,6 +81736,7 @@ impl<'a, T> Iter<'a, T> {
     /// ```
     #[must_use]
     #[stable(feature = "iter_to_slice", since = "1.4.0")]
+    #[inline]
     pub fn as_slice(&self) -> &'a [T] {
 }
 }
@@ -79488,12 +81752,14 @@ iterator! {struct Iter -> *const T, &'a T, const, {/* no mut */}, {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Clone for Iter<'_, T> {
+    #[inline]
     fn clone(&self) -> Self {
 }
 }
 
 #[stable(feature = "slice_iter_as_ref", since = "1.13.0")]
 impl<T> AsRef<[T]> for Iter<'_, T> {
+    #[inline]
     fn as_ref(&self) -> &[T] {
 }
 }
@@ -79610,6 +81876,7 @@ impl<'a, T> IterMut<'a, T> {
     /// ```
     #[must_use]
     #[stable(feature = "slice_iter_mut_as_slice", since = "1.53.0")]
+    #[inline]
     pub fn as_slice(&self) -> &[T] {
 }
 
@@ -79653,6 +81920,7 @@ impl<'a, T> IterMut<'a, T> {
 
 #[stable(feature = "slice_iter_mut_as_slice", since = "1.53.0")]
 impl<T> AsRef<[T]> for IterMut<'_, T> {
+    #[inline]
     fn as_ref(&self) -> &[T] {
 }
 }
@@ -80432,7 +82700,9 @@ mod raw {
 //! Free functions to create `&[T]` and `&mut [T]`.
 
 use crate::array;
-use crate::intrinsics::{assert_unsafe_precondition, is_aligned_and_not_null};
+use crate::intrinsics::{
+    assert_unsafe_precondition, is_aligned_and_not_null, is_valid_allocation_size,
+};
 use crate::ops::Range;
 use crate::ptr;
 
@@ -80601,6 +82871,10 @@ pub const fn from_mut<T>(s: &mut T) -> &mut [T] {
 ///
 /// Note that a range created from [`slice::as_ptr_range`] fulfills these requirements.
 ///
+/// # Panics
+///
+/// This function panics if `T` is a Zero-Sized Type (“ZST”).
+///
 /// # Caveat
 ///
 /// The lifetime for the returned slice is inferred from its usage. To
@@ -80630,8 +82904,14 @@ pub const fn from_mut<T>(s: &mut T) -> &mut [T] {
 pub const unsafe fn from_ptr_range<'a, T>(range: Range<*const T>) -> &'a [T] {
 }
 
-/// Performs the same functionality as [`from_ptr_range`], except that a
+/// Forms a mutable slice from a pointer range.
+///
+/// This is the same functionality as [`from_ptr_range`], except that a
 /// mutable slice is returned.
+///
+/// This function is useful for interacting with foreign interfaces which
+/// use two pointers to refer to a range of elements in memory, as is
+/// common in C++.
 ///
 /// # Safety
 ///
@@ -80658,6 +82938,18 @@ pub const unsafe fn from_ptr_range<'a, T>(range: Range<*const T>) -> &'a [T] {
 ///
 /// Note that a range created from [`slice::as_mut_ptr_range`] fulfills these requirements.
 ///
+/// # Panics
+///
+/// This function panics if `T` is a Zero-Sized Type (“ZST”).
+///
+/// # Caveat
+///
+/// The lifetime for the returned slice is inferred from its usage. To
+/// prevent accidental misuse, it's suggested to tie the lifetime to whichever
+/// source lifetime is safe in the context, such as by providing a helper
+/// function taking the lifetime of a host value for the slice, or by explicit
+/// annotation.
+///
 /// # Examples
 ///
 /// ```
@@ -80681,7 +82973,7 @@ pub const unsafe fn from_mut_ptr_range<'a, T>(range: Range<*mut T>) -> &'a mut [
 }
 mod rotate {
 use crate::cmp;
-use crate::mem::{self, MaybeUninit};
+use crate::mem::{self, MaybeUninit, SizedTypeProperties};
 use crate::ptr;
 
 /// Rotates the range `[mid-left, mid+right)` such that the element at `mid` becomes the first
@@ -80756,7 +83048,7 @@ mod sort {
 //! stable sorting implementation.
 
 use crate::cmp;
-use crate::mem::{self, MaybeUninit};
+use crate::mem::{self, MaybeUninit, SizedTypeProperties};
 use crate::ptr;
 
 /// When dropped, copies from `src` into `dest`.
@@ -80995,9 +83287,9 @@ impl<T> [T] {
     #[lang = "slice_len_fn"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_slice_len", since = "1.39.0")]
+    #[rustc_allow_const_fn_unstable(ptr_metadata)]
     #[inline]
     #[must_use]
-    // SAFETY: const sound because we transmute out the length field as a usize (which it must be)
     pub const fn len(&self) -> usize {
 }
 
@@ -81476,8 +83768,9 @@ impl<T> [T] {
     /// assert!(v == [3, 2, 1]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_reverse", issue = "100784")]
     #[inline]
-    pub fn reverse(&mut self) {
+    pub const fn reverse(&mut self) {
 }
 
     /// Returns an iterator over the slice.
@@ -82232,10 +84525,11 @@ impl<T> [T] {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_slice_split_at_not_mut", issue = "101158")]
     #[inline]
     #[track_caller]
     #[must_use]
-    pub fn split_at(&self, mid: usize) -> (&[T], &[T]) {
+    pub const fn split_at(&self, mid: usize) -> (&[T], &[T]) {
 }
 
     /// Divides one mutable slice into two at an index.
@@ -82263,7 +84557,8 @@ impl<T> [T] {
     #[inline]
     #[track_caller]
     #[must_use]
-    pub fn split_at_mut(&mut self, mid: usize) -> (&mut [T], &mut [T]) {
+    #[rustc_const_unstable(feature = "const_slice_split_at_mut", issue = "101804")]
+    pub const fn split_at_mut(&mut self, mid: usize) -> (&mut [T], &mut [T]) {
 }
 
     /// Divides one slice into two at an index, without doing bounds checking.
@@ -82309,9 +84604,10 @@ impl<T> [T] {
     /// }
     /// ```
     #[unstable(feature = "slice_split_at_unchecked", reason = "new API", issue = "76014")]
+    #[rustc_const_unstable(feature = "slice_split_at_unchecked", issue = "76014")]
     #[inline]
     #[must_use]
-    pub unsafe fn split_at_unchecked(&self, mid: usize) -> (&[T], &[T]) {
+    pub const unsafe fn split_at_unchecked(&self, mid: usize) -> (&[T], &[T]) {
 }
 
     /// Divides one mutable slice into two at an index, without doing bounds checking.
@@ -82348,9 +84644,10 @@ impl<T> [T] {
     /// assert_eq!(v, [1, 2, 3, 4, 5, 6]);
     /// ```
     #[unstable(feature = "slice_split_at_unchecked", reason = "new API", issue = "76014")]
+    #[rustc_const_unstable(feature = "const_slice_split_at_mut", issue = "101804")]
     #[inline]
     #[must_use]
-    pub unsafe fn split_at_mut_unchecked(&mut self, mid: usize) -> (&mut [T], &mut [T]) {
+    pub const unsafe fn split_at_mut_unchecked(&mut self, mid: usize) -> (&mut [T], &mut [T]) {
 }
 
     /// Divides one slice into an array and a remainder slice at an index.
@@ -82711,7 +85008,7 @@ impl<T> [T] {
     {
 }
 
-    /// Returns an iterator over subslices separated by elements that match
+    /// Returns an iterator over mutable subslices separated by elements that match
     /// `pred`, limited to returning at most `n` items. The matched element is
     /// not contained in the subslices.
     ///
@@ -82933,7 +85230,7 @@ impl<T> [T] {
 }
 
     /// Binary searches this slice for a given element.
-    /// This behaves similary to [`contains`] if this slice is sorted.
+    /// This behaves similarly to [`contains`] if this slice is sorted.
     ///
     /// If the value is found then [`Result::Ok`] is returned, containing the
     /// index of the matching element. If there are multiple matches, then any
@@ -82964,6 +85261,28 @@ impl<T> [T] {
     /// assert_eq!(s.binary_search(&100), Err(13));
     /// let r = s.binary_search(&1);
     /// assert!(match r { Ok(1..=4) => true, _ => false, });
+    /// ```
+    ///
+    /// If you want to find that whole *range* of matching items, rather than
+    /// an arbitrary matching one, that can be done using [`partition_point`]:
+    /// ```
+    /// let s = [0, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55];
+    ///
+    /// let low = s.partition_point(|x| x < &1);
+    /// assert_eq!(low, 1);
+    /// let high = s.partition_point(|x| x <= &1);
+    /// assert_eq!(high, 5);
+    /// let r = s.binary_search(&1);
+    /// assert!((low..high).contains(&r.unwrap()));
+    ///
+    /// assert!(s[..low].iter().all(|&x| x < 1));
+    /// assert!(s[low..high].iter().all(|&x| x == 1));
+    /// assert!(s[high..].iter().all(|&x| x > 1));
+    ///
+    /// // For something not found, the "range" of equal items is empty
+    /// assert_eq!(s.partition_point(|x| x < &11), 9);
+    /// assert_eq!(s.partition_point(|x| x <= &11), 9);
+    /// assert_eq!(s.binary_search(&11), Err(9));
     /// ```
     ///
     /// If you want to insert an item to a sorted vector, while maintaining
@@ -83220,9 +85539,10 @@ impl<T> [T] {
     /// less than or equal to any value at a position `j > index`. Additionally, this reordering is
     /// unstable (i.e. any number of equal elements may end up at position `index`), in-place
     /// (i.e. does not allocate), and *O*(*n*) worst-case. This function is also/ known as "kth
-    /// element" in other libraries. It returns a triplet of the following values: all elements less
-    /// than the one at the given index, the value at the given index, and all elements greater than
-    /// the one at the given index.
+    /// element" in other libraries. It returns a triplet of the following from the reordered slice:
+    /// the subslice prior to `index`, the element at `index`, and the subslice after `index`;
+    /// accordingly, the values in those two subslices will respectively all be less-than-or-equal-to
+    /// and greater-than-or-equal-to the value of the element at `index`.
     ///
     /// # Current implementation
     ///
@@ -83265,10 +85585,11 @@ impl<T> [T] {
     /// less than or equal to any value at a position `j > index` using the comparator function.
     /// Additionally, this reordering is unstable (i.e. any number of equal elements may end up at
     /// position `index`), in-place (i.e. does not allocate), and *O*(*n*) worst-case. This function
-    /// is also known as "kth element" in other libraries. It returns a triplet of the following
-    /// values: all elements less than the one at the given index, the value at the given index,
-    /// and all elements greater than the one at the given index, using the provided comparator
-    /// function.
+    /// is also known as "kth element" in other libraries. It returns a triplet of the following from
+    /// the slice reordered according to the provided comparator function: the subslice prior to
+    /// `index`, the element at `index`, and the subslice after `index`; accordingly, the values in
+    /// those two subslices will respectively all be less-than-or-equal-to and greater-than-or-equal-to
+    /// the value of the element at `index`.
     ///
     /// # Current implementation
     ///
@@ -83315,10 +85636,11 @@ impl<T> [T] {
     /// less than or equal to any value at a position `j > index` using the key extraction function.
     /// Additionally, this reordering is unstable (i.e. any number of equal elements may end up at
     /// position `index`), in-place (i.e. does not allocate), and *O*(*n*) worst-case. This function
-    /// is also known as "kth element" in other libraries. It returns a triplet of the following
-    /// values: all elements less than the one at the given index, the value at the given index, and
-    /// all elements greater than the one at the given index, using the provided key extraction
-    /// function.
+    /// is also known as "kth element" in other libraries. It returns a triplet of the following from
+    /// the slice reordered according to the provided key extraction function: the subslice prior to
+    /// `index`, the element at `index`, and the subslice after `index`; accordingly, the values in
+    /// those two subslices will respectively all be less-than-or-equal-to and greater-than-or-equal-to
+    /// the value of the element at `index`.
     ///
     /// # Current implementation
     ///
@@ -84040,6 +86362,16 @@ impl<T> [T] {
     /// assert!(v[i..].iter().all(|&x| !(x < 5)));
     /// ```
     ///
+    /// If all elements of the slice match the predicate, including if the slice
+    /// is empty, then the length of the slice will be returned:
+    ///
+    /// ```
+    /// let a = [2, 4, 8];
+    /// assert_eq!(a.partition_point(|x| x < &100), a.len());
+    /// let a: [i32; 0] = [];
+    /// assert_eq!(a.partition_point(|x| x < &100), 0);
+    /// ```
+    ///
     /// If you want to insert an item to a sorted vector, while maintaining
     /// sort order:
     ///
@@ -84319,7 +86651,6 @@ impl<T, const N: usize> [[T; N]] {
 }
 }
 
-#[cfg(not(bootstrap))]
 #[cfg(not(test))]
 impl [f32] {
     /// Sorts the slice of floats.
@@ -84348,7 +86679,6 @@ impl [f32] {
 }
 }
 
-#[cfg(not(bootstrap))]
 #[cfg(not(test))]
 impl [f64] {
     /// Sorts the slice of floats.
@@ -84686,6 +87016,7 @@ fn char_count_general_case(s: &[u8]) -> usize {
 mod error {
 //! Defines utf8 error type.
 
+use crate::error::Error;
 use crate::fmt;
 
 /// Errors which can occur when attempting to interpret a sequence of [`u8`]
@@ -84793,6 +87124,13 @@ impl fmt::Display for Utf8Error {
 }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Error for Utf8Error {
+    #[allow(deprecated)]
+    fn description(&self) -> &str {
+}
+}
+
 /// An error returned when parsing a `bool` using [`from_str`] fails
 ///
 /// [`from_str`]: super::FromStr::from_str
@@ -84804,6 +87142,13 @@ pub struct ParseBoolError;
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for ParseBoolError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Error for ParseBoolError {
+    #[allow(deprecated)]
+    fn description(&self) -> &str {
 }
 }
 }
@@ -85447,7 +87792,6 @@ unsafe impl const SliceIndex<str> for ops::RangeToInclusive<usize> {
 ///
 /// ```
 /// use std::str::FromStr;
-/// use std::num::ParseIntError;
 ///
 /// #[derive(Debug, PartialEq)]
 /// struct Point {
@@ -85455,18 +87799,21 @@ unsafe impl const SliceIndex<str> for ops::RangeToInclusive<usize> {
 ///     y: i32
 /// }
 ///
+/// #[derive(Debug, PartialEq, Eq)]
+/// struct ParsePointError;
+///
 /// impl FromStr for Point {
-///     type Err = ParseIntError;
+///     type Err = ParsePointError;
 ///
 ///     fn from_str(s: &str) -> Result<Self, Self::Err> {
 ///         let (x, y) = s
 ///             .strip_prefix('(')
 ///             .and_then(|s| s.strip_suffix(')'))
 ///             .and_then(|s| s.split_once(','))
-///             .unwrap();
+///             .ok_or(ParsePointError)?;
 ///
-///         let x_fromstr = x.parse::<i32>()?;
-///         let y_fromstr = y.parse::<i32>()?;
+///         let x_fromstr = x.parse::<i32>().map_err(|_| ParsePointError)?;
+///         let y_fromstr = y.parse::<i32>().map_err(|_| ParsePointError)?;
 ///
 ///         Ok(Point { x: x_fromstr, y: y_fromstr })
 ///     }
@@ -85478,6 +87825,8 @@ unsafe impl const SliceIndex<str> for ops::RangeToInclusive<usize> {
 /// // Implicit calls, through parse
 /// assert_eq!("(1,2)".parse(), expected);
 /// assert_eq!("(1,2)".parse::<Point>(), expected);
+/// // Invalid input string
+/// assert!(Point::from_str("(1 2)").is_err());
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait FromStr: Sized {
@@ -85513,8 +87862,8 @@ impl FromStr for bool {
 
     /// Parse a `bool` from a string.
     ///
-    /// Yields a `Result<bool, ParseBoolError>`, because `s` may or may not
-    /// actually be parseable.
+    /// The only accepted values are `"true"` and `"false"`. Any other input
+    /// will return an error.
     ///
     /// # Examples
     ///
@@ -85878,7 +88227,7 @@ pub unsafe trait Searcher<'a> {
 /// The index ranges returned by this trait are not required
 /// to exactly match those of the forward search in reverse.
 ///
-/// For the reason why this trait is marked unsafe, see them
+/// For the reason why this trait is marked unsafe, see the
 /// parent trait [`Searcher`].
 pub unsafe trait ReverseSearcher<'a>: Searcher<'a> {
     /// Performs the next search step starting from the back.
@@ -86639,6 +88988,4405 @@ impl TwoWayStrategy for RejectAndMatch {
 }
 }
 
+mod lossy {
+use crate::fmt;
+use crate::fmt::Formatter;
+use crate::fmt::Write;
+use crate::iter::FusedIterator;
+
+use super::from_utf8_unchecked;
+use super::validations::utf8_char_width;
+
+/// An item returned by the [`Utf8Chunks`] iterator.
+///
+/// A `Utf8Chunk` stores a sequence of [`u8`] up to the first broken character
+/// when decoding a UTF-8 string.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(utf8_chunks)]
+///
+/// use std::str::Utf8Chunks;
+///
+/// // An invalid UTF-8 string
+/// let bytes = b"foo\xF1\x80bar";
+///
+/// // Decode the first `Utf8Chunk`
+/// let chunk = Utf8Chunks::new(bytes).next().unwrap();
+///
+/// // The first three characters are valid UTF-8
+/// assert_eq!("foo", chunk.valid());
+///
+/// // The fourth character is broken
+/// assert_eq!(b"\xF1\x80", chunk.invalid());
+/// ```
+#[unstable(feature = "utf8_chunks", issue = "99543")]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Utf8Chunk<'a> {
+}
+
+impl<'a> Utf8Chunk<'a> {
+    /// Returns the next validated UTF-8 substring.
+    ///
+    /// This substring can be empty at the start of the string or between
+    /// broken UTF-8 characters.
+    #[must_use]
+    #[unstable(feature = "utf8_chunks", issue = "99543")]
+    pub fn valid(&self) -> &'a str {
+}
+
+    /// Returns the invalid sequence that caused a failure.
+    ///
+    /// The returned slice will have a maximum length of 3 and starts after the
+    /// substring given by [`valid`]. Decoding will resume after this sequence.
+    ///
+    /// If empty, this is the last chunk in the string. If non-empty, an
+    /// unexpected byte was encountered or the end of the input was reached
+    /// unexpectedly.
+    ///
+    /// Lossy decoding would replace this sequence with [`U+FFFD REPLACEMENT
+    /// CHARACTER`].
+    ///
+    /// [`valid`]: Self::valid
+    /// [`U+FFFD REPLACEMENT CHARACTER`]: crate::char::REPLACEMENT_CHARACTER
+    #[must_use]
+    #[unstable(feature = "utf8_chunks", issue = "99543")]
+    pub fn invalid(&self) -> &'a [u8] {
+}
+}
+
+#[must_use]
 #[unstable(feature = "str_internals", issue = "none")]
+pub struct Debug<'a>(&'a [u8]);
+
+#[unstable(feature = "str_internals", issue = "none")]
+impl fmt::Debug for Debug<'_> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+}
+}
+
+/// An iterator used to decode a slice of mostly UTF-8 bytes to string slices
+/// ([`&str`]) and byte slices ([`&[u8]`][byteslice]).
+///
+/// If you want a simple conversion from UTF-8 byte slices to string slices,
+/// [`from_utf8`] is easier to use.
+///
+/// [byteslice]: slice
+/// [`from_utf8`]: super::from_utf8
+///
+/// # Examples
+///
+/// This can be used to create functionality similar to
+/// [`String::from_utf8_lossy`] without allocating heap memory:
+///
+/// ```
+/// #![feature(utf8_chunks)]
+///
+/// use std::str::Utf8Chunks;
+///
+/// fn from_utf8_lossy<F>(input: &[u8], mut push: F) where F: FnMut(&str) {
+///     for chunk in Utf8Chunks::new(input) {
+///         push(chunk.valid());
+///
+///         if !chunk.invalid().is_empty() {
+///             push("\u{FFFD}");
+///         }
+///     }
+/// }
+/// ```
+///
+/// [`String::from_utf8_lossy`]: ../../std/string/struct.String.html#method.from_utf8_lossy
+#[must_use = "iterators are lazy and do nothing unless consumed"]
+#[unstable(feature = "utf8_chunks", issue = "99543")]
+#[derive(Clone)]
+pub struct Utf8Chunks<'a> {
+}
+
+impl<'a> Utf8Chunks<'a> {
+    /// Creates a new iterator to decode the bytes.
+    #[unstable(feature = "utf8_chunks", issue = "99543")]
+    pub fn new(bytes: &'a [u8]) -> Self {
+}
+
+    #[doc(hidden)]
+    #[unstable(feature = "str_internals", issue = "none")]
+    pub fn debug(&self) -> Debug<'_> {
+}
+}
+
+#[unstable(feature = "utf8_chunks", issue = "99543")]
+impl<'a> Iterator for Utf8Chunks<'a> {
+}
+pub mod time {
+#![stable(feature = "duration_core", since = "1.25.0")]
+
+//! Temporal quantification.
+//!
+//! # Examples:
+//!
+//! There are multiple ways to create a new [`Duration`]:
+//!
+//! ```
+//! # use std::time::Duration;
+//! let five_seconds = Duration::from_secs(5);
+//! assert_eq!(five_seconds, Duration::from_millis(5_000));
+//! assert_eq!(five_seconds, Duration::from_micros(5_000_000));
+//! assert_eq!(five_seconds, Duration::from_nanos(5_000_000_000));
+//!
+//! let ten_seconds = Duration::from_secs(10);
+//! let seven_nanos = Duration::from_nanos(7);
+//! let total = ten_seconds + seven_nanos;
+//! assert_eq!(total, Duration::new(10, 7));
+//! ```
+
+use crate::fmt;
+use crate::iter::Sum;
+use crate::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
+
+const NANOS_PER_SEC: u32 = 1_000_000_000;
+const NANOS_PER_MILLI: u32 = 1_000_000;
+const NANOS_PER_MICRO: u32 = 1_000;
+const MILLIS_PER_SEC: u64 = 1_000;
+const MICROS_PER_SEC: u64 = 1_000_000;
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[repr(transparent)]
+#[rustc_layout_scalar_valid_range_start(0)]
+#[rustc_layout_scalar_valid_range_end(999_999_999)]
+struct Nanoseconds(u32);
+
+impl Default for Nanoseconds {
+    #[inline]
+    fn default() -> Self {
+}
+}
+
+/// A `Duration` type to represent a span of time, typically used for system
+/// timeouts.
+///
+/// Each `Duration` is composed of a whole number of seconds and a fractional part
+/// represented in nanoseconds. If the underlying system does not support
+/// nanosecond-level precision, APIs binding a system timeout will typically round up
+/// the number of nanoseconds.
+///
+/// [`Duration`]s implement many common traits, including [`Add`], [`Sub`], and other
+/// [`ops`] traits. It implements [`Default`] by returning a zero-length `Duration`.
+///
+/// [`ops`]: crate::ops
+///
+/// # Examples
+///
+/// ```
+/// use std::time::Duration;
+///
+/// let five_seconds = Duration::new(5, 0);
+/// let five_seconds_and_five_nanos = five_seconds + Duration::new(0, 5);
+///
+/// assert_eq!(five_seconds_and_five_nanos.as_secs(), 5);
+/// assert_eq!(five_seconds_and_five_nanos.subsec_nanos(), 5);
+///
+/// let ten_millis = Duration::from_millis(10);
+/// ```
+///
+/// # Formatting `Duration` values
+///
+/// `Duration` intentionally does not have a `Display` impl, as there are a
+/// variety of ways to format spans of time for human readability. `Duration`
+/// provides a `Debug` impl that shows the full precision of the value.
+///
+/// The `Debug` output uses the non-ASCII "µs" suffix for microseconds. If your
+/// program output may appear in contexts that cannot rely on full Unicode
+/// compatibility, you may wish to format `Duration` objects yourself or use a
+/// crate to do so.
+#[stable(feature = "duration", since = "1.3.0")]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
+#[cfg_attr(not(test), rustc_diagnostic_item = "Duration")]
+pub struct Duration {
+    secs: u64,
+    nanos: Nanoseconds, // Always 0 <= nanos < NANOS_PER_SEC
+}
+
+impl Duration {
+    /// The duration of one second.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(duration_constants)]
+    /// use std::time::Duration;
+    ///
+    /// assert_eq!(Duration::SECOND, Duration::from_secs(1));
+    /// ```
+    #[unstable(feature = "duration_constants", issue = "57391")]
+    pub const SECOND: Duration = Duration::from_secs(1);
+
+    /// The duration of one millisecond.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(duration_constants)]
+    /// use std::time::Duration;
+    ///
+    /// assert_eq!(Duration::MILLISECOND, Duration::from_millis(1));
+    /// ```
+    #[unstable(feature = "duration_constants", issue = "57391")]
+    pub const MILLISECOND: Duration = Duration::from_millis(1);
+
+    /// The duration of one microsecond.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(duration_constants)]
+    /// use std::time::Duration;
+    ///
+    /// assert_eq!(Duration::MICROSECOND, Duration::from_micros(1));
+    /// ```
+    #[unstable(feature = "duration_constants", issue = "57391")]
+    pub const MICROSECOND: Duration = Duration::from_micros(1);
+
+    /// The duration of one nanosecond.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(duration_constants)]
+    /// use std::time::Duration;
+    ///
+    /// assert_eq!(Duration::NANOSECOND, Duration::from_nanos(1));
+    /// ```
+    #[unstable(feature = "duration_constants", issue = "57391")]
+    pub const NANOSECOND: Duration = Duration::from_nanos(1);
+
+    /// A duration of zero time.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::time::Duration;
+    ///
+    /// let duration = Duration::ZERO;
+    /// assert!(duration.is_zero());
+    /// assert_eq!(duration.as_nanos(), 0);
+    /// ```
+    #[stable(feature = "duration_zero", since = "1.53.0")]
+    pub const ZERO: Duration = Duration::from_nanos(0);
+
+    /// The maximum duration.
+    ///
+    /// May vary by platform as necessary. Must be able to contain the difference between
+    /// two instances of [`Instant`] or two instances of [`SystemTime`].
+    /// This constraint gives it a value of about 584,942,417,355 years in practice,
+    /// which is currently used on all platforms.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::time::Duration;
+    ///
+    /// assert_eq!(Duration::MAX, Duration::new(u64::MAX, 1_000_000_000 - 1));
+    /// ```
+    /// [`Instant`]: ../../std/time/struct.Instant.html
+    /// [`SystemTime`]: ../../std/time/struct.SystemTime.html
+    #[stable(feature = "duration_saturating_ops", since = "1.53.0")]
+    pub const MAX: Duration = Duration::new(u64::MAX, NANOS_PER_SEC - 1);
+
+    /// Creates a new `Duration` from the specified number of whole seconds and
+    /// additional nanoseconds.
+    ///
+    /// If the number of nanoseconds is greater than 1 billion (the number of
+    /// nanoseconds in a second), then it will carry over into the seconds provided.
+    ///
+    /// # Panics
+    ///
+    /// This constructor will panic if the carry from the nanoseconds overflows
+    /// the seconds counter.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::time::Duration;
+    ///
+    /// let five_seconds = Duration::new(5, 0);
+    /// ```
+    #[stable(feature = "duration", since = "1.3.0")]
+    #[inline]
+    #[must_use]
+    #[rustc_const_stable(feature = "duration_consts_2", since = "1.58.0")]
+    pub const fn new(secs: u64, nanos: u32) -> Duration {
+}
+
+    /// Creates a new `Duration` from the specified number of whole seconds.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::time::Duration;
+    ///
+    /// let duration = Duration::from_secs(5);
+    ///
+    /// assert_eq!(5, duration.as_secs());
+    /// assert_eq!(0, duration.subsec_nanos());
+    /// ```
+    #[stable(feature = "duration", since = "1.3.0")]
+    #[must_use]
+    #[inline]
+    #[rustc_const_stable(feature = "duration_consts", since = "1.32.0")]
+    pub const fn from_secs(secs: u64) -> Duration {
+}
+
+    /// Creates a new `Duration` from the specified number of milliseconds.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::time::Duration;
+    ///
+    /// let duration = Duration::from_millis(2569);
+    ///
+    /// assert_eq!(2, duration.as_secs());
+    /// assert_eq!(569_000_000, duration.subsec_nanos());
+    /// ```
+    #[stable(feature = "duration", since = "1.3.0")]
+    #[must_use]
+    #[inline]
+    #[rustc_const_stable(feature = "duration_consts", since = "1.32.0")]
+    pub const fn from_millis(millis: u64) -> Duration {
+}
+
+    /// Creates a new `Duration` from the specified number of microseconds.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::time::Duration;
+    ///
+    /// let duration = Duration::from_micros(1_000_002);
+    ///
+    /// assert_eq!(1, duration.as_secs());
+    /// assert_eq!(2000, duration.subsec_nanos());
+    /// ```
+    #[stable(feature = "duration_from_micros", since = "1.27.0")]
+    #[must_use]
+    #[inline]
+    #[rustc_const_stable(feature = "duration_consts", since = "1.32.0")]
+    pub const fn from_micros(micros: u64) -> Duration {
+}
+
+    /// Creates a new `Duration` from the specified number of nanoseconds.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::time::Duration;
+    ///
+    /// let duration = Duration::from_nanos(1_000_000_123);
+    ///
+    /// assert_eq!(1, duration.as_secs());
+    /// assert_eq!(123, duration.subsec_nanos());
+    /// ```
+    #[stable(feature = "duration_extras", since = "1.27.0")]
+    #[must_use]
+    #[inline]
+    #[rustc_const_stable(feature = "duration_consts", since = "1.32.0")]
+    pub const fn from_nanos(nanos: u64) -> Duration {
+}
+
+    /// Returns true if this `Duration` spans no time.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::time::Duration;
+    ///
+    /// assert!(Duration::ZERO.is_zero());
+    /// assert!(Duration::new(0, 0).is_zero());
+    /// assert!(Duration::from_nanos(0).is_zero());
+    /// assert!(Duration::from_secs(0).is_zero());
+    ///
+    /// assert!(!Duration::new(1, 1).is_zero());
+    /// assert!(!Duration::from_nanos(1).is_zero());
+    /// assert!(!Duration::from_secs(1).is_zero());
+    /// ```
+    #[must_use]
+    #[stable(feature = "duration_zero", since = "1.53.0")]
+    #[rustc_const_stable(feature = "duration_zero", since = "1.53.0")]
+    #[inline]
+    pub const fn is_zero(&self) -> bool {
+}
+
+    /// Returns the number of _whole_ seconds contained by this `Duration`.
+    ///
+    /// The returned value does not include the fractional (nanosecond) part of the
+    /// duration, which can be obtained using [`subsec_nanos`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::time::Duration;
+    ///
+    /// let duration = Duration::new(5, 730023852);
+    /// assert_eq!(duration.as_secs(), 5);
+    /// ```
+    ///
+    /// To determine the total number of seconds represented by the `Duration`
+    /// including the fractional part, use [`as_secs_f64`] or [`as_secs_f32`]
+    ///
+    /// [`as_secs_f64`]: Duration::as_secs_f64
+    /// [`as_secs_f32`]: Duration::as_secs_f32
+    /// [`subsec_nanos`]: Duration::subsec_nanos
+    #[stable(feature = "duration", since = "1.3.0")]
+    #[rustc_const_stable(feature = "duration_consts", since = "1.32.0")]
+    #[must_use]
+    #[inline]
+    pub const fn as_secs(&self) -> u64 {
+}
+
+    /// Returns the fractional part of this `Duration`, in whole milliseconds.
+    ///
+    /// This method does **not** return the length of the duration when
+    /// represented by milliseconds. The returned number always represents a
+    /// fractional portion of a second (i.e., it is less than one thousand).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::time::Duration;
+    ///
+    /// let duration = Duration::from_millis(5432);
+    /// assert_eq!(duration.as_secs(), 5);
+    /// assert_eq!(duration.subsec_millis(), 432);
+    /// ```
+    #[stable(feature = "duration_extras", since = "1.27.0")]
+    #[rustc_const_stable(feature = "duration_consts", since = "1.32.0")]
+    #[must_use]
+    #[inline]
+    pub const fn subsec_millis(&self) -> u32 {
+}
+
+    /// Returns the fractional part of this `Duration`, in whole microseconds.
+    ///
+    /// This method does **not** return the length of the duration when
+    /// represented by microseconds. The returned number always represents a
+    /// fractional portion of a second (i.e., it is less than one million).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::time::Duration;
+    ///
+    /// let duration = Duration::from_micros(1_234_567);
+    /// assert_eq!(duration.as_secs(), 1);
+    /// assert_eq!(duration.subsec_micros(), 234_567);
+    /// ```
+    #[stable(feature = "duration_extras", since = "1.27.0")]
+    #[rustc_const_stable(feature = "duration_consts", since = "1.32.0")]
+    #[must_use]
+    #[inline]
+    pub const fn subsec_micros(&self) -> u32 {
+}
+
+    /// Returns the fractional part of this `Duration`, in nanoseconds.
+    ///
+    /// This method does **not** return the length of the duration when
+    /// represented by nanoseconds. The returned number always represents a
+    /// fractional portion of a second (i.e., it is less than one billion).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::time::Duration;
+    ///
+    /// let duration = Duration::from_millis(5010);
+    /// assert_eq!(duration.as_secs(), 5);
+    /// assert_eq!(duration.subsec_nanos(), 10_000_000);
+    /// ```
+    #[stable(feature = "duration", since = "1.3.0")]
+    #[rustc_const_stable(feature = "duration_consts", since = "1.32.0")]
+    #[must_use]
+    #[inline]
+    pub const fn subsec_nanos(&self) -> u32 {
+}
+
+    /// Returns the total number of whole milliseconds contained by this `Duration`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::time::Duration;
+    ///
+    /// let duration = Duration::new(5, 730023852);
+    /// assert_eq!(duration.as_millis(), 5730);
+    /// ```
+    #[stable(feature = "duration_as_u128", since = "1.33.0")]
+    #[rustc_const_stable(feature = "duration_as_u128", since = "1.33.0")]
+    #[must_use]
+    #[inline]
+    pub const fn as_millis(&self) -> u128 {
+}
+
+    /// Returns the total number of whole microseconds contained by this `Duration`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::time::Duration;
+    ///
+    /// let duration = Duration::new(5, 730023852);
+    /// assert_eq!(duration.as_micros(), 5730023);
+    /// ```
+    #[stable(feature = "duration_as_u128", since = "1.33.0")]
+    #[rustc_const_stable(feature = "duration_as_u128", since = "1.33.0")]
+    #[must_use]
+    #[inline]
+    pub const fn as_micros(&self) -> u128 {
+}
+
+    /// Returns the total number of nanoseconds contained by this `Duration`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::time::Duration;
+    ///
+    /// let duration = Duration::new(5, 730023852);
+    /// assert_eq!(duration.as_nanos(), 5730023852);
+    /// ```
+    #[stable(feature = "duration_as_u128", since = "1.33.0")]
+    #[rustc_const_stable(feature = "duration_as_u128", since = "1.33.0")]
+    #[must_use]
+    #[inline]
+    pub const fn as_nanos(&self) -> u128 {
+}
+
+    /// Checked `Duration` addition. Computes `self + other`, returning [`None`]
+    /// if overflow occurred.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// use std::time::Duration;
+    ///
+    /// assert_eq!(Duration::new(0, 0).checked_add(Duration::new(0, 1)), Some(Duration::new(0, 1)));
+    /// assert_eq!(Duration::new(1, 0).checked_add(Duration::new(u64::MAX, 0)), None);
+    /// ```
+    #[stable(feature = "duration_checked_ops", since = "1.16.0")]
+    #[must_use = "this returns the result of the operation, \
+                  without modifying the original"]
+    #[inline]
+    #[rustc_const_stable(feature = "duration_consts_2", since = "1.58.0")]
+    pub const fn checked_add(self, rhs: Duration) -> Option<Duration> {
+}
+
+    /// Saturating `Duration` addition. Computes `self + other`, returning [`Duration::MAX`]
+    /// if overflow occurred.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(duration_constants)]
+    /// use std::time::Duration;
+    ///
+    /// assert_eq!(Duration::new(0, 0).saturating_add(Duration::new(0, 1)), Duration::new(0, 1));
+    /// assert_eq!(Duration::new(1, 0).saturating_add(Duration::new(u64::MAX, 0)), Duration::MAX);
+    /// ```
+    #[stable(feature = "duration_saturating_ops", since = "1.53.0")]
+    #[must_use = "this returns the result of the operation, \
+                  without modifying the original"]
+    #[inline]
+    #[rustc_const_stable(feature = "duration_consts_2", since = "1.58.0")]
+    pub const fn saturating_add(self, rhs: Duration) -> Duration {
+}
+
+    /// Checked `Duration` subtraction. Computes `self - other`, returning [`None`]
+    /// if the result would be negative or if overflow occurred.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// use std::time::Duration;
+    ///
+    /// assert_eq!(Duration::new(0, 1).checked_sub(Duration::new(0, 0)), Some(Duration::new(0, 1)));
+    /// assert_eq!(Duration::new(0, 0).checked_sub(Duration::new(0, 1)), None);
+    /// ```
+    #[stable(feature = "duration_checked_ops", since = "1.16.0")]
+    #[must_use = "this returns the result of the operation, \
+                  without modifying the original"]
+    #[inline]
+    #[rustc_const_stable(feature = "duration_consts_2", since = "1.58.0")]
+    pub const fn checked_sub(self, rhs: Duration) -> Option<Duration> {
+}
+
+    /// Saturating `Duration` subtraction. Computes `self - other`, returning [`Duration::ZERO`]
+    /// if the result would be negative or if overflow occurred.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::time::Duration;
+    ///
+    /// assert_eq!(Duration::new(0, 1).saturating_sub(Duration::new(0, 0)), Duration::new(0, 1));
+    /// assert_eq!(Duration::new(0, 0).saturating_sub(Duration::new(0, 1)), Duration::ZERO);
+    /// ```
+    #[stable(feature = "duration_saturating_ops", since = "1.53.0")]
+    #[must_use = "this returns the result of the operation, \
+                  without modifying the original"]
+    #[inline]
+    #[rustc_const_stable(feature = "duration_consts_2", since = "1.58.0")]
+    pub const fn saturating_sub(self, rhs: Duration) -> Duration {
+}
+
+    /// Checked `Duration` multiplication. Computes `self * other`, returning
+    /// [`None`] if overflow occurred.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// use std::time::Duration;
+    ///
+    /// assert_eq!(Duration::new(0, 500_000_001).checked_mul(2), Some(Duration::new(1, 2)));
+    /// assert_eq!(Duration::new(u64::MAX - 1, 0).checked_mul(2), None);
+    /// ```
+    #[stable(feature = "duration_checked_ops", since = "1.16.0")]
+    #[must_use = "this returns the result of the operation, \
+                  without modifying the original"]
+    #[inline]
+    #[rustc_const_stable(feature = "duration_consts_2", since = "1.58.0")]
+    pub const fn checked_mul(self, rhs: u32) -> Option<Duration> {
+}
+
+    /// Saturating `Duration` multiplication. Computes `self * other`, returning
+    /// [`Duration::MAX`] if overflow occurred.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(duration_constants)]
+    /// use std::time::Duration;
+    ///
+    /// assert_eq!(Duration::new(0, 500_000_001).saturating_mul(2), Duration::new(1, 2));
+    /// assert_eq!(Duration::new(u64::MAX - 1, 0).saturating_mul(2), Duration::MAX);
+    /// ```
+    #[stable(feature = "duration_saturating_ops", since = "1.53.0")]
+    #[must_use = "this returns the result of the operation, \
+                  without modifying the original"]
+    #[inline]
+    #[rustc_const_stable(feature = "duration_consts_2", since = "1.58.0")]
+    pub const fn saturating_mul(self, rhs: u32) -> Duration {
+}
+
+    /// Checked `Duration` division. Computes `self / other`, returning [`None`]
+    /// if `other == 0`.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// use std::time::Duration;
+    ///
+    /// assert_eq!(Duration::new(2, 0).checked_div(2), Some(Duration::new(1, 0)));
+    /// assert_eq!(Duration::new(1, 0).checked_div(2), Some(Duration::new(0, 500_000_000)));
+    /// assert_eq!(Duration::new(2, 0).checked_div(0), None);
+    /// ```
+    #[stable(feature = "duration_checked_ops", since = "1.16.0")]
+    #[must_use = "this returns the result of the operation, \
+                  without modifying the original"]
+    #[inline]
+    #[rustc_const_stable(feature = "duration_consts_2", since = "1.58.0")]
+    pub const fn checked_div(self, rhs: u32) -> Option<Duration> {
+}
+
+    /// Returns the number of seconds contained by this `Duration` as `f64`.
+    ///
+    /// The returned value does include the fractional (nanosecond) part of the duration.
+    ///
+    /// # Examples
+    /// ```
+    /// use std::time::Duration;
+    ///
+    /// let dur = Duration::new(2, 700_000_000);
+    /// assert_eq!(dur.as_secs_f64(), 2.7);
+    /// ```
+    #[stable(feature = "duration_float", since = "1.38.0")]
+    #[must_use]
+    #[inline]
+    #[rustc_const_unstable(feature = "duration_consts_float", issue = "72440")]
+    pub const fn as_secs_f64(&self) -> f64 {
+}
+
+    /// Returns the number of seconds contained by this `Duration` as `f32`.
+    ///
+    /// The returned value does include the fractional (nanosecond) part of the duration.
+    ///
+    /// # Examples
+    /// ```
+    /// use std::time::Duration;
+    ///
+    /// let dur = Duration::new(2, 700_000_000);
+    /// assert_eq!(dur.as_secs_f32(), 2.7);
+    /// ```
+    #[stable(feature = "duration_float", since = "1.38.0")]
+    #[must_use]
+    #[inline]
+    #[rustc_const_unstable(feature = "duration_consts_float", issue = "72440")]
+    pub const fn as_secs_f32(&self) -> f32 {
+}
+
+    /// Creates a new `Duration` from the specified number of seconds represented
+    /// as `f64`.
+    ///
+    /// # Panics
+    /// This constructor will panic if `secs` is negative, overflows `Duration` or not finite.
+    ///
+    /// # Examples
+    /// ```
+    /// use std::time::Duration;
+    ///
+    /// let res = Duration::from_secs_f64(0.0);
+    /// assert_eq!(res, Duration::new(0, 0));
+    /// let res = Duration::from_secs_f64(1e-20);
+    /// assert_eq!(res, Duration::new(0, 0));
+    /// let res = Duration::from_secs_f64(4.2e-7);
+    /// assert_eq!(res, Duration::new(0, 420));
+    /// let res = Duration::from_secs_f64(2.7);
+    /// assert_eq!(res, Duration::new(2, 700_000_000));
+    /// let res = Duration::from_secs_f64(3e10);
+    /// assert_eq!(res, Duration::new(30_000_000_000, 0));
+    /// // subnormal float
+    /// let res = Duration::from_secs_f64(f64::from_bits(1));
+    /// assert_eq!(res, Duration::new(0, 0));
+    /// // conversion uses rounding
+    /// let res = Duration::from_secs_f64(0.999e-9);
+    /// assert_eq!(res, Duration::new(0, 1));
+    /// ```
+    #[stable(feature = "duration_float", since = "1.38.0")]
+    #[must_use]
+    #[inline]
+    #[rustc_const_unstable(feature = "duration_consts_float", issue = "72440")]
+    pub const fn from_secs_f64(secs: f64) -> Duration {
+}
+
+    /// Creates a new `Duration` from the specified number of seconds represented
+    /// as `f32`.
+    ///
+    /// # Panics
+    /// This constructor will panic if `secs` is negative, overflows `Duration` or not finite.
+    ///
+    /// # Examples
+    /// ```
+    /// use std::time::Duration;
+    ///
+    /// let res = Duration::from_secs_f32(0.0);
+    /// assert_eq!(res, Duration::new(0, 0));
+    /// let res = Duration::from_secs_f32(1e-20);
+    /// assert_eq!(res, Duration::new(0, 0));
+    /// let res = Duration::from_secs_f32(4.2e-7);
+    /// assert_eq!(res, Duration::new(0, 420));
+    /// let res = Duration::from_secs_f32(2.7);
+    /// assert_eq!(res, Duration::new(2, 700_000_048));
+    /// let res = Duration::from_secs_f32(3e10);
+    /// assert_eq!(res, Duration::new(30_000_001_024, 0));
+    /// // subnormal float
+    /// let res = Duration::from_secs_f32(f32::from_bits(1));
+    /// assert_eq!(res, Duration::new(0, 0));
+    /// // conversion uses rounding
+    /// let res = Duration::from_secs_f32(0.999e-9);
+    /// assert_eq!(res, Duration::new(0, 1));
+    /// ```
+    #[stable(feature = "duration_float", since = "1.38.0")]
+    #[must_use]
+    #[inline]
+    #[rustc_const_unstable(feature = "duration_consts_float", issue = "72440")]
+    pub const fn from_secs_f32(secs: f32) -> Duration {
+}
+
+    /// Multiplies `Duration` by `f64`.
+    ///
+    /// # Panics
+    /// This method will panic if result is negative, overflows `Duration` or not finite.
+    ///
+    /// # Examples
+    /// ```
+    /// use std::time::Duration;
+    ///
+    /// let dur = Duration::new(2, 700_000_000);
+    /// assert_eq!(dur.mul_f64(3.14), Duration::new(8, 478_000_000));
+    /// assert_eq!(dur.mul_f64(3.14e5), Duration::new(847_800, 0));
+    /// ```
+    #[stable(feature = "duration_float", since = "1.38.0")]
+    #[must_use = "this returns the result of the operation, \
+                  without modifying the original"]
+    #[inline]
+    #[rustc_const_unstable(feature = "duration_consts_float", issue = "72440")]
+    pub const fn mul_f64(self, rhs: f64) -> Duration {
+}
+
+    /// Multiplies `Duration` by `f32`.
+    ///
+    /// # Panics
+    /// This method will panic if result is negative, overflows `Duration` or not finite.
+    ///
+    /// # Examples
+    /// ```
+    /// use std::time::Duration;
+    ///
+    /// let dur = Duration::new(2, 700_000_000);
+    /// assert_eq!(dur.mul_f32(3.14), Duration::new(8, 478_000_641));
+    /// assert_eq!(dur.mul_f32(3.14e5), Duration::new(847800, 0));
+    /// ```
+    #[stable(feature = "duration_float", since = "1.38.0")]
+    #[must_use = "this returns the result of the operation, \
+                  without modifying the original"]
+    #[inline]
+    #[rustc_const_unstable(feature = "duration_consts_float", issue = "72440")]
+    pub const fn mul_f32(self, rhs: f32) -> Duration {
+}
+
+    /// Divide `Duration` by `f64`.
+    ///
+    /// # Panics
+    /// This method will panic if result is negative, overflows `Duration` or not finite.
+    ///
+    /// # Examples
+    /// ```
+    /// use std::time::Duration;
+    ///
+    /// let dur = Duration::new(2, 700_000_000);
+    /// assert_eq!(dur.div_f64(3.14), Duration::new(0, 859_872_611));
+    /// assert_eq!(dur.div_f64(3.14e5), Duration::new(0, 8_599));
+    /// ```
+    #[stable(feature = "duration_float", since = "1.38.0")]
+    #[must_use = "this returns the result of the operation, \
+                  without modifying the original"]
+    #[inline]
+    #[rustc_const_unstable(feature = "duration_consts_float", issue = "72440")]
+    pub const fn div_f64(self, rhs: f64) -> Duration {
+}
+
+    /// Divide `Duration` by `f32`.
+    ///
+    /// # Panics
+    /// This method will panic if result is negative, overflows `Duration` or not finite.
+    ///
+    /// # Examples
+    /// ```
+    /// use std::time::Duration;
+    ///
+    /// let dur = Duration::new(2, 700_000_000);
+    /// // note that due to rounding errors result is slightly
+    /// // different from 0.859_872_611
+    /// assert_eq!(dur.div_f32(3.14), Duration::new(0, 859_872_580));
+    /// assert_eq!(dur.div_f32(3.14e5), Duration::new(0, 8_599));
+    /// ```
+    #[stable(feature = "duration_float", since = "1.38.0")]
+    #[must_use = "this returns the result of the operation, \
+                  without modifying the original"]
+    #[inline]
+    #[rustc_const_unstable(feature = "duration_consts_float", issue = "72440")]
+    pub const fn div_f32(self, rhs: f32) -> Duration {
+}
+
+    /// Divide `Duration` by `Duration` and return `f64`.
+    ///
+    /// # Examples
+    /// ```
+    /// #![feature(div_duration)]
+    /// use std::time::Duration;
+    ///
+    /// let dur1 = Duration::new(2, 700_000_000);
+    /// let dur2 = Duration::new(5, 400_000_000);
+    /// assert_eq!(dur1.div_duration_f64(dur2), 0.5);
+    /// ```
+    #[unstable(feature = "div_duration", issue = "63139")]
+    #[must_use = "this returns the result of the operation, \
+                  without modifying the original"]
+    #[inline]
+    #[rustc_const_unstable(feature = "duration_consts_float", issue = "72440")]
+    pub const fn div_duration_f64(self, rhs: Duration) -> f64 {
+}
+
+    /// Divide `Duration` by `Duration` and return `f32`.
+    ///
+    /// # Examples
+    /// ```
+    /// #![feature(div_duration)]
+    /// use std::time::Duration;
+    ///
+    /// let dur1 = Duration::new(2, 700_000_000);
+    /// let dur2 = Duration::new(5, 400_000_000);
+    /// assert_eq!(dur1.div_duration_f32(dur2), 0.5);
+    /// ```
+    #[unstable(feature = "div_duration", issue = "63139")]
+    #[must_use = "this returns the result of the operation, \
+                  without modifying the original"]
+    #[inline]
+    #[rustc_const_unstable(feature = "duration_consts_float", issue = "72440")]
+    pub const fn div_duration_f32(self, rhs: Duration) -> f32 {
+}
+}
+
+#[stable(feature = "duration", since = "1.3.0")]
+impl Add for Duration {
+    type Output = Duration;
+
+    fn add(self, rhs: Duration) -> Duration {
+}
+}
+
+#[stable(feature = "time_augmented_assignment", since = "1.9.0")]
+impl AddAssign for Duration {
+    fn add_assign(&mut self, rhs: Duration) {
+}
+}
+
+#[stable(feature = "duration", since = "1.3.0")]
+impl Sub for Duration {
+    type Output = Duration;
+
+    fn sub(self, rhs: Duration) -> Duration {
+}
+}
+
+#[stable(feature = "time_augmented_assignment", since = "1.9.0")]
+impl SubAssign for Duration {
+    fn sub_assign(&mut self, rhs: Duration) {
+}
+}
+
+#[stable(feature = "duration", since = "1.3.0")]
+impl Mul<u32> for Duration {
+    type Output = Duration;
+
+    fn mul(self, rhs: u32) -> Duration {
+}
+}
+
+#[stable(feature = "symmetric_u32_duration_mul", since = "1.31.0")]
+impl Mul<Duration> for u32 {
+    type Output = Duration;
+
+    fn mul(self, rhs: Duration) -> Duration {
+}
+}
+
+#[stable(feature = "time_augmented_assignment", since = "1.9.0")]
+impl MulAssign<u32> for Duration {
+    fn mul_assign(&mut self, rhs: u32) {
+}
+}
+
+#[stable(feature = "duration", since = "1.3.0")]
+impl Div<u32> for Duration {
+    type Output = Duration;
+
+    fn div(self, rhs: u32) -> Duration {
+}
+}
+
+#[stable(feature = "time_augmented_assignment", since = "1.9.0")]
+impl DivAssign<u32> for Duration {
+    fn div_assign(&mut self, rhs: u32) {
+}
+}
+
+macro_rules! sum_durations {
+    ($iter:expr) => {{
+        let mut total_secs: u64 = 0;
+        let mut total_nanos: u64 = 0;
+
+        for entry in $iter {
+            total_secs =
+                total_secs.checked_add(entry.secs).expect("overflow in iter::sum over durations");
+            total_nanos = match total_nanos.checked_add(entry.nanos.0 as u64) {
+                Some(n) => n,
+                None => {
+                    total_secs = total_secs
+                        .checked_add(total_nanos / NANOS_PER_SEC as u64)
+                        .expect("overflow in iter::sum over durations");
+                    (total_nanos % NANOS_PER_SEC as u64) + entry.nanos.0 as u64
+                }
+            };
+        }
+        total_secs = total_secs
+            .checked_add(total_nanos / NANOS_PER_SEC as u64)
+            .expect("overflow in iter::sum over durations");
+        total_nanos = total_nanos % NANOS_PER_SEC as u64;
+        Duration::new(total_secs, total_nanos as u32)
+    }};
+}
+
+#[stable(feature = "duration_sum", since = "1.16.0")]
+impl Sum for Duration {
+    fn sum<I: Iterator<Item = Duration>>(iter: I) -> Duration {
+}
+}
+
+#[stable(feature = "duration_sum", since = "1.16.0")]
+impl<'a> Sum<&'a Duration> for Duration {
+    fn sum<I: Iterator<Item = &'a Duration>>(iter: I) -> Duration {
+}
+}
+
+#[stable(feature = "duration_debug_impl", since = "1.27.0")]
+impl fmt::Debug for Duration {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
+}
+
+/// An error which can be returned when converting a floating-point value of seconds
+/// into a [`Duration`].
+///
+/// This error is used as the error type for [`Duration::try_from_secs_f32`] and
+/// [`Duration::try_from_secs_f64`].
+///
+/// # Example
+///
+/// ```
+/// use std::time::Duration;
+///
+/// if let Err(e) = Duration::try_from_secs_f32(-1.0) {
+///     println!("Failed conversion to Duration: {e}");
+/// }
+/// ```
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[stable(feature = "duration_checked_float", since = "1.66.0")]
+pub struct TryFromFloatSecsError {
+    kind: TryFromFloatSecsErrorKind,
+}
+
+impl TryFromFloatSecsError {
+    const fn description(&self) -> &'static str {
+}
+}
+
+#[stable(feature = "duration_checked_float", since = "1.66.0")]
+impl fmt::Display for TryFromFloatSecsError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum TryFromFloatSecsErrorKind {
+    // Value is negative.
+    Negative,
+    // Value is either too big to be represented as `Duration` or `NaN`.
+    OverflowOrNan,
+}
+
+macro_rules! try_from_secs {
+    (
+        secs = $secs: expr,
+        mantissa_bits = $mant_bits: literal,
+        exponent_bits = $exp_bits: literal,
+        offset = $offset: literal,
+        bits_ty = $bits_ty:ty,
+        double_ty = $double_ty:ty,
+    ) => {{
+        const MIN_EXP: i16 = 1 - (1i16 << $exp_bits) / 2;
+        const MANT_MASK: $bits_ty = (1 << $mant_bits) - 1;
+        const EXP_MASK: $bits_ty = (1 << $exp_bits) - 1;
+
+        if $secs < 0.0 {
+            return Err(TryFromFloatSecsError { kind: TryFromFloatSecsErrorKind::Negative });
+        }
+
+        let bits = $secs.to_bits();
+        let mant = (bits & MANT_MASK) | (MANT_MASK + 1);
+        let exp = ((bits >> $mant_bits) & EXP_MASK) as i16 + MIN_EXP;
+
+        let (secs, nanos) = if exp < -31 {
+            // the input represents less than 1ns and can not be rounded to it
+            (0u64, 0u32)
+        } else if exp < 0 {
+            // the input is less than 1 second
+            let t = <$double_ty>::from(mant) << ($offset + exp);
+            let nanos_offset = $mant_bits + $offset;
+            let nanos_tmp = u128::from(NANOS_PER_SEC) * u128::from(t);
+            let nanos = (nanos_tmp >> nanos_offset) as u32;
+
+            let rem_mask = (1 << nanos_offset) - 1;
+            let rem_msb_mask = 1 << (nanos_offset - 1);
+            let rem = nanos_tmp & rem_mask;
+            let is_tie = rem == rem_msb_mask;
+            let is_even = (nanos & 1) == 0;
+            let rem_msb = nanos_tmp & rem_msb_mask == 0;
+            let add_ns = !(rem_msb || (is_even && is_tie));
+
+            // f32 does not have enough precision to trigger the second branch
+            // since it can not represent numbers between 0.999_999_940_395 and 1.0.
+            let nanos = nanos + add_ns as u32;
+            if ($mant_bits == 23) || (nanos != NANOS_PER_SEC) { (0, nanos) } else { (1, 0) }
+        } else if exp < $mant_bits {
+            let secs = u64::from(mant >> ($mant_bits - exp));
+            let t = <$double_ty>::from((mant << exp) & MANT_MASK);
+            let nanos_offset = $mant_bits;
+            let nanos_tmp = <$double_ty>::from(NANOS_PER_SEC) * t;
+            let nanos = (nanos_tmp >> nanos_offset) as u32;
+
+            let rem_mask = (1 << nanos_offset) - 1;
+            let rem_msb_mask = 1 << (nanos_offset - 1);
+            let rem = nanos_tmp & rem_mask;
+            let is_tie = rem == rem_msb_mask;
+            let is_even = (nanos & 1) == 0;
+            let rem_msb = nanos_tmp & rem_msb_mask == 0;
+            let add_ns = !(rem_msb || (is_even && is_tie));
+
+            // f32 does not have enough precision to trigger the second branch.
+            // For example, it can not represent numbers between 1.999_999_880...
+            // and 2.0. Bigger values result in even smaller precision of the
+            // fractional part.
+            let nanos = nanos + add_ns as u32;
+            if ($mant_bits == 23) || (nanos != NANOS_PER_SEC) {
+                (secs, nanos)
+            } else {
+                (secs + 1, 0)
+            }
+        } else if exp < 64 {
+            // the input has no fractional part
+            let secs = u64::from(mant) << (exp - $mant_bits);
+            (secs, 0)
+        } else {
+            return Err(TryFromFloatSecsError { kind: TryFromFloatSecsErrorKind::OverflowOrNan });
+        };
+
+        Ok(Duration::new(secs, nanos))
+    }};
+}
+
+impl Duration {
+    /// The checked version of [`from_secs_f32`].
+    ///
+    /// [`from_secs_f32`]: Duration::from_secs_f32
+    ///
+    /// This constructor will return an `Err` if `secs` is negative, overflows `Duration` or not finite.
+    ///
+    /// # Examples
+    /// ```
+    /// use std::time::Duration;
+    ///
+    /// let res = Duration::try_from_secs_f32(0.0);
+    /// assert_eq!(res, Ok(Duration::new(0, 0)));
+    /// let res = Duration::try_from_secs_f32(1e-20);
+    /// assert_eq!(res, Ok(Duration::new(0, 0)));
+    /// let res = Duration::try_from_secs_f32(4.2e-7);
+    /// assert_eq!(res, Ok(Duration::new(0, 420)));
+    /// let res = Duration::try_from_secs_f32(2.7);
+    /// assert_eq!(res, Ok(Duration::new(2, 700_000_048)));
+    /// let res = Duration::try_from_secs_f32(3e10);
+    /// assert_eq!(res, Ok(Duration::new(30_000_001_024, 0)));
+    /// // subnormal float:
+    /// let res = Duration::try_from_secs_f32(f32::from_bits(1));
+    /// assert_eq!(res, Ok(Duration::new(0, 0)));
+    ///
+    /// let res = Duration::try_from_secs_f32(-5.0);
+    /// assert!(res.is_err());
+    /// let res = Duration::try_from_secs_f32(f32::NAN);
+    /// assert!(res.is_err());
+    /// let res = Duration::try_from_secs_f32(2e19);
+    /// assert!(res.is_err());
+    ///
+    /// // the conversion uses rounding with tie resolution to even
+    /// let res = Duration::try_from_secs_f32(0.999e-9);
+    /// assert_eq!(res, Ok(Duration::new(0, 1)));
+    ///
+    /// // this float represents exactly 976562.5e-9
+    /// let val = f32::from_bits(0x3A80_0000);
+    /// let res = Duration::try_from_secs_f32(val);
+    /// assert_eq!(res, Ok(Duration::new(0, 976_562)));
+    ///
+    /// // this float represents exactly 2929687.5e-9
+    /// let val = f32::from_bits(0x3B40_0000);
+    /// let res = Duration::try_from_secs_f32(val);
+    /// assert_eq!(res, Ok(Duration::new(0, 2_929_688)));
+    ///
+    /// // this float represents exactly 1.000_976_562_5
+    /// let val = f32::from_bits(0x3F802000);
+    /// let res = Duration::try_from_secs_f32(val);
+    /// assert_eq!(res, Ok(Duration::new(1, 976_562)));
+    ///
+    /// // this float represents exactly 1.002_929_687_5
+    /// let val = f32::from_bits(0x3F806000);
+    /// let res = Duration::try_from_secs_f32(val);
+    /// assert_eq!(res, Ok(Duration::new(1, 2_929_688)));
+    /// ```
+    #[stable(feature = "duration_checked_float", since = "1.66.0")]
+    #[rustc_const_unstable(feature = "duration_consts_float", issue = "72440")]
+    #[inline]
+    pub const fn try_from_secs_f32(secs: f32) -> Result<Duration, TryFromFloatSecsError> {
+}
+
+    /// The checked version of [`from_secs_f64`].
+    ///
+    /// [`from_secs_f64`]: Duration::from_secs_f64
+    ///
+    /// This constructor will return an `Err` if `secs` is negative, overflows `Duration` or not finite.
+    ///
+    /// # Examples
+    /// ```
+    /// use std::time::Duration;
+    ///
+    /// let res = Duration::try_from_secs_f64(0.0);
+    /// assert_eq!(res, Ok(Duration::new(0, 0)));
+    /// let res = Duration::try_from_secs_f64(1e-20);
+    /// assert_eq!(res, Ok(Duration::new(0, 0)));
+    /// let res = Duration::try_from_secs_f64(4.2e-7);
+    /// assert_eq!(res, Ok(Duration::new(0, 420)));
+    /// let res = Duration::try_from_secs_f64(2.7);
+    /// assert_eq!(res, Ok(Duration::new(2, 700_000_000)));
+    /// let res = Duration::try_from_secs_f64(3e10);
+    /// assert_eq!(res, Ok(Duration::new(30_000_000_000, 0)));
+    /// // subnormal float
+    /// let res = Duration::try_from_secs_f64(f64::from_bits(1));
+    /// assert_eq!(res, Ok(Duration::new(0, 0)));
+    ///
+    /// let res = Duration::try_from_secs_f64(-5.0);
+    /// assert!(res.is_err());
+    /// let res = Duration::try_from_secs_f64(f64::NAN);
+    /// assert!(res.is_err());
+    /// let res = Duration::try_from_secs_f64(2e19);
+    /// assert!(res.is_err());
+    ///
+    /// // the conversion uses rounding with tie resolution to even
+    /// let res = Duration::try_from_secs_f64(0.999e-9);
+    /// assert_eq!(res, Ok(Duration::new(0, 1)));
+    /// let res = Duration::try_from_secs_f64(0.999_999_999_499);
+    /// assert_eq!(res, Ok(Duration::new(0, 999_999_999)));
+    /// let res = Duration::try_from_secs_f64(0.999_999_999_501);
+    /// assert_eq!(res, Ok(Duration::new(1, 0)));
+    /// let res = Duration::try_from_secs_f64(42.999_999_999_499);
+    /// assert_eq!(res, Ok(Duration::new(42, 999_999_999)));
+    /// let res = Duration::try_from_secs_f64(42.999_999_999_501);
+    /// assert_eq!(res, Ok(Duration::new(43, 0)));
+    ///
+    /// // this float represents exactly 976562.5e-9
+    /// let val = f64::from_bits(0x3F50_0000_0000_0000);
+    /// let res = Duration::try_from_secs_f64(val);
+    /// assert_eq!(res, Ok(Duration::new(0, 976_562)));
+    ///
+    /// // this float represents exactly 2929687.5e-9
+    /// let val = f64::from_bits(0x3F68_0000_0000_0000);
+    /// let res = Duration::try_from_secs_f64(val);
+    /// assert_eq!(res, Ok(Duration::new(0, 2_929_688)));
+    ///
+    /// // this float represents exactly 1.000_976_562_5
+    /// let val = f64::from_bits(0x3FF0_0400_0000_0000);
+    /// let res = Duration::try_from_secs_f64(val);
+    /// assert_eq!(res, Ok(Duration::new(1, 976_562)));
+    ///
+    /// // this float represents exactly 1.002_929_687_5
+    /// let val = f64::from_bits(0x3_FF00_C000_0000_000);
+    /// let res = Duration::try_from_secs_f64(val);
+    /// assert_eq!(res, Ok(Duration::new(1, 2_929_688)));
+    /// ```
+    #[stable(feature = "duration_checked_float", since = "1.66.0")]
+    #[rustc_const_unstable(feature = "duration_consts_float", issue = "72440")]
+    #[inline]
+    pub const fn try_from_secs_f64(secs: f64) -> Result<Duration, TryFromFloatSecsError> {
+}
+}
+}
+
+pub mod unicode {
+#![unstable(feature = "unicode_internals", issue = "none")]
+#![allow(missing_docs)]
+
+pub(crate) mod printable {
+// NOTE: The following code was generated by "library/core/src/unicode/printable.py",
+//       do not edit directly!
+
+fn check(x: u16, singletonuppers: &[(u8, u8)], singletonlowers: &[u8], normal: &[u8]) -> bool {
+}
+
+pub(crate) fn is_printable(x: char) -> bool {
+}
+
+#[rustfmt::skip]
+const SINGLETONS0U: &[(u8, u8)] = &[
+    (0x00, 1),
+    (0x03, 5),
+    (0x05, 6),
+    (0x06, 2),
+    (0x07, 6),
+    (0x08, 7),
+    (0x09, 17),
+    (0x0a, 28),
+    (0x0b, 25),
+    (0x0c, 26),
+    (0x0d, 16),
+    (0x0e, 12),
+    (0x0f, 4),
+    (0x10, 3),
+    (0x12, 18),
+    (0x13, 9),
+    (0x16, 1),
+    (0x17, 4),
+    (0x18, 1),
+    (0x19, 3),
+    (0x1a, 7),
+    (0x1b, 1),
+    (0x1c, 2),
+    (0x1f, 22),
+    (0x20, 3),
+    (0x2b, 3),
+    (0x2d, 11),
+    (0x2e, 1),
+    (0x30, 3),
+    (0x31, 2),
+    (0x32, 1),
+    (0xa7, 2),
+    (0xa9, 2),
+    (0xaa, 4),
+    (0xab, 8),
+    (0xfa, 2),
+    (0xfb, 5),
+    (0xfd, 2),
+    (0xfe, 3),
+    (0xff, 9),
+];
+#[rustfmt::skip]
+const SINGLETONS0L: &[u8] = &[
+    0xad, 0x78, 0x79, 0x8b, 0x8d, 0xa2, 0x30, 0x57,
+    0x58, 0x8b, 0x8c, 0x90, 0x1c, 0xdd, 0x0e, 0x0f,
+    0x4b, 0x4c, 0xfb, 0xfc, 0x2e, 0x2f, 0x3f, 0x5c,
+    0x5d, 0x5f, 0xe2, 0x84, 0x8d, 0x8e, 0x91, 0x92,
+    0xa9, 0xb1, 0xba, 0xbb, 0xc5, 0xc6, 0xc9, 0xca,
+    0xde, 0xe4, 0xe5, 0xff, 0x00, 0x04, 0x11, 0x12,
+    0x29, 0x31, 0x34, 0x37, 0x3a, 0x3b, 0x3d, 0x49,
+    0x4a, 0x5d, 0x84, 0x8e, 0x92, 0xa9, 0xb1, 0xb4,
+    0xba, 0xbb, 0xc6, 0xca, 0xce, 0xcf, 0xe4, 0xe5,
+    0x00, 0x04, 0x0d, 0x0e, 0x11, 0x12, 0x29, 0x31,
+    0x34, 0x3a, 0x3b, 0x45, 0x46, 0x49, 0x4a, 0x5e,
+    0x64, 0x65, 0x84, 0x91, 0x9b, 0x9d, 0xc9, 0xce,
+    0xcf, 0x0d, 0x11, 0x29, 0x3a, 0x3b, 0x45, 0x49,
+    0x57, 0x5b, 0x5c, 0x5e, 0x5f, 0x64, 0x65, 0x8d,
+    0x91, 0xa9, 0xb4, 0xba, 0xbb, 0xc5, 0xc9, 0xdf,
+    0xe4, 0xe5, 0xf0, 0x0d, 0x11, 0x45, 0x49, 0x64,
+    0x65, 0x80, 0x84, 0xb2, 0xbc, 0xbe, 0xbf, 0xd5,
+    0xd7, 0xf0, 0xf1, 0x83, 0x85, 0x8b, 0xa4, 0xa6,
+    0xbe, 0xbf, 0xc5, 0xc7, 0xcf, 0xda, 0xdb, 0x48,
+    0x98, 0xbd, 0xcd, 0xc6, 0xce, 0xcf, 0x49, 0x4e,
+    0x4f, 0x57, 0x59, 0x5e, 0x5f, 0x89, 0x8e, 0x8f,
+    0xb1, 0xb6, 0xb7, 0xbf, 0xc1, 0xc6, 0xc7, 0xd7,
+    0x11, 0x16, 0x17, 0x5b, 0x5c, 0xf6, 0xf7, 0xfe,
+    0xff, 0x80, 0x6d, 0x71, 0xde, 0xdf, 0x0e, 0x1f,
+    0x6e, 0x6f, 0x1c, 0x1d, 0x5f, 0x7d, 0x7e, 0xae,
+    0xaf, 0x7f, 0xbb, 0xbc, 0x16, 0x17, 0x1e, 0x1f,
+    0x46, 0x47, 0x4e, 0x4f, 0x58, 0x5a, 0x5c, 0x5e,
+    0x7e, 0x7f, 0xb5, 0xc5, 0xd4, 0xd5, 0xdc, 0xf0,
+    0xf1, 0xf5, 0x72, 0x73, 0x8f, 0x74, 0x75, 0x96,
+    0x26, 0x2e, 0x2f, 0xa7, 0xaf, 0xb7, 0xbf, 0xc7,
+    0xcf, 0xd7, 0xdf, 0x9a, 0x40, 0x97, 0x98, 0x30,
+    0x8f, 0x1f, 0xd2, 0xd4, 0xce, 0xff, 0x4e, 0x4f,
+    0x5a, 0x5b, 0x07, 0x08, 0x0f, 0x10, 0x27, 0x2f,
+    0xee, 0xef, 0x6e, 0x6f, 0x37, 0x3d, 0x3f, 0x42,
+    0x45, 0x90, 0x91, 0x53, 0x67, 0x75, 0xc8, 0xc9,
+    0xd0, 0xd1, 0xd8, 0xd9, 0xe7, 0xfe, 0xff,
+];
+#[rustfmt::skip]
+const SINGLETONS1U: &[(u8, u8)] = &[
+    (0x00, 6),
+    (0x01, 1),
+    (0x03, 1),
+    (0x04, 2),
+    (0x05, 7),
+    (0x07, 2),
+    (0x08, 8),
+    (0x09, 2),
+    (0x0a, 5),
+    (0x0b, 2),
+    (0x0e, 4),
+    (0x10, 1),
+    (0x11, 2),
+    (0x12, 5),
+    (0x13, 17),
+    (0x14, 1),
+    (0x15, 2),
+    (0x17, 2),
+    (0x19, 13),
+    (0x1c, 5),
+    (0x1d, 8),
+    (0x1f, 1),
+    (0x24, 1),
+    (0x6a, 4),
+    (0x6b, 2),
+    (0xaf, 3),
+    (0xb1, 2),
+    (0xbc, 2),
+    (0xcf, 2),
+    (0xd1, 2),
+    (0xd4, 12),
+    (0xd5, 9),
+    (0xd6, 2),
+    (0xd7, 2),
+    (0xda, 1),
+    (0xe0, 5),
+    (0xe1, 2),
+    (0xe7, 4),
+    (0xe8, 2),
+    (0xee, 32),
+    (0xf0, 4),
+    (0xf8, 2),
+    (0xfa, 3),
+    (0xfb, 1),
+];
+#[rustfmt::skip]
+const SINGLETONS1L: &[u8] = &[
+    0x0c, 0x27, 0x3b, 0x3e, 0x4e, 0x4f, 0x8f, 0x9e,
+    0x9e, 0x9f, 0x7b, 0x8b, 0x93, 0x96, 0xa2, 0xb2,
+    0xba, 0x86, 0xb1, 0x06, 0x07, 0x09, 0x36, 0x3d,
+    0x3e, 0x56, 0xf3, 0xd0, 0xd1, 0x04, 0x14, 0x18,
+    0x36, 0x37, 0x56, 0x57, 0x7f, 0xaa, 0xae, 0xaf,
+    0xbd, 0x35, 0xe0, 0x12, 0x87, 0x89, 0x8e, 0x9e,
+    0x04, 0x0d, 0x0e, 0x11, 0x12, 0x29, 0x31, 0x34,
+    0x3a, 0x45, 0x46, 0x49, 0x4a, 0x4e, 0x4f, 0x64,
+    0x65, 0x5c, 0xb6, 0xb7, 0x1b, 0x1c, 0x07, 0x08,
+    0x0a, 0x0b, 0x14, 0x17, 0x36, 0x39, 0x3a, 0xa8,
+    0xa9, 0xd8, 0xd9, 0x09, 0x37, 0x90, 0x91, 0xa8,
+    0x07, 0x0a, 0x3b, 0x3e, 0x66, 0x69, 0x8f, 0x92,
+    0x11, 0x6f, 0x5f, 0xbf, 0xee, 0xef, 0x5a, 0x62,
+    0xf4, 0xfc, 0xff, 0x53, 0x54, 0x9a, 0x9b, 0x2e,
+    0x2f, 0x27, 0x28, 0x55, 0x9d, 0xa0, 0xa1, 0xa3,
+    0xa4, 0xa7, 0xa8, 0xad, 0xba, 0xbc, 0xc4, 0x06,
+    0x0b, 0x0c, 0x15, 0x1d, 0x3a, 0x3f, 0x45, 0x51,
+    0xa6, 0xa7, 0xcc, 0xcd, 0xa0, 0x07, 0x19, 0x1a,
+    0x22, 0x25, 0x3e, 0x3f, 0xe7, 0xec, 0xef, 0xff,
+    0xc5, 0xc6, 0x04, 0x20, 0x23, 0x25, 0x26, 0x28,
+    0x33, 0x38, 0x3a, 0x48, 0x4a, 0x4c, 0x50, 0x53,
+    0x55, 0x56, 0x58, 0x5a, 0x5c, 0x5e, 0x60, 0x63,
+    0x65, 0x66, 0x6b, 0x73, 0x78, 0x7d, 0x7f, 0x8a,
+    0xa4, 0xaa, 0xaf, 0xb0, 0xc0, 0xd0, 0xae, 0xaf,
+    0x6e, 0x6f, 0xbe, 0x93,
+];
+#[rustfmt::skip]
+const NORMAL0: &[u8] = &[
+    0x00, 0x20,
+    0x5f, 0x22,
+    0x82, 0xdf, 0x04,
+    0x82, 0x44, 0x08,
+    0x1b, 0x04,
+    0x06, 0x11,
+    0x81, 0xac, 0x0e,
+    0x80, 0xab, 0x05,
+    0x1f, 0x09,
+    0x81, 0x1b, 0x03,
+    0x19, 0x08,
+    0x01, 0x04,
+    0x2f, 0x04,
+    0x34, 0x04,
+    0x07, 0x03,
+    0x01, 0x07,
+    0x06, 0x07,
+    0x11, 0x0a,
+    0x50, 0x0f,
+    0x12, 0x07,
+    0x55, 0x07,
+    0x03, 0x04,
+    0x1c, 0x0a,
+    0x09, 0x03,
+    0x08, 0x03,
+    0x07, 0x03,
+    0x02, 0x03,
+    0x03, 0x03,
+    0x0c, 0x04,
+    0x05, 0x03,
+    0x0b, 0x06,
+    0x01, 0x0e,
+    0x15, 0x05,
+    0x4e, 0x07,
+    0x1b, 0x07,
+    0x57, 0x07,
+    0x02, 0x06,
+    0x17, 0x0c,
+    0x50, 0x04,
+    0x43, 0x03,
+    0x2d, 0x03,
+    0x01, 0x04,
+    0x11, 0x06,
+    0x0f, 0x0c,
+    0x3a, 0x04,
+    0x1d, 0x25,
+    0x5f, 0x20,
+    0x6d, 0x04,
+    0x6a, 0x25,
+    0x80, 0xc8, 0x05,
+    0x82, 0xb0, 0x03,
+    0x1a, 0x06,
+    0x82, 0xfd, 0x03,
+    0x59, 0x07,
+    0x16, 0x09,
+    0x18, 0x09,
+    0x14, 0x0c,
+    0x14, 0x0c,
+    0x6a, 0x06,
+    0x0a, 0x06,
+    0x1a, 0x06,
+    0x59, 0x07,
+    0x2b, 0x05,
+    0x46, 0x0a,
+    0x2c, 0x04,
+    0x0c, 0x04,
+    0x01, 0x03,
+    0x31, 0x0b,
+    0x2c, 0x04,
+    0x1a, 0x06,
+    0x0b, 0x03,
+    0x80, 0xac, 0x06,
+    0x0a, 0x06,
+    0x2f, 0x31,
+    0x4d, 0x03,
+    0x80, 0xa4, 0x08,
+    0x3c, 0x03,
+    0x0f, 0x03,
+    0x3c, 0x07,
+    0x38, 0x08,
+    0x2b, 0x05,
+    0x82, 0xff, 0x11,
+    0x18, 0x08,
+    0x2f, 0x11,
+    0x2d, 0x03,
+    0x21, 0x0f,
+    0x21, 0x0f,
+    0x80, 0x8c, 0x04,
+    0x82, 0x97, 0x19,
+    0x0b, 0x15,
+    0x88, 0x94, 0x05,
+    0x2f, 0x05,
+    0x3b, 0x07,
+    0x02, 0x0e,
+    0x18, 0x09,
+    0x80, 0xbe, 0x22,
+    0x74, 0x0c,
+    0x80, 0xd6, 0x1a,
+    0x0c, 0x05,
+    0x80, 0xff, 0x05,
+    0x80, 0xdf, 0x0c,
+    0xf2, 0x9d, 0x03,
+    0x37, 0x09,
+    0x81, 0x5c, 0x14,
+    0x80, 0xb8, 0x08,
+    0x80, 0xcb, 0x05,
+    0x0a, 0x18,
+    0x3b, 0x03,
+    0x0a, 0x06,
+    0x38, 0x08,
+    0x46, 0x08,
+    0x0c, 0x06,
+    0x74, 0x0b,
+    0x1e, 0x03,
+    0x5a, 0x04,
+    0x59, 0x09,
+    0x80, 0x83, 0x18,
+    0x1c, 0x0a,
+    0x16, 0x09,
+    0x4c, 0x04,
+    0x80, 0x8a, 0x06,
+    0xab, 0xa4, 0x0c,
+    0x17, 0x04,
+    0x31, 0xa1, 0x04,
+    0x81, 0xda, 0x26,
+    0x07, 0x0c,
+    0x05, 0x05,
+    0x80, 0xa6, 0x10,
+    0x81, 0xf5, 0x07,
+    0x01, 0x20,
+    0x2a, 0x06,
+    0x4c, 0x04,
+    0x80, 0x8d, 0x04,
+    0x80, 0xbe, 0x03,
+    0x1b, 0x03,
+    0x0f, 0x0d,
+];
+#[rustfmt::skip]
+const NORMAL1: &[u8] = &[
+    0x5e, 0x22,
+    0x7b, 0x05,
+    0x03, 0x04,
+    0x2d, 0x03,
+    0x66, 0x03,
+    0x01, 0x2f,
+    0x2e, 0x80, 0x82,
+    0x1d, 0x03,
+    0x31, 0x0f,
+    0x1c, 0x04,
+    0x24, 0x09,
+    0x1e, 0x05,
+    0x2b, 0x05,
+    0x44, 0x04,
+    0x0e, 0x2a,
+    0x80, 0xaa, 0x06,
+    0x24, 0x04,
+    0x24, 0x04,
+    0x28, 0x08,
+    0x34, 0x0b,
+    0x4e, 0x43,
+    0x81, 0x37, 0x09,
+    0x16, 0x0a,
+    0x08, 0x18,
+    0x3b, 0x45,
+    0x39, 0x03,
+    0x63, 0x08,
+    0x09, 0x30,
+    0x16, 0x05,
+    0x21, 0x03,
+    0x1b, 0x05,
+    0x01, 0x40,
+    0x38, 0x04,
+    0x4b, 0x05,
+    0x2f, 0x04,
+    0x0a, 0x07,
+    0x09, 0x07,
+    0x40, 0x20,
+    0x27, 0x04,
+    0x0c, 0x09,
+    0x36, 0x03,
+    0x3a, 0x05,
+    0x1a, 0x07,
+    0x04, 0x0c,
+    0x07, 0x50,
+    0x49, 0x37,
+    0x33, 0x0d,
+    0x33, 0x07,
+    0x2e, 0x08,
+    0x0a, 0x81, 0x26,
+    0x52, 0x4b,
+    0x2b, 0x08,
+    0x2a, 0x16,
+    0x1a, 0x26,
+    0x1c, 0x14,
+    0x17, 0x09,
+    0x4e, 0x04,
+    0x24, 0x09,
+    0x44, 0x0d,
+    0x19, 0x07,
+    0x0a, 0x06,
+    0x48, 0x08,
+    0x27, 0x09,
+    0x75, 0x0b,
+    0x42, 0x3e,
+    0x2a, 0x06,
+    0x3b, 0x05,
+    0x0a, 0x06,
+    0x51, 0x06,
+    0x01, 0x05,
+    0x10, 0x03,
+    0x05, 0x80, 0x8b,
+    0x62, 0x1e,
+    0x48, 0x08,
+    0x0a, 0x80, 0xa6,
+    0x5e, 0x22,
+    0x45, 0x0b,
+    0x0a, 0x06,
+    0x0d, 0x13,
+    0x3a, 0x06,
+    0x0a, 0x36,
+    0x2c, 0x04,
+    0x17, 0x80, 0xb9,
+    0x3c, 0x64,
+    0x53, 0x0c,
+    0x48, 0x09,
+    0x0a, 0x46,
+    0x45, 0x1b,
+    0x48, 0x08,
+    0x53, 0x0d,
+    0x49, 0x07,
+    0x0a, 0x80, 0xf6,
+    0x46, 0x0a,
+    0x1d, 0x03,
+    0x47, 0x49,
+    0x37, 0x03,
+    0x0e, 0x08,
+    0x0a, 0x06,
+    0x39, 0x07,
+    0x0a, 0x81, 0x36,
+    0x19, 0x07,
+    0x3b, 0x03,
+    0x1c, 0x56,
+    0x01, 0x0f,
+    0x32, 0x0d,
+    0x83, 0x9b, 0x66,
+    0x75, 0x0b,
+    0x80, 0xc4, 0x8a, 0x4c,
+    0x63, 0x0d,
+    0x84, 0x30, 0x10,
+    0x16, 0x8f, 0xaa,
+    0x82, 0x47, 0xa1, 0xb9,
+    0x82, 0x39, 0x07,
+    0x2a, 0x04,
+    0x5c, 0x06,
+    0x26, 0x0a,
+    0x46, 0x0a,
+    0x28, 0x05,
+    0x13, 0x82, 0xb0,
+    0x5b, 0x65,
+    0x4b, 0x04,
+    0x39, 0x07,
+    0x11, 0x40,
+    0x05, 0x0b,
+    0x02, 0x0e,
+    0x97, 0xf8, 0x08,
+    0x84, 0xd6, 0x2a,
+    0x09, 0xa2, 0xe7,
+    0x81, 0x33, 0x0f,
+    0x01, 0x1d,
+    0x06, 0x0e,
+    0x04, 0x08,
+    0x81, 0x8c, 0x89, 0x04,
+    0x6b, 0x05,
+    0x0d, 0x03,
+    0x09, 0x07,
+    0x10, 0x92, 0x60,
+    0x47, 0x09,
+    0x74, 0x3c,
+    0x80, 0xf6, 0x0a,
+    0x73, 0x08,
+    0x70, 0x15,
+    0x46, 0x7a,
+    0x14, 0x0c,
+    0x14, 0x0c,
+    0x57, 0x09,
+    0x19, 0x80, 0x87,
+    0x81, 0x47, 0x03,
+    0x85, 0x42, 0x0f,
+    0x15, 0x84, 0x50,
+    0x1f, 0x06,
+    0x06, 0x80, 0xd5,
+    0x2b, 0x05,
+    0x3e, 0x21,
+    0x01, 0x70,
+    0x2d, 0x03,
+    0x1a, 0x04,
+    0x02, 0x81, 0x40,
+    0x1f, 0x11,
+    0x3a, 0x05,
+    0x01, 0x81, 0xd0,
+    0x2a, 0x82, 0xe6,
+    0x80, 0xf7, 0x29,
+    0x4c, 0x04,
+    0x0a, 0x04,
+    0x02, 0x83, 0x11,
+    0x44, 0x4c,
+    0x3d, 0x80, 0xc2,
+    0x3c, 0x06,
+    0x01, 0x04,
+    0x55, 0x05,
+    0x1b, 0x34,
+    0x02, 0x81, 0x0e,
+    0x2c, 0x04,
+    0x64, 0x0c,
+    0x56, 0x0a,
+    0x80, 0xae, 0x38,
+    0x1d, 0x0d,
+    0x2c, 0x04,
+    0x09, 0x07,
+    0x02, 0x0e,
+    0x06, 0x80, 0x9a,
+    0x83, 0xd8, 0x04,
+    0x11, 0x03,
+    0x0d, 0x03,
+    0x77, 0x04,
+    0x5f, 0x06,
+    0x0c, 0x04,
+    0x01, 0x0f,
+    0x0c, 0x04,
+    0x38, 0x08,
+    0x0a, 0x06,
+    0x28, 0x08,
+    0x22, 0x4e,
+    0x81, 0x54, 0x0c,
+    0x1d, 0x03,
+    0x09, 0x07,
+    0x36, 0x08,
+    0x0e, 0x04,
+    0x09, 0x07,
+    0x09, 0x07,
+    0x80, 0xcb, 0x25,
+    0x0a, 0x84, 0x06,
+];
+}
+mod unicode_data {
+///! This file is generated by src/tools/unicode-table-generator; do not edit manually!
+
+#[rustc_const_unstable(feature = "const_unicode_case_lookup", issue = "101400")]
+#[inline(always)]
+const fn bitset_search<
+    const N: usize,
+    const CHUNK_SIZE: usize,
+    const N1: usize,
+    const CANONICAL: usize,
+    const CANONICALIZED: usize,
+>(
+    needle: u32,
+    chunk_idx_map: &[u8; N],
+    bitset_chunk_idx: &[[u8; CHUNK_SIZE]; N1],
+    bitset_canonical: &[u64; CANONICAL],
+    bitset_canonicalized: &[(u8, u8); CANONICALIZED],
+) -> bool {
+}
+
+fn decode_prefix_sum(short_offset_run_header: u32) -> u32 {
+}
+
+fn decode_length(short_offset_run_header: u32) -> usize {
+}
+
+#[inline(always)]
+fn skip_search<const SOR: usize, const OFFSETS: usize>(
+    needle: u32,
+    short_offset_runs: &[u32; SOR],
+    offsets: &[u8; OFFSETS],
+) -> bool {
+}
+
+pub const UNICODE_VERSION: (u8, u8, u8) = (15, 0, 0);
+
+#[rustfmt::skip]
+pub mod alphabetic {
+}
+
+#[rustfmt::skip]
+pub mod case_ignorable {
+}
+
+#[rustfmt::skip]
+pub mod cased {
+}
+
+#[rustfmt::skip]
+pub mod cc {
+}
+
+#[rustfmt::skip]
+pub mod grapheme_extend {
+}
+
+#[rustfmt::skip]
+pub mod lowercase {
+}
+
+#[rustfmt::skip]
+pub mod n {
+}
+
+#[rustfmt::skip]
+pub mod uppercase {
+}
+
+#[rustfmt::skip]
+pub mod white_space {
+}
+
+#[rustfmt::skip]
+pub mod conversions {
+}
+}
+
+/// The version of [Unicode](https://www.unicode.org/) that the Unicode parts of
+/// `char` and `str` methods are based on.
+///
+/// New versions of Unicode are released regularly and subsequently all methods
+/// in the standard library depending on Unicode are updated. Therefore the
+/// behavior of some `char` and `str` methods and the value of this constant
+/// changes over time. This is *not* considered to be a breaking change.
+///
+/// The version numbering scheme is explained in
+/// [Unicode 11.0 or later, Section 3.1 Versions of the Unicode Standard](https://www.unicode.org/versions/Unicode11.0.0/ch03.pdf#page=4).
+#[stable(feature = "unicode_version", since = "1.45.0")]
+pub const UNICODE_VERSION: (u8, u8, u8) = unicode_data::UNICODE_VERSION;
+
+// For use in liballoc, not re-exported in libstd.
+pub use unicode_data::{
+    case_ignorable::lookup as Case_Ignorable, cased::lookup as Cased, conversions,
+};
+
+pub(crate) use unicode_data::alphabetic::lookup as Alphabetic;
+pub(crate) use unicode_data::cc::lookup as Cc;
+pub(crate) use unicode_data::grapheme_extend::lookup as Grapheme_Extend;
+pub(crate) use unicode_data::lowercase::lookup as Lowercase;
+pub(crate) use unicode_data::n::lookup as N;
+pub(crate) use unicode_data::uppercase::lookup as Uppercase;
+pub(crate) use unicode_data::white_space::lookup as White_Space;
+}
+
+/* Async */
+pub mod future {
+#![stable(feature = "futures_api", since = "1.36.0")]
+
+//! Asynchronous basic functionality.
+//!
+//! Please see the fundamental [`async`] and [`await`] keywords and the [async book]
+//! for more information on asynchronous programming in Rust.
+//!
+//! [`async`]: ../../std/keyword.async.html
+//! [`await`]: ../../std/keyword.await.html
+//! [async book]: https://rust-lang.github.io/async-book/
+
+use crate::{
+    ops::{Generator, GeneratorState},
+    pin::Pin,
+    ptr::NonNull,
+    task::{Context, Poll},
+};
+
+mod future {
+#![stable(feature = "futures_api", since = "1.36.0")]
+
+use crate::marker::Unpin;
+use crate::ops;
+use crate::pin::Pin;
+use crate::task::{Context, Poll};
+
+/// A future represents an asynchronous computation obtained by use of [`async`].
+///
+/// A future is a value that might not have finished computing yet. This kind of
+/// "asynchronous value" makes it possible for a thread to continue doing useful
+/// work while it waits for the value to become available.
+///
+/// # The `poll` method
+///
+/// The core method of future, `poll`, *attempts* to resolve the future into a
+/// final value. This method does not block if the value is not ready. Instead,
+/// the current task is scheduled to be woken up when it's possible to make
+/// further progress by `poll`ing again. The `context` passed to the `poll`
+/// method can provide a [`Waker`], which is a handle for waking up the current
+/// task.
+///
+/// When using a future, you generally won't call `poll` directly, but instead
+/// `.await` the value.
+///
+/// [`async`]: ../../std/keyword.async.html
+/// [`Waker`]: crate::task::Waker
+#[doc(notable_trait)]
+#[must_use = "futures do nothing unless you `.await` or poll them"]
+#[stable(feature = "futures_api", since = "1.36.0")]
+#[lang = "future_trait"]
+#[rustc_on_unimplemented(
+    label = "`{Self}` is not a future",
+    message = "`{Self}` is not a future",
+    note = "{Self} must be a future or must implement `IntoFuture` to be awaited"
+)]
+pub trait Future {
+    /// The type of value produced on completion.
+    #[stable(feature = "futures_api", since = "1.36.0")]
+    type Output;
+
+    /// Attempt to resolve the future to a final value, registering
+    /// the current task for wakeup if the value is not yet available.
+    ///
+    /// # Return value
+    ///
+    /// This function returns:
+    ///
+    /// - [`Poll::Pending`] if the future is not ready yet
+    /// - [`Poll::Ready(val)`] with the result `val` of this future if it
+    ///   finished successfully.
+    ///
+    /// Once a future has finished, clients should not `poll` it again.
+    ///
+    /// When a future is not ready yet, `poll` returns `Poll::Pending` and
+    /// stores a clone of the [`Waker`] copied from the current [`Context`].
+    /// This [`Waker`] is then woken once the future can make progress.
+    /// For example, a future waiting for a socket to become
+    /// readable would call `.clone()` on the [`Waker`] and store it.
+    /// When a signal arrives elsewhere indicating that the socket is readable,
+    /// [`Waker::wake`] is called and the socket future's task is awoken.
+    /// Once a task has been woken up, it should attempt to `poll` the future
+    /// again, which may or may not produce a final value.
+    ///
+    /// Note that on multiple calls to `poll`, only the [`Waker`] from the
+    /// [`Context`] passed to the most recent call should be scheduled to
+    /// receive a wakeup.
+    ///
+    /// # Runtime characteristics
+    ///
+    /// Futures alone are *inert*; they must be *actively* `poll`ed to make
+    /// progress, meaning that each time the current task is woken up, it should
+    /// actively re-`poll` pending futures that it still has an interest in.
+    ///
+    /// The `poll` function is not called repeatedly in a tight loop -- instead,
+    /// it should only be called when the future indicates that it is ready to
+    /// make progress (by calling `wake()`). If you're familiar with the
+    /// `poll(2)` or `select(2)` syscalls on Unix it's worth noting that futures
+    /// typically do *not* suffer the same problems of "all wakeups must poll
+    /// all events"; they are more like `epoll(4)`.
+    ///
+    /// An implementation of `poll` should strive to return quickly, and should
+    /// not block. Returning quickly prevents unnecessarily clogging up
+    /// threads or event loops. If it is known ahead of time that a call to
+    /// `poll` may end up taking awhile, the work should be offloaded to a
+    /// thread pool (or something similar) to ensure that `poll` can return
+    /// quickly.
+    ///
+    /// # Panics
+    ///
+    /// Once a future has completed (returned `Ready` from `poll`), calling its
+    /// `poll` method again may panic, block forever, or cause other kinds of
+    /// problems; the `Future` trait places no requirements on the effects of
+    /// such a call. However, as the `poll` method is not marked `unsafe`,
+    /// Rust's usual rules apply: calls must never cause undefined behavior
+    /// (memory corruption, incorrect use of `unsafe` functions, or the like),
+    /// regardless of the future's state.
+    ///
+    /// [`Poll::Ready(val)`]: Poll::Ready
+    /// [`Waker`]: crate::task::Waker
+    /// [`Waker::wake`]: crate::task::Waker::wake
+    #[lang = "poll"]
+    #[stable(feature = "futures_api", since = "1.36.0")]
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output>;
+}
+
+#[stable(feature = "futures_api", since = "1.36.0")]
+impl<F: ?Sized + Future + Unpin> Future for &mut F {
+    type Output = F::Output;
+
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+}
+}
+
+#[stable(feature = "futures_api", since = "1.36.0")]
+impl<P> Future for Pin<P>
+where
+    P: ops::DerefMut<Target: Future>,
+{
+    type Output = <<P as ops::Deref>::Target as Future>::Output;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+}
+}
+}
+mod into_future {
+use crate::future::Future;
+
+/// Conversion into a `Future`.
+///
+/// By implementing `IntoFuture` for a type, you define how it will be
+/// converted to a future.
+///
+/// # `.await` desugaring
+///
+/// The `.await` keyword desugars into a call to `IntoFuture::into_future`
+/// first before polling the future to completion. `IntoFuture` is implemented
+/// for all `T: Future` which means the `into_future` method will be available
+/// on all futures.
+///
+/// ```no_run
+/// use std::future::IntoFuture;
+///
+/// # async fn foo() {
+/// let v = async { "meow" };
+/// let mut fut = v.into_future();
+/// assert_eq!("meow", fut.await);
+/// # }
+/// ```
+///
+/// # Async builders
+///
+/// When implementing futures manually there will often be a choice between
+/// implementing `Future` or `IntoFuture` for a type. Implementing `Future` is a
+/// good choice in most cases. But implementing `IntoFuture` is most useful when
+/// implementing "async builder" types, which allow their values to be modified
+/// multiple times before being `.await`ed.
+///
+/// ```rust
+/// use std::future::{ready, Ready, IntoFuture};
+///
+/// /// Eventually multiply two numbers
+/// pub struct Multiply {
+///     num: u16,
+///     factor: u16,
+/// }
+///
+/// impl Multiply {
+///     /// Construct a new instance of `Multiply`.
+///     pub fn new(num: u16, factor: u16) -> Self {
+///         Self { num, factor }
+///     }
+///
+///     /// Set the number to multiply by the factor.
+///     pub fn number(mut self, num: u16) -> Self {
+///         self.num = num;
+///         self
+///     }
+///
+///     /// Set the factor to multiply the number with.
+///     pub fn factor(mut self, factor: u16) -> Self {
+///         self.factor = factor;
+///         self
+///     }
+/// }
+///
+/// impl IntoFuture for Multiply {
+///     type Output = u16;
+///     type IntoFuture = Ready<Self::Output>;
+///
+///     fn into_future(self) -> Self::IntoFuture {
+///         ready(self.num * self.factor)
+///     }
+/// }
+///
+/// // NOTE: Rust does not yet have an `async fn main` function, that functionality
+/// // currently only exists in the ecosystem.
+/// async fn run() {
+///     let num = Multiply::new(0, 0)  // initialize the builder to number: 0, factor: 0
+///         .number(2)                 // change the number to 2
+///         .factor(2)                 // change the factor to 2
+///         .await;                    // convert to future and .await
+///
+///     assert_eq!(num, 4);
+/// }
+/// ```
+///
+/// # Usage in trait bounds
+///
+/// Using `IntoFuture` in trait bounds allows a function to be generic over both
+/// `Future` and `IntoFuture`. This is convenient for users of the function, so
+/// when they are using it they don't have to make an extra call to
+/// `IntoFuture::into_future` to obtain an instance of `Future`:
+///
+/// ```rust
+/// use std::future::IntoFuture;
+///
+/// /// Convert the output of a future to a string.
+/// async fn fut_to_string<Fut>(fut: Fut) -> String
+/// where
+///     Fut: IntoFuture,
+///     Fut::Output: std::fmt::Debug,
+/// {
+///     format!("{:?}", fut.await)
+/// }
+/// ```
+#[stable(feature = "into_future", since = "1.64.0")]
+pub trait IntoFuture {
+    /// The output that the future will produce on completion.
+    #[stable(feature = "into_future", since = "1.64.0")]
+    type Output;
+
+    /// Which kind of future are we turning this into?
+    #[stable(feature = "into_future", since = "1.64.0")]
+    type IntoFuture: Future<Output = Self::Output>;
+
+    /// Creates a future from a value.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```no_run
+    /// use std::future::IntoFuture;
+    ///
+    /// # async fn foo() {
+    /// let v = async { "meow" };
+    /// let mut fut = v.into_future();
+    /// assert_eq!("meow", fut.await);
+    /// # }
+    /// ```
+    #[stable(feature = "into_future", since = "1.64.0")]
+    #[lang = "into_future"]
+    fn into_future(self) -> Self::IntoFuture;
+}
+
+#[stable(feature = "into_future", since = "1.64.0")]
+impl<F: Future> IntoFuture for F {
+    type Output = F::Output;
+    type IntoFuture = F;
+
+    fn into_future(self) -> Self::IntoFuture {
+}
+}
+}
+mod join {
+#![allow(unused_imports, unused_macros)] // items are used by the macro
+
+use crate::cell::UnsafeCell;
+use crate::future::{poll_fn, Future};
+use crate::mem;
+use crate::pin::Pin;
+use crate::task::{Context, Poll};
+
+/// Polls multiple futures simultaneously, returning a tuple
+/// of all results once complete.
+///
+/// While `join!(a, b).await` is similar to `(a.await, b.await)`,
+/// `join!` polls both futures concurrently and is therefore more efficient.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(future_join)]
+///
+/// use std::future::join;
+///
+/// async fn one() -> usize { 1 }
+/// async fn two() -> usize { 2 }
+///
+/// # let _ =  async {
+/// let x = join!(one(), two()).await;
+/// assert_eq!(x, (1, 2));
+/// # };
+/// ```
+///
+/// `join!` is variadic, so you can pass any number of futures:
+///
+/// ```
+/// #![feature(future_join)]
+///
+/// use std::future::join;
+///
+/// async fn one() -> usize { 1 }
+/// async fn two() -> usize { 2 }
+/// async fn three() -> usize { 3 }
+///
+/// # let _ = async {
+/// let x = join!(one(), two(), three()).await;
+/// assert_eq!(x, (1, 2, 3));
+/// # };
+/// ```
+#[unstable(feature = "future_join", issue = "91642")]
+pub macro join( $($fut:expr),+ $(,)? ) {
+}
+
+// FIXME(danielhenrymantilla): a private macro should need no stability guarantee.
+#[unstable(feature = "future_join", issue = "91642")]
+/// To be able to *name* the i-th future in the tuple (say we want the .4-th),
+/// the following trick will be used: `let (_, _, _, _, it, ..) = tuple;`
+/// In order to do that, we need to generate a `i`-long repetition of `_`,
+/// for each i-th fut. Hence the recursive muncher approach.
+macro join_internal {
+}
+
+/// Future used by `join!` that stores it's output to
+/// be later taken and doesn't panic when polled after ready.
+///
+/// This type is public in a private module for use by the macro.
+#[allow(missing_debug_implementations)]
+#[unstable(feature = "future_join", issue = "91642")]
+pub enum MaybeDone<F: Future> {
+}
+
+#[unstable(feature = "future_join", issue = "91642")]
+impl<F: Future> MaybeDone<F> {
+}
+
+#[unstable(feature = "future_join", issue = "91642")]
+impl<F: Future> Future for MaybeDone<F> {
+}
+}
+mod pending {
+use crate::fmt::{self, Debug};
+use crate::future::Future;
+use crate::marker;
+use crate::pin::Pin;
+use crate::task::{Context, Poll};
+
+/// Creates a future which never resolves, representing a computation that never
+/// finishes.
+///
+/// This `struct` is created by [`pending()`]. See its
+/// documentation for more.
+#[stable(feature = "future_readiness_fns", since = "1.48.0")]
+#[must_use = "futures do nothing unless you `.await` or poll them"]
+pub struct Pending<T> {
+    _data: marker::PhantomData<fn() -> T>,
+}
+
+/// Creates a future which never resolves, representing a computation that never
+/// finishes.
+///
+/// # Examples
+///
+/// ```no_run
+/// use std::future;
+///
+/// # async fn run() {
+/// let future = future::pending();
+/// let () = future.await;
+/// unreachable!();
+/// # }
+/// ```
+#[stable(feature = "future_readiness_fns", since = "1.48.0")]
+pub fn pending<T>() -> Pending<T> {
+}
+
+#[stable(feature = "future_readiness_fns", since = "1.48.0")]
+impl<T> Future for Pending<T> {
+    type Output = T;
+
+    fn poll(self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<T> {
+}
+}
+
+#[stable(feature = "future_readiness_fns", since = "1.48.0")]
+impl<T> Debug for Pending<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
+}
+
+#[stable(feature = "future_readiness_fns", since = "1.48.0")]
+impl<T> Clone for Pending<T> {
+    fn clone(&self) -> Self {
+}
+}
+}
+mod poll_fn {
+use crate::fmt;
+use crate::future::Future;
+use crate::pin::Pin;
+use crate::task::{Context, Poll};
+
+/// Creates a future that wraps a function returning [`Poll`].
+///
+/// Polling the future delegates to the wrapped function. If the returned future is pinned, then the
+/// captured environment of the wrapped function is also pinned in-place, so as long as the closure
+/// does not move out of its captures it can soundly create pinned references to them.
+///
+/// # Examples
+///
+/// ```
+/// # async fn run() {
+/// use core::future::poll_fn;
+/// use std::task::{Context, Poll};
+///
+/// fn read_line(_cx: &mut Context<'_>) -> Poll<String> {
+///     Poll::Ready("Hello, World!".into())
+/// }
+///
+/// let read_future = poll_fn(read_line);
+/// assert_eq!(read_future.await, "Hello, World!".to_owned());
+/// # }
+/// ```
+#[stable(feature = "future_poll_fn", since = "1.64.0")]
+pub fn poll_fn<T, F>(f: F) -> PollFn<F>
+where
+    F: FnMut(&mut Context<'_>) -> Poll<T>,
+{
+}
+
+/// A Future that wraps a function returning [`Poll`].
+///
+/// This `struct` is created by [`poll_fn()`]. See its
+/// documentation for more.
+#[must_use = "futures do nothing unless you `.await` or poll them"]
+#[stable(feature = "future_poll_fn", since = "1.64.0")]
+pub struct PollFn<F> {
+    f: F,
+}
+
+#[stable(feature = "future_poll_fn", since = "1.64.0")]
+impl<F: Unpin> Unpin for PollFn<F> {}
+
+#[stable(feature = "future_poll_fn", since = "1.64.0")]
+impl<F> fmt::Debug for PollFn<F> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
+}
+
+#[stable(feature = "future_poll_fn", since = "1.64.0")]
+impl<T, F> Future for PollFn<F>
+where
+    F: FnMut(&mut Context<'_>) -> Poll<T>,
+{
+    type Output = T;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<T> {
+}
+}
+}
+mod ready {
+use crate::future::Future;
+use crate::pin::Pin;
+use crate::task::{Context, Poll};
+
+/// A future that is immediately ready with a value.
+///
+/// This `struct` is created by [`ready()`]. See its
+/// documentation for more.
+#[stable(feature = "future_readiness_fns", since = "1.48.0")]
+#[derive(Debug, Clone)]
+#[must_use = "futures do nothing unless you `.await` or poll them"]
+pub struct Ready<T>(Option<T>);
+
+#[stable(feature = "future_readiness_fns", since = "1.48.0")]
+impl<T> Unpin for Ready<T> {}
+
+#[stable(feature = "future_readiness_fns", since = "1.48.0")]
+impl<T> Future for Ready<T> {
+    type Output = T;
+
+    #[inline]
+    fn poll(mut self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<T> {
+}
+}
+
+impl<T> Ready<T> {
+    /// Consumes the `Ready`, returning the wrapped value.
+    ///
+    /// # Panics
+    ///
+    /// Will panic if this [`Ready`] was already polled to completion.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ready_into_inner)]
+    /// use std::future;
+    ///
+    /// let a = future::ready(1);
+    /// assert_eq!(a.into_inner(), 1);
+    /// ```
+    #[unstable(feature = "ready_into_inner", issue = "101196")]
+    #[must_use]
+    #[inline]
+    pub fn into_inner(self) -> T {
+}
+}
+
+/// Creates a future that is immediately ready with a value.
+///
+/// Futures created through this function are functionally similar to those
+/// created through `async {}`. The main difference is that futures created
+/// through this function are named and implement `Unpin`.
+///
+/// # Examples
+///
+/// ```
+/// use std::future;
+///
+/// # async fn run() {
+/// let a = future::ready(1);
+/// assert_eq!(a.await, 1);
+/// # }
+/// ```
+#[stable(feature = "future_readiness_fns", since = "1.48.0")]
+pub fn ready<T>(t: T) -> Ready<T> {
+}
+}
+
+#[stable(feature = "futures_api", since = "1.36.0")]
+pub use self::future::Future;
+
+#[unstable(feature = "future_join", issue = "91642")]
+pub use self::join::join;
+
+#[stable(feature = "into_future", since = "1.64.0")]
+pub use into_future::IntoFuture;
+
+#[stable(feature = "future_readiness_fns", since = "1.48.0")]
+pub use pending::{pending, Pending};
+#[stable(feature = "future_readiness_fns", since = "1.48.0")]
+pub use ready::{ready, Ready};
+
+#[stable(feature = "future_poll_fn", since = "1.64.0")]
+pub use poll_fn::{poll_fn, PollFn};
+
+/// This type is needed because:
+///
+/// a) Generators cannot implement `for<'a, 'b> Generator<&'a mut Context<'b>>`, so we need to pass
+///    a raw pointer (see <https://github.com/rust-lang/rust/issues/68923>).
+/// b) Raw pointers and `NonNull` aren't `Send` or `Sync`, so that would make every single future
+///    non-Send/Sync as well, and we don't want that.
+///
+/// It also simplifies the HIR lowering of `.await`.
+#[doc(hidden)]
+#[unstable(feature = "gen_future", issue = "50547")]
+#[derive(Debug, Copy, Clone)]
+pub struct ResumeTy(NonNull<Context<'static>>);
+
+#[unstable(feature = "gen_future", issue = "50547")]
+unsafe impl Send for ResumeTy {}
+
+#[unstable(feature = "gen_future", issue = "50547")]
+unsafe impl Sync for ResumeTy {}}
+pub mod task {
+#![stable(feature = "futures_api", since = "1.36.0")]
+
+//! Types and Traits for working with asynchronous tasks.
+
+mod poll {
+#![stable(feature = "futures_api", since = "1.36.0")]
+
+use crate::convert;
+use crate::ops::{self, ControlFlow};
+use crate::result::Result;
+use crate::task::Ready;
+
+/// Indicates whether a value is available or if the current task has been
+/// scheduled to receive a wakeup instead.
+#[must_use = "this `Poll` may be a `Pending` variant, which should be handled"]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[stable(feature = "futures_api", since = "1.36.0")]
+pub enum Poll<T> {
+    /// Represents that a value is immediately ready.
+    #[lang = "Ready"]
+    #[stable(feature = "futures_api", since = "1.36.0")]
+    Ready(#[stable(feature = "futures_api", since = "1.36.0")] T),
+
+    /// Represents that a value is not ready yet.
+    ///
+    /// When a function returns `Pending`, the function *must* also
+    /// ensure that the current task is scheduled to be awoken when
+    /// progress can be made.
+    #[lang = "Pending"]
+    #[stable(feature = "futures_api", since = "1.36.0")]
+    Pending,
+}
+
+impl<T> Poll<T> {
+    /// Maps a `Poll<T>` to `Poll<U>` by applying a function to a contained value.
+    ///
+    /// # Examples
+    ///
+    /// Converts a <code>Poll<[String]></code> into a <code>Poll<[usize]></code>, consuming
+    /// the original:
+    ///
+    /// [String]: ../../std/string/struct.String.html "String"
+    /// ```
+    /// # use core::task::Poll;
+    /// let poll_some_string = Poll::Ready(String::from("Hello, World!"));
+    /// // `Poll::map` takes self *by value*, consuming `poll_some_string`
+    /// let poll_some_len = poll_some_string.map(|s| s.len());
+    ///
+    /// assert_eq!(poll_some_len, Poll::Ready(13));
+    /// ```
+    #[stable(feature = "futures_api", since = "1.36.0")]
+    pub fn map<U, F>(self, f: F) -> Poll<U>
+    where
+        F: FnOnce(T) -> U,
+    {
+}
+
+    /// Returns `true` if the poll is a [`Poll::Ready`] value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use core::task::Poll;
+    /// let x: Poll<u32> = Poll::Ready(2);
+    /// assert_eq!(x.is_ready(), true);
+    ///
+    /// let x: Poll<u32> = Poll::Pending;
+    /// assert_eq!(x.is_ready(), false);
+    /// ```
+    #[inline]
+    #[rustc_const_stable(feature = "const_poll", since = "1.49.0")]
+    #[stable(feature = "futures_api", since = "1.36.0")]
+    pub const fn is_ready(&self) -> bool {
+}
+
+    /// Returns `true` if the poll is a [`Pending`] value.
+    ///
+    /// [`Pending`]: Poll::Pending
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use core::task::Poll;
+    /// let x: Poll<u32> = Poll::Ready(2);
+    /// assert_eq!(x.is_pending(), false);
+    ///
+    /// let x: Poll<u32> = Poll::Pending;
+    /// assert_eq!(x.is_pending(), true);
+    /// ```
+    #[inline]
+    #[rustc_const_stable(feature = "const_poll", since = "1.49.0")]
+    #[stable(feature = "futures_api", since = "1.36.0")]
+    pub const fn is_pending(&self) -> bool {
+}
+
+    /// Extracts the successful type of a [`Poll<T>`].
+    ///
+    /// When combined with the `?` operator, this function will
+    /// propagate any [`Poll::Pending`] values to the caller, and
+    /// extract the `T` from [`Poll::Ready`].
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// #![feature(poll_ready)]
+    ///
+    /// use std::task::{Context, Poll};
+    /// use std::future::{self, Future};
+    /// use std::pin::Pin;
+    ///
+    /// pub fn do_poll(cx: &mut Context<'_>) -> Poll<()> {
+    ///     let mut fut = future::ready(42);
+    ///     let fut = Pin::new(&mut fut);
+    ///
+    ///     let num = fut.poll(cx).ready()?;
+    ///     # drop(num);
+    ///     // ... use num
+    ///
+    ///     Poll::Ready(())
+    /// }
+    /// ```
+    #[inline]
+    #[unstable(feature = "poll_ready", issue = "89780")]
+    pub fn ready(self) -> Ready<T> {
+}
+}
+
+impl<T, E> Poll<Result<T, E>> {
+    /// Maps a `Poll<Result<T, E>>` to `Poll<Result<U, E>>` by applying a
+    /// function to a contained `Poll::Ready(Ok)` value, leaving all other
+    /// variants untouched.
+    ///
+    /// This function can be used to compose the results of two functions.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use core::task::Poll;
+    /// let res: Poll<Result<u8, _>> = Poll::Ready("12".parse());
+    /// let squared = res.map_ok(|n| n * n);
+    /// assert_eq!(squared, Poll::Ready(Ok(144)));
+    /// ```
+    #[stable(feature = "futures_api", since = "1.36.0")]
+    pub fn map_ok<U, F>(self, f: F) -> Poll<Result<U, E>>
+    where
+        F: FnOnce(T) -> U,
+    {
+}
+
+    /// Maps a `Poll::Ready<Result<T, E>>` to `Poll::Ready<Result<T, F>>` by
+    /// applying a function to a contained `Poll::Ready(Err)` value, leaving all other
+    /// variants untouched.
+    ///
+    /// This function can be used to pass through a successful result while handling
+    /// an error.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use core::task::Poll;
+    /// let res: Poll<Result<u8, _>> = Poll::Ready("oops".parse());
+    /// let res = res.map_err(|_| 0_u8);
+    /// assert_eq!(res, Poll::Ready(Err(0)));
+    /// ```
+    #[stable(feature = "futures_api", since = "1.36.0")]
+    pub fn map_err<U, F>(self, f: F) -> Poll<Result<T, U>>
+    where
+        F: FnOnce(E) -> U,
+    {
+}
+}
+
+impl<T, E> Poll<Option<Result<T, E>>> {
+    /// Maps a `Poll<Option<Result<T, E>>>` to `Poll<Option<Result<U, E>>>` by
+    /// applying a function to a contained `Poll::Ready(Some(Ok))` value,
+    /// leaving all other variants untouched.
+    ///
+    /// This function can be used to compose the results of two functions.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use core::task::Poll;
+    /// let res: Poll<Option<Result<u8, _>>> = Poll::Ready(Some("12".parse()));
+    /// let squared = res.map_ok(|n| n * n);
+    /// assert_eq!(squared, Poll::Ready(Some(Ok(144))));
+    /// ```
+    #[stable(feature = "poll_map", since = "1.51.0")]
+    pub fn map_ok<U, F>(self, f: F) -> Poll<Option<Result<U, E>>>
+    where
+        F: FnOnce(T) -> U,
+    {
+}
+
+    /// Maps a `Poll::Ready<Option<Result<T, E>>>` to
+    /// `Poll::Ready<Option<Result<T, F>>>` by applying a function to a
+    /// contained `Poll::Ready(Some(Err))` value, leaving all other variants
+    /// untouched.
+    ///
+    /// This function can be used to pass through a successful result while handling
+    /// an error.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use core::task::Poll;
+    /// let res: Poll<Option<Result<u8, _>>> = Poll::Ready(Some("oops".parse()));
+    /// let res = res.map_err(|_| 0_u8);
+    /// assert_eq!(res, Poll::Ready(Some(Err(0))));
+    /// ```
+    #[stable(feature = "poll_map", since = "1.51.0")]
+    pub fn map_err<U, F>(self, f: F) -> Poll<Option<Result<T, U>>>
+    where
+        F: FnOnce(E) -> U,
+    {
+}
+}
+
+#[stable(feature = "futures_api", since = "1.36.0")]
+#[rustc_const_unstable(feature = "const_convert", issue = "88674")]
+impl<T> const From<T> for Poll<T> {
+    /// Moves the value into a [`Poll::Ready`] to make a `Poll<T>`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use core::task::Poll;
+    /// assert_eq!(Poll::from(true), Poll::Ready(true));
+    /// ```
+    fn from(t: T) -> Poll<T> {
+}
+}
+
+#[unstable(feature = "try_trait_v2", issue = "84277")]
+impl<T, E> ops::Try for Poll<Result<T, E>> {
+}
+
+#[unstable(feature = "try_trait_v2", issue = "84277")]
+impl<T, E, F: From<E>> ops::FromResidual<Result<convert::Infallible, E>> for Poll<Result<T, F>> {
+}
+
+#[unstable(feature = "try_trait_v2", issue = "84277")]
+impl<T, E> ops::Try for Poll<Option<Result<T, E>>> {
+}
+
+#[unstable(feature = "try_trait_v2", issue = "84277")]
+impl<T, E, F: From<E>> ops::FromResidual<Result<convert::Infallible, E>>
+    for Poll<Option<Result<T, F>>>
+{
+}
+}
+#[stable(feature = "futures_api", since = "1.36.0")]
+pub use self::poll::Poll;
+
+mod wake {
+#![stable(feature = "futures_api", since = "1.36.0")]
+
+use crate::fmt;
+use crate::marker::{PhantomData, Unpin};
+
+/// A `RawWaker` allows the implementor of a task executor to create a [`Waker`]
+/// which provides customized wakeup behavior.
+///
+/// [vtable]: https://en.wikipedia.org/wiki/Virtual_method_table
+///
+/// It consists of a data pointer and a [virtual function pointer table (vtable)][vtable]
+/// that customizes the behavior of the `RawWaker`.
+#[derive(PartialEq, Debug)]
+#[stable(feature = "futures_api", since = "1.36.0")]
+pub struct RawWaker {
+    /// A data pointer, which can be used to store arbitrary data as required
+    /// by the executor. This could be e.g. a type-erased pointer to an `Arc`
+    /// that is associated with the task.
+    /// The value of this field gets passed to all functions that are part of
+    /// the vtable as the first parameter.
+    data: *const (),
+    /// Virtual function pointer table that customizes the behavior of this waker.
+    vtable: &'static RawWakerVTable,
+}
+
+impl RawWaker {
+    /// Creates a new `RawWaker` from the provided `data` pointer and `vtable`.
+    ///
+    /// The `data` pointer can be used to store arbitrary data as required
+    /// by the executor. This could be e.g. a type-erased pointer to an `Arc`
+    /// that is associated with the task.
+    /// The value of this pointer will get passed to all functions that are part
+    /// of the `vtable` as the first parameter.
+    ///
+    /// The `vtable` customizes the behavior of a `Waker` which gets created
+    /// from a `RawWaker`. For each operation on the `Waker`, the associated
+    /// function in the `vtable` of the underlying `RawWaker` will be called.
+    #[inline]
+    #[rustc_promotable]
+    #[stable(feature = "futures_api", since = "1.36.0")]
+    #[rustc_const_stable(feature = "futures_api", since = "1.36.0")]
+    #[must_use]
+    pub const fn new(data: *const (), vtable: &'static RawWakerVTable) -> RawWaker {
+}
+
+    /// Get the `data` pointer used to create this `RawWaker`.
+    #[inline]
+    #[must_use]
+    #[unstable(feature = "waker_getters", issue = "87021")]
+    pub fn data(&self) -> *const () {
+}
+
+    /// Get the `vtable` pointer used to create this `RawWaker`.
+    #[inline]
+    #[must_use]
+    #[unstable(feature = "waker_getters", issue = "87021")]
+    pub fn vtable(&self) -> &'static RawWakerVTable {
+}
+}
+
+/// A virtual function pointer table (vtable) that specifies the behavior
+/// of a [`RawWaker`].
+///
+/// The pointer passed to all functions inside the vtable is the `data` pointer
+/// from the enclosing [`RawWaker`] object.
+///
+/// The functions inside this struct are only intended to be called on the `data`
+/// pointer of a properly constructed [`RawWaker`] object from inside the
+/// [`RawWaker`] implementation. Calling one of the contained functions using
+/// any other `data` pointer will cause undefined behavior.
+///
+/// These functions must all be thread-safe (even though [`RawWaker`] is
+/// <code>\![Send] + \![Sync]</code>)
+/// because [`Waker`] is <code>[Send] + [Sync]</code>, and thus wakers may be moved to
+/// arbitrary threads or invoked by `&` reference. For example, this means that if the
+/// `clone` and `drop` functions manage a reference count, they must do so atomically.
+#[stable(feature = "futures_api", since = "1.36.0")]
+#[derive(PartialEq, Copy, Clone, Debug)]
+pub struct RawWakerVTable {
+    /// This function will be called when the [`RawWaker`] gets cloned, e.g. when
+    /// the [`Waker`] in which the [`RawWaker`] is stored gets cloned.
+    ///
+    /// The implementation of this function must retain all resources that are
+    /// required for this additional instance of a [`RawWaker`] and associated
+    /// task. Calling `wake` on the resulting [`RawWaker`] should result in a wakeup
+    /// of the same task that would have been awoken by the original [`RawWaker`].
+    clone: unsafe fn(*const ()) -> RawWaker,
+
+    /// This function will be called when `wake` is called on the [`Waker`].
+    /// It must wake up the task associated with this [`RawWaker`].
+    ///
+    /// The implementation of this function must make sure to release any
+    /// resources that are associated with this instance of a [`RawWaker`] and
+    /// associated task.
+    wake: unsafe fn(*const ()),
+
+    /// This function will be called when `wake_by_ref` is called on the [`Waker`].
+    /// It must wake up the task associated with this [`RawWaker`].
+    ///
+    /// This function is similar to `wake`, but must not consume the provided data
+    /// pointer.
+    wake_by_ref: unsafe fn(*const ()),
+
+    /// This function gets called when a [`RawWaker`] gets dropped.
+    ///
+    /// The implementation of this function must make sure to release any
+    /// resources that are associated with this instance of a [`RawWaker`] and
+    /// associated task.
+    drop: unsafe fn(*const ()),
+}
+
+impl RawWakerVTable {
+    /// Creates a new `RawWakerVTable` from the provided `clone`, `wake`,
+    /// `wake_by_ref`, and `drop` functions.
+    ///
+    /// These functions must all be thread-safe (even though [`RawWaker`] is
+    /// <code>\![Send] + \![Sync]</code>)
+    /// because [`Waker`] is <code>[Send] + [Sync]</code>, and thus wakers may be moved to
+    /// arbitrary threads or invoked by `&` reference. For example, this means that if the
+    /// `clone` and `drop` functions manage a reference count, they must do so atomically.
+    ///
+    /// # `clone`
+    ///
+    /// This function will be called when the [`RawWaker`] gets cloned, e.g. when
+    /// the [`Waker`] in which the [`RawWaker`] is stored gets cloned.
+    ///
+    /// The implementation of this function must retain all resources that are
+    /// required for this additional instance of a [`RawWaker`] and associated
+    /// task. Calling `wake` on the resulting [`RawWaker`] should result in a wakeup
+    /// of the same task that would have been awoken by the original [`RawWaker`].
+    ///
+    /// # `wake`
+    ///
+    /// This function will be called when `wake` is called on the [`Waker`].
+    /// It must wake up the task associated with this [`RawWaker`].
+    ///
+    /// The implementation of this function must make sure to release any
+    /// resources that are associated with this instance of a [`RawWaker`] and
+    /// associated task.
+    ///
+    /// # `wake_by_ref`
+    ///
+    /// This function will be called when `wake_by_ref` is called on the [`Waker`].
+    /// It must wake up the task associated with this [`RawWaker`].
+    ///
+    /// This function is similar to `wake`, but must not consume the provided data
+    /// pointer.
+    ///
+    /// # `drop`
+    ///
+    /// This function gets called when a [`RawWaker`] gets dropped.
+    ///
+    /// The implementation of this function must make sure to release any
+    /// resources that are associated with this instance of a [`RawWaker`] and
+    /// associated task.
+    #[rustc_promotable]
+    #[stable(feature = "futures_api", since = "1.36.0")]
+    #[rustc_const_stable(feature = "futures_api", since = "1.36.0")]
+    pub const fn new(
+        clone: unsafe fn(*const ()) -> RawWaker,
+        wake: unsafe fn(*const ()),
+        wake_by_ref: unsafe fn(*const ()),
+        drop: unsafe fn(*const ()),
+    ) -> Self {
+}
+}
+
+/// The context of an asynchronous task.
+///
+/// Currently, `Context` only serves to provide access to a [`&Waker`](Waker)
+/// which can be used to wake the current task.
+#[stable(feature = "futures_api", since = "1.36.0")]
+pub struct Context<'a> {
+    waker: &'a Waker,
+    // Ensure we future-proof against variance changes by forcing
+    // the lifetime to be invariant (argument-position lifetimes
+    // are contravariant while return-position lifetimes are
+    // covariant).
+    _marker: PhantomData<fn(&'a ()) -> &'a ()>,
+}
+
+impl<'a> Context<'a> {
+    /// Create a new `Context` from a [`&Waker`](Waker).
+    #[stable(feature = "futures_api", since = "1.36.0")]
+    #[rustc_const_unstable(feature = "const_waker", issue = "102012")]
+    #[must_use]
+    #[inline]
+    pub const fn from_waker(waker: &'a Waker) -> Self {
+}
+
+    /// Returns a reference to the [`Waker`] for the current task.
+    #[stable(feature = "futures_api", since = "1.36.0")]
+    #[rustc_const_unstable(feature = "const_waker", issue = "102012")]
+    #[must_use]
+    #[inline]
+    pub const fn waker(&self) -> &'a Waker {
+}
+}
+
+#[stable(feature = "futures_api", since = "1.36.0")]
+impl fmt::Debug for Context<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
+}
+
+/// A `Waker` is a handle for waking up a task by notifying its executor that it
+/// is ready to be run.
+///
+/// This handle encapsulates a [`RawWaker`] instance, which defines the
+/// executor-specific wakeup behavior.
+///
+/// The typical life of a `Waker` is that it is constructed by an executor, wrapped in a
+/// [`Context`], then passed to [`Future::poll()`]. Then, if the future chooses to return
+/// [`Poll::Pending`], it must also store the waker somehow and call [`Waker::wake()`] when
+/// the future should be polled again.
+///
+/// Implements [`Clone`], [`Send`], and [`Sync`]; therefore, a waker may be invoked
+/// from any thread, including ones not in any way managed by the executor. For example,
+/// this might be done to wake a future when a blocking function call completes on another
+/// thread.
+///
+/// [`Future::poll()`]: core::future::Future::poll
+/// [`Poll::Pending`]: core::task::Poll::Pending
+#[repr(transparent)]
+#[stable(feature = "futures_api", since = "1.36.0")]
+pub struct Waker {
+    waker: RawWaker,
+}
+
+#[stable(feature = "futures_api", since = "1.36.0")]
+impl Unpin for Waker {}
+#[stable(feature = "futures_api", since = "1.36.0")]
+unsafe impl Send for Waker {}
+#[stable(feature = "futures_api", since = "1.36.0")]
+unsafe impl Sync for Waker {}
+
+impl Waker {
+    /// Wake up the task associated with this `Waker`.
+    ///
+    /// As long as the executor keeps running and the task is not finished, it is
+    /// guaranteed that each invocation of [`wake()`](Self::wake) (or
+    /// [`wake_by_ref()`](Self::wake_by_ref)) will be followed by at least one
+    /// [`poll()`] of the task to which this `Waker` belongs. This makes
+    /// it possible to temporarily yield to other tasks while running potentially
+    /// unbounded processing loops.
+    ///
+    /// Note that the above implies that multiple wake-ups may be coalesced into a
+    /// single [`poll()`] invocation by the runtime.
+    ///
+    /// Also note that yielding to competing tasks is not guaranteed: it is the
+    /// executor’s choice which task to run and the executor may choose to run the
+    /// current task again.
+    ///
+    /// [`poll()`]: crate::future::Future::poll
+    #[inline]
+    #[stable(feature = "futures_api", since = "1.36.0")]
+    pub fn wake(self) {
+}
+
+    /// Wake up the task associated with this `Waker` without consuming the `Waker`.
+    ///
+    /// This is similar to [`wake()`](Self::wake), but may be slightly less efficient in
+    /// the case where an owned `Waker` is available. This method should be preferred to
+    /// calling `waker.clone().wake()`.
+    #[inline]
+    #[stable(feature = "futures_api", since = "1.36.0")]
+    pub fn wake_by_ref(&self) {
+}
+
+    /// Returns `true` if this `Waker` and another `Waker` would awake the same task.
+    ///
+    /// This function works on a best-effort basis, and may return false even
+    /// when the `Waker`s would awaken the same task. However, if this function
+    /// returns `true`, it is guaranteed that the `Waker`s will awaken the same task.
+    ///
+    /// This function is primarily used for optimization purposes.
+    #[inline]
+    #[must_use]
+    #[stable(feature = "futures_api", since = "1.36.0")]
+    pub fn will_wake(&self, other: &Waker) -> bool {
+}
+
+    /// Creates a new `Waker` from [`RawWaker`].
+    ///
+    /// The behavior of the returned `Waker` is undefined if the contract defined
+    /// in [`RawWaker`]'s and [`RawWakerVTable`]'s documentation is not upheld.
+    /// Therefore this method is unsafe.
+    #[inline]
+    #[must_use]
+    #[stable(feature = "futures_api", since = "1.36.0")]
+    #[rustc_const_unstable(feature = "const_waker", issue = "102012")]
+    pub const unsafe fn from_raw(waker: RawWaker) -> Waker {
+}
+
+    /// Get a reference to the underlying [`RawWaker`].
+    #[inline]
+    #[must_use]
+    #[unstable(feature = "waker_getters", issue = "87021")]
+    pub fn as_raw(&self) -> &RawWaker {
+}
+}
+
+#[stable(feature = "futures_api", since = "1.36.0")]
+impl Clone for Waker {
+    #[inline]
+    fn clone(&self) -> Self {
+}
+}
+
+#[stable(feature = "futures_api", since = "1.36.0")]
+impl Drop for Waker {
+    #[inline]
+    fn drop(&mut self) {
+}
+}
+
+#[stable(feature = "futures_api", since = "1.36.0")]
+impl fmt::Debug for Waker {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
+}
+}
+#[stable(feature = "futures_api", since = "1.36.0")]
+pub use self::wake::{Context, RawWaker, RawWakerVTable, Waker};
+
+mod ready {
+use core::convert;
+use core::fmt;
+use core::ops::{ControlFlow, FromResidual, Try};
+use core::task::Poll;
+
+/// Extracts the successful type of a [`Poll<T>`].
+///
+/// This macro bakes in propagation of [`Pending`] signals by returning early.
+///
+/// [`Poll<T>`]: crate::task::Poll
+/// [`Pending`]: crate::task::Poll::Pending
+///
+/// # Examples
+///
+/// ```
+/// use std::task::{ready, Context, Poll};
+/// use std::future::{self, Future};
+/// use std::pin::Pin;
+///
+/// pub fn do_poll(cx: &mut Context<'_>) -> Poll<()> {
+///     let mut fut = future::ready(42);
+///     let fut = Pin::new(&mut fut);
+///
+///     let num = ready!(fut.poll(cx));
+///     # drop(num);
+///     // ... use num
+///
+///     Poll::Ready(())
+/// }
+/// ```
+///
+/// The `ready!` call expands to:
+///
+/// ```
+/// # use std::task::{Context, Poll};
+/// # use std::future::{self, Future};
+/// # use std::pin::Pin;
+/// #
+/// # pub fn do_poll(cx: &mut Context<'_>) -> Poll<()> {
+///     # let mut fut = future::ready(42);
+///     # let fut = Pin::new(&mut fut);
+///     #
+/// let num = match fut.poll(cx) {
+///     Poll::Ready(t) => t,
+///     Poll::Pending => return Poll::Pending,
+/// };
+///     # drop(num);
+///     # // ... use num
+///     #
+///     # Poll::Ready(())
+/// # }
+/// ```
+#[stable(feature = "ready_macro", since = "1.64.0")]
+#[rustc_macro_transparency = "semitransparent"]
+pub macro ready($e:expr) {
+    match $e {
+        $crate::task::Poll::Ready(t) => t,
+        $crate::task::Poll::Pending => {
+            return $crate::task::Poll::Pending;
+        }
+    }
+}
+
+/// Extracts the successful type of a [`Poll<T>`].
+///
+/// See [`Poll::ready`] for details.
+#[unstable(feature = "poll_ready", issue = "89780")]
+pub struct Ready<T>(pub(crate) Poll<T>);
+
+#[unstable(feature = "poll_ready", issue = "89780")]
+impl<T> Try for Ready<T> {
+    type Output = T;
+    type Residual = Ready<convert::Infallible>;
+
+    #[inline]
+    fn from_output(output: Self::Output) -> Self {
+}
+
+    #[inline]
+    fn branch(self) -> ControlFlow<Self::Residual, Self::Output> {
+}
+}
+
+#[unstable(feature = "poll_ready", issue = "89780")]
+impl<T> FromResidual for Ready<T> {
+}
+
+#[unstable(feature = "poll_ready", issue = "89780")]
+impl<T> FromResidual<Ready<convert::Infallible>> for Poll<T> {
+}
+
+#[unstable(feature = "poll_ready", issue = "89780")]
+impl<T> fmt::Debug for Ready<T> {
+}
+}
+#[stable(feature = "ready_macro", since = "1.64.0")]
+pub use ready::ready;
+#[unstable(feature = "poll_ready", issue = "89780")]
+pub use ready::Ready;
+}
+
+/* Heap memory allocator trait */
 #[allow(missing_docs)]
-pub mod lossy {
+pub mod alloc {
+//! Memory allocation APIs
+
+#![stable(feature = "alloc_module", since = "1.28.0")]
+
+mod global {
+use crate::alloc::Layout;
+use crate::cmp;
+use crate::ptr;
+
+/// A memory allocator that can be registered as the standard library’s default
+/// through the `#[global_allocator]` attribute.
+///
+/// Some of the methods require that a memory block be *currently
+/// allocated* via an allocator. This means that:
+///
+/// * the starting address for that memory block was previously
+///   returned by a previous call to an allocation method
+///   such as `alloc`, and
+///
+/// * the memory block has not been subsequently deallocated, where
+///   blocks are deallocated either by being passed to a deallocation
+///   method such as `dealloc` or by being
+///   passed to a reallocation method that returns a non-null pointer.
+///
+///
+/// # Example
+///
+/// ```
+/// use std::alloc::{GlobalAlloc, Layout};
+/// use std::cell::UnsafeCell;
+/// use std::ptr::null_mut;
+/// use std::sync::atomic::{
+///     AtomicUsize,
+///     Ordering::{Acquire, SeqCst},
+/// };
+///
+/// const ARENA_SIZE: usize = 128 * 1024;
+/// const MAX_SUPPORTED_ALIGN: usize = 4096;
+/// #[repr(C, align(4096))] // 4096 == MAX_SUPPORTED_ALIGN
+/// struct SimpleAllocator {
+///     arena: UnsafeCell<[u8; ARENA_SIZE]>,
+///     remaining: AtomicUsize, // we allocate from the top, counting down
+/// }
+///
+/// #[global_allocator]
+/// static ALLOCATOR: SimpleAllocator = SimpleAllocator {
+///     arena: UnsafeCell::new([0x55; ARENA_SIZE]),
+///     remaining: AtomicUsize::new(ARENA_SIZE),
+/// };
+///
+/// unsafe impl Sync for SimpleAllocator {}
+///
+/// unsafe impl GlobalAlloc for SimpleAllocator {
+///     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
+///         let size = layout.size();
+///         let align = layout.align();
+///
+///         // `Layout` contract forbids making a `Layout` with align=0, or align not power of 2.
+///         // So we can safely use a mask to ensure alignment without worrying about UB.
+///         let align_mask_to_round_down = !(align - 1);
+///
+///         if align > MAX_SUPPORTED_ALIGN {
+///             return null_mut();
+///         }
+///
+///         let mut allocated = 0;
+///         if self
+///             .remaining
+///             .fetch_update(SeqCst, SeqCst, |mut remaining| {
+///                 if size > remaining {
+///                     return None;
+///                 }
+///                 remaining -= size;
+///                 remaining &= align_mask_to_round_down;
+///                 allocated = remaining;
+///                 Some(remaining)
+///             })
+///             .is_err()
+///         {
+///             return null_mut();
+///         };
+///         self.arena.get().cast::<u8>().add(allocated)
+///     }
+///     unsafe fn dealloc(&self, _ptr: *mut u8, _layout: Layout) {}
+/// }
+///
+/// fn main() {
+///     let _s = format!("allocating a string!");
+///     let currently = ALLOCATOR.remaining.load(Acquire);
+///     println!("allocated so far: {}", ARENA_SIZE - currently);
+/// }
+/// ```
+///
+/// # Safety
+///
+/// The `GlobalAlloc` trait is an `unsafe` trait for a number of reasons, and
+/// implementors must ensure that they adhere to these contracts:
+///
+/// * It's undefined behavior if global allocators unwind. This restriction may
+///   be lifted in the future, but currently a panic from any of these
+///   functions may lead to memory unsafety.
+///
+/// * `Layout` queries and calculations in general must be correct. Callers of
+///   this trait are allowed to rely on the contracts defined on each method,
+///   and implementors must ensure such contracts remain true.
+///
+/// * You must not rely on allocations actually happening, even if there are explicit
+///   heap allocations in the source. The optimizer may detect unused allocations that it can either
+///   eliminate entirely or move to the stack and thus never invoke the allocator. The
+///   optimizer may further assume that allocation is infallible, so code that used to fail due
+///   to allocator failures may now suddenly work because the optimizer worked around the
+///   need for an allocation. More concretely, the following code example is unsound, irrespective
+///   of whether your custom allocator allows counting how many allocations have happened.
+///
+///   ```rust,ignore (unsound and has placeholders)
+///   drop(Box::new(42));
+///   let number_of_heap_allocs = /* call private allocator API */;
+///   unsafe { std::intrinsics::assume(number_of_heap_allocs > 0); }
+///   ```
+///
+///   Note that the optimizations mentioned above are not the only
+///   optimization that can be applied. You may generally not rely on heap allocations
+///   happening if they can be removed without changing program behavior.
+///   Whether allocations happen or not is not part of the program behavior, even if it
+///   could be detected via an allocator that tracks allocations by printing or otherwise
+///   having side effects.
+#[stable(feature = "global_alloc", since = "1.28.0")]
+pub unsafe trait GlobalAlloc {
+    /// Allocate memory as described by the given `layout`.
+    ///
+    /// Returns a pointer to newly-allocated memory,
+    /// or null to indicate allocation failure.
+    ///
+    /// # Safety
+    ///
+    /// This function is unsafe because undefined behavior can result
+    /// if the caller does not ensure that `layout` has non-zero size.
+    ///
+    /// (Extension subtraits might provide more specific bounds on
+    /// behavior, e.g., guarantee a sentinel address or a null pointer
+    /// in response to a zero-size allocation request.)
+    ///
+    /// The allocated block of memory may or may not be initialized.
+    ///
+    /// # Errors
+    ///
+    /// Returning a null pointer indicates that either memory is exhausted
+    /// or `layout` does not meet this allocator's size or alignment constraints.
+    ///
+    /// Implementations are encouraged to return null on memory
+    /// exhaustion rather than aborting, but this is not
+    /// a strict requirement. (Specifically: it is *legal* to
+    /// implement this trait atop an underlying native allocation
+    /// library that aborts on memory exhaustion.)
+    ///
+    /// Clients wishing to abort computation in response to an
+    /// allocation error are encouraged to call the [`handle_alloc_error`] function,
+    /// rather than directly invoking `panic!` or similar.
+    ///
+    /// [`handle_alloc_error`]: ../../alloc/alloc/fn.handle_alloc_error.html
+    #[stable(feature = "global_alloc", since = "1.28.0")]
+    unsafe fn alloc(&self, layout: Layout) -> *mut u8;
+
+    /// Deallocate the block of memory at the given `ptr` pointer with the given `layout`.
+    ///
+    /// # Safety
+    ///
+    /// This function is unsafe because undefined behavior can result
+    /// if the caller does not ensure all of the following:
+    ///
+    /// * `ptr` must denote a block of memory currently allocated via
+    ///   this allocator,
+    ///
+    /// * `layout` must be the same layout that was used
+    ///   to allocate that block of memory.
+    #[stable(feature = "global_alloc", since = "1.28.0")]
+    unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout);
+
+    /// Behaves like `alloc`, but also ensures that the contents
+    /// are set to zero before being returned.
+    ///
+    /// # Safety
+    ///
+    /// This function is unsafe for the same reasons that `alloc` is.
+    /// However the allocated block of memory is guaranteed to be initialized.
+    ///
+    /// # Errors
+    ///
+    /// Returning a null pointer indicates that either memory is exhausted
+    /// or `layout` does not meet allocator's size or alignment constraints,
+    /// just as in `alloc`.
+    ///
+    /// Clients wishing to abort computation in response to an
+    /// allocation error are encouraged to call the [`handle_alloc_error`] function,
+    /// rather than directly invoking `panic!` or similar.
+    ///
+    /// [`handle_alloc_error`]: ../../alloc/alloc/fn.handle_alloc_error.html
+    #[stable(feature = "global_alloc", since = "1.28.0")]
+    unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut u8 {
+        let size = layout.size();
+        // SAFETY: the safety contract for `alloc` must be upheld by the caller.
+        let ptr = unsafe { self.alloc(layout) };
+        if !ptr.is_null() {
+            // SAFETY: as allocation succeeded, the region from `ptr`
+            // of size `size` is guaranteed to be valid for writes.
+            unsafe { ptr::write_bytes(ptr, 0, size) };
+        }
+        ptr
+    }
+
+    /// Shrink or grow a block of memory to the given `new_size`.
+    /// The block is described by the given `ptr` pointer and `layout`.
+    ///
+    /// If this returns a non-null pointer, then ownership of the memory block
+    /// referenced by `ptr` has been transferred to this allocator.
+    /// The memory may or may not have been deallocated, and should be
+    /// considered unusable. The new memory block is allocated with `layout`,
+    /// but with the `size` updated to `new_size`. This new layout should be
+    /// used when deallocating the new memory block with `dealloc`. The range
+    /// `0..min(layout.size(), new_size)` of the new memory block is
+    /// guaranteed to have the same values as the original block.
+    ///
+    /// If this method returns null, then ownership of the memory
+    /// block has not been transferred to this allocator, and the
+    /// contents of the memory block are unaltered.
+    ///
+    /// # Safety
+    ///
+    /// This function is unsafe because undefined behavior can result
+    /// if the caller does not ensure all of the following:
+    ///
+    /// * `ptr` must be currently allocated via this allocator,
+    ///
+    /// * `layout` must be the same layout that was used
+    ///   to allocate that block of memory,
+    ///
+    /// * `new_size` must be greater than zero.
+    ///
+    /// * `new_size`, when rounded up to the nearest multiple of `layout.align()`,
+    ///   must not overflow (i.e., the rounded value must be less than `usize::MAX`).
+    ///
+    /// (Extension subtraits might provide more specific bounds on
+    /// behavior, e.g., guarantee a sentinel address or a null pointer
+    /// in response to a zero-size allocation request.)
+    ///
+    /// # Errors
+    ///
+    /// Returns null if the new layout does not meet the size
+    /// and alignment constraints of the allocator, or if reallocation
+    /// otherwise fails.
+    ///
+    /// Implementations are encouraged to return null on memory
+    /// exhaustion rather than panicking or aborting, but this is not
+    /// a strict requirement. (Specifically: it is *legal* to
+    /// implement this trait atop an underlying native allocation
+    /// library that aborts on memory exhaustion.)
+    ///
+    /// Clients wishing to abort computation in response to a
+    /// reallocation error are encouraged to call the [`handle_alloc_error`] function,
+    /// rather than directly invoking `panic!` or similar.
+    ///
+    /// [`handle_alloc_error`]: ../../alloc/alloc/fn.handle_alloc_error.html
+    #[stable(feature = "global_alloc", since = "1.28.0")]
+    unsafe fn realloc(&self, ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
+}
+}
+}
+mod layout {
+// Seemingly inconsequential code changes to this file can lead to measurable
+// performance impact on compilation times, due at least in part to the fact
+// that the layout code gets called from many instantiations of the various
+// collections, resulting in having to optimize down excess IR multiple times.
+// Your performance intuition is useless. Run perf.
+
+use crate::cmp;
+use crate::error::Error;
+use crate::fmt;
+use crate::mem::{self, ValidAlign};
+use crate::ptr::NonNull;
+
+// While this function is used in one place and its implementation
+// could be inlined, the previous attempts to do so made rustc
+// slower:
+//
+// * https://github.com/rust-lang/rust/pull/72189
+// * https://github.com/rust-lang/rust/pull/79827
+const fn size_align<T>() -> (usize, usize) {
+}
+
+/// Layout of a block of memory.
+///
+/// An instance of `Layout` describes a particular layout of memory.
+/// You build a `Layout` up as an input to give to an allocator.
+///
+/// All layouts have an associated size and a power-of-two alignment.
+///
+/// (Note that layouts are *not* required to have non-zero size,
+/// even though `GlobalAlloc` requires that all memory requests
+/// be non-zero in size. A caller must either ensure that conditions
+/// like this are met, use specific allocators with looser
+/// requirements, or use the more lenient `Allocator` interface.)
+#[stable(feature = "alloc_layout", since = "1.28.0")]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[lang = "alloc_layout"]
+pub struct Layout {
+    // size of the requested block of memory, measured in bytes.
+    size: usize,
+
+    // alignment of the requested block of memory, measured in bytes.
+    // we ensure that this is always a power-of-two, because API's
+    // like `posix_memalign` require it and it is a reasonable
+    // constraint to impose on Layout constructors.
+    //
+    // (However, we do not analogously require `align >= sizeof(void*)`,
+    //  even though that is *also* a requirement of `posix_memalign`.)
+    align: ValidAlign,
+}
+
+impl Layout {
+    /// Constructs a `Layout` from a given `size` and `align`,
+    /// or returns `LayoutError` if any of the following conditions
+    /// are not met:
+    ///
+    /// * `align` must not be zero,
+    ///
+    /// * `align` must be a power of two,
+    ///
+    /// * `size`, when rounded up to the nearest multiple of `align`,
+    ///    must not overflow isize (i.e., the rounded value must be
+    ///    less than or equal to `isize::MAX`).
+    #[stable(feature = "alloc_layout", since = "1.28.0")]
+    #[rustc_const_stable(feature = "const_alloc_layout_size_align", since = "1.50.0")]
+    #[inline]
+    #[rustc_allow_const_fn_unstable(ptr_alignment_type)]
+    pub const fn from_size_align(size: usize, align: usize) -> Result<Self, LayoutError> {
+}
+
+    #[inline(always)]
+    const fn max_size_for_align(align: ValidAlign) -> usize {
+}
+
+    /// Internal helper constructor to skip revalidating alignment validity.
+    #[inline]
+    const fn from_size_valid_align(size: usize, align: ValidAlign) -> Result<Self, LayoutError> {
+}
+
+    /// Creates a layout, bypassing all checks.
+    ///
+    /// # Safety
+    ///
+    /// This function is unsafe as it does not verify the preconditions from
+    /// [`Layout::from_size_align`].
+    #[stable(feature = "alloc_layout", since = "1.28.0")]
+    #[rustc_const_stable(feature = "const_alloc_layout_unchecked", since = "1.36.0")]
+    #[must_use]
+    #[inline]
+    #[rustc_allow_const_fn_unstable(ptr_alignment_type)]
+    pub const unsafe fn from_size_align_unchecked(size: usize, align: usize) -> Self {
+}
+
+    /// The minimum size in bytes for a memory block of this layout.
+    #[stable(feature = "alloc_layout", since = "1.28.0")]
+    #[rustc_const_stable(feature = "const_alloc_layout_size_align", since = "1.50.0")]
+    #[must_use]
+    #[inline]
+    pub const fn size(&self) -> usize {
+}
+
+    /// The minimum byte alignment for a memory block of this layout.
+    #[stable(feature = "alloc_layout", since = "1.28.0")]
+    #[rustc_const_stable(feature = "const_alloc_layout_size_align", since = "1.50.0")]
+    #[must_use = "this returns the minimum alignment, \
+                  without modifying the layout"]
+    #[inline]
+    #[rustc_allow_const_fn_unstable(ptr_alignment_type)]
+    pub const fn align(&self) -> usize {
+}
+
+    /// Constructs a `Layout` suitable for holding a value of type `T`.
+    #[stable(feature = "alloc_layout", since = "1.28.0")]
+    #[rustc_const_stable(feature = "alloc_layout_const_new", since = "1.42.0")]
+    #[must_use]
+    #[inline]
+    pub const fn new<T>() -> Self {
+}
+
+    /// Produces layout describing a record that could be used to
+    /// allocate backing structure for `T` (which could be a trait
+    /// or other unsized type like a slice).
+    #[stable(feature = "alloc_layout", since = "1.28.0")]
+    #[must_use]
+    #[inline]
+    pub fn for_value<T: ?Sized>(t: &T) -> Self {
+}
+
+    /// Produces layout describing a record that could be used to
+    /// allocate backing structure for `T` (which could be a trait
+    /// or other unsized type like a slice).
+    ///
+    /// # Safety
+    ///
+    /// This function is only safe to call if the following conditions hold:
+    ///
+    /// - If `T` is `Sized`, this function is always safe to call.
+    /// - If the unsized tail of `T` is:
+    ///     - a [slice], then the length of the slice tail must be an initialized
+    ///       integer, and the size of the *entire value*
+    ///       (dynamic tail length + statically sized prefix) must fit in `isize`.
+    ///     - a [trait object], then the vtable part of the pointer must point
+    ///       to a valid vtable for the type `T` acquired by an unsizing coercion,
+    ///       and the size of the *entire value*
+    ///       (dynamic tail length + statically sized prefix) must fit in `isize`.
+    ///     - an (unstable) [extern type], then this function is always safe to
+    ///       call, but may panic or otherwise return the wrong value, as the
+    ///       extern type's layout is not known. This is the same behavior as
+    ///       [`Layout::for_value`] on a reference to an extern type tail.
+    ///     - otherwise, it is conservatively not allowed to call this function.
+    ///
+    /// [trait object]: ../../book/ch17-02-trait-objects.html
+    /// [extern type]: ../../unstable-book/language-features/extern-types.html
+    #[unstable(feature = "layout_for_ptr", issue = "69835")]
+    #[must_use]
+    pub unsafe fn for_value_raw<T: ?Sized>(t: *const T) -> Self {
+}
+
+    /// Creates a `NonNull` that is dangling, but well-aligned for this Layout.
+    ///
+    /// Note that the pointer value may potentially represent a valid pointer,
+    /// which means this must not be used as a "not yet initialized"
+    /// sentinel value. Types that lazily allocate must track initialization by
+    /// some other means.
+    #[unstable(feature = "alloc_layout_extra", issue = "55724")]
+    #[rustc_const_unstable(feature = "alloc_layout_extra", issue = "55724")]
+    #[must_use]
+    #[inline]
+    pub const fn dangling(&self) -> NonNull<u8> {
+}
+
+    /// Creates a layout describing the record that can hold a value
+    /// of the same layout as `self`, but that also is aligned to
+    /// alignment `align` (measured in bytes).
+    ///
+    /// If `self` already meets the prescribed alignment, then returns
+    /// `self`.
+    ///
+    /// Note that this method does not add any padding to the overall
+    /// size, regardless of whether the returned layout has a different
+    /// alignment. In other words, if `K` has size 16, `K.align_to(32)`
+    /// will *still* have size 16.
+    ///
+    /// Returns an error if the combination of `self.size()` and the given
+    /// `align` violates the conditions listed in [`Layout::from_size_align`].
+    #[stable(feature = "alloc_layout_manipulation", since = "1.44.0")]
+    #[inline]
+    pub fn align_to(&self, align: usize) -> Result<Self, LayoutError> {
+}
+
+    /// Returns the amount of padding we must insert after `self`
+    /// to ensure that the following address will satisfy `align`
+    /// (measured in bytes).
+    ///
+    /// e.g., if `self.size()` is 9, then `self.padding_needed_for(4)`
+    /// returns 3, because that is the minimum number of bytes of
+    /// padding required to get a 4-aligned address (assuming that the
+    /// corresponding memory block starts at a 4-aligned address).
+    ///
+    /// The return value of this function has no meaning if `align` is
+    /// not a power-of-two.
+    ///
+    /// Note that the utility of the returned value requires `align`
+    /// to be less than or equal to the alignment of the starting
+    /// address for the whole allocated block of memory. One way to
+    /// satisfy this constraint is to ensure `align <= self.align()`.
+    #[unstable(feature = "alloc_layout_extra", issue = "55724")]
+    #[rustc_const_unstable(feature = "const_alloc_layout", issue = "67521")]
+    #[must_use = "this returns the padding needed, \
+                  without modifying the `Layout`"]
+    #[inline]
+    pub const fn padding_needed_for(&self, align: usize) -> usize {
+}
+
+    /// Creates a layout by rounding the size of this layout up to a multiple
+    /// of the layout's alignment.
+    ///
+    /// This is equivalent to adding the result of `padding_needed_for`
+    /// to the layout's current size.
+    #[stable(feature = "alloc_layout_manipulation", since = "1.44.0")]
+    #[must_use = "this returns a new `Layout`, \
+                  without modifying the original"]
+    #[inline]
+    pub fn pad_to_align(&self) -> Layout {
+}
+
+    /// Creates a layout describing the record for `n` instances of
+    /// `self`, with a suitable amount of padding between each to
+    /// ensure that each instance is given its requested size and
+    /// alignment. On success, returns `(k, offs)` where `k` is the
+    /// layout of the array and `offs` is the distance between the start
+    /// of each element in the array.
+    ///
+    /// On arithmetic overflow, returns `LayoutError`.
+    #[unstable(feature = "alloc_layout_extra", issue = "55724")]
+    #[inline]
+    pub fn repeat(&self, n: usize) -> Result<(Self, usize), LayoutError> {
+}
+
+    /// Creates a layout describing the record for `self` followed by
+    /// `next`, including any necessary padding to ensure that `next`
+    /// will be properly aligned, but *no trailing padding*.
+    ///
+    /// In order to match C representation layout `repr(C)`, you should
+    /// call `pad_to_align` after extending the layout with all fields.
+    /// (There is no way to match the default Rust representation
+    /// layout `repr(Rust)`, as it is unspecified.)
+    ///
+    /// Note that the alignment of the resulting layout will be the maximum of
+    /// those of `self` and `next`, in order to ensure alignment of both parts.
+    ///
+    /// Returns `Ok((k, offset))`, where `k` is layout of the concatenated
+    /// record and `offset` is the relative location, in bytes, of the
+    /// start of the `next` embedded within the concatenated record
+    /// (assuming that the record itself starts at offset 0).
+    ///
+    /// On arithmetic overflow, returns `LayoutError`.
+    ///
+    /// # Examples
+    ///
+    /// To calculate the layout of a `#[repr(C)]` structure and the offsets of
+    /// the fields from its fields' layouts:
+    ///
+    /// ```rust
+    /// # use std::alloc::{Layout, LayoutError};
+    /// pub fn repr_c(fields: &[Layout]) -> Result<(Layout, Vec<usize>), LayoutError> {
+    ///     let mut offsets = Vec::new();
+    ///     let mut layout = Layout::from_size_align(0, 1)?;
+    ///     for &field in fields {
+    ///         let (new_layout, offset) = layout.extend(field)?;
+    ///         layout = new_layout;
+    ///         offsets.push(offset);
+    ///     }
+    ///     // Remember to finalize with `pad_to_align`!
+    ///     Ok((layout.pad_to_align(), offsets))
+    /// }
+    /// # // test that it works
+    /// # #[repr(C)] struct S { a: u64, b: u32, c: u16, d: u32 }
+    /// # let s = Layout::new::<S>();
+    /// # let u16 = Layout::new::<u16>();
+    /// # let u32 = Layout::new::<u32>();
+    /// # let u64 = Layout::new::<u64>();
+    /// # assert_eq!(repr_c(&[u64, u32, u16, u32]), Ok((s, vec![0, 8, 12, 16])));
+    /// ```
+    #[stable(feature = "alloc_layout_manipulation", since = "1.44.0")]
+    #[inline]
+    pub fn extend(&self, next: Self) -> Result<(Self, usize), LayoutError> {
+}
+
+    /// Creates a layout describing the record for `n` instances of
+    /// `self`, with no padding between each instance.
+    ///
+    /// Note that, unlike `repeat`, `repeat_packed` does not guarantee
+    /// that the repeated instances of `self` will be properly
+    /// aligned, even if a given instance of `self` is properly
+    /// aligned. In other words, if the layout returned by
+    /// `repeat_packed` is used to allocate an array, it is not
+    /// guaranteed that all elements in the array will be properly
+    /// aligned.
+    ///
+    /// On arithmetic overflow, returns `LayoutError`.
+    #[unstable(feature = "alloc_layout_extra", issue = "55724")]
+    #[inline]
+    pub fn repeat_packed(&self, n: usize) -> Result<Self, LayoutError> {
+}
+
+    /// Creates a layout describing the record for `self` followed by
+    /// `next` with no additional padding between the two. Since no
+    /// padding is inserted, the alignment of `next` is irrelevant,
+    /// and is not incorporated *at all* into the resulting layout.
+    ///
+    /// On arithmetic overflow, returns `LayoutError`.
+    #[unstable(feature = "alloc_layout_extra", issue = "55724")]
+    #[inline]
+    pub fn extend_packed(&self, next: Self) -> Result<Self, LayoutError> {
+}
+
+    /// Creates a layout describing the record for a `[T; n]`.
+    ///
+    /// On arithmetic overflow or when the total size would exceed
+    /// `isize::MAX`, returns `LayoutError`.
+    #[stable(feature = "alloc_layout_manipulation", since = "1.44.0")]
+    #[inline]
+    pub fn array<T>(n: usize) -> Result<Self, LayoutError> {
+}
+}
+
+#[stable(feature = "alloc_layout", since = "1.28.0")]
+#[deprecated(
+    since = "1.52.0",
+    note = "Name does not follow std convention, use LayoutError",
+    suggestion = "LayoutError"
+)]
+pub type LayoutErr = LayoutError;
+
+/// The parameters given to `Layout::from_size_align`
+/// or some other `Layout` constructor
+/// do not satisfy its documented constraints.
+#[stable(feature = "alloc_layout_error", since = "1.50.0")]
+#[non_exhaustive]
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct LayoutError;
+
+#[stable(feature = "alloc_layout", since = "1.28.0")]
+impl Error for LayoutError {}
+
+// (we need this for downstream impl of trait Error)
+#[stable(feature = "alloc_layout", since = "1.28.0")]
+impl fmt::Display for LayoutError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
+}
+}
+
+#[stable(feature = "global_alloc", since = "1.28.0")]
+pub use self::global::GlobalAlloc;
+#[stable(feature = "alloc_layout", since = "1.28.0")]
+pub use self::layout::Layout;
+#[stable(feature = "alloc_layout", since = "1.28.0")]
+#[deprecated(
+    since = "1.52.0",
+    note = "Name does not follow std convention, use LayoutError",
+    suggestion = "LayoutError"
+)]
+#[allow(deprecated, deprecated_in_future)]
+pub use self::layout::LayoutErr;
+
+#[stable(feature = "alloc_layout_error", since = "1.50.0")]
+pub use self::layout::LayoutError;
+
+use crate::error::Error;
+use crate::fmt;
+use crate::ptr::{self, NonNull};
+
+/// The `AllocError` error indicates an allocation failure
+/// that may be due to resource exhaustion or to
+/// something wrong when combining the given input arguments with this
+/// allocator.
+#[unstable(feature = "allocator_api", issue = "32838")]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+pub struct AllocError;
+
+#[unstable(
+    feature = "allocator_api",
+    reason = "the precise API and guarantees it provides may be tweaked.",
+    issue = "32838"
+)]
+impl Error for AllocError {}
+
+// (we need this for downstream impl of trait Error)
+#[unstable(feature = "allocator_api", issue = "32838")]
+impl fmt::Display for AllocError {
+}
+
+/// An implementation of `Allocator` can allocate, grow, shrink, and deallocate arbitrary blocks of
+/// data described via [`Layout`][].
+///
+/// `Allocator` is designed to be implemented on ZSTs, references, or smart pointers because having
+/// an allocator like `MyAlloc([u8; N])` cannot be moved, without updating the pointers to the
+/// allocated memory.
+///
+/// Unlike [`GlobalAlloc`][], zero-sized allocations are allowed in `Allocator`. If an underlying
+/// allocator does not support this (like jemalloc) or return a null pointer (such as
+/// `libc::malloc`), this must be caught by the implementation.
+///
+/// ### Currently allocated memory
+///
+/// Some of the methods require that a memory block be *currently allocated* via an allocator. This
+/// means that:
+///
+/// * the starting address for that memory block was previously returned by [`allocate`], [`grow`], or
+///   [`shrink`], and
+///
+/// * the memory block has not been subsequently deallocated, where blocks are either deallocated
+///   directly by being passed to [`deallocate`] or were changed by being passed to [`grow`] or
+///   [`shrink`] that returns `Ok`. If `grow` or `shrink` have returned `Err`, the passed pointer
+///   remains valid.
+///
+/// [`allocate`]: Allocator::allocate
+/// [`grow`]: Allocator::grow
+/// [`shrink`]: Allocator::shrink
+/// [`deallocate`]: Allocator::deallocate
+///
+/// ### Memory fitting
+///
+/// Some of the methods require that a layout *fit* a memory block. What it means for a layout to
+/// "fit" a memory block means (or equivalently, for a memory block to "fit" a layout) is that the
+/// following conditions must hold:
+///
+/// * The block must be allocated with the same alignment as [`layout.align()`], and
+///
+/// * The provided [`layout.size()`] must fall in the range `min ..= max`, where:
+///   - `min` is the size of the layout most recently used to allocate the block, and
+///   - `max` is the latest actual size returned from [`allocate`], [`grow`], or [`shrink`].
+///
+/// [`layout.align()`]: Layout::align
+/// [`layout.size()`]: Layout::size
+///
+/// # Safety
+///
+/// * Memory blocks returned from an allocator must point to valid memory and retain their validity
+///   until the instance and all of its clones are dropped,
+///
+/// * cloning or moving the allocator must not invalidate memory blocks returned from this
+///   allocator. A cloned allocator must behave like the same allocator, and
+///
+/// * any pointer to a memory block which is [*currently allocated*] may be passed to any other
+///   method of the allocator.
+///
+/// [*currently allocated*]: #currently-allocated-memory
+#[unstable(feature = "allocator_api", issue = "32838")]
+#[const_trait]
+pub unsafe trait Allocator {
+}
+
+#[unstable(feature = "allocator_api", issue = "32838")]
+unsafe impl<A> Allocator for &A
+where
+    A: Allocator + ?Sized,
+{
+}
+}
+
+// note: does not need to be public
+mod bool {
+//! impl bool {}
+
+use crate::marker::Destruct;
+
+impl bool {
+    /// Returns `Some(t)` if the `bool` is [`true`](../std/keyword.true.html),
+    /// or `None` otherwise.
+    ///
+    /// Arguments passed to `then_some` are eagerly evaluated; if you are
+    /// passing the result of a function call, it is recommended to use
+    /// [`then`], which is lazily evaluated.
+    ///
+    /// [`then`]: bool::then
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// assert_eq!(false.then_some(0), None);
+    /// assert_eq!(true.then_some(0), Some(0));
+    /// ```
+    ///
+    /// ```
+    /// let mut a = 0;
+    /// let mut function_with_side_effects = || { a += 1; };
+    ///
+    /// true.then_some(function_with_side_effects());
+    /// false.then_some(function_with_side_effects());
+    ///
+    /// // `a` is incremented twice because the value passed to `then_some` is
+    /// // evaluated eagerly.
+    /// assert_eq!(a, 2);
+    /// ```
+    #[stable(feature = "bool_to_option", since = "1.62.0")]
+    #[rustc_const_unstable(feature = "const_bool_to_option", issue = "91917")]
+    #[inline]
+    pub const fn then_some<T>(self, t: T) -> Option<T>
+    where
+        T: ~const Destruct,
+    {
+}
+
+    /// Returns `Some(f())` if the `bool` is [`true`](../std/keyword.true.html),
+    /// or `None` otherwise.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// assert_eq!(false.then(|| 0), None);
+    /// assert_eq!(true.then(|| 0), Some(0));
+    /// ```
+    ///
+    /// ```
+    /// let mut a = 0;
+    ///
+    /// true.then(|| { a += 1; });
+    /// false.then(|| { a += 1; });
+    ///
+    /// // `a` is incremented once because the closure is evaluated lazily by
+    /// // `then`.
+    /// assert_eq!(a, 1);
+    /// ```
+    #[stable(feature = "lazy_bool_to_option", since = "1.50.0")]
+    #[rustc_const_unstable(feature = "const_bool_to_option", issue = "91917")]
+    #[inline]
+    pub const fn then<T, F>(self, f: F) -> Option<T>
+    where
+        F: ~const FnOnce() -> T,
+        F: ~const Destruct,
+    {
+}
+}
+}
+mod tuple {
+// See src/libstd/primitive_docs.rs for documentation.
+
+use crate::cmp::Ordering::*;
+use crate::cmp::*;
+
+// Recursive macro for implementing n-ary tuple functions and operations
+//
+// Also provides implementations for tuples with lesser arity. For example, tuple_impls!(A B C)
+// will implement everything for (A, B, C), (A, B) and (A,).
+macro_rules! tuple_impls {
+    // Stopping criteria (1-ary tuple)
+    ($T:ident) => {
+        tuple_impls!(@impl $T);
+    };
+    // Running criteria (n-ary tuple, with n >= 2)
+    ($T:ident $( $U:ident )+) => {
+        tuple_impls!($( $U )+);
+        tuple_impls!(@impl $T $( $U )+);
+    };
+    // "Private" internal implementation
+    (@impl $( $T:ident )+) => {
+        maybe_tuple_doc! {
+            $($T)+ @
+            #[stable(feature = "rust1", since = "1.0.0")]
+            impl<$($T:PartialEq),+> PartialEq for ($($T,)+)
+            where
+                last_type!($($T,)+): ?Sized
+            {
+                #[inline]
+                fn eq(&self, other: &($($T,)+)) -> bool {
+}
+                #[inline]
+                fn ne(&self, other: &($($T,)+)) -> bool {
+}
+            }
+        }
+
+        maybe_tuple_doc! {
+            $($T)+ @
+            #[stable(feature = "rust1", since = "1.0.0")]
+            impl<$($T:Eq),+> Eq for ($($T,)+)
+            where
+                last_type!($($T,)+): ?Sized
+            {}
+        }
+
+        maybe_tuple_doc! {
+            $($T)+ @
+            #[stable(feature = "rust1", since = "1.0.0")]
+            impl<$($T:PartialOrd + PartialEq),+> PartialOrd for ($($T,)+)
+            where
+                last_type!($($T,)+): ?Sized
+            {
+                #[inline]
+                fn partial_cmp(&self, other: &($($T,)+)) -> Option<Ordering> {
+}
+                #[inline]
+                fn lt(&self, other: &($($T,)+)) -> bool {
+}
+                #[inline]
+                fn le(&self, other: &($($T,)+)) -> bool {
+}
+                #[inline]
+                fn ge(&self, other: &($($T,)+)) -> bool {
+}
+                #[inline]
+                fn gt(&self, other: &($($T,)+)) -> bool {
+}
+            }
+        }
+
+        maybe_tuple_doc! {
+            $($T)+ @
+            #[stable(feature = "rust1", since = "1.0.0")]
+            impl<$($T:Ord),+> Ord for ($($T,)+)
+            where
+                last_type!($($T,)+): ?Sized
+            {
+                #[inline]
+                fn cmp(&self, other: &($($T,)+)) -> Ordering {
+}
+            }
+        }
+
+        maybe_tuple_doc! {
+            $($T)+ @
+            #[stable(feature = "rust1", since = "1.0.0")]
+            #[rustc_const_unstable(feature = "const_default_impls", issue = "87864")]
+            impl<$($T: ~const Default),+> const Default for ($($T,)+) {
+                #[inline]
+                fn default() -> ($($T,)+) {
+}
+            }
+        }
+    }
+}
+
+// If this is a unary tuple, it adds a doc comment.
+// Otherwise, it hides the docs entirely.
+macro_rules! maybe_tuple_doc {
+    ($a:ident @ #[$meta:meta] $item:item) => {
+        #[doc(fake_variadic)]
+        #[doc = "This trait is implemented for tuples up to twelve items long."]
+        #[$meta]
+        $item
+    };
+    ($a:ident $($rest_a:ident)+ @ #[$meta:meta] $item:item) => {
+        #[doc(hidden)]
+        #[$meta]
+        $item
+    };
+}
+
+// Constructs an expression that performs a lexical ordering using method $rel.
+// The values are interleaved, so the macro invocation for
+// `(a1, a2, a3) < (b1, b2, b3)` would be `lexical_ord!(lt, a1, b1, a2, b2,
+// a3, b3)` (and similarly for `lexical_cmp`)
+macro_rules! lexical_ord {
+    ($rel: ident, $a:expr, $b:expr, $($rest_a:expr, $rest_b:expr),+) => {
+        if $a != $b { lexical_ord!($rel, $a, $b) }
+        else { lexical_ord!($rel, $($rest_a, $rest_b),+) }
+    };
+    ($rel: ident, $a:expr, $b:expr) => { ($a) . $rel (& $b) };
+}
+
+macro_rules! lexical_partial_cmp {
+    ($a:expr, $b:expr, $($rest_a:expr, $rest_b:expr),+) => {
+        match ($a).partial_cmp(&$b) {
+            Some(Equal) => lexical_partial_cmp!($($rest_a, $rest_b),+),
+            ordering   => ordering
+        }
+    };
+    ($a:expr, $b:expr) => { ($a).partial_cmp(&$b) };
+}
+
+macro_rules! lexical_cmp {
+    ($a:expr, $b:expr, $($rest_a:expr, $rest_b:expr),+) => {
+        match ($a).cmp(&$b) {
+            Equal => lexical_cmp!($($rest_a, $rest_b),+),
+            ordering   => ordering
+        }
+    };
+    ($a:expr, $b:expr) => { ($a).cmp(&$b) };
+}
+
+macro_rules! last_type {
+    ($a:ident,) => { $a };
+    ($a:ident, $($rest_a:ident,)+) => { last_type!($($rest_a,)+) };
+}
+
+tuple_impls!(E D C B A Z Y X W V U T);
+}
+mod unit {
+use crate::iter::FromIterator;
+
+/// Collapses all unit items from an iterator into one.
+///
+/// This is more useful when combined with higher-level abstractions, like
+/// collecting to a `Result<(), E>` where you only care about errors:
+///
+/// ```
+/// use std::io::*;
+/// let data = vec![1, 2, 3, 4, 5];
+/// let res: Result<()> = data.iter()
+///     .map(|x| writeln!(stdout(), "{x}"))
+///     .collect();
+/// assert!(res.is_ok());
+/// ```
+#[stable(feature = "unit_from_iter", since = "1.23.0")]
+impl FromIterator<()> for () {
+    fn from_iter<I: IntoIterator<Item = ()>>(iter: I) -> Self {
+}
+}
+}
+
+mod const_closure {
+use crate::marker::Destruct;
+
+/// Struct representing a closure with mutably borrowed data.
+///
+/// Example:
+/// ```no_build
+/// #![feature(const_mut_refs)]
+/// use crate::const_closure::ConstFnMutClosure;
+/// const fn imp(state: &mut i32, (arg,): (i32,)) -> i32 {
+///   *state += arg;
+///   *state
+/// }
+/// let mut i = 5;
+/// let mut cl = ConstFnMutClosure::new(&mut i, imp);
+///
+/// assert!(7 == cl(2));
+/// assert!(8 == cl(1));
+/// ```
+pub(crate) struct ConstFnMutClosure<CapturedData, Function> {
+    /// The Data captured by the Closure.
+    /// Must be either a (mutable) reference or a tuple of (mutable) references.
+    pub data: CapturedData,
+    /// The Function of the Closure, must be: Fn(CapturedData, ClosureArgs) -> ClosureReturn
+    pub func: Function,
+}
+impl<'a, CapturedData: ?Sized, Function> ConstFnMutClosure<&'a mut CapturedData, Function> {
+    /// Function for creating a new closure.
+    ///
+    /// `data` is the a mutable borrow of data that is captured from the environment.
+    /// If you want Data to be a tuple of mutable Borrows, the struct must be constructed manually.
+    ///
+    /// `func` is the function of the closure, it gets the data and a tuple of the arguments closure
+    ///   and return the return value of the closure.
+    pub(crate) const fn new<ClosureArguments, ClosureReturnValue>(
+        data: &'a mut CapturedData,
+        func: Function,
+    ) -> Self
+    where
+        Function: ~const Fn(&mut CapturedData, ClosureArguments) -> ClosureReturnValue,
+    {
+}
+}
+
+macro_rules! impl_fn_mut_tuple {
+    ($($var:ident)*) => {
+        #[allow(unused_parens)]
+        impl<'a, $($var,)* ClosureArguments, Function, ClosureReturnValue> const
+            FnOnce<ClosureArguments> for ConstFnMutClosure<($(&'a mut $var),*), Function>
+        where
+            Function: ~const Fn(($(&mut $var),*), ClosureArguments) -> ClosureReturnValue+ ~const Destruct,
+        {
+            type Output = ClosureReturnValue;
+
+            extern "rust-call" fn call_once(mut self, args: ClosureArguments) -> Self::Output {
+}
+        }
+        #[allow(unused_parens)]
+        impl<'a, $($var,)* ClosureArguments, Function, ClosureReturnValue> const
+            FnMut<ClosureArguments> for ConstFnMutClosure<($(&'a mut $var),*), Function>
+        where
+            Function: ~const Fn(($(&mut $var),*), ClosureArguments)-> ClosureReturnValue,
+        {
+            extern "rust-call" fn call_mut(&mut self, args: ClosureArguments) -> Self::Output {
+}
+        }
+    };
+}
+impl_fn_mut_tuple!(A);
+impl_fn_mut_tuple!(A B);
+impl_fn_mut_tuple!(A B C);
+impl_fn_mut_tuple!(A B C D);
+impl_fn_mut_tuple!(A B C D E);
+}
+
+#[stable(feature = "core_primitive", since = "1.43.0")]
+pub mod primitive {
+//! This module reexports the primitive types to allow usage that is not
+//! possibly shadowed by other declared types.
+//!
+//! This is normally only useful in macro generated code.
+//!
+//! An example of this is when generating a new struct and an impl for it:
+//!
+//! ```rust,compile_fail
+//! pub struct bool;
+//!
+//! impl QueryId for bool {
+//!     const SOME_PROPERTY: bool = true;
+//! }
+//!
+//! # trait QueryId { const SOME_PROPERTY: core::primitive::bool; }
+//! ```
+//!
+//! Note that the `SOME_PROPERTY` associated constant would not compile, as its
+//! type `bool` refers to the struct, rather than to the primitive bool type.
+//!
+//! A correct implementation could look like:
+//!
+//! ```rust
+//! # #[allow(non_camel_case_types)]
+//! pub struct bool;
+//!
+//! impl QueryId for bool {
+//!     const SOME_PROPERTY: core::primitive::bool = true;
+//! }
+//!
+//! # trait QueryId { const SOME_PROPERTY: core::primitive::bool; }
+//! ```
+
+#[stable(feature = "core_primitive", since = "1.43.0")]
+pub use bool;
+#[stable(feature = "core_primitive", since = "1.43.0")]
+pub use char;
+#[stable(feature = "core_primitive", since = "1.43.0")]
+pub use f32;
+#[stable(feature = "core_primitive", since = "1.43.0")]
+pub use f64;
+#[stable(feature = "core_primitive", since = "1.43.0")]
+pub use i128;
+#[stable(feature = "core_primitive", since = "1.43.0")]
+pub use i16;
+#[stable(feature = "core_primitive", since = "1.43.0")]
+pub use i32;
+#[stable(feature = "core_primitive", since = "1.43.0")]
+pub use i64;
+#[stable(feature = "core_primitive", since = "1.43.0")]
+pub use i8;
+#[stable(feature = "core_primitive", since = "1.43.0")]
+pub use isize;
+#[stable(feature = "core_primitive", since = "1.43.0")]
+pub use str;
+#[stable(feature = "core_primitive", since = "1.43.0")]
+pub use u128;
+#[stable(feature = "core_primitive", since = "1.43.0")]
+pub use u16;
+#[stable(feature = "core_primitive", since = "1.43.0")]
+pub use u32;
+#[stable(feature = "core_primitive", since = "1.43.0")]
+pub use u64;
+#[stable(feature = "core_primitive", since = "1.43.0")]
+pub use u8;
+#[stable(feature = "core_primitive", since = "1.43.0")]
+pub use usize;
+}
+
+// Pull in the `core_arch` crate directly into libcore. The contents of
+// `core_arch` are in a different repository: rust-lang/stdarch.
+//
+// `core_arch` depends on libcore, but the contents of this module are
+// set up in such a way that directly pulling it here works such that the
+// crate uses the this crate as its libcore.
+#[path = "../../stdarch/crates/core_arch/src/mod.rs"]
+#[allow(
+    missing_docs,
+    missing_debug_implementations,
+    dead_code,
+    unused_imports,
+    unsafe_op_in_unsafe_fn
+)]
+#[allow(rustdoc::bare_urls)]
+// FIXME: This annotation should be moved into rust-lang/stdarch after clashing_extern_declarations is
+// merged. It currently cannot because bootstrap fails as the lint hasn't been defined yet.
+#[allow(clashing_extern_declarations)]
+#[unstable(feature = "stdsimd", issue = "48556")]
+mod core_arch {
+}
+
+#[doc = include_str!("../../stdarch/crates/core_arch/src/core_arch_docs.md")]
+#[stable(feature = "simd_arch", since = "1.27.0")]
+pub mod arch {
+    #[stable(feature = "simd_arch", since = "1.27.0")]
+    pub use crate::core_arch::arch::*;
+
+    /// Inline assembly.
+    ///
+    /// Refer to [rust by example] for a usage guide and the [reference] for
+    /// detailed information about the syntax and available options.
+    ///
+    /// [rust by example]: https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html
+    /// [reference]: https://doc.rust-lang.org/nightly/reference/inline-assembly.html
+    #[stable(feature = "asm", since = "1.59.0")]
+    #[rustc_builtin_macro]
+    pub macro asm("assembly template", $(operands,)* $(options($(option),*))?) {
+        /* compiler built-in */
+    }
+
+    /// Module-level inline assembly.
+    ///
+    /// Refer to [rust by example] for a usage guide and the [reference] for
+    /// detailed information about the syntax and available options.
+    ///
+    /// [rust by example]: https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html
+    /// [reference]: https://doc.rust-lang.org/nightly/reference/inline-assembly.html
+    #[stable(feature = "global_asm", since = "1.59.0")]
+    #[rustc_builtin_macro]
+    pub macro global_asm("assembly template", $(operands,)* $(options($(option),*))?) {
+        /* compiler built-in */
+    }
+}
+
+// Pull in the `core_simd` crate directly into libcore. The contents of
+// `core_simd` are in a different repository: rust-lang/portable-simd.
+//
+// `core_simd` depends on libcore, but the contents of this module are
+// set up in such a way that directly pulling it here works such that the
+// crate uses this crate as its libcore.
+#[path = "../../portable-simd/crates/core_simd/src/mod.rs"]
+#[allow(missing_debug_implementations, dead_code, unsafe_op_in_unsafe_fn, unused_unsafe)]
+#[allow(rustdoc::bare_urls)]
+#[unstable(feature = "portable_simd", issue = "86656")]
+mod core_simd {
+}
+
+#[doc = include_str!("../../portable-simd/crates/core_simd/src/core_simd_docs.md")]
+#[unstable(feature = "portable_simd", issue = "86656")]
+pub mod simd {
+}
+
+include!("primitive_docs.rs");

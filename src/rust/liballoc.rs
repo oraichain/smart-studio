@@ -56,10 +56,6 @@
 //! [`Rc`]: rc
 //! [`RefCell`]: core::cell
 
-// To run liballoc tests without x.py without ending up with two copies of liballoc, Miri needs to be
-// able to "empty" this crate. See <https://github.com/rust-lang/miri-test-libstd/issues/4>.
-// rustc itself never sets the feature, so this line has no affect there.
-#![cfg(any(not(feature = "miri-test-libstd"), test, doctest))]
 #![allow(unused_attributes)]
 #![stable(feature = "alloc", since = "1.36.0")]
 #![doc(
@@ -73,10 +69,16 @@
     any(not(feature = "miri-test-libstd"), test, doctest),
     no_global_oom_handling,
     not(no_global_oom_handling),
+    not(no_rc),
+    not(no_sync),
     target_has_atomic = "ptr"
 ))]
 #![no_std]
 #![needs_allocator]
+// To run liballoc tests without x.py without ending up with two copies of liballoc, Miri needs to be
+// able to "empty" this crate. See <https://github.com/rust-lang/miri-test-libstd/issues/4>.
+// rustc itself never sets the feature, so this line has no affect there.
+#![cfg(any(not(feature = "miri-test-libstd"), test, doctest))]
 //
 // Lints:
 #![deny(unsafe_op_in_unsafe_fn)]
@@ -97,7 +99,7 @@
 #![feature(coerce_unsized)]
 #![cfg_attr(not(no_global_oom_handling), feature(const_alloc_error))]
 #![feature(const_box)]
-#![cfg_attr(not(no_global_oom_handling), feature(const_btree_new))]
+#![cfg_attr(not(no_global_oom_handling), feature(const_btree_len))]
 #![feature(const_cow_is_borrowed)]
 #![feature(const_convert)]
 #![feature(const_size_of_val)]
@@ -109,8 +111,11 @@
 #![feature(core_intrinsics)]
 #![feature(const_eval_select)]
 #![feature(const_pin)]
+#![feature(const_waker)]
 #![feature(cstr_from_bytes_until_nul)]
 #![feature(dispatch_from_dyn)]
+#![feature(error_generic_member_access)]
+#![feature(error_in_core)]
 #![feature(exact_size_is_empty)]
 #![feature(extend_one)]
 #![feature(fmt_internals)]
@@ -120,18 +125,21 @@
 #![feature(iter_advance_by)]
 #![feature(iter_next_chunk)]
 #![feature(layout_for_ptr)]
-#![feature(maybe_uninit_array_assume_init)]
 #![feature(maybe_uninit_slice)]
 #![feature(maybe_uninit_uninit_array)]
+#![feature(maybe_uninit_uninit_array_transpose)]
 #![cfg_attr(test, feature(new_uninit))]
 #![feature(nonnull_slice_from_raw_parts)]
 #![feature(pattern)]
 #![feature(pointer_byte_offsets)]
+#![feature(provide_any)]
 #![feature(ptr_internals)]
 #![feature(ptr_metadata)]
 #![feature(ptr_sub_ptr)]
 #![feature(receiver_trait)]
+#![feature(saturating_int_impl)]
 #![feature(set_ptr_value)]
+#![feature(sized_type_properties)]
 #![feature(slice_from_ptr_range)]
 #![feature(slice_group_by)]
 #![feature(slice_ptr_get)]
@@ -145,6 +153,7 @@
 #![feature(unchecked_math)]
 #![feature(unicode_internals)]
 #![feature(unsize)]
+#![feature(utf8_chunks)]
 #![feature(std_internals)]
 //
 // Language features:
@@ -164,7 +173,6 @@
 #![cfg_attr(not(test), feature(generator_trait))]
 #![feature(hashmap_internals)]
 #![feature(lang_items)]
-#![feature(let_else)]
 #![feature(min_specialization)]
 #![feature(negative_impls)]
 #![feature(never_type)]
@@ -178,6 +186,7 @@
 #![feature(unboxed_closures)]
 #![feature(unsized_fn_params)]
 #![feature(c_unwind)]
+#![feature(with_negative_coherence)]
 //
 // Rustdoc features:
 #![feature(doc_cfg)]
@@ -307,6 +316,8 @@ macro_rules! vec {
 /// format!("test");
 /// format!("hello {}", "world!");
 /// format!("x = {}, y = {y}", 10, y = 30);
+/// let (x, y) = (1, 2);
+/// format!("{x} + {y} = 3");
 /// ```
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -332,7 +343,7 @@ mod raw_vec {
 use core::alloc::LayoutError;
 use core::cmp;
 use core::intrinsics;
-use core::mem::{self, ManuallyDrop, MaybeUninit};
+use core::mem::{self, ManuallyDrop, MaybeUninit, SizedTypeProperties};
 use core::ops::Drop;
 use core::ptr::{self, NonNull, Unique};
 use core::slice;
@@ -707,16 +718,20 @@ extern "Rust" {
     // The rustc fork of LLVM 14 and earlier also special-cases these function names to be able to optimize them
     // like `malloc`, `realloc`, and `free`, respectively.
     #[rustc_allocator]
-    #[rustc_allocator_nounwind]
+    #[cfg_attr(not(bootstrap), rustc_nounwind)]
+    #[cfg_attr(bootstrap, rustc_allocator_nounwind)]
     fn __rust_alloc(size: usize, align: usize) -> *mut u8;
-    #[cfg_attr(not(bootstrap), rustc_deallocator)]
-    #[rustc_allocator_nounwind]
+    #[rustc_deallocator]
+    #[cfg_attr(not(bootstrap), rustc_nounwind)]
+    #[cfg_attr(bootstrap, rustc_allocator_nounwind)]
     fn __rust_dealloc(ptr: *mut u8, size: usize, align: usize);
-    #[cfg_attr(not(bootstrap), rustc_reallocator)]
-    #[rustc_allocator_nounwind]
+    #[rustc_reallocator]
+    #[cfg_attr(not(bootstrap), rustc_nounwind)]
+    #[cfg_attr(bootstrap, rustc_allocator_nounwind)]
     fn __rust_realloc(ptr: *mut u8, old_size: usize, align: usize, new_size: usize) -> *mut u8;
-    #[cfg_attr(not(bootstrap), rustc_allocator_zeroed)]
-    #[rustc_allocator_nounwind]
+    #[rustc_allocator_zeroed]
+    #[cfg_attr(not(bootstrap), rustc_nounwind)]
+    #[cfg_attr(bootstrap, rustc_allocator_nounwind)]
     fn __rust_alloc_zeroed(size: usize, align: usize) -> *mut u8;
 }
 
@@ -958,7 +973,7 @@ impl<T: Copy> WriteCloneIntoRaw for T {
 // to allow code to have `use boxed::Box;` declarations.
 #[cfg(not(test))]
 pub mod boxed {
-//! A pointer type for heap allocation.
+//! The `Box<T>` type for heap allocation.
 //!
 //! [`Box<T>`], casually referred to as a 'box', provides the simplest form of
 //! heap allocation in Rust. Boxes provide ownership for this allocation, and
@@ -1111,6 +1126,7 @@ use core::async_iter::AsyncIterator;
 use core::borrow;
 use core::cmp::Ordering;
 use core::convert::{From, TryFrom};
+use core::error::Error;
 use core::fmt;
 use core::future::Future;
 use core::hash::{Hash, Hasher};
@@ -1135,6 +1151,8 @@ use crate::raw_vec::RawVec;
 #[cfg(not(no_global_oom_handling))]
 use crate::str::from_boxed_utf8_unchecked;
 #[cfg(not(no_global_oom_handling))]
+use crate::string::String;
+#[cfg(not(no_global_oom_handling))]
 use crate::vec::Vec;
 
 #[unstable(feature = "thin_box", issue = "92791")]
@@ -1145,6 +1163,7 @@ mod thin {
 // https://github.com/matthieu-m/rfc2580/blob/b58d1d3cba0d4b5e859d3617ea2d0943aaa31329/examples/thin.rs
 // by matthieu-m
 use crate::alloc::{self, Layout, LayoutError};
+use core::error::Error;
 use core::fmt::{self, Debug, Display, Formatter};
 use core::marker::PhantomData;
 #[cfg(not(no_global_oom_handling))]
@@ -2340,7 +2359,7 @@ impl<T: Copy> From<&[T]> for Box<[T]> {
     /// Converts a `&[T]` into a `Box<[T]>`
     ///
     /// This conversion allocates on the heap
-    /// and performs a copy of `slice`.
+    /// and performs a copy of `slice` and its contents.
     ///
     /// # Examples
     /// ```rust
@@ -2458,6 +2477,16 @@ impl<T, const N: usize> From<[T; N]> for Box<[T]> {
 }
 }
 
+/// Casts a boxed slice to a boxed array.
+///
+/// # Safety
+///
+/// `boxed_slice.len()` must be exactly `N`.
+unsafe fn boxed_slice_as_array_unchecked<T, A: Allocator, const N: usize>(
+    boxed_slice: Box<[T], A>,
+) -> Box<[T; N], A> {
+}
+
 #[stable(feature = "boxed_slice_try_from", since = "1.43.0")]
 impl<T, const N: usize> TryFrom<Box<[T]>> for Box<[T; N]> {
     type Error = Box<[T]>;
@@ -2472,6 +2501,33 @@ impl<T, const N: usize> TryFrom<Box<[T]>> for Box<[T; N]> {
     /// Returns the old `Box<[T]>` in the `Err` variant if
     /// `boxed_slice.len()` does not equal `N`.
     fn try_from(boxed_slice: Box<[T]>) -> Result<Self, Self::Error> {
+}
+}
+
+#[cfg(not(no_global_oom_handling))]
+#[stable(feature = "boxed_array_try_from_vec", since = "1.66.0")]
+impl<T, const N: usize> TryFrom<Vec<T>> for Box<[T; N]> {
+    type Error = Vec<T>;
+
+    /// Attempts to convert a `Vec<T>` into a `Box<[T; N]>`.
+    ///
+    /// Like [`Vec::into_boxed_slice`], this is in-place if `vec.capacity() == N`,
+    /// but will require a reallocation otherwise.
+    ///
+    /// # Errors
+    ///
+    /// Returns the original `Vec<T>` in the `Err` variant if
+    /// `boxed_slice.len()` does not equal `N`.
+    ///
+    /// # Examples
+    ///
+    /// This can be used with [`vec!`] to create an array on the heap:
+    ///
+    /// ```
+    /// let state: Box<[f32; 100]> = vec![1.0; 100].try_into().unwrap();
+    /// assert_eq!(state.len(), 100);
+    /// ```
+    fn try_from(vec: Vec<T>) -> Result<Self, Self::Error> {
 }
 }
 
@@ -2697,7 +2753,6 @@ use Cow::*;
 impl<'a, B: ?Sized> Borrow<B> for Cow<'a, B>
 where
     B: ToOwned,
-    <B as ToOwned>::Owned: 'a,
 {
     fn borrow(&self) -> &B {
 }
@@ -3902,7 +3957,8 @@ impl<T> BinaryHeap<T> {
     /// current length. The allocator may reserve more space to speculatively
     /// avoid frequent allocations. After calling `try_reserve`, capacity will be
     /// greater than or equal to `self.len() + additional` if it returns
-    /// `Ok(())`. Does nothing if capacity is already sufficient.
+    /// `Ok(())`. Does nothing if capacity is already sufficient. This method
+    /// preserves the contents even if an error occurs.
     ///
     /// # Errors
     ///
@@ -4398,7 +4454,9 @@ use core::iter::Peekable;
 /// A iterator for deduping the key of a sorted iterator.
 /// When encountering the duplicated key, only the last key-value pair is yielded.
 ///
-/// Used by [`BTreeMap::bulk_build_from_sorted_iter`].
+/// Used by [`BTreeMap::bulk_build_from_sorted_iter`][1].
+///
+/// [1]: crate::collections::BTreeMap::bulk_build_from_sorted_iter
 pub struct DedupSortedIter<K, V, I>
 where
     I: Iterator<Item = (K, V)>,
@@ -4609,6 +4667,12 @@ impl<K: Debug + Ord, V: Debug, A: Allocator + Clone> Debug for OccupiedError<'_,
 #[unstable(feature = "map_try_insert", issue = "82766")]
 impl<'a, K: Debug + Ord, V: Debug, A: Allocator + Clone> fmt::Display
     for OccupiedError<'a, K, V, A>
+{
+}
+
+#[unstable(feature = "map_try_insert", issue = "82766")]
+impl<'a, K: core::fmt::Debug + Ord, V: core::fmt::Debug> core::error::Error
+    for crate::collections::btree_map::OccupiedError<'a, K, V>
 {
 }
 
@@ -5370,7 +5434,7 @@ impl<K, V> BTreeMap<K, V> {
     /// map.insert(1, "a");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_btree_new", issue = "71835")]
+    #[rustc_const_stable(feature = "const_btree_new", since = "1.66.0")]
     #[must_use]
     pub const fn new() -> BTreeMap<K, V> {
 }
@@ -5474,7 +5538,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(map_first_last)]
     /// use std::collections::BTreeMap;
     ///
     /// let mut map = BTreeMap::new();
@@ -5483,7 +5546,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// map.insert(2, "a");
     /// assert_eq!(map.first_key_value(), Some((&1, &"b")));
     /// ```
-    #[unstable(feature = "map_first_last", issue = "62924")]
+    #[stable(feature = "map_first_last", since = "1.66.0")]
     pub fn first_key_value(&self) -> Option<(&K, &V)>
     where
         K: Ord,
@@ -5496,7 +5559,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(map_first_last)]
     /// use std::collections::BTreeMap;
     ///
     /// let mut map = BTreeMap::new();
@@ -5510,7 +5572,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// assert_eq!(*map.get(&1).unwrap(), "first");
     /// assert_eq!(*map.get(&2).unwrap(), "b");
     /// ```
-    #[unstable(feature = "map_first_last", issue = "62924")]
+    #[stable(feature = "map_first_last", since = "1.66.0")]
     pub fn first_entry(&mut self) -> Option<OccupiedEntry<'_, K, V, A>>
     where
         K: Ord,
@@ -5525,7 +5587,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// Draining elements in ascending order, while keeping a usable map each iteration.
     ///
     /// ```
-    /// #![feature(map_first_last)]
     /// use std::collections::BTreeMap;
     ///
     /// let mut map = BTreeMap::new();
@@ -5536,7 +5597,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// }
     /// assert!(map.is_empty());
     /// ```
-    #[unstable(feature = "map_first_last", issue = "62924")]
+    #[stable(feature = "map_first_last", since = "1.66.0")]
     pub fn pop_first(&mut self) -> Option<(K, V)>
     where
         K: Ord,
@@ -5551,7 +5612,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(map_first_last)]
     /// use std::collections::BTreeMap;
     ///
     /// let mut map = BTreeMap::new();
@@ -5559,7 +5619,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// map.insert(2, "a");
     /// assert_eq!(map.last_key_value(), Some((&2, &"a")));
     /// ```
-    #[unstable(feature = "map_first_last", issue = "62924")]
+    #[stable(feature = "map_first_last", since = "1.66.0")]
     pub fn last_key_value(&self) -> Option<(&K, &V)>
     where
         K: Ord,
@@ -5572,7 +5632,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(map_first_last)]
     /// use std::collections::BTreeMap;
     ///
     /// let mut map = BTreeMap::new();
@@ -5586,7 +5645,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// assert_eq!(*map.get(&1).unwrap(), "a");
     /// assert_eq!(*map.get(&2).unwrap(), "last");
     /// ```
-    #[unstable(feature = "map_first_last", issue = "62924")]
+    #[stable(feature = "map_first_last", since = "1.66.0")]
     pub fn last_entry(&mut self) -> Option<OccupiedEntry<'_, K, V, A>>
     where
         K: Ord,
@@ -5601,7 +5660,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// Draining elements in descending order, while keeping a usable map each iteration.
     ///
     /// ```
-    /// #![feature(map_first_last)]
     /// use std::collections::BTreeMap;
     ///
     /// let mut map = BTreeMap::new();
@@ -5612,7 +5670,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// }
     /// assert!(map.is_empty());
     /// ```
-    #[unstable(feature = "map_first_last", issue = "62924")]
+    #[stable(feature = "map_first_last", since = "1.66.0")]
     pub fn pop_last(&mut self) -> Option<(K, V)>
     where
         K: Ord,
@@ -5813,6 +5871,9 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
 
     /// Moves all elements from `other` into `self`, leaving `other` empty.
     ///
+    /// If a key from `other` is already present in `self`, the respective
+    /// value from `self` will be overwritten with the respective value from `other`.
+    ///
     /// # Examples
     ///
     /// ```
@@ -5821,10 +5882,10 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// let mut a = BTreeMap::new();
     /// a.insert(1, "a");
     /// a.insert(2, "b");
-    /// a.insert(3, "c");
+    /// a.insert(3, "c"); // Note: Key (3) also present in b.
     ///
     /// let mut b = BTreeMap::new();
-    /// b.insert(3, "d");
+    /// b.insert(3, "d"); // Note: Key (3) also present in a.
     /// b.insert(4, "e");
     /// b.insert(5, "f");
     ///
@@ -5835,7 +5896,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     ///
     /// assert_eq!(a[&1], "a");
     /// assert_eq!(a[&2], "b");
-    /// assert_eq!(a[&3], "d");
+    /// assert_eq!(a[&3], "d"); // Note: "c" has been overwritten.
     /// assert_eq!(a[&4], "e");
     /// assert_eq!(a[&5], "f");
     /// ```
@@ -7121,9 +7182,9 @@ impl<'a, K: 'a, V: 'a, Type> Clone for NodeRef<marker::Immut<'a>, K, V, Type> {
 
 unsafe impl<BorrowType, K: Sync, V: Sync, Type> Sync for NodeRef<BorrowType, K, V, Type> {}
 
-unsafe impl<'a, K: Sync + 'a, V: Sync + 'a, Type> Send for NodeRef<marker::Immut<'a>, K, V, Type> {}
-unsafe impl<'a, K: Send + 'a, V: Send + 'a, Type> Send for NodeRef<marker::Mut<'a>, K, V, Type> {}
-unsafe impl<'a, K: Send + 'a, V: Send + 'a, Type> Send for NodeRef<marker::ValMut<'a>, K, V, Type> {}
+unsafe impl<K: Sync, V: Sync, Type> Send for NodeRef<marker::Immut<'_>, K, V, Type> {}
+unsafe impl<K: Send, V: Send, Type> Send for NodeRef<marker::Mut<'_>, K, V, Type> {}
+unsafe impl<K: Send, V: Send, Type> Send for NodeRef<marker::ValMut<'_>, K, V, Type> {}
 unsafe impl<K: Send, V: Send, Type> Send for NodeRef<marker::Owned, K, V, Type> {}
 unsafe impl<K: Send, V: Send, Type> Send for NodeRef<marker::Dying, K, V, Type> {}
 
@@ -7921,15 +7982,17 @@ pub mod marker {
     pub struct ValMut<'a>(PhantomData<&'a mut ()>);
 
     pub trait BorrowType {
-        // Whether node references of this borrow type allow traversing
-        // to other nodes in the tree.
-        const PERMITS_TRAVERSAL: bool = true;
+        // If node references of this borrow type allow traversing to other
+        // nodes in the tree, this constant can be evaluated. Thus reading it
+        // serves as a compile-time assertion.
+        const TRAVERSAL_PERMIT: () = ();
     }
     impl BorrowType for Owned {
-        // Traversal isn't needed, it happens using the result of `borrow_mut`.
+        // Reject evaluation, because traversal isn't needed. Instead traversal
+        // happens using the result of `borrow_mut`.
         // By disabling traversal, and only creating new references to roots,
         // we know that every reference of the `Owned` type is to a root node.
-        const PERMITS_TRAVERSAL: bool = false;
+        const TRAVERSAL_PERMIT: () = panic!();
     }
     impl BorrowType for Dying {}
     impl<'a> BorrowType for Immut<'a> {}
@@ -8499,7 +8562,7 @@ impl<T> BTreeSet<T> {
     /// let mut set: BTreeSet<i32> = BTreeSet::new();
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_btree_new", issue = "71835")]
+    #[rustc_const_stable(feature = "const_btree_new", since = "1.66.0")]
     #[must_use]
     pub const fn new() -> BTreeSet<T> {
 }
@@ -8820,7 +8883,6 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(map_first_last)]
     /// use std::collections::BTreeSet;
     ///
     /// let mut set = BTreeSet::new();
@@ -8831,7 +8893,7 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// assert_eq!(set.first(), Some(&1));
     /// ```
     #[must_use]
-    #[unstable(feature = "map_first_last", issue = "62924")]
+    #[stable(feature = "map_first_last", since = "1.66.0")]
     pub fn first(&self) -> Option<&T>
     where
         T: Ord,
@@ -8846,7 +8908,6 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(map_first_last)]
     /// use std::collections::BTreeSet;
     ///
     /// let mut set = BTreeSet::new();
@@ -8857,7 +8918,7 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// assert_eq!(set.last(), Some(&2));
     /// ```
     #[must_use]
-    #[unstable(feature = "map_first_last", issue = "62924")]
+    #[stable(feature = "map_first_last", since = "1.66.0")]
     pub fn last(&self) -> Option<&T>
     where
         T: Ord,
@@ -8870,7 +8931,6 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(map_first_last)]
     /// use std::collections::BTreeSet;
     ///
     /// let mut set = BTreeSet::new();
@@ -8881,7 +8941,7 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// }
     /// assert!(set.is_empty());
     /// ```
-    #[unstable(feature = "map_first_last", issue = "62924")]
+    #[stable(feature = "map_first_last", since = "1.66.0")]
     pub fn pop_first(&mut self) -> Option<T>
     where
         T: Ord,
@@ -8894,7 +8954,6 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(map_first_last)]
     /// use std::collections::BTreeSet;
     ///
     /// let mut set = BTreeSet::new();
@@ -8905,7 +8964,7 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// }
     /// assert!(set.is_empty());
     /// ```
-    #[unstable(feature = "map_first_last", issue = "62924")]
+    #[stable(feature = "map_first_last", since = "1.66.0")]
     pub fn pop_last(&mut self) -> Option<T>
     where
         T: Ord,
@@ -9194,7 +9253,11 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_btree_new", issue = "71835")]
+    #[rustc_const_unstable(
+        feature = "const_btree_len",
+        issue = "71835",
+        implied_by = "const_btree_new"
+    )]
     pub const fn len(&self) -> usize {
 }
 
@@ -9212,7 +9275,11 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_btree_new", issue = "71835")]
+    #[rustc_const_unstable(
+        feature = "const_btree_len",
+        issue = "71835",
+        implied_by = "const_btree_new"
+    )]
     pub const fn is_empty(&self) -> bool {
 }
 }
@@ -10739,7 +10806,7 @@ impl<'a, T> CursorMut<'a, T> {
     /// that the cursor points to is unchanged, even if it is the "ghost" node.
     ///
     /// This operation should compute in *O*(1) time.
-    // `push_front` continues to point to "ghost" when it addes a node to mimic
+    // `push_front` continues to point to "ghost" when it adds a node to mimic
     // the behavior of `insert_before` on an empty list.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn push_front(&mut self, elt: T) {
@@ -11043,10 +11110,16 @@ use core::fmt;
 use core::hash::{Hash, Hasher};
 use core::iter::{repeat_with, FromIterator};
 use core::marker::PhantomData;
-use core::mem::{self, ManuallyDrop, MaybeUninit};
+use core::mem::{ManuallyDrop, MaybeUninit, SizedTypeProperties};
 use core::ops::{Index, IndexMut, Range, RangeBounds};
 use core::ptr::{self, NonNull};
 use core::slice;
+
+// This is used in a bunch of intra-doc links.
+// FIXME: For some reason, `#[cfg(doc)]` wasn't sufficient, resulting in
+// failures in linkchecker even though rustdoc built the docs just fine.
+#[allow(unused_imports)]
+use core::mem;
 
 use crate::alloc::{Allocator, Global};
 use crate::collections::TryReserveError;
@@ -11075,13 +11148,15 @@ macro_rules! __impl_slice_eq1 {
 pub use self::drain::Drain;
 
 mod drain {
+use core::fmt;
 use core::iter::FusedIterator;
+use core::marker::PhantomData;
+use core::mem::{self, MaybeUninit};
 use core::ptr::{self, NonNull};
-use core::{fmt, mem};
 
 use crate::alloc::{Allocator, Global};
 
-use super::{count, Iter, VecDeque};
+use super::{count, wrap_index, VecDeque};
 
 /// A draining iterator over the elements of a `VecDeque`.
 ///
@@ -11101,7 +11176,9 @@ impl<'a, T, A: Allocator> Drain<'a, T, A> {
     pub(super) unsafe fn new(
         after_tail: usize,
         after_head: usize,
-        iter: Iter<'a, T>,
+        ring: &'a [MaybeUninit<T>],
+        tail: usize,
+        head: usize,
         deque: NonNull<VecDeque<T, A>>,
     ) -> Self {
 }
@@ -11998,7 +12075,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// in the given deque. The collection may reserve more space to speculatively avoid
     /// frequent reallocations. After calling `try_reserve`, capacity will be
     /// greater than or equal to `self.len() + additional` if it returns
-    /// `Ok(())`. Does nothing if capacity is already sufficient.
+    /// `Ok(())`. Does nothing if capacity is already sufficient. This method
+    /// preserves the contents even if an error occurs.
     ///
     /// # Errors
     ///
@@ -13502,8 +13580,11 @@ trait SpecExtend<I: IntoIterator> {
     /// Extends `self` with the contents of the given iterator.
     fn spec_extend(&mut self, iter: I);
 }
+
+#[stable(feature = "try_reserve", since = "1.57.0")]
+impl core::error::Error for TryReserveError {}
 }
-#[cfg(not(no_global_oom_handling))]
+#[cfg(all(not(no_rc), not(no_sync), not(no_global_oom_handling)))]
 pub mod ffi {
 //! Utilities related to FFI bindings.
 //!
@@ -13956,9 +14037,9 @@ impl CString {
     ///
     /// unsafe {
     ///     assert_eq!(b'f', *ptr as u8);
-    ///     assert_eq!(b'o', *ptr.offset(1) as u8);
-    ///     assert_eq!(b'o', *ptr.offset(2) as u8);
-    ///     assert_eq!(b'\0', *ptr.offset(3) as u8);
+    ///     assert_eq!(b'o', *ptr.add(1) as u8);
+    ///     assert_eq!(b'o', *ptr.add(2) as u8);
+    ///     assert_eq!(b'\0', *ptr.add(3) as u8);
     ///
     ///     // retake pointer to free memory
     ///     let _ = CString::from_raw(ptr);
@@ -14530,6 +14611,26 @@ impl CStr {
     pub fn into_c_string(self: Box<Self>) -> CString {
 }
 }
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl core::error::Error for NulError {
+    #[allow(deprecated)]
+    fn description(&self) -> &str {
+}
+}
+
+#[stable(feature = "cstring_from_vec_with_nul", since = "1.58.0")]
+impl core::error::Error for FromVecWithNulError {}
+
+#[stable(feature = "cstring_into", since = "1.7.0")]
+impl core::error::Error for IntoStringError {
+    #[allow(deprecated)]
+    fn description(&self) -> &str {
+}
+
+    fn source(&self) -> Option<&(dyn core::error::Error + 'static)> {
+}
+}
 }
 }
 pub mod fmt {
@@ -14862,7 +14963,7 @@ pub mod fmt {
 //! - `text` must not contain any `'{'` or `'}'` characters,
 //! - `ws` is any character for which [`char::is_whitespace`] returns `true`, has no semantic
 //!   meaning and is completely optional,
-//! - `integer` is a decimal integer that may contain leading zeroes and
+//! - `integer` is a decimal integer that may contain leading zeroes and must fit into an `usize` and
 //! - `identifier` is an `IDENTIFIER_OR_KEYWORD` (not an `IDENTIFIER`) as defined by the [Rust language reference](https://doc.rust-lang.org/reference/identifiers.html).
 //!
 //! # Formatting traits
@@ -15143,6 +15244,7 @@ use crate::string;
 pub fn format(args: Arguments<'_>) -> string::String {
 }
 }
+#[cfg(not(no_rc))]
 pub mod rc {
 //! Single-threaded reference-counting pointers. 'Rc' stands for 'Reference
 //! Counted'.
@@ -15477,85 +15579,15 @@ impl<T: RefUnwindSafe + ?Sized> RefUnwindSafe for Rc<T> {}
 #[unstable(feature = "coerce_unsized", issue = "27732")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Rc<U>> for Rc<T> {}}
 pub mod slice {
-//! A dynamically-sized view into a contiguous sequence, `[T]`.
+//! Utilities for the slice primitive type.
 //!
 //! *[See also the slice primitive type](slice).*
 //!
-//! Slices are a view into a block of memory represented as a pointer and a
-//! length.
+//! Most of the structs in this module are iterator types which can only be created
+//! using a certain function. For example, `slice.iter()` yields an [`Iter`].
 //!
-//! ```
-//! // slicing a Vec
-//! let vec = vec![1, 2, 3];
-//! let int_slice = &vec[..];
-//! // coercing an array to a slice
-//! let str_slice: &[&str] = &["one", "two", "three"];
-//! ```
-//!
-//! Slices are either mutable or shared. The shared slice type is `&[T]`,
-//! while the mutable slice type is `&mut [T]`, where `T` represents the element
-//! type. For example, you can mutate the block of memory that a mutable slice
-//! points to:
-//!
-//! ```
-//! let x = &mut [1, 2, 3];
-//! x[1] = 7;
-//! assert_eq!(x, &[1, 7, 3]);
-//! ```
-//!
-//! Here are some of the things this module contains:
-//!
-//! ## Structs
-//!
-//! There are several structs that are useful for slices, such as [`Iter`], which
-//! represents iteration over a slice.
-//!
-//! ## Trait Implementations
-//!
-//! There are several implementations of common traits for slices. Some examples
-//! include:
-//!
-//! * [`Clone`]
-//! * [`Eq`], [`Ord`] - for slices whose element type are [`Eq`] or [`Ord`].
-//! * [`Hash`] - for slices whose element type is [`Hash`].
-//!
-//! ## Iteration
-//!
-//! The slices implement `IntoIterator`. The iterator yields references to the
-//! slice elements.
-//!
-//! ```
-//! let numbers = &[0, 1, 2];
-//! for n in numbers {
-//!     println!("{n} is a number!");
-//! }
-//! ```
-//!
-//! The mutable slice yields mutable references to the elements:
-//!
-//! ```
-//! let mut scores = [7, 8, 9];
-//! for score in &mut scores[..] {
-//!     *score += 1;
-//! }
-//! ```
-//!
-//! This iterator yields mutable references to the slice's elements, so while
-//! the element type of the slice is `i32`, the element type of the iterator is
-//! `&mut i32`.
-//!
-//! * [`.iter`] and [`.iter_mut`] are the explicit methods to return the default
-//!   iterators.
-//! * Further methods that return iterators are [`.split`], [`.splitn`],
-//!   [`.chunks`], [`.windows`] and more.
-//!
-//! [`Hash`]: core::hash::Hash
-//! [`.iter`]: slice::iter
-//! [`.iter_mut`]: slice::iter_mut
-//! [`.split`]: slice::split
-//! [`.splitn`]: slice::splitn
-//! [`.chunks`]: slice::chunks
-//! [`.windows`]: slice::windows
+//! A few functions are provided to create a slice from a value reference
+//! or from a raw pointer.
 #![stable(feature = "rust1", since = "1.0.0")]
 // Many of the usings in this module are only used in the test configuration.
 // It's cleaner to just turn off the unused_imports warning than to fix them.
@@ -15565,9 +15597,7 @@ use core::borrow::{Borrow, BorrowMut};
 #[cfg(not(no_global_oom_handling))]
 use core::cmp::Ordering::{self, Less};
 #[cfg(not(no_global_oom_handling))]
-use core::mem;
-#[cfg(not(no_global_oom_handling))]
-use core::mem::size_of;
+use core::mem::{self, SizedTypeProperties};
 #[cfg(not(no_global_oom_handling))]
 use core::ptr;
 
@@ -16187,29 +16217,9 @@ where
 }
 }
 pub mod str {
-//! Unicode string slices.
+//! Utilities for the `str` primitive type.
 //!
 //! *[See also the `str` primitive type](str).*
-//!
-//! The `&str` type is one of the two main string types, the other being `String`.
-//! Unlike its `String` counterpart, its contents are borrowed.
-//!
-//! # Basic Usage
-//!
-//! A basic string declaration of `&str` type:
-//!
-//! ```
-//! let hello_world = "Hello, World!";
-//! ```
-//!
-//! Here we have declared a string literal, also known as a string slice.
-//! String literals have a static lifetime, which means the string `hello_world`
-//! is guaranteed to be valid for the duration of the entire program.
-//! We can explicitly specify `hello_world`'s lifetime as well:
-//!
-//! ```
-//! let hello_world: &'static str = "Hello, world!";
-//! ```
 
 #![stable(feature = "rust1", since = "1.0.0")]
 // Many of the usings in this module are only used in the test configuration.
@@ -16260,6 +16270,8 @@ pub use core::str::{RSplit, Split};
 pub use core::str::{RSplitN, SplitN};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::{RSplitTerminator, SplitTerminator};
+#[unstable(feature = "utf8_chunks", issue = "99543")]
+pub use core::str::{U};
 
 /// Note: `str` in `Concat<str>` is not meaningful here.
 /// This type parameter of the trait only exists to enable another impl.
@@ -16710,6 +16722,7 @@ pub mod string {
 
 #[cfg(not(no_global_oom_handling))]
 use core::char::{decode_utf16, REPLACEMENT_CHARACTER};
+use core::error::Error;
 use core::fmt;
 use core::hash;
 use core::iter::FusedIterator;
@@ -16724,15 +16737,15 @@ use core::ops::Bound::{Excluded, Included, Unbounded};
 use core::ops::{self, Index, IndexMut, Range, RangeBounds};
 use core::ptr;
 use core::slice;
-#[cfg(not(no_global_oom_handling))]
-use core::str::lossy;
 use core::str::pattern::Pattern;
+#[cfg(not(no_global_oom_handling))]
+use core::str::Utf8Chunks;
 
 #[cfg(not(no_global_oom_handling))]
 use crate::borrow::{Cow, ToOwned};
 use crate::boxed::Box;
 use crate::collections::TryReserveError;
-use crate::str::{self, Chars, Utf8Error};
+use crate::str::{self, from_utf8_unchecked_mut, Chars, Utf8Error};
 #[cfg(not(no_global_oom_handling))]
 use crate::str::{from_boxed_utf8_unchecked, FromStr};
 use crate::vec::Vec;
@@ -17684,7 +17697,8 @@ impl String {
     /// current length. The allocator may reserve more space to speculatively
     /// avoid frequent allocations. After calling `try_reserve`, capacity will be
     /// greater than or equal to `self.len() + additional` if it returns
-    /// `Ok(())`. Does nothing if capacity is already sufficient.
+    /// `Ok(())`. Does nothing if capacity is already sufficient. This method
+    /// preserves the contents even if an error occurs.
     ///
     /// # Errors
     ///
@@ -18256,6 +18270,33 @@ impl String {
     #[inline]
     pub fn into_boxed_str(self) -> Box<str> {
 }
+
+    /// Consumes and leaks the `String`, returning a mutable reference to the contents,
+    /// `&'static mut str`.
+    ///
+    /// This is mainly useful for data that lives for the remainder of
+    /// the program's life. Dropping the returned reference will cause a memory
+    /// leak.
+    ///
+    /// It does not reallocate or shrink the `String`,
+    /// so the leaked allocation may include unused capacity that is not part
+    /// of the returned slice.
+    ///
+    /// # Examples
+    ///
+    /// Simple usage:
+    ///
+    /// ```
+    /// #![feature(string_leak)]
+    ///
+    /// let x = String::from("bucket");
+    /// let static_ref: &'static mut str = x.leak();
+    /// assert_eq!(static_ref, "bucket");
+    /// ```
+    #[unstable(feature = "string_leak", issue = "102929")]
+    #[inline]
+    pub fn leak(self) -> &'static mut str {
+}
 }
 
 impl FromUtf8Error {
@@ -18339,6 +18380,20 @@ impl fmt::Display for FromUtf8Error {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for FromUtf16Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+}
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Error for FromUtf8Error {
+    #[allow(deprecated)]
+    fn description(&self) -> &str {
+}
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Error for FromUtf16Error {
+    #[allow(deprecated)]
+    fn description(&self) -> &str {
 }
 }
 
@@ -19191,13 +19246,17 @@ impl From<char> for String {
 }
 }
 }
-#[cfg(target_has_atomic = "ptr")]
+#[cfg(all(not(no_rc), not(no_sync), target_has_atomic = "ptr"))]
 pub mod sync {
 #![stable(feature = "rust1", since = "1.0.0")]
 
 //! Thread-safe reference-counting pointers.
 //!
 //! See the [`Arc<T>`][Arc] documentation for more details.
+//!
+//! **Note**: This module is only available on platforms that support atomic
+//! loads and stores of pointers. This may be detected at compile time using
+//! `#[cfg(target_has_atomic = "ptr")]`.
 
 use core::any::Any;
 use core::borrow;
@@ -19277,6 +19336,11 @@ macro_rules! acquire {
 /// inside an `Arc`. If you need to mutate through an `Arc`, use
 /// [`Mutex`][mutex], [`RwLock`][rwlock], or one of the [`Atomic`][atomic]
 /// types.
+///
+/// **Note**: This type is only available on platforms that support atomic
+/// loads and stores of pointers, which includes all platforms that support
+/// the `std` crate but not all those which only support [`alloc`](crate).
+/// This may be detected at compile time using `#[cfg(target_has_atomic = "ptr")]`.
 ///
 /// ## Thread Safety
 ///
@@ -19443,10 +19507,16 @@ impl<T: RefUnwindSafe + ?Sized> UnwindSafe for Arc<T> {}
 
 #[unstable(feature = "coerce_unsized", issue = "27732")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Arc<U>> for Arc<T> {}}
-#[cfg(all(not(no_global_oom_handling), target_has_atomic = "ptr"))]
+#[cfg(all(not(no_global_oom_handling), not(no_rc), not(no_sync), target_has_atomic = "ptr"))]
 pub mod task {
 #![stable(feature = "wake_trait", since = "1.51.0")]
+
 //! Types and Traits for working with asynchronous tasks.
+//!
+//! **Note**: This module is only available on platforms that support atomic
+//! loads and stores of pointers. This may be detected at compile time using
+//! `#[cfg(target_has_atomic = "ptr")]`.
+
 use core::mem::ManuallyDrop;
 use core::task::{RawWaker, RawWakerVTable, Waker};
 
@@ -19624,12 +19694,12 @@ use core::cmp::Ordering;
 use core::convert::TryFrom;
 use core::fmt;
 use core::hash::{Hash, Hasher};
-use core::intrinsics::{arith_offset, assume};
+use core::intrinsics::assume;
 use core::iter;
 #[cfg(not(no_global_oom_handling))]
 use core::iter::FromIterator;
 use core::marker::PhantomData;
-use core::mem::{self, ManuallyDrop, MaybeUninit};
+use core::mem::{self, ManuallyDrop, MaybeUninit, SizedTypeProperties};
 use core::ops::{self, Index, IndexMut, Range, RangeBounds};
 use core::ptr::{self, NonNull};
 use core::slice::{self, SliceIndex};
@@ -19645,8 +19715,9 @@ pub use self::drain_filter::DrainFilter;
 
 mod drain_filter {
 use crate::alloc::{Allocator, Global};
-use core::ptr::{self};
-use core::slice::{self};
+use core::mem::{self, ManuallyDrop};
+use core::ptr;
+use core::slice;
 
 use super::Vec;
 
@@ -19683,6 +19754,30 @@ where
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
     pub fn allocator(&self) -> &A {
+}
+
+    /// Keep unyielded elements in the source `Vec`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(drain_filter)]
+    /// #![feature(drain_keep_rest)]
+    ///
+    /// let mut vec = vec!['a', 'b', 'c'];
+    /// let mut drain = vec.drain_filter(|_| true);
+    ///
+    /// assert_eq!(drain.next().unwrap(), 'a');
+    ///
+    /// // This call keeps 'b' and 'c' in the vec.
+    /// drain.keep_rest();
+    ///
+    /// // If we wouldn't call `keep_rest()`,
+    /// // `vec` would be empty.
+    /// assert_eq!(vec, ['b', 'c']);
+    /// ```
+    #[unstable(feature = "drain_keep_rest", issue = "101122")]
+    pub fn keep_rest(self) {
 }
 }
 
@@ -19782,7 +19877,7 @@ mod drain {
 use crate::alloc::{Allocator, Global};
 use core::fmt;
 use core::iter::{FusedIterator, TrustedLen};
-use core::mem;
+use core::mem::{self, ManuallyDrop, SizedTypeProperties};
 use core::ptr::{self, NonNull};
 use core::slice::{self};
 
@@ -19835,6 +19930,29 @@ impl<'a, T, A: Allocator> Drain<'a, T, A> {
     #[must_use]
     #[inline]
     pub fn allocator(&self) -> &A {
+}
+
+    /// Keep unyielded elements in the source `Vec`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(drain_keep_rest)]
+    ///
+    /// let mut vec = vec!['a', 'b', 'c'];
+    /// let mut drain = vec.drain(..);
+    ///
+    /// assert_eq!(drain.next().unwrap(), 'a');
+    ///
+    /// // This call keeps 'b' and 'c' in the vec.
+    /// drain.keep_rest();
+    ///
+    /// // If we wouldn't call `keep_rest()`,
+    /// // `vec` would be empty.
+    /// assert_eq!(vec, ['b', 'c']);
+    /// ```
+    #[unstable(feature = "drain_keep_rest", issue = "101122")]
+    pub fn keep_rest(self) {
 }
 }
 
@@ -19948,12 +20066,11 @@ use crate::alloc::{Allocator, Global};
 use crate::raw_vec::RawVec;
 use core::array;
 use core::fmt;
-use core::intrinsics::arith_offset;
 use core::iter::{
     FusedIterator, InPlaceIterable, SourceIter, TrustedLen, TrustedRandomAccessNoCoerce,
 };
 use core::marker::PhantomData;
-use core::mem::{self, ManuallyDrop, MaybeUninit};
+use core::mem::{self, ManuallyDrop, MaybeUninit, SizedTypeProperties};
 #[cfg(not(no_global_oom_handling))]
 use core::ops::Deref;
 use core::ptr::{self, NonNull};
@@ -20027,13 +20144,16 @@ impl<T, A: Allocator> IntoIter<T, A> {
 }
 
     /// Drops remaining elements and relinquishes the backing allocation.
+    /// This method guarantees it won't panic before relinquishing
+    /// the backing allocation.
     ///
     /// This is roughly equivalent to the following, but more efficient
     ///
     /// ```
     /// # let mut into_iter = Vec::<u8>::with_capacity(10).into_iter();
+    /// let mut into_iter = std::mem::replace(&mut into_iter, Vec::new().into_iter());
     /// (&mut into_iter).for_each(core::mem::drop);
-    /// unsafe { core::ptr::write(&mut into_iter, Vec::new().into_iter()); }
+    /// std::mem::forget(into_iter);
     /// ```
     ///
     /// This method is used by in-place iteration, refer to the vec::in_place_collect
@@ -20116,6 +20236,8 @@ unsafe impl<T, A: Allocator> TrustedLen for IntoIter<T, A> {}}
 use self::is_zero::IsZero;
 
 mod is_zero {
+use core::num::{Saturating, Wrapping};
+
 use crate::boxed::Box;
 
 #[rustc_specialization_trait]
@@ -20241,6 +20363,34 @@ impl_is_zero_option_of_nonzero!(
     NonZeroUsize,
     NonZeroIsize,
 );
+
+unsafe impl<T: IsZero> IsZero for Wrapping<T> {
+    #[inline]
+    fn is_zero(&self) -> bool {
+}
+}
+
+unsafe impl<T: IsZero> IsZero for Saturating<T> {
+    #[inline]
+    fn is_zero(&self) -> bool {
+}
+}
+
+macro_rules! impl_for_optional_bool {
+    ($($t:ty,)+) => {$(
+        unsafe impl IsZero for $t {
+            #[inline]
+            fn is_zero(&self) -> bool {
+}
+        }
+    )+};
+}
+impl_for_optional_bool! {
+    Option<bool>,
+    Option<Option<bool>>,
+    Option<Option<Option<bool>>>,
+    // Could go further, but not worth the metadata overhead
+}
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -20301,6 +20451,9 @@ mod in_place_collect {
 //!
 //! This is handled by the [`InPlaceDrop`] guard for sink items (`U`) and by
 //! [`vec::IntoIter::forget_allocation_drop_remaining()`] for remaining source items (`T`).
+//!
+//! If dropping any remaining source item (`T`) panics then [`InPlaceDstBufDrop`] will handle dropping
+//! the already collected sink items (`U`) and freeing the allocation.
 //!
 //! [`vec::IntoIter::forget_allocation_drop_remaining()`]: super::IntoIter::forget_allocation_drop_remaining()
 //!
@@ -20382,10 +20535,10 @@ mod in_place_collect {
 //! vec.truncate(write_idx);
 //! ```
 use core::iter::{InPlaceIterable, SourceIter, TrustedRandomAccessNoCoerce};
-use core::mem::{self, ManuallyDrop};
+use core::mem::{self, ManuallyDrop, SizedTypeProperties};
 use core::ptr::{self};
 
-use super::{InPlaceDrop, SpecFromIter, SpecFromIterNested, Vec};
+use super::{InPlaceDrop, InPlaceDstBufDrop, SpecFromIter, SpecFromIterNested, Vec};
 
 /// Specialization marker for collecting an iterator pipeline into a Vec while reusing the
 /// source allocation, i.e. executing the pipeline in place.
@@ -20583,7 +20736,7 @@ impl Drop for SetLenOnDrop<'_> {
 }
 
 #[cfg(not(no_global_oom_handling))]
-use self::in_place_drop::InPlaceDrop;
+use self::in_place_drop::{InPlaceDrop, InPlaceDstBufDrop};
 
 #[cfg(not(no_global_oom_handling))]
 mod in_place_drop {
@@ -20603,6 +20756,20 @@ impl<T> InPlaceDrop<T> {
 }
 
 impl<T> Drop for InPlaceDrop<T> {
+    #[inline]
+    fn drop(&mut self) {
+}
+}
+
+// A helper struct for in-place collection that drops the destination allocation and elements,
+// to avoid leaking them if some other destructor panics.
+pub(super) struct InPlaceDstBufDrop<T> {
+    pub(super) ptr: *mut T,
+    pub(super) len: usize,
+    pub(super) cap: usize,
+}
+
+impl<T> Drop for InPlaceDstBufDrop<T> {
     #[inline]
     fn drop(&mut self) {
 }
@@ -21033,7 +21200,7 @@ impl<T> Vec<T> {
     /// an explanation of the difference between length and capacity, see
     /// *[Capacity and reallocation]*.
     ///
-    /// If it is imporant to know the exact allocated capacity of a `Vec`,
+    /// If it is important to know the exact allocated capacity of a `Vec`,
     /// always use the [`capacity`] method after construction.
     ///
     /// For `Vec<T>` where `T` is a zero-sized type, there will be no allocation
@@ -21079,15 +21246,13 @@ impl<T> Vec<T> {
     pub fn with_capacity(capacity: usize) -> Self {
 }
 
-    /// Creates a `Vec<T>` directly from the raw components of another vector.
+    /// Creates a `Vec<T>` directly from a pointer, a capacity, and a length.
     ///
     /// # Safety
     ///
     /// This is highly unsafe, due to the number of invariants that aren't
     /// checked:
     ///
-    /// * `ptr` needs to have been previously allocated via [`String`]/`Vec<T>`
-    ///   (at least, it's highly likely to be incorrect if it wasn't).
     /// * `T` needs to have the same alignment as what `ptr` was allocated with.
     ///   (`T` having a less strict alignment is not sufficient, the alignment really
     ///   needs to be equal to satisfy the [`dealloc`] requirement that memory must be
@@ -21096,6 +21261,14 @@ impl<T> Vec<T> {
     ///   to be the same size as the pointer was allocated with. (Because similar to
     ///   alignment, [`dealloc`] must be called with the same layout `size`.)
     /// * `length` needs to be less than or equal to `capacity`.
+    /// * The first `length` values must be properly initialized values of type `T`.
+    /// * `capacity` needs to be the capacity that the pointer was allocated with.
+    /// * The allocated size in bytes must be no larger than `isize::MAX`.
+    ///   See the safety documentation of [`pointer::offset`].
+    ///
+    /// These requirements are always upheld by any `ptr` that has been allocated
+    /// via `Vec<T>`. Other allocation sources are allowed if the invariants are
+    /// upheld.
     ///
     /// Violating these may cause problems like corrupting the allocator's
     /// internal data structures. For example it is normally **not** safe
@@ -21138,13 +21311,39 @@ impl<T> Vec<T> {
     ///
     /// unsafe {
     ///     // Overwrite memory with 4, 5, 6
-    ///     for i in 0..len as isize {
-    ///         ptr::write(p.offset(i), 4 + i);
+    ///     for i in 0..len {
+    ///         ptr::write(p.add(i), 4 + i);
     ///     }
     ///
     ///     // Put everything back together into a Vec
     ///     let rebuilt = Vec::from_raw_parts(p, len, cap);
     ///     assert_eq!(rebuilt, [4, 5, 6]);
+    /// }
+    /// ```
+    ///
+    /// Using memory that was allocated elsewhere:
+    ///
+    /// ```rust
+    /// #![feature(allocator_api)]
+    ///
+    /// use std::alloc::{AllocError, Allocator, Global, Layout};
+    ///
+    /// fn main() {
+    ///     let layout = Layout::array::<u32>(16).expect("overflow cannot happen");
+    ///
+    ///     let vec = unsafe {
+    ///         let mem = match Global.allocate(layout) {
+    ///             Ok(mem) => mem.cast::<u32>().as_ptr(),
+    ///             Err(AllocError) => return,
+    ///         };
+    ///
+    ///         mem.write(1_000_000);
+    ///
+    ///         Vec::from_raw_parts_in(mem, 1, 16, Global)
+    ///     };
+    ///
+    ///     assert_eq!(vec, &[1_000_000]);
+    ///     assert_eq!(vec.capacity(), 16);
     /// }
     /// ```
     #[inline]
@@ -21185,7 +21384,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// an explanation of the difference between length and capacity, see
     /// *[Capacity and reallocation]*.
     ///
-    /// If it is imporant to know the exact allocated capacity of a `Vec`,
+    /// If it is important to know the exact allocated capacity of a `Vec`,
     /// always use the [`capacity`] method after construction.
     ///
     /// For `Vec<T, A>` where `T` is a zero-sized type, there will be no allocation
@@ -21234,21 +21433,30 @@ impl<T, A: Allocator> Vec<T, A> {
     pub fn with_capacity_in(capacity: usize, alloc: A) -> Self {
 }
 
-    /// Creates a `Vec<T, A>` directly from the raw components of another vector.
+    /// Creates a `Vec<T, A>` directly from a pointer, a capacity, a length,
+    /// and an allocator.
     ///
     /// # Safety
     ///
     /// This is highly unsafe, due to the number of invariants that aren't
     /// checked:
     ///
-    /// * `ptr` needs to have been previously allocated via [`String`]/`Vec<T>`
-    ///   (at least, it's highly likely to be incorrect if it wasn't).
-    /// * `T` needs to have the same size and alignment as what `ptr` was allocated with.
+    /// * `T` needs to have the same alignment as what `ptr` was allocated with.
     ///   (`T` having a less strict alignment is not sufficient, the alignment really
     ///   needs to be equal to satisfy the [`dealloc`] requirement that memory must be
     ///   allocated and deallocated with the same layout.)
+    /// * The size of `T` times the `capacity` (ie. the allocated size in bytes) needs
+    ///   to be the same size as the pointer was allocated with. (Because similar to
+    ///   alignment, [`dealloc`] must be called with the same layout `size`.)
     /// * `length` needs to be less than or equal to `capacity`.
-    /// * `capacity` needs to be the capacity that the pointer was allocated with.
+    /// * The first `length` values must be properly initialized values of type `T`.
+    /// * `capacity` needs to [*fit*] the layout size that the pointer was allocated with.
+    /// * The allocated size in bytes must be no larger than `isize::MAX`.
+    ///   See the safety documentation of [`pointer::offset`].
+    ///
+    /// These requirements are always upheld by any `ptr` that has been allocated
+    /// via `Vec<T, A>`. Other allocation sources are allowed if the invariants are
+    /// upheld.
     ///
     /// Violating these may cause problems like corrupting the allocator's
     /// internal data structures. For example it is **not** safe
@@ -21266,6 +21474,7 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     /// [`String`]: crate::string::String
     /// [`dealloc`]: crate::alloc::GlobalAlloc::dealloc
+    /// [*fit*]: crate::alloc::Allocator#memory-fitting
     ///
     /// # Examples
     ///
@@ -21295,13 +21504,36 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     /// unsafe {
     ///     // Overwrite memory with 4, 5, 6
-    ///     for i in 0..len as isize {
-    ///         ptr::write(p.offset(i), 4 + i);
+    ///     for i in 0..len {
+    ///         ptr::write(p.add(i), 4 + i);
     ///     }
     ///
     ///     // Put everything back together into a Vec
     ///     let rebuilt = Vec::from_raw_parts_in(p, len, cap, alloc.clone());
     ///     assert_eq!(rebuilt, [4, 5, 6]);
+    /// }
+    /// ```
+    ///
+    /// Using memory that was allocated elsewhere:
+    ///
+    /// ```rust
+    /// use std::alloc::{alloc, Layout};
+    ///
+    /// fn main() {
+    ///     let layout = Layout::array::<u32>(16).expect("overflow cannot happen");
+    ///     let vec = unsafe {
+    ///         let mem = alloc(layout).cast::<u32>();
+    ///         if mem.is_null() {
+    ///             return;
+    ///         }
+    ///
+    ///         mem.write(1_000_000);
+    ///
+    ///         Vec::from_raw_parts(mem, 1, 16)
+    ///     };
+    ///
+    ///     assert_eq!(vec, &[1_000_000]);
+    ///     assert_eq!(vec.capacity(), 16);
     /// }
     /// ```
     #[inline]
@@ -21387,13 +21619,14 @@ impl<T, A: Allocator> Vec<T, A> {
     pub fn into_raw_parts_with_alloc(self) -> (*mut T, usize, usize, A) {
 }
 
-    /// Returns the number of elements the vector can hold without
+    /// Returns the total number of elements the vector can hold without
     /// reallocating.
     ///
     /// # Examples
     ///
     /// ```
-    /// let vec: Vec<i32> = Vec::with_capacity(10);
+    /// let mut vec: Vec<i32> = Vec::with_capacity(10);
+    /// vec.push(42);
     /// assert_eq!(vec.capacity(), 10);
     /// ```
     #[inline]
@@ -21456,7 +21689,8 @@ impl<T, A: Allocator> Vec<T, A> {
     /// in the given `Vec<T>`. The collection may reserve more space to speculatively avoid
     /// frequent reallocations. After calling `try_reserve`, capacity will be
     /// greater than or equal to `self.len() + additional` if it returns
-    /// `Ok(())`. Does nothing if capacity is already sufficient.
+    /// `Ok(())`. Does nothing if capacity is already sufficient. This method
+    /// preserves the contents even if an error occurs.
     ///
     /// # Errors
     ///
@@ -22029,6 +22263,42 @@ impl<T, A: Allocator> Vec<T, A> {
     pub fn push(&mut self, value: T) {
 }
 
+    /// Appends an element if there is sufficient spare capacity, otherwise an error is returned
+    /// with the element.
+    ///
+    /// Unlike [`push`] this method will not reallocate when there's insufficient capacity.
+    /// The caller should use [`reserve`] or [`try_reserve`] to ensure that there is enough capacity.
+    ///
+    /// [`push`]: Vec::push
+    /// [`reserve`]: Vec::reserve
+    /// [`try_reserve`]: Vec::try_reserve
+    ///
+    /// # Examples
+    ///
+    /// A manual, panic-free alternative to [`FromIterator`]:
+    ///
+    /// ```
+    /// #![feature(vec_push_within_capacity)]
+    ///
+    /// use std::collections::TryReserveError;
+    /// fn from_iter_fallible<T>(iter: impl Iterator<Item=T>) -> Result<Vec<T>, TryReserveError> {
+    ///     let mut vec = Vec::new();
+    ///     for value in iter {
+    ///         if let Err(value) = vec.push_within_capacity(value) {
+    ///             vec.try_reserve(1)?;
+    ///             // this cannot fail, the previous line either returned or added at least 1 free slot
+    ///             let _ = vec.push_within_capacity(value);
+    ///         }
+    ///     }
+    ///     Ok(vec)
+    /// }
+    /// assert_eq!(from_iter_fallible(0..100), Ok(Vec::from_iter(0..100)));
+    /// ```
+    #[inline]
+    #[unstable(feature = "vec_push_within_capacity", issue = "100486")]
+    pub fn push_within_capacity(&mut self, value: T) -> Result<(), T> {
+}
+
     /// Removes the last element from a vector and returns it, or [`None`] if it
     /// is empty.
     ///
@@ -22246,7 +22516,6 @@ impl<T, A: Allocator> Vec<T, A> {
     /// static_ref[0] += 1;
     /// assert_eq!(static_ref, &[2, 2, 3]);
     /// ```
-    #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "vec_leak", since = "1.47.0")]
     #[inline]
     pub fn leak<'a>(self) -> &'a mut [T]
@@ -22866,6 +23135,8 @@ unsafe impl<#[may_dangle] T, A: Allocator> Drop for Vec<T, A> {
 #[rustc_const_unstable(feature = "const_default_impls", issue = "87864")]
 impl<T> const Default for Vec<T> {
     /// Creates an empty `Vec<T>`.
+    ///
+    /// The vector will not allocate until elements are pushed onto it.
     fn default() -> Vec<T> {
 }
 }
