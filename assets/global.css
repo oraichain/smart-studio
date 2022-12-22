@@ -149,15 +149,21 @@ a {
 
 .wasmStudioHeader {
   font-family: 'Zilla Slab', serif;
-  font-size: 16px;
-  width: 100%;
+  font-size: 18px;  
   height: 30px;
   padding: 5px;
-  /* font-weight: bold; */
+  font-weight: bold; 
   border-bottom-color: #1c2022;
   border-bottom-style: solid;
   border-bottom-width: 1px;
-  background-color: var(--title);
+  background-color: var(--title);  
+  display: flex;
+  align-items: center;
+  padding-right: 20px;
+}
+
+.wasmStudioHeader span {
+  margin-left: 10px;
 }
 
 .waIcon {
