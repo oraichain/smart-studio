@@ -20,10 +20,18 @@
  */
 
 import { language, conf } from './rust-grammar';
+import * as toml from 'monaco-editor/esm/vs/basic-languages/coffee/coffee';
 import { Language } from '../compilerServices/types';
 import { LanguageUpdater } from './languageUpdater';
 
 export default function registerLanguages() {
+  // yaml
+  monaco.languages.register({
+    id: Language.Toml
+  });
+  monaco.languages.setMonarchTokensProvider(Language.Toml, toml.language);
+  monaco.languages.setLanguageConfiguration(Language.Toml, toml.conf);
+
   // Log
   monaco.languages.register({
     id: Language.Log
@@ -38,7 +46,6 @@ export default function registerLanguages() {
   monaco.languages.register({
     id: Language.Rust
   });
-
   monaco.languages.setMonarchTokensProvider(Language.Rust, language);
   monaco.languages.setLanguageConfiguration(Language.Rust, conf);
 

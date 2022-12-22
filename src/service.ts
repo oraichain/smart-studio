@@ -39,6 +39,7 @@ export interface IFiddleFile {
   name: string;
   data?: string;
   type?: 'binary' | 'text';
+  isReadonly: boolean;
 }
 
 export interface ISaveFiddleResponse {
@@ -160,7 +161,8 @@ export class Service {
 
     const json: IFiddleFile = {
       name: file.getPath(),
-      data: fileData.toString()
+      data: fileData.toString(),
+      isReadonly: false
     };
     const baseURL = await getServiceURL(ServiceTypes.Service);
     const response = await fetch(`${baseURL}/file`, {
@@ -216,7 +218,8 @@ export class Service {
 
   static async deleteFile(file: File): Promise<ISaveFiddleResponse> {
     const json: IFiddleFile = {
-      name: file.getPath()
+      name: file.getPath(),
+      isReadonly: false
     };
     const baseURL = await getServiceURL(ServiceTypes.Service);
     const response = await fetch(`${baseURL}/file`, {
@@ -357,10 +360,11 @@ export class Service {
         data = f.data as string;
         type = 'text';
       }
-      const file = {
+      const file: IFiddleFile = {
         name: f.getPath(project),
         data,
-        type
+        type,
+        isReadonly: false
       };
       files.push(file);
     };
@@ -391,6 +395,7 @@ export class Service {
       const type = fileTypeFromFileName(f.name);
       // update or create file
       const file = project.getFile(f.name) || project.newFile(f.name, type, false);
+      file.isBufferReadOnly = f.isReadonly;
       let data: string | ArrayBuffer;
       if (f.data) {
         if (f.type === 'binary') {

@@ -19,7 +19,7 @@ const TreeNode: FC<Props> = ({ data, onClick}) => {
       }} className={`monaco-tree-row ${children?.length ? 'expanded has-children' : ''}`} style={{ paddingLeft: isProject?0:18,cursor:'pointer' }}>
        {!isProject && 
        <div className="content">
-          <div className={`monaco-icon-label ${children?.length ? 'folder_type_model folder-icon' :  getIconForFileType(data.type) + ' file-icon'}`} title="" style={{ display: 'flex' }}>
+          <div className={`monaco-icon-label ${children?.length ? 'folder_type_model folder-icon' :  getIconForFileType(data.type) + ' file-icon ext-file-icon'}`} title="" style={{ display: 'flex' }}>
             <div className="monaco-icon-label-description-container">
               <a className="label-name">{data.name}</a>
               <span className="label-description" />

@@ -64,102 +64,110 @@ export function isBinaryFileType(type: FileType) {
 }
 
 export function languageForFileType(type: FileType): string {
-  if (type === FileType.HTML) {
-    return 'html';
-  } else if (type === FileType.CSS) {
-    return 'css';
-  } else if (type === FileType.JavaScript) {
-    return 'javascript';
-  } else if (type === FileType.TypeScript) {
-    return 'typescript';
-  } else if (type === FileType.C || type === FileType.Cpp) {
-    return 'cpp';
-  } else if (type === FileType.Rust) {
-    return 'rust';
-  } else if (type === FileType.Wat || type === FileType.Wasm) {
-    return 'wat';
-  } else if (type === FileType.Log) {
-    return 'log';
-  } else if (type === FileType.x86) {
-    return 'x86';
-  } else if (type === FileType.Markdown) {
-    return 'markdown';
-  } else if (type === FileType.Cretonne) {
-    return 'cton';
-  } else if (type === FileType.JSON) {
-    return 'json';
-  } else if (type === FileType.DOT) {
-    return 'dot';
-  } else if (type === FileType.TOML) {
-    return 'toml';
+  switch (type) {
+    case FileType.HTML:
+      return 'html';
+    case FileType.CSS:
+      return 'css';
+    case FileType.JavaScript:
+      return 'javascript';
+    case FileType.TypeScript:
+      return 'typescript';
+    case FileType.C:
+    case FileType.Cpp:
+      return 'cpp';
+    case FileType.Rust:
+      return 'rust';
+    case FileType.Wat:
+    case FileType.Wasm:
+      return 'wat';
+    case FileType.Log:
+      return 'log';
+    case FileType.x86:
+      return 'x86';
+    case FileType.Markdown:
+      return 'markdown';
+    case FileType.Cretonne:
+      return 'cton';
+    case FileType.JSON:
+      return 'json';
+    case FileType.DOT:
+      return 'dot';
+    case FileType.TOML:
+      return 'toml';
+    default:
+      return '';
   }
-  return '';
 }
 
 export function nameForFileType(type: FileType): string {
-  if (type === FileType.HTML) {
-    return 'HTML';
-  } else if (type === FileType.CSS) {
-    return 'CSS';
-  } else if (type === FileType.JavaScript) {
-    return 'JavaScript';
-  } else if (type === FileType.TypeScript) {
-    return 'TypeScript';
-  } else if (type === FileType.C) {
-    return 'C';
-  } else if (type === FileType.Cpp) {
-    return 'C++';
-  } else if (type === FileType.Wat) {
-    return 'WebAssembly Text';
-  } else if (type === FileType.Wasm) {
-    return 'WebAssembly';
-  } else if (type === FileType.Markdown) {
-    return 'Markdown';
-  } else if (type === FileType.Rust) {
-    return 'Rust';
-  } else if (type === FileType.Cretonne) {
-    return 'Cretonne';
-  } else if (type === FileType.JSON) {
-    return 'JSON';
-  } else if (type === FileType.DOT) {
-    return 'DOT';
-  } else if (type === FileType.TOML) {
-    return 'TOML';
+  switch (type) {
+    case FileType.HTML:
+      return 'HTML';
+    case FileType.CSS:
+      return 'CSS';
+    case FileType.JavaScript:
+      return 'JavaScript';
+    case FileType.TypeScript:
+      return 'TypeScript';
+    case FileType.C:
+      return 'C';
+    case FileType.Cpp:
+      return 'C++';
+    case FileType.Wat:
+      return 'WebAssembly Text';
+    case FileType.Wasm:
+      return 'WebAssembly';
+    case FileType.Markdown:
+      return 'Markdown';
+    case FileType.Rust:
+      return 'Rust';
+    case FileType.Cretonne:
+      return 'Cretonne';
+    case FileType.JSON:
+      return 'JSON';
+    case FileType.DOT:
+      return 'DOT';
+    case FileType.TOML:
+      return 'TOML';
+    default:
+      return '';
   }
-  return '';
 }
 
 export function extensionForFileType(type: FileType): string {
-  if (type === FileType.HTML) {
-    return 'html';
-  } else if (type === FileType.CSS) {
-    return 'css';
-  } else if (type === FileType.JavaScript) {
-    return 'js';
-  } else if (type === FileType.TypeScript) {
-    return 'ts';
-  } else if (type === FileType.C) {
-    return 'c';
-  } else if (type === FileType.Cpp) {
-    return 'cpp';
-  } else if (type === FileType.Wat) {
-    return 'wat';
-  } else if (type === FileType.Wasm) {
-    return 'wasm';
-  } else if (type === FileType.Markdown) {
-    return 'md';
-  } else if (type === FileType.Rust) {
-    return 'rs';
-  } else if (type === FileType.Cretonne) {
-    return 'cton';
-  } else if (type === FileType.JSON) {
-    return 'json';
-  } else if (type === FileType.DOT) {
-    return 'dot';
-  } else if (type === FileType.TOML) {
-    return 'toml';
+  switch (type) {
+    case FileType.HTML:
+      return 'html';
+    case FileType.CSS:
+      return 'css';
+    case FileType.JavaScript:
+      return 'js';
+    case FileType.TypeScript:
+      return 'ts';
+    case FileType.C:
+      return 'c';
+    case FileType.Cpp:
+      return 'cpp';
+    case FileType.Wat:
+      return 'wat';
+    case FileType.Wasm:
+      return 'wasm';
+    case FileType.Markdown:
+      return 'md';
+    case FileType.Rust:
+      return 'rs';
+    case FileType.Cretonne:
+      return 'cton';
+    case FileType.JSON:
+      return 'json';
+    case FileType.DOT:
+      return 'dot';
+    case FileType.TOML:
+      return 'toml';
+    default:
+      return '';
   }
-  return '';
 }
 
 export function fileTypeFromFileName(name: string): FileType {
@@ -167,95 +175,105 @@ export function fileTypeFromFileName(name: string): FileType {
 }
 
 export function fileTypeForExtension(extension: string): FileType {
-  if (extension === 'html') {
-    return FileType.HTML;
-  } else if (extension === 'css') {
-    return FileType.CSS;
-  } else if (extension === 'js') {
-    return FileType.JavaScript;
-  } else if (extension === 'ts') {
-    return FileType.TypeScript;
-  } else if (extension === 'c') {
-    return FileType.C;
-  } else if (extension === 'cpp') {
-    return FileType.Cpp;
-  } else if (extension === 'wat') {
-    return FileType.Wat;
-  } else if (extension === 'wasm') {
-    return FileType.Wasm;
-  } else if (extension === 'md') {
-    return FileType.Markdown;
-  } else if (extension === 'rs') {
-    return FileType.Rust;
-  } else if (extension === 'cton') {
-    return FileType.Cretonne;
-  } else if (extension === 'json' || extension === 'map') {
-    return FileType.JSON;
-  } else if (extension === 'dot') {
-    return FileType.DOT;
-  } else if (extension === 'toml') {
-    return FileType.TOML;
+  switch (extension) {
+    case 'html':
+      return FileType.HTML;
+    case 'css':
+      return FileType.CSS;
+    case 'js':
+      return FileType.JavaScript;
+    case 'ts':
+      return FileType.TypeScript;
+    case 'c':
+      return FileType.C;
+    case 'cpp':
+      return FileType.Cpp;
+    case 'wat':
+      return FileType.Wat;
+    case 'wasm':
+      return FileType.Wasm;
+    case 'md':
+      return FileType.Markdown;
+    case 'rs':
+      return FileType.Rust;
+    case 'cton':
+      return FileType.Cretonne;
+    case 'json' || extension === 'map':
+      return FileType.JSON;
+    case 'dot':
+      return FileType.DOT;
+    case 'toml':
+      return FileType.TOML;
+    default:
+      return null;
   }
-  return null;
 }
 
 export function mimeTypeForFileType(type: FileType): string {
-  if (type === FileType.HTML) {
-    return 'text/html';
-  } else if (type === FileType.JavaScript) {
-    return 'application/javascript';
-  } else if (type === FileType.Wasm) {
-    return 'application/wasm';
-  } else if (type === FileType.JSON) {
-    return 'application/json';
-  } else if (type === FileType.DOT) {
-    return 'text/plain';
-  } else if (type === FileType.Markdown) {
-    return 'text/markdown';
+  switch (type) {
+    case FileType.HTML:
+      return 'text/html';
+    case FileType.JavaScript:
+      return 'application/javascript';
+    case FileType.Wasm:
+      return 'application/wasm';
+    case FileType.JSON:
+      return 'application/json';
+    case FileType.DOT:
+      return 'text/plain';
+    case FileType.Markdown:
+      return 'text/markdown';
+    default:
+      return '';
   }
-  return '';
 }
 
 export function fileTypeForMimeType(type: string): FileType {
-  if (type === 'text/html') {
-    return FileType.HTML;
-  } else if (type === 'application/javascript') {
-    return FileType.JavaScript;
-  } else if (type === 'application/wasm') {
-    return FileType.Wasm;
-  } else if (type === 'text/markdown') {
-    return FileType.Markdown;
-  } else if (type === 'application/json') {
-    return FileType.JSON;
+  switch (type) {
+    case 'text/html':
+      return FileType.HTML;
+    case 'application/javascript':
+      return FileType.JavaScript;
+    case 'application/wasm':
+      return FileType.Wasm;
+    case 'text/markdown':
+      return FileType.Markdown;
+    case 'application/json':
+      return FileType.JSON;
+    default:
+      return FileType.Unknown;
   }
-  return FileType.Unknown;
 }
 
 export function getIconForFileType(fileType: FileType): string {
-  if (fileType === FileType.JavaScript) {
-    return 'javascript-lang-file-icon';
-  } else if (fileType === FileType.TypeScript) {
-    return 'typescript-lang-file-icon';
-  } else if (fileType === FileType.C) {
-    return 'c-lang-file-icon';
-  } else if (fileType === FileType.Cpp) {
-    return 'cpp-lang-file-icon';
-  } else if (fileType === FileType.Rust) {
-    return 'rust-lang-file-icon';
-  } else if (fileType === FileType.Markdown) {
-    return 'markdown-lang-file-icon';
-  } else if (fileType === FileType.HTML) {
-    return 'html-lang-file-icon';
-  } else if (fileType === FileType.CSS) {
-    return 'css-lang-file-icon';
-  } else if (fileType === FileType.Directory) {
-    return 'folder-icon';
-  } else if (fileType === FileType.JSON) {
-    return 'json-lang-file-icon';
-  } else if (fileType === FileType.Wasm) {
-    return 'wasm-lang-file-icon';
-  } else if (fileType === FileType.Wat) {
-    return 'wat-lang-file-icon';
+  switch (fileType) {
+    case FileType.JavaScript:
+      return 'javascript-lang-file-icon';
+    case FileType.TypeScript:
+      return 'typescript-lang-file-icon';
+    case FileType.C:
+      return 'c-lang-file-icon';
+    case FileType.Cpp:
+      return 'cpp-lang-file-icon';
+    case FileType.Rust:
+      return 'rust-lang-file-icon';
+    case FileType.Markdown:
+      return 'markdown-lang-file-icon';
+    case FileType.HTML:
+      return 'html-lang-file-icon';
+    case FileType.CSS:
+      return 'css-lang-file-icon';
+    case FileType.Directory:
+      return 'folder-icon';
+    case FileType.JSON:
+      return 'json-lang-file-icon';
+    case FileType.Wasm:
+      return 'wasm-lang-file-icon';
+    case FileType.Wat:
+      return 'wat-lang-file-icon';
+    case FileType.TOML:
+      return 'toml-ext-file-icon';
+    default:
+      return 'txt-ext-file-icon';
   }
-  return 'txt-ext-file-icon';
 }
