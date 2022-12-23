@@ -38,6 +38,7 @@ export interface SimulateProps {
 
 export interface SimulateState {
   payload: string;
+  info: MessageInfo;
   output: any;
   isValid: boolean;
 }
@@ -47,6 +48,7 @@ export class Simulate extends React.Component<SimulateProps, SimulateState> {
     super(props);
     this.state = {
       payload: '',
+      info: mockInfo,
       output: {},
       isValid: true
     };
@@ -65,14 +67,14 @@ export class Simulate extends React.Component<SimulateProps, SimulateState> {
 
   instantiate = () => {
     try {
-      const instantiateRes = vm.instantiate(mockEnv, mockInfo, JSON.parse(this.state.payload));
+      const instantiateRes = vm.instantiate(mockEnv, this.state.info, JSON.parse(this.state.payload));
       this.setOutput((instantiateRes.json as { ok: any }).ok);
     } catch {}
   };
 
   execute = () => {
     try {
-      const instantiateRes = vm.execute(mockEnv, mockInfo, JSON.parse(this.state.payload));
+      const instantiateRes = vm.execute(mockEnv, this.state.info, JSON.parse(this.state.payload));
       this.setOutput((instantiateRes.json as { ok: any }).ok);
     } catch {}
   };
@@ -89,6 +91,12 @@ export class Simulate extends React.Component<SimulateProps, SimulateState> {
     this.setState({ isValid });
   };
 
+  setInfo = (info: string) => {
+    try {
+      this.setState({ info: JSON.parse(info) });
+    } catch {}
+  };
+
   setPayload = (payload: string) => {
     this.setState({ payload });
   };
@@ -98,14 +106,14 @@ export class Simulate extends React.Component<SimulateProps, SimulateState> {
   };
 
   render() {
-    const { payload, output, isValid } = this.state;
+    const { payload, output, info, isValid } = this.state;
     if (!isValid) return <div>Wasm file not found!</div>;
     return (
       <div className="fill">
         <table className="simulate">
           <thead>
             <tr>
-              <th>Input</th>
+              <th>Message Info & Input</th>
               <th>Actions</th>
               <th>Output</th>
             </tr>
@@ -114,15 +122,24 @@ export class Simulate extends React.Component<SimulateProps, SimulateState> {
             <tr>
               <td width={'45%'}>
                 <ReactCodeMirror
-                  minHeight="120px"
-                  className="output"
+                  basicSetup={{ lineNumbers: false, foldGutter: false, searchKeymap: false }}
+                  className="input"
+                  value={beautify(info, null, 2)}
+                  extensions={[json()]}
+                  editable
+                  theme="dark"
+                  onChange={this.setInfo}
+                />
+
+                <ReactCodeMirror
+                  basicSetup={{ lineNumbers: false, foldGutter: false, searchKeymap: false }}
+                  className="input"
                   value={payload}
                   extensions={[json()]}
                   editable
                   theme="dark"
                   onChange={this.setPayload}
                   placeholder={this.props.placeholder}
-                  style={{ border: 'none', height: '100%' }}
                 />
               </td>
               <td width={'10%'}>
@@ -139,7 +156,7 @@ export class Simulate extends React.Component<SimulateProps, SimulateState> {
                 </div>
               </td>
               <td width={'45%'}>
-                <ReactCodeMirror minHeight="120px" className="output" theme="dark" value={beautify(output, null, 2)} extensions={[json()]} readOnly />
+                <ReactCodeMirror className="output" theme="dark" value={beautify(output, null, 2)} extensions={[json()]} readOnly />
               </td>
             </tr>
           </tbody>

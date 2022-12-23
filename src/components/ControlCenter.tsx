@@ -115,7 +115,7 @@ export class ControlCenter extends React.Component<
           />
         );
       case 'simulate':
-        return <Simulate projectName={projectName} placeholder="{}" />;
+        return <Simulate projectName={projectName} placeholder="Type your json message here" />;
       default:
         return null;
     }

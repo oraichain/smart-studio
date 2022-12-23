@@ -1232,3 +1232,10 @@ a {
   text-align: center;
 }
 
+.simulate .input{
+  margin-bottom: 5px;
+}
+
+.simulate .output .ͼo {
+  background-color: transparent!important;
+}
