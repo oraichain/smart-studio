@@ -2,7 +2,6 @@ import React from 'react';
 import ReactCodeMirror from '@uiw/react-codemirror';
 import { json } from '@codemirror/lang-json';
 import { fromAscii, fromBase64 } from '@cosmjs/encoding';
-import beautify from 'json-beautify-fix';
 import { VMInstance, BasicBackendApi, BasicKVIterStorage, BasicQuerier, IBackend } from '../cwvm';
 import { Env, MessageInfo } from '../cwvm/types';
 import appStore from '../stores/AppStore';
@@ -38,10 +37,12 @@ export interface SimulateProps {
 
 export interface SimulateState {
   payload: string;
-  info: MessageInfo;
+  info: string;
   output: any;
   isValid: boolean;
-  height: string;
+  actionWidth: number;
+  height: number;
+  width: number;
 }
 
 export class Simulate extends React.Component<SimulateProps, SimulateState> {
@@ -50,8 +51,10 @@ export class Simulate extends React.Component<SimulateProps, SimulateState> {
     super(props);
     this.state = {
       payload: '',
-      height: '',
-      info: mockInfo,
+      actionWidth: 100,
+      height: 0,
+      width: 0,
+      info: JSON.stringify(mockInfo, null, 2),
       output: null,
       isValid: true
     };
@@ -76,30 +79,42 @@ export class Simulate extends React.Component<SimulateProps, SimulateState> {
 
   onLayout = () => {
     if (this.container) {
-      this.setState({ height: this.container.offsetHeight - 100 + 'px' });
+      this.setState({ height: this.container.offsetHeight - 100, width: this.container.offsetWidth - this.state.actionWidth - 60 });
     }
   };
 
   instantiate = () => {
     try {
-      const instantiateRes = vm.instantiate(mockEnv, this.state.info, JSON.parse(this.state.payload));
-      this.setOutput((instantiateRes.json as { ok: any }).ok);
-    } catch {}
+      const res = vm.instantiate(mockEnv, JSON.parse(this.state.info), JSON.parse(this.state.payload));
+      const error = (res.json as { error: string }).error;
+      if (error) throw new Error(error);
+      this.setOutput((res.json as { ok: any }).ok);
+    } catch (ex) {
+      alert(ex.message);
+    }
   };
 
   execute = () => {
     try {
-      const instantiateRes = vm.execute(mockEnv, this.state.info, JSON.parse(this.state.payload));
-      this.setOutput((instantiateRes.json as { ok: any }).ok);
-    } catch {}
+      const res = vm.execute(mockEnv, JSON.parse(this.state.info), JSON.parse(this.state.payload));
+      const error = (res.json as { error: string }).error;
+      if (error) throw new Error(error);
+      this.setOutput((res.json as { ok: any }).ok);
+    } catch (ex) {
+      alert(ex.message);
+    }
   };
 
   query = () => {
     try {
-      const instantiateRes = vm.query(mockEnv, JSON.parse(this.state.payload));
-      const data = (instantiateRes.json as { ok: any }).ok;
+      const res = vm.query(mockEnv, JSON.parse(this.state.payload));
+      const error = (res.json as { error: string }).error;
+      if (error) throw new Error(error);
+      const data = (res.json as { ok: any }).ok;
       this.setOutput(JSON.parse(fromAscii(fromBase64(data))));
-    } catch {}
+    } catch (ex) {
+      alert(ex.message);
+    }
   };
 
   setIsValid = (isValid: boolean) => {
@@ -107,9 +122,7 @@ export class Simulate extends React.Component<SimulateProps, SimulateState> {
   };
 
   setInfo = (info: string) => {
-    try {
-      this.setState({ info: JSON.parse(info) });
-    } catch {}
+    this.setState({ info });
   };
 
   setPayload = (payload: string) => {
@@ -125,7 +138,11 @@ export class Simulate extends React.Component<SimulateProps, SimulateState> {
   }
 
   render() {
-    const { payload, output, info, isValid, height } = this.state;
+    const { payload, output, info, isValid, height, width, actionWidth } = this.state;
+    const editorWidth = width ? Math.round(width / 2) + 'px' : '';
+    const editorHeight = height ? height + 'px' : '';
+    const editorHeightInfo = 80;
+    const editorHeightInput = height ? height - editorHeightInfo + 'px' : '';
     if (!isValid) return <div>Wasm file not found!</div>;
     return (
       <div className="fill" ref={(ref) => this.setContainer(ref)}>
@@ -139,11 +156,13 @@ export class Simulate extends React.Component<SimulateProps, SimulateState> {
           </thead>
           <tbody>
             <tr>
-              <td width={'45%'}>
+              <td>
                 <ReactCodeMirror
                   basicSetup={{ lineNumbers: false, foldGutter: false, searchKeymap: false }}
                   className="input"
-                  value={beautify(info, null, 2)}
+                  width={editorWidth}
+                  height={editorHeightInfo + 'px'}
+                  value={info}
                   extensions={[json()]}
                   editable
                   theme="dark"
@@ -152,8 +171,8 @@ export class Simulate extends React.Component<SimulateProps, SimulateState> {
 
                 <ReactCodeMirror
                   basicSetup={{ lineNumbers: false, foldGutter: false, searchKeymap: false }}
-                  maxHeight={height}
-                  maxWidth="calc(50vw - 150px)"
+                  maxHeight={editorHeightInput}
+                  width={editorWidth}
                   className="input"
                   value={payload}
                   extensions={[json()]}
@@ -163,8 +182,8 @@ export class Simulate extends React.Component<SimulateProps, SimulateState> {
                   placeholder={this.props.placeholder}
                 />
               </td>
-              <td width={'10%'}>
-                <div className="actions">
+              <td>
+                <div className="actions" style={{ width: actionWidth }}>
                   <div className="button" title="Instantiate" onClick={this.instantiate}>
                     instantiate
                   </div>
@@ -176,13 +195,13 @@ export class Simulate extends React.Component<SimulateProps, SimulateState> {
                   </div>
                 </div>
               </td>
-              <td width={'45%'}>
+              <td>
                 <ReactCodeMirror
-                  maxWidth="calc(50vw - 150px)"
-                  maxHeight={height}
+                  width={editorWidth}
+                  maxHeight={editorHeight}
                   className="output"
                   theme="dark"
-                  value={beautify(output, null, 2)}
+                  value={JSON.stringify(output, null, 2)}
                   extensions={[json()]}
                   readOnly
                 />

@@ -4808,11 +4808,6 @@ jsesc@^2.5.1:
   resolved "https://registry.yarnpkg.com/jsesc/-/jsesc-2.5.1.tgz"
   integrity sha1-5CGiqOINawgZ3yiQj3glJrlt0f4=
 
-json-beautify-fix@^1.1.3:
-  version "1.1.3"
-  resolved "https://registry.yarnpkg.com/json-beautify-fix/-/json-beautify-fix-1.1.3.tgz#34ea4f4e2b0a1911dd45119cf5759e7694fcf3c8"
-  integrity sha512-ay2ntGyKK6plUCSHYf3zGofkvmthvpCZ1NTR+SGxslSaeYyj6ID7O7fN7m90QZKF04HAwpGB4dCZF44ahFPDMA==
-
 json-parse-even-better-errors@^2.3.0, json-parse-even-better-errors@^2.3.1:
   version "2.3.1"
   resolved "https://registry.yarnpkg.com/json-parse-even-better-errors/-/json-parse-even-better-errors-2.3.1.tgz#7c47805a94319928e05777405dc12e1f7a4ee02d"

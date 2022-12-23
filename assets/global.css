@@ -1225,7 +1225,7 @@ a {
   border: none;  
 }
 
-.simulate .actions{
+.simulate .actions{ 
   display: flex;
   flex-direction: column;
   justify-content: space-between;    
