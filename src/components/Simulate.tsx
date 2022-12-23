@@ -41,15 +41,64 @@ export interface SimulateState {
   info: MessageInfo;
   output: any;
   isValid: boolean;
+  height: string;
 }
 
 export class Simulate extends React.Component<SimulateProps, SimulateState> {
+  container: HTMLDivElement;
   constructor(props: SimulateProps) {
     super(props);
     this.state = {
       payload: '',
+      height: '',
       info: mockInfo,
-      output: {},
+      output: {
+        messages: [
+          {
+            id: 0,
+            msg: {
+              bank: {
+                send: {
+                  to_address: 'orai1602dkqjvh4s7ryajnz2uwhr8vetrwr8nekpxv5',
+                  amount: [
+                    {
+                      denom: 'orai',
+                      amount: '100000'
+                    }
+                  ]
+                }
+              }
+            },
+            gas_limit: null,
+            reply_on: 'never'
+          }
+        ],
+        attributes: [],
+        events: [
+          {
+            type: 'mixer-withdraw',
+            attributes: [
+              {
+                key: 'action',
+                value: 'withdraw'
+              },
+              {
+                key: 'recipient',
+                value: 'orai1602dkqjvh4s7ryajnz2uwhr8vetrwr8nekpxv5'
+              },
+              {
+                key: 'root',
+                value: '/s88o7P3+jceDKQz9dPMZsrAQHXgUxHQ2VrUI7WeBRU='
+              },
+              {
+                key: 'nullifier_hash',
+                value: '/d8lRTn9RcV35iwMk9SG5dyDN8Gi+5LZ4lhlcYzcZBo='
+              }
+            ]
+          }
+        ],
+        data: null
+      },
       isValid: true
     };
   }
@@ -63,7 +112,19 @@ export class Simulate extends React.Component<SimulateProps, SimulateState> {
     } else {
       this.setIsValid(false);
     }
+    document.addEventListener('layout', this.onLayout);
+    this.onLayout();
   }
+
+  componentWillUnmount() {
+    document.removeEventListener('layout', this.onLayout);
+  }
+
+  onLayout = () => {
+    if (this.container) {
+      this.setState({ height: this.container.offsetHeight - 100 + 'px' });
+    }
+  };
 
   instantiate = () => {
     try {
@@ -105,11 +166,16 @@ export class Simulate extends React.Component<SimulateProps, SimulateState> {
     this.setState({ output });
   };
 
+  setContainer(div: HTMLDivElement) {
+    this.container = div;
+  }
+
   render() {
-    const { payload, output, info, isValid } = this.state;
+    const { payload, output, info, isValid, height } = this.state;
+    console.log(height);
     if (!isValid) return <div>Wasm file not found!</div>;
     return (
-      <div className="fill">
+      <div className="fill" ref={(ref) => this.setContainer(ref)}>
         <table className="simulate">
           <thead>
             <tr>
@@ -133,6 +199,8 @@ export class Simulate extends React.Component<SimulateProps, SimulateState> {
 
                 <ReactCodeMirror
                   basicSetup={{ lineNumbers: false, foldGutter: false, searchKeymap: false }}
+                  maxHeight={height}
+                  maxWidth="calc(50vw - 150px)"
                   className="input"
                   value={payload}
                   extensions={[json()]}
@@ -156,7 +224,15 @@ export class Simulate extends React.Component<SimulateProps, SimulateState> {
                 </div>
               </td>
               <td width={'45%'}>
-                <ReactCodeMirror className="output" theme="dark" value={beautify(output, null, 2)} extensions={[json()]} readOnly />
+                <ReactCodeMirror
+                  maxWidth="calc(50vw - 150px)"
+                  maxHeight={height}
+                  className="output"
+                  theme="dark"
+                  value={beautify(output, null, 2)}
+                  extensions={[json()]}
+                  readOnly
+                />
               </td>
             </tr>
           </tbody>

@@ -1233,9 +1233,13 @@ a {
 }
 
 .simulate .input{
-  margin-bottom: 5px;
+  margin-bottom: 5px;  
+}
+.simulate .output{
+  display: flex;
+}
+.simulate .output .ͼo {
+  background-color: transparent!important;  
 }
 
-.simulate .output .ͼo {
-  background-color: transparent!important;
-}
+
