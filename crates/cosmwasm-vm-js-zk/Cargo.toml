@@ -1,0 +1,36 @@
+[package]
+name = "cosmwasm-vm-js-zk"
+version = "0.0.1"
+authors = ["Thanh tu <tu@orai.io>", "Duc Pham <duc@orai.io>"]
+edition = "2021"
+
+[profile.release]
+opt-level = 3
+debug = false
+rpath = false
+lto = true
+debug-assertions = false
+codegen-units = 1
+panic = 'abort'
+incremental = false
+overflow-checks = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+wasm-bindgen = "0.2.78"
+js-sys = "0.3.55"
+
+# zk import 
+getrandom = { version = "0.2", features = ["js"] }
+cosmwasm-crypto = { git = "https://github.com/oraichain/cosmwasm", branch = "multiwasm-zk", default-features = false }
+
+[dev-dependencies]
+wasm-bindgen-test = "0.3.28"
+hex = "0.4"
+
+
+
+
+

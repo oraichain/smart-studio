@@ -19,7 +19,7 @@
  * SOFTWARE.
  */
 
-import React from 'react';
+import React, { ReactNode } from 'react';
 import { ChangeEventHandler } from 'react';
 
 export class Spacer extends React.Component<
@@ -148,6 +148,7 @@ export class ListItem extends React.Component<
 export class ListBox extends React.Component<
   {
     height: number;
+    children?: ReactNode;
     value?: any;
     onSelect?: (value: any) => void;
   },

@@ -19,13 +19,15 @@
  * SOFTWARE.
  */
 
-import React from 'react';
+import React, { ReactNode } from 'react';
 import ReactModal from 'react-modal';
 import { Logger } from '../utils/Logger';
 import { Button } from './shared/Button';
 import { GoOpenIssue, GoSync } from './shared/Icons';
 
-export interface ErrorBoundaryProps {}
+export interface ErrorBoundaryProps {
+  children?: ReactNode;
+}
 
 export interface ErrorBoundaryState {
   error: any;
@@ -55,6 +57,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
   render() {
     if (this.state.error) {
       return (
+        // @ts-ignore
         <ReactModal isOpen={true} contentLabel="An error occured" className="modal" overlayClassName="overlay" ariaHideApp={false}>
           <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
             <div className="modal-title-bar">An error occured</div>

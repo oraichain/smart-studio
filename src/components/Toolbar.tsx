@@ -19,9 +19,9 @@
  * SOFTWARE.
  */
 
-import React from 'react';
+import React, { ReactNode } from 'react';
 
-export class Toolbar extends React.Component<{}, {}> {
+export class Toolbar extends React.Component<{ children: ReactNode }, {}> {
   render() {
     return <div className="toolbar">{this.props.children}</div>;
   }

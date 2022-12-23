@@ -298,9 +298,9 @@ export async function runTask(name: string, optional: boolean = false, externals
       logLn(fiddle.message);
 
       // load wasm file to show? no show because can not view it
-      // if (fiddle.success) {
-      //   await Service.loadFilesIntoProject(fiddle.files.filter((file) => file.name.endsWith(FileType.Wasm)), project);
-      // }
+      if (fiddle.success) {
+        await Service.loadFilesIntoProject(fiddle.files.filter((file) => file.name.endsWith(FileType.Wasm)), project);
+      }
 
       break;
     case 'schema':
@@ -319,7 +319,6 @@ export async function runTask(name: string, optional: boolean = false, externals
       logLn(testMessage);
       break;
     default:
-      console.log('let run at our server instead', name, optional, externals);
       break;
   }
 

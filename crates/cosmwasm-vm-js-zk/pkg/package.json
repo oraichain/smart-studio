@@ -1,0 +1,16 @@
+{
+  "name": "cosmwasm-vm-js-zk",
+  "collaborators": [
+    "Thanh tu <tu@orai.io>",
+    "Duc Pham <duc@orai.io>"
+  ],
+  "version": "0.0.1",
+  "files": [
+    "cosmwasm_vm_js_zk_bg.wasm",
+    "cosmwasm_vm_js_zk.js",
+    "cosmwasm_vm_js_zk.d.ts"
+  ],
+  "module": "cosmwasm_vm_js_zk.js",
+  "types": "cosmwasm_vm_js_zk.d.ts",
+  "sideEffects": false
+}

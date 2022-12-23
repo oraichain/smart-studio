@@ -57,6 +57,7 @@ module.exports = (env, options) => {
         assert: false,
         http: false,
         crypto: false,
+        'process/browser': require.resolve('process/browser'),
         buffer: require.resolve('buffer/'),
         stream: require.resolve('stream-browserify'),
         https: require.resolve('https-browserify')

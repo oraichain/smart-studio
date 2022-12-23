@@ -5,7 +5,6 @@
 @import url(style/theme.css);
 @import url(style/markdown.css);
 @import url(style/split-pane.css);
-@import url(style/xterm.css);
 
 :root {
   --grey-50: #fafafa;
@@ -1221,3 +1220,15 @@ a {
 .recents-empty svg {
   fill: currentColor;
 }
+
+.simulate td, .simulate th{
+  border: none;  
+}
+
+.simulate .actions{
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;    
+  text-align: center;
+}
+

@@ -23,9 +23,10 @@ import React from 'react';
 import { Split, SplitOrientation, SplitInfo } from './Split';
 import { EditorView, View, Tab, Tabs } from './editor';
 import { Sandbox } from './Sandbox';
-import { GoThreeBars, GoFile } from './shared/Icons';
+import { GoThreeBars } from './shared/Icons';
 import { Button } from './shared/Button';
 import { File } from '../models';
+import { Simulate } from './Simulate';
 import appStore from '../stores/AppStore';
 import { layout } from '../util';
 
@@ -43,7 +44,7 @@ export class ControlCenter extends React.Component<
     /**
      * Visible pane.
      */
-    visible: 'output' | 'problems';
+    visible: 'output' | 'simulate';
 
     problemCount: number;
     outputLineCount: number;
@@ -101,7 +102,7 @@ export class ControlCenter extends React.Component<
     this.outputViewEditor.revealLastLine();
   }
   createPane() {
-    // const projectName = appStore.getProject().getModel().name;
+    const projectName = appStore.getProject().getModel().name;
     switch (this.state.visible) {
       case 'output':
         return (
@@ -113,7 +114,8 @@ export class ControlCenter extends React.Component<
             }}
           />
         );
-
+      case 'simulate':
+        return <Simulate projectName={projectName} placeholder="{}" />;
       default:
         return null;
     }
@@ -158,10 +160,11 @@ export class ControlCenter extends React.Component<
                 }}
               />
               <Tab
-                label={`Problems (${this.state.problemCount})`}
-                isActive={this.state.visible === 'problems'}
+                label="Simulate"
+                isActive={this.state.visible === 'simulate'}
+                icon="asm-ext-file-icon ext-file-icon"
                 onClick={() => {
-                  this.setState({ visible: 'problems' });
+                  this.setState({ visible: 'simulate' });
                 }}
               />
             </Tabs>

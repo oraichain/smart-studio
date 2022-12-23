@@ -112,7 +112,14 @@ export class NewProjectDialog extends React.Component<
   }
   render() {
     return (
-      <ReactModal onRequestClose={this.props.onCancel} isOpen={this.props.isOpen} contentLabel="Create New Project" className="modal show-file-icons newProject" overlayClassName="overlay" ariaHideApp={false}>
+      <ReactModal
+        onRequestClose={this.props.onCancel}
+        isOpen={this.props.isOpen}
+        contentLabel="Create New Project"
+        className="modal show-file-icons newProject"
+        overlayClassName="overlay"
+        ariaHideApp={false}
+      >
         <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
           {/* <div className="modal-title-bar">Create or open project</div> */}
 

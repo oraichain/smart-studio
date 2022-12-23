@@ -19,7 +19,26 @@
  * SOFTWARE.
  */
 
+import { Validator } from 'jsonschema';
+
 import { fileTypeForExtension, FileType, fileTypeForMimeType, nameForFileType, extensionForFileType, isBinaryFileType, Directory } from './models';
+
+/**
+ * Validate JSON with its schema
+ * @param json
+ * @param jsonSchema
+ */
+export const validateJSON = (json: any, jsonSchema: any): boolean => {
+  const v = new Validator();
+  const result = v.validate(json, jsonSchema);
+
+  // TODO: Return error message
+  if (!result.valid) {
+    console.error(`JSON validation failed:\n${result.toString()}`);
+  }
+
+  return result.valid;
+};
 
 export function toAddress(n: number) {
   let s = n.toString(16);
@@ -155,7 +174,7 @@ export function decodeRestrictedBase64ToBytes(encoded: string) {
   const padding = encoded.charAt(len - 2) === '=' ? 2 : encoded.charAt(len - 1) === '=' ? 1 : 0;
   const decoded = new Uint8Array((encoded.length >> 2) * 3 - padding);
 
-  for (let i = 0, j = 0; i < encoded.length;) {
+  for (let i = 0, j = 0; i < encoded.length; ) {
     ch = encoded.charCodeAt(i++);
     code = base64DecodeMap[ch - base64DecodeMapOffset];
     ch = encoded.charCodeAt(i++);
