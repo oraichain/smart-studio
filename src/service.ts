@@ -413,7 +413,7 @@ export class Service {
       }
 
       // skip show file changed because we load from server
-      file.setData(data, undefined, true);
+      file.setData(data);
 
       // update when load Projects
       LanguageUpdater.instance.addFile(file);

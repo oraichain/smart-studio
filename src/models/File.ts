@@ -155,10 +155,10 @@ export class File {
   //   const client = await worker(model.uri);
   //   return client.getEmitOutput(model.uri.toString());
   // }
-  setData(data: string | ArrayBuffer, status?: IStatusProvider, skipNotify?: boolean) {
+  setData(data: string | ArrayBuffer, status?: IStatusProvider) {
     assert(data != null);
     this.data = data;
-    if (!skipNotify) this.notifyDidChangeData();
+    this.notifyDidChangeData();
     this.updateBuffer(status);
   }
 
