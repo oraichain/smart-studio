@@ -52,53 +52,7 @@ export class Simulate extends React.Component<SimulateProps, SimulateState> {
       payload: '',
       height: '',
       info: mockInfo,
-      output: {
-        messages: [
-          {
-            id: 0,
-            msg: {
-              bank: {
-                send: {
-                  to_address: 'orai1602dkqjvh4s7ryajnz2uwhr8vetrwr8nekpxv5',
-                  amount: [
-                    {
-                      denom: 'orai',
-                      amount: '100000'
-                    }
-                  ]
-                }
-              }
-            },
-            gas_limit: null,
-            reply_on: 'never'
-          }
-        ],
-        attributes: [],
-        events: [
-          {
-            type: 'mixer-withdraw',
-            attributes: [
-              {
-                key: 'action',
-                value: 'withdraw'
-              },
-              {
-                key: 'recipient',
-                value: 'orai1602dkqjvh4s7ryajnz2uwhr8vetrwr8nekpxv5'
-              },
-              {
-                key: 'root',
-                value: '/s88o7P3+jceDKQz9dPMZsrAQHXgUxHQ2VrUI7WeBRU='
-              },
-              {
-                key: 'nullifier_hash',
-                value: '/d8lRTn9RcV35iwMk9SG5dyDN8Gi+5LZ4lhlcYzcZBo='
-              }
-            ]
-          }
-        ],
-        data: null
-      },
+      output: null,
       isValid: true
     };
   }
@@ -172,7 +126,6 @@ export class Simulate extends React.Component<SimulateProps, SimulateState> {
 
   render() {
     const { payload, output, info, isValid, height } = this.state;
-    console.log(height);
     if (!isValid) return <div>Wasm file not found!</div>;
     return (
       <div className="fill" ref={(ref) => this.setContainer(ref)}>
