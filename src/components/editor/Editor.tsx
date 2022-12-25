@@ -164,7 +164,6 @@ export class Monaco extends React.Component<MonacoProps, {}> {
     }
     this.editor = monaco.editor.create(this.container, options);
     this.registerActions();
-    console.info('Created a new Monaco editor.');
   }
 
   private setContainer(container: HTMLDivElement) {
