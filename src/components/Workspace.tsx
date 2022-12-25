@@ -84,7 +84,7 @@ export class Workspace extends React.Component<WorkspaceProps, WorkSpaceState> {
               this.setState({ splits: splits });
             }}
           >
-            <div className="workspaceProjectName" onClick={this.props.onChangeProject}>
+            <div className="workspaceProjectName sublime-project-ext-file-icon file-icon ext-file-icon" onClick={this.props.onChangeProject}>
               {project.obj.name}
             </div>
 

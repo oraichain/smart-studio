@@ -123,10 +123,12 @@ a {
 }
 
 .workspaceProjectName {
-  padding: 5px 22px;
+  padding: 5px 18px;
   font-weight: bold;
   font-size: 14px;
   cursor: pointer;
+  display: flex;
+  align-items: center;
 }
 
 .editor-container {
