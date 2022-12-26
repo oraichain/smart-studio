@@ -18,9 +18,9 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-import { CompilerService, ServiceInput, ServiceOutput } from "./types";
-import { sendRequest, ServiceTypes } from "./sendRequest";
-import { encodeBinary } from "./utils";
+import { CompilerService, ServiceInput, ServiceOutput } from './types';
+import { sendRequest, ServiceTypes } from './sendRequest';
+import { encodeBinary } from './utils';
 
 export class X86Service implements CompilerService {
   async compile(input: ServiceInput): Promise<ServiceOutput> {
@@ -31,12 +31,12 @@ export class X86Service implements CompilerService {
     const wasm = files[0].content as ArrayBuffer;
     const options = input.options;
     const encodedWasm = encodeURIComponent(encodeBinary(wasm));
-    const content: any = await sendRequest("input=" + encodedWasm + "&action=wasm2assembly&options=" + encodeURIComponent(options), ServiceTypes.Service);
+    const content: any = await sendRequest('input=' + encodedWasm + '&action=wasm2assembly&options=' + encodeURIComponent(options), ServiceTypes.Rustc);
     return {
       success: true,
       items: {
-        "a.json": { content, },
-      },
+        'a.json': { content }
+      }
     };
   }
 }

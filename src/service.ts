@@ -24,7 +24,7 @@ import { IStatusProvider } from './models/types';
 import { decodeRestrictedBase64ToBytes, base64EncodeBytes } from './util';
 import { processJSFile, RewriteSourcesContext } from './utils/rewriteSources';
 import { getCurrentRunnerInfo } from './utils/taskRunner';
-import { getServiceURL, ServiceTypes } from './compilerServices/sendRequest';
+import { config } from './config';
 import jwtDecode from 'jwt-decode';
 import { LanguageUpdater } from './utils/languageUpdater';
 
@@ -58,8 +58,6 @@ export interface ILoadFiddleResponse {
   message: string;
   success: boolean;
 }
-
-export { Language } from './compilerServices';
 
 export class Service {
   // private static worker = new ServiceWorker();
@@ -121,7 +119,7 @@ export class Service {
   }
 
   static async loadJSON(uri: string): Promise<ILoadFiddleResponse> {
-    const baseURL = await getServiceURL(ServiceTypes.Service);
+    const baseURL = config.serviceUrl;
     const response = await fetch(`${baseURL}/project?name=${uri}`, {
       headers: new Headers({
         'Content-type': 'application/json; charset=utf-8',
@@ -134,7 +132,7 @@ export class Service {
   static async saveJSON(json: ICreateFiddleRequest, uri: string): Promise<ISaveFiddleResponse> {
     const update = !!uri;
     if (update) {
-      const baseURL = await getServiceURL(ServiceTypes.Service);
+      const baseURL = config.serviceUrl;
       const response = await fetch(`${baseURL}/project?name=${uri}`, {
         method: 'POST',
         headers: new Headers({
@@ -164,7 +162,7 @@ export class Service {
       data: fileData.toString(),
       isReadonly: false
     };
-    const baseURL = await getServiceURL(ServiceTypes.Service);
+    const baseURL = config.serviceUrl;
     const response = await fetch(`${baseURL}/file`, {
       method: 'POST',
       headers: new Headers({
@@ -178,7 +176,7 @@ export class Service {
   }
 
   static async getRecents(): Promise<IFiddleFile[]> {
-    const baseURL = await getServiceURL(ServiceTypes.Service);
+    const baseURL = config.serviceUrl;
     const response = await fetch(`${baseURL}/projects`, {
       method: 'GET',
       headers: new Headers({
@@ -191,7 +189,7 @@ export class Service {
   }
 
   static async isProjectValid(name: string): Promise<string> {
-    const baseURL = await getServiceURL(ServiceTypes.Service);
+    const baseURL = config.serviceUrl;
 
     const response = await fetch(`${baseURL}/projects/canCreate`, {
       method: 'POST',
@@ -221,7 +219,7 @@ export class Service {
       name: file.getPath(),
       isReadonly: false
     };
-    const baseURL = await getServiceURL(ServiceTypes.Service);
+    const baseURL = config.serviceUrl;
     const response = await fetch(`${baseURL}/file`, {
       method: 'DELETE',
       headers: new Headers({
@@ -239,7 +237,7 @@ export class Service {
       name: file.getPath(),
       newName: name
     };
-    const baseURL = await getServiceURL(ServiceTypes.Service);
+    const baseURL = config.serviceUrl;
     const response = await fetch(`${baseURL}/file`, {
       method: 'PUT',
       headers: new Headers({
@@ -265,7 +263,7 @@ export class Service {
 
   static async exportToWallet(file: File): Promise<IFiddleFile> {
     const filePath = file.getPath();
-    const baseURL = await getServiceURL(ServiceTypes.Service);
+    const baseURL = config.serviceUrl;
     const response = await fetch(`${baseURL}/file?name=${filePath}`, {
       headers: new Headers({
         Authorization: `Bearer ${getAccessToken()}`
@@ -276,7 +274,7 @@ export class Service {
   }
 
   static async buildProject(name: string): Promise<ILoadFiddleResponse> {
-    const baseURL = await getServiceURL(ServiceTypes.Service);
+    const baseURL = config.serviceUrl;
     const response = await fetch(`${baseURL}/build`, {
       method: 'POST',
       headers: new Headers({
@@ -290,7 +288,7 @@ export class Service {
   }
 
   static async buildSchema(name: string): Promise<ILoadFiddleResponse> {
-    const baseURL = await getServiceURL(ServiceTypes.Service);
+    const baseURL = config.serviceUrl;
     const response = await fetch(`${baseURL}/schema`, {
       method: 'POST',
       headers: new Headers({
@@ -306,7 +304,7 @@ export class Service {
 
   // TODO: wrap with handler post, get and show error
   static async testProject(name: string): Promise<string> {
-    const baseURL = await getServiceURL(ServiceTypes.Service);
+    const baseURL = config.serviceUrl;
     const response = await fetch(`${baseURL}/test`, {
       method: 'POST',
       headers: new Headers({
@@ -320,7 +318,7 @@ export class Service {
   }
 
   static async createTerminal(name: string, cols: number, rows: number): Promise<string> {
-    const baseURL = await getServiceURL(ServiceTypes.Service);
+    const baseURL = config.serviceUrl;
     const response = await fetch(`${baseURL}/terminals?cols=${cols}&rows=${rows}&name=${name}`, {
       headers: new Headers({
         Authorization: `Bearer ${getAccessToken()}`
@@ -332,13 +330,13 @@ export class Service {
   }
 
   static async createTerminalSocket(pid: string): Promise<WebSocket> {
-    const baseURL = await getServiceURL(ServiceTypes.Service);
+    const baseURL = config.serviceUrl;
     const baseWSURL = baseURL.replace(/^(?:https?:)?/, window.location.protocol.replace('http', 'ws'));
     return new WebSocket(`${baseWSURL}/terminals/${pid}?token=${getAccessToken()}`);
   }
 
   static async resizeTerminal(pid: string, cols: number, rows: number): Promise<any> {
-    const baseURL = await getServiceURL(ServiceTypes.Service);
+    const baseURL = config.serviceUrl;
     await fetch(`${baseURL}/terminals/${pid}/size?cols=${cols}&rows=${rows}`, {
       headers: new Headers({
         Authorization: `Bearer ${getAccessToken()}`

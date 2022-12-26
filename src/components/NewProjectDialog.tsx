@@ -27,7 +27,7 @@ import { GoGear, GoFile, GoX, Icon, GoSync, GoFileDirectory, GoCloudUpload, GoVe
 import { KeyboardEvent, ChangeEvent, ChangeEventHandler } from 'react';
 import { ListBox, ListItem, TextInputBox } from './Widgets';
 import fetchTemplates from '../utils/fetchTemplates';
-import getConfig from '../config';
+import { config } from '../config';
 
 export interface Template {
   name: string;
@@ -64,7 +64,6 @@ export class NewProjectDialog extends React.Component<
     };
   }
   async componentDidMount() {
-    const config = await getConfig();
     const templatesPath = config.templates[this.props.templatesName];
     const json = await fetchTemplates(templatesPath);
     const base = new URL(templatesPath, location.href);
@@ -235,7 +234,6 @@ class RecentProjects extends React.Component<
   };
 
   async componentDidMount() {
-    const config = await getConfig();
     const items = await Service.getRecents();
 
     this.setState({

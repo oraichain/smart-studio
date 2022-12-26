@@ -1,4 +1,4 @@
-import getConfig from '../config';
+import { config } from '../config';
 import React from 'react';
 import ReactModal from 'react-modal';
 import { Button } from './shared/Button';
@@ -16,7 +16,6 @@ export class GithubConnectDialog extends React.PureComponent<GithubConnectDialog
   };
 
   async handleConnectGithub() {
-    const config = await getConfig();
     window.open(config.serviceUrl + '/auth/github', '_self');
   }
 
@@ -37,8 +36,6 @@ export class GithubConnectDialog extends React.PureComponent<GithubConnectDialog
       this.setState({ loading: true });
 
       (async () => {
-        const config = await getConfig();
-
         const res = await fetch(config.serviceUrl + '/auth/github?code=' + code);
 
         if (res.status === 200) {

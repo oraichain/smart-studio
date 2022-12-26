@@ -27,17 +27,12 @@ export interface IConfig {
   templates: { [name: string]: string };
 }
 
-const configUrl = './config.json';
-let config: IConfig;
-
-export default async function getConfig() {
-  if (!config) {
-    config = await fetch(configUrl).then((resp) => resp.json());
-    if (!config.serviceUrl) {
-      // by default same server
-      config.serviceUrl = process.env.SERVICE_URL || location.origin;
-    }
+export const config: IConfig = {
+  clang: '',
+  rustc: '',
+  cargo: '',
+  serviceUrl: (process.env.SERVICE_URL || location.origin).replace(/\/$/, ''),
+  templates: {
+    default: '/templates/index.js'
   }
-
-  return config;
-}
+};

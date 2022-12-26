@@ -18,13 +18,12 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-import getConfig from "../config";
+import { config } from '../config';
 
 export enum ServiceTypes {
   Rustc,
   Cargo,
-  Clang,
-  Service
+  Clang
 }
 
 export interface IServiceRequestTask {
@@ -43,8 +42,7 @@ export interface IServiceRequest {
   wasmBindgenJs?: string;
 }
 
-export async function getServiceURL(to: ServiceTypes): Promise<string> {
-  const config = await getConfig();
+export function getServiceURL(to: ServiceTypes): string {
   switch (to) {
     case ServiceTypes.Rustc:
       return config.rustc;
@@ -52,43 +50,43 @@ export async function getServiceURL(to: ServiceTypes): Promise<string> {
       return config.cargo;
     case ServiceTypes.Clang:
       return config.clang;
-    case ServiceTypes.Service:
-      return config.serviceUrl;
     default:
       throw new Error(`Invalid ServiceType: ${to}`);
   }
 }
 
-export async function parseJSONResponse(response: Response): Promise < IServiceRequest > {
+export async function parseJSONResponse(response: Response): Promise<IServiceRequest> {
   const text = await response.text();
   if (response.status === 200) {
     try {
       return JSON.parse(text);
-    } catch (_) { /* fall through for errors */ }
+    } catch (_) {
+      /* fall through for errors */
+    }
   }
   return {
     success: false,
-    message: text.replace(/(^<pre>)|(<\/pre>$)/gi, ""),
+    message: text.replace(/(^<pre>)|(<\/pre>$)/gi, '')
   };
 }
 
-export async function sendRequestJSON(content: Object, to: ServiceTypes): Promise < IServiceRequest > {
-  const url = await getServiceURL(to);
+export async function sendRequestJSON(content: Object, to: ServiceTypes): Promise<IServiceRequest> {
+  const url = getServiceURL(to);
   const response = await fetch(url, {
-    method: "POST",
+    method: 'POST',
     body: JSON.stringify(content),
-    headers: new Headers({ "Content-Type": "application/json" })
+    headers: new Headers({ 'Content-Type': 'application/json' })
   });
 
   return parseJSONResponse(response);
 }
 
-export async function sendRequest(content: string, to: ServiceTypes): Promise < IServiceRequest > {
-  const url = await getServiceURL(to);
+export async function sendRequest(content: string, to: ServiceTypes): Promise<IServiceRequest> {
+  const url = getServiceURL(to);
   const response = await fetch(url, {
-    method: "POST",
+    method: 'POST',
     body: content,
-    headers: new Headers({ "Content-Type": "application/x-www-form-urlencoded" })
+    headers: new Headers({ 'Content-Type': 'application/x-www-form-urlencoded' })
   });
   return parseJSONResponse(response);
 }

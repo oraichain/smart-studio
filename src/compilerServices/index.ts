@@ -23,8 +23,6 @@ import { RustService } from './rustService';
 import { ClangService } from './clangService';
 import { X86Service } from './x86Service';
 
-export { Language } from './types';
-
 export async function createCompilerService(from: Language, to: Language): Promise<CompilerService> {
   if (from === Language.Rust && to === Language.Wasm) {
     return new RustService();
