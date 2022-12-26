@@ -22,7 +22,7 @@ cargo run -p rust-pack --release -- ../cosmwasm --toolchain rust_library/1.47.0 
 # to build client
 # rebuild template
 yarn templates
-DIST_FOLDER=../smart-studio-server/dist yarn build
+yarn build
 SERVICE_URL=http://localhost:3000 yarn start
 ```
 
