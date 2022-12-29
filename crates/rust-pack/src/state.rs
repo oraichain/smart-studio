@@ -1,4 +1,3 @@
-#![allow(dead_code, unused_imports)]
 use std::sync::Arc;
 
 use ide::{
@@ -34,17 +33,26 @@ impl LocalState {
         self.host.apply_change(change);
     }
 
+    pub fn load(&mut self, json: Vec<u8>) {
+        let json = String::from_utf8_lossy(&json);
+        let change = extractor::load_change_from_json(&json);
+
+        // apply change
+        self.apply_change(change);
+    }
+
     pub fn update(&mut self, file_ind: u32, code: String, with_highlight: bool) -> UpdateResult {
         let file_id = FileId(file_ind);
 
         let mut change = Change::new();
         change.change_file(file_id, Some(Arc::new(code)));
-        self.host.apply_change(change);
+        self.apply_change(change);
 
-        let line_index = self.host.file_line_index(file_id).unwrap();
+        let analysis = self.host.analysis();
+        let line_index = analysis.file_line_index(file_id).unwrap();
 
         let highlights = if with_highlight {
-            self.host
+            analysis
                 .highlight(file_id)
                 .unwrap()
                 .into_iter()
@@ -61,8 +69,7 @@ impl LocalState {
         let mut config = DiagnosticsConfig::default();
         config.disabled.insert("unresolved-macro-call".to_string());
 
-        let diagnostics = self
-            .host
+        let diagnostics = analysis
             .diagnostics(&config, ide::AssistResolveStrategy::None, file_id)
             .unwrap()
             .into_iter()
@@ -85,8 +92,9 @@ impl LocalState {
     pub fn inlay_hints(&self, file_ind: u32) -> Vec<InlayHint> {
         let file_id = FileId(file_ind);
 
-        let line_index = self.host.file_line_index(file_id).unwrap();
-        self.host
+        let analysis = self.host.analysis();
+        let line_index = analysis.file_line_index(file_id).unwrap();
+        analysis
             .inlay_hints(
                 &InlayHintsConfig {
                     type_hints: true,
@@ -130,10 +138,11 @@ impl LocalState {
             snippets: Vec::new(),
         };
 
-        let line_index = self.host.file_line_index(file_id).unwrap();
+        let analysis = self.host.analysis();
+        let line_index = analysis.file_line_index(file_id).unwrap();
 
         let pos = file_position(line_number, column, &line_index, file_id);
-        let res = match self.host.completions(&COMPLETION_CONFIG, pos).unwrap() {
+        let res = match analysis.completions(&COMPLETION_CONFIG, pos).unwrap() {
             Some(items) => items,
             None => return vec![],
         };
@@ -143,8 +152,8 @@ impl LocalState {
 
     pub fn hover(&self, file_ind: u32, line_number: u32, column: u32) -> Option<Hover> {
         let file_id = FileId(file_ind);
-
-        let line_index = self.host.file_line_index(file_id).unwrap();
+        let analysis = self.host.analysis();
+        let line_index = analysis.file_line_index(file_id).unwrap();
 
         let FilePosition { file_id, offset } =
             file_position(line_number, column, &line_index, file_id);
@@ -153,8 +162,7 @@ impl LocalState {
             range: TextRange::new(TextSize::from(offset), TextSize::from(offset)),
         };
 
-        let info = match self
-            .host
+        let info = match analysis
             .hover(
                 &HoverConfig {
                     links_in_hover: true,
@@ -177,10 +185,10 @@ impl LocalState {
 
     pub fn code_lenses(&self, file_ind: u32) -> Vec<CodeLensSymbol> {
         let file_id = FileId(file_ind);
+        let analysis = self.host.analysis();
+        let line_index = analysis.file_line_index(file_id).unwrap();
 
-        let line_index = self.host.file_line_index(file_id).unwrap();
-
-        self.host
+        analysis
             .file_structure(file_id)
             .unwrap()
             .into_iter()
@@ -195,7 +203,7 @@ impl LocalState {
             })
             .filter_map(|it| {
                 let position = FilePosition { file_id, offset: it.node_range.start() };
-                let nav_info = self.host.goto_implementation(position).unwrap()?;
+                let nav_info = analysis.goto_implementation(position).unwrap()?;
 
                 let title = if nav_info.info.len() == 1 {
                     "1 implementation".into()
@@ -230,12 +238,12 @@ impl LocalState {
         include_declaration: bool,
     ) -> Vec<Highlight> {
         let file_id = FileId(file_ind);
-
-        let line_index = self.host.file_line_index(file_id).unwrap();
+        let analysis = self.host.analysis();
+        let line_index = analysis.file_line_index(file_id).unwrap();
 
         let pos = file_position(line_number, column, &line_index, file_id);
         let search_scope = Some(SearchScope::single_file(file_id));
-        let ref_results = match self.host.find_all_refs(pos, search_scope) {
+        let ref_results = match analysis.find_all_refs(pos, search_scope) {
             Ok(Some(info)) => info,
             _ => return vec![],
         };
@@ -274,17 +282,17 @@ impl LocalState {
         column: u32,
     ) -> Option<RenameLocation> {
         let file_id = FileId(file_ind);
-
-        let line_index = self.host.file_line_index(file_id).unwrap();
+        let analysis = self.host.analysis();
+        let line_index = analysis.file_line_index(file_id).unwrap();
 
         let pos = file_position(line_number, column, &line_index, file_id);
-        let range_info = match self.host.prepare_rename(pos).unwrap() {
+        let range_info = match analysis.prepare_rename(pos).unwrap() {
             Ok(refs) => refs,
             _ => return None,
         };
 
         let range = text_range(&range_info.range, &line_index);
-        let file_text = self.host.file_text(file_id).unwrap();
+        let file_text = analysis.file_text(file_id).unwrap();
         let text = file_text[range_info.range].to_owned();
 
         Some(RenameLocation { range, text })
@@ -298,11 +306,11 @@ impl LocalState {
         new_name: &str,
     ) -> Vec<TextEdit> {
         let file_id = FileId(file_ind);
-
-        let line_index = self.host.file_line_index(file_id).unwrap();
+        let analysis = self.host.analysis();
+        let line_index = analysis.file_line_index(file_id).unwrap();
 
         let pos = file_position(line_number, column, &line_index, file_id);
-        let change = match self.host.rename(pos, new_name).unwrap() {
+        let change = match analysis.rename(pos, new_name).unwrap() {
             Ok(change) => change,
             Err(_) => return vec![],
         };
@@ -323,10 +331,11 @@ impl LocalState {
     ) -> Option<SignatureHelp> {
         let file_id = FileId(file_ind);
 
-        let line_index = self.host.file_line_index(file_id).unwrap();
+        let analysis = self.host.analysis();
+        let line_index = analysis.file_line_index(file_id).unwrap();
 
         let pos = file_position(line_number, column, &line_index, file_id);
-        let call_info = match self.host.call_info(pos) {
+        let call_info = match analysis.call_info(pos) {
             Ok(Some(call_info)) => call_info,
             _ => return None,
         };
@@ -343,16 +352,16 @@ impl LocalState {
 
     pub fn definition(&self, file_ind: u32, line_number: u32, column: u32) -> Vec<LocationLink> {
         let file_id = FileId(file_ind);
-
-        let line_index = self.host.file_line_index(file_id).unwrap();
+        let analysis = self.host.analysis();
+        let line_index = analysis.file_line_index(file_id).unwrap();
 
         let pos = file_position(line_number, column, &line_index, file_id);
-        let nav_info = match self.host.goto_definition(pos) {
+        let nav_info = match analysis.goto_definition(pos) {
             Ok(Some(nav_info)) => nav_info,
             _ => return vec![],
         };
 
-        location_links(nav_info, &line_index, &self.host)
+        location_links(nav_info, &line_index, &analysis)
     }
 
     pub fn type_definition(
@@ -362,24 +371,24 @@ impl LocalState {
         column: u32,
     ) -> Vec<LocationLink> {
         let file_id = FileId(file_ind);
-
-        let line_index = self.host.file_line_index(file_id).unwrap();
+        let analysis = self.host.analysis();
+        let line_index = analysis.file_line_index(file_id).unwrap();
 
         let pos = file_position(line_number, column, &line_index, file_id);
-        let nav_info = match self.host.goto_type_definition(pos) {
+        let nav_info = match analysis.goto_type_definition(pos) {
             Ok(Some(nav_info)) => nav_info,
             _ => return vec![],
         };
 
-        location_links(nav_info, &line_index, &self.host)
+        location_links(nav_info, &line_index, &analysis)
     }
 
     pub fn document_symbols(&self, file_ind: u32) -> Vec<DocumentSymbol> {
         let file_id = FileId(file_ind);
+        let analysis = self.host.analysis();
+        let line_index = analysis.file_line_index(file_id).unwrap();
 
-        let line_index = self.host.file_line_index(file_id).unwrap();
-
-        let struct_nodes = match self.host.file_structure(file_id) {
+        let struct_nodes = match analysis.file_structure(file_id) {
             Ok(struct_nodes) => struct_nodes,
             _ => return vec![],
         };
@@ -423,13 +432,13 @@ impl LocalState {
         ch: char,
     ) -> Vec<TextEdit> {
         let file_id = FileId(file_ind);
-
-        let line_index = self.host.file_line_index(file_id).unwrap();
+        let analysis = self.host.analysis();
+        let line_index = analysis.file_line_index(file_id).unwrap();
 
         let mut pos = file_position(line_number, column, &line_index, file_id);
         pos.offset -= TextSize::of('.');
 
-        let edit = self.host.on_char_typed(pos, ch);
+        let edit = analysis.on_char_typed(pos, ch);
 
         let (_file, edit) = match edit {
             Ok(Some(it)) => it.source_file_edits.into_iter().next().unwrap(),
@@ -442,8 +451,9 @@ impl LocalState {
     pub fn folding_ranges(&self, file_ind: u32) -> Vec<FoldingRange> {
         let file_id = FileId(file_ind);
 
-        let line_index = self.host.file_line_index(file_id).unwrap();
-        if let Ok(folds) = self.host.folding_ranges(file_id) {
+        let analysis = self.host.analysis();
+        let line_index = analysis.file_line_index(file_id).unwrap();
+        if let Ok(folds) = analysis.folding_ranges(file_id) {
             return folds.into_iter().map(|fold| folding_range(fold, &line_index)).collect();
         }
         vec![]
@@ -456,15 +466,15 @@ impl LocalState {
         column: u32,
     ) -> Vec<LocationLink> {
         let file_id = FileId(file_ind);
-
-        let line_index = self.host.file_line_index(file_id).unwrap();
+        let analysis = self.host.analysis();
+        let line_index = analysis.file_line_index(file_id).unwrap();
 
         let pos = file_position(line_number, column, &line_index, file_id);
-        let nav_info = match self.host.goto_implementation(pos) {
+        let nav_info = match analysis.goto_implementation(pos) {
             Ok(Some(it)) => it,
             _ => return vec![],
         };
-        location_links(nav_info, &line_index, &self.host)
+        location_links(nav_info, &line_index, &analysis)
     }
 }
 

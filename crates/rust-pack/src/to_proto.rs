@@ -1,5 +1,5 @@
 //! Conversion of rust-analyzer specific types to return_types equivalents.
-use ide::AnalysisHost;
+use ide::Analysis;
 
 use crate::return_types;
 
@@ -140,7 +140,7 @@ pub(crate) fn signature_information(
 pub(crate) fn location_links(
     nav_info: ide::RangeInfo<Vec<ide::NavigationTarget>>,
     line_index: &ide::LineIndex,
-    analysis: &AnalysisHost,
+    analysis: &Analysis,
 ) -> Vec<return_types::LocationLink> {
     let origin_selection_range = text_range(&nav_info.range, &line_index);
     nav_info
