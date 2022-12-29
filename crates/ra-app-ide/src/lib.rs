@@ -189,8 +189,8 @@ impl AnalysisHost {
 
     /// Gets the file's `LineIndex`: data structure to convert between absolute
     /// offsets and line/column representation.
-    pub fn file_line_index(&self, file_id: FileId) -> Arc<LineIndex> {
-        self.db.line_index(file_id)
+    pub fn file_line_index(&self, file_id: FileId) -> Cancellable<Arc<LineIndex>> {
+        self.with_db(|db| db.line_index(file_id))
     }
 
     /// Selects the next syntactic nodes encompassing the range.
