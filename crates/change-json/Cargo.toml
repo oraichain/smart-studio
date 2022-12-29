@@ -1,5 +1,5 @@
 [package]
-name = "change_json"
+name = "change-json"
 version = "0.1.0"
 edition = "2021"
 authors = ["Achim Schneider <achim@parity.io>"]

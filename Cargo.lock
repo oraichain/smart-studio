@@ -465,7 +465,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "change_json"
+name = "change-json"
 version = "0.1.0"
 dependencies = [
  "ra_ap_base_db",
@@ -1803,7 +1803,7 @@ dependencies = [
 name = "rust-pack"
 version = "0.1.0"
 dependencies = [
- "change_json",
+ "change-json",
  "clap",
  "lazy_static",
  "ra_ap_base_db",
