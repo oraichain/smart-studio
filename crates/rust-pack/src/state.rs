@@ -1,4 +1,3 @@
-#![allow(dead_code, unused_imports)]
 use std::sync::Arc;
 
 use ide::{
@@ -21,26 +20,26 @@ use crate::to_proto::*;
 // #[wasm_bindgen]
 pub struct LocalState {
     host: AnalysisHost,
-    snapshot: Option<Analysis>,
 }
 
 impl Default for LocalState {
     fn default() -> Self {
         let host = AnalysisHost::default();
-        Self { host, snapshot: None }
+        Self { host }
     }
 }
 
 impl LocalState {
     pub fn apply_change(&mut self, change: Change) {
         self.host.apply_change(change);
-        self.snapshot = Some(self.host.analysis());
     }
 
-    // using snapshot to prevent thread lock
-    pub fn analysis(&self) -> &Analysis {
-        // self.host.analysis()
-        self.snapshot.as_ref().unwrap()
+    // use callback to access to temporary reference
+    fn with_analysis<F, T>(&self, f: F) -> T
+    where
+        F: FnOnce(&Analysis) -> T,
+    {
+        f(&self.host.analysis())
     }
 
     pub fn load(&mut self, json: Vec<u8>) {
@@ -58,74 +57,76 @@ impl LocalState {
         change.change_file(file_id, Some(Arc::new(code)));
         self.apply_change(change);
 
-        let line_index = self.analysis().file_line_index(file_id).unwrap();
+        self.with_analysis(|analysis| {
+            let line_index = analysis.file_line_index(file_id).unwrap();
 
-        let highlights: Vec<_> = if with_highlight {
-            self.analysis()
-                .highlight(file_id)
+            let highlights = if with_highlight {
+                analysis
+                    .highlight(file_id)
+                    .unwrap()
+                    .into_iter()
+                    .map(|hl| Highlight {
+                        fileId: file_ind,
+                        tag: Some(hl.highlight.tag.to_string()),
+                        range: text_range(&hl.range, &line_index),
+                    })
+                    .collect()
+            } else {
+                vec![]
+            };
+
+            let mut config = DiagnosticsConfig::default();
+            config.disabled.insert("unresolved-macro-call".to_string());
+
+            let diagnostics = analysis
+                .diagnostics(&config, ide::AssistResolveStrategy::None, file_id)
                 .unwrap()
                 .into_iter()
-                .map(|hl| Highlight {
-                    fileId: file_ind,
-                    tag: Some(hl.highlight.tag.to_string()),
-                    range: text_range(&hl.range, &line_index),
+                .map(|d| {
+                    let Range { startLineNumber, startColumn, endLineNumber, endColumn } =
+                        text_range(&d.range, &line_index);
+                    Diagnostic {
+                        message: d.message,
+                        severity: severity(d.severity),
+                        startLineNumber,
+                        startColumn,
+                        endLineNumber,
+                        endColumn,
+                    }
                 })
-                .collect()
-        } else {
-            vec![]
-        };
-
-        let mut config = DiagnosticsConfig::default();
-        config.disabled.insert("unresolved-macro-call".to_string());
-
-        let diagnostics: Vec<_> = self
-            .analysis()
-            .diagnostics(&config, ide::AssistResolveStrategy::None, file_id)
-            .unwrap()
-            .into_iter()
-            .map(|d| {
-                let Range { startLineNumber, startColumn, endLineNumber, endColumn } =
-                    text_range(&d.range, &line_index);
-                Diagnostic {
-                    message: d.message,
-                    severity: severity(d.severity),
-                    startLineNumber,
-                    startColumn,
-                    endLineNumber,
-                    endColumn,
-                }
-            })
-            .collect();
-
-        UpdateResult { diagnostics, highlights }
+                .collect();
+            UpdateResult { diagnostics, highlights }
+        })
     }
 
     pub fn inlay_hints(&self, file_ind: u32) -> Vec<InlayHint> {
         let file_id = FileId(file_ind);
 
-        let line_index = self.analysis().file_line_index(file_id).unwrap();
-        self.analysis()
-            .inlay_hints(
-                &InlayHintsConfig {
-                    type_hints: true,
-                    parameter_hints: true,
-                    chaining_hints: true,
-                    hide_named_constructor_hints: false,
-                    max_length: Some(25),
-                },
-                file_id,
-            )
-            .unwrap()
-            .into_iter()
-            .map(|ih| InlayHint {
-                label: Some(ih.label.to_string()),
-                hint_type: match ih.kind {
-                    InlayKind::TypeHint | InlayKind::ChainingHint => InlayHintType::Type,
-                    InlayKind::ParameterHint => InlayHintType::Parameter,
-                },
-                range: text_range(&ih.range, &line_index),
-            })
-            .collect()
+        self.with_analysis(|analysis| {
+            let line_index = analysis.file_line_index(file_id).unwrap();
+            analysis
+                .inlay_hints(
+                    &InlayHintsConfig {
+                        type_hints: true,
+                        parameter_hints: true,
+                        chaining_hints: true,
+                        hide_named_constructor_hints: false,
+                        max_length: Some(25),
+                    },
+                    file_id,
+                )
+                .unwrap()
+                .into_iter()
+                .map(|ih| InlayHint {
+                    label: Some(ih.label.to_string()),
+                    hint_type: match ih.kind {
+                        InlayKind::TypeHint | InlayKind::ChainingHint => InlayHintType::Type,
+                        InlayKind::ParameterHint => InlayHintType::Parameter,
+                    },
+                    range: text_range(&ih.range, &line_index),
+                })
+                .collect()
+        })
     }
 
     pub fn completions(&self, file_ind: u32, line_number: u32, column: u32) -> Vec<CompletionItem> {
@@ -148,96 +149,99 @@ impl LocalState {
             snippets: Vec::new(),
         };
 
-        let line_index = self.analysis().file_line_index(file_id).unwrap();
+        self.with_analysis(|analysis| {
+            let line_index = analysis.file_line_index(file_id).unwrap();
 
-        let pos = file_position(line_number, column, &line_index, file_id);
-        let res = match self.analysis().completions(&COMPLETION_CONFIG, pos).unwrap() {
-            Some(items) => items,
-            None => return vec![],
-        };
+            let pos = file_position(line_number, column, &line_index, file_id);
+            let res = match analysis.completions(&COMPLETION_CONFIG, pos).unwrap() {
+                Some(items) => items,
+                None => return vec![],
+            };
 
-        res.into_iter().map(|item| completion_item(item, &line_index)).collect()
+            res.into_iter().map(|item| completion_item(item, &line_index)).collect()
+        })
     }
 
     pub fn hover(&self, file_ind: u32, line_number: u32, column: u32) -> Option<Hover> {
         let file_id = FileId(file_ind);
+        self.with_analysis(|analysis| {
+            let line_index = analysis.file_line_index(file_id).unwrap();
 
-        let line_index = self.analysis().file_line_index(file_id).unwrap();
+            let FilePosition { file_id, offset } =
+                file_position(line_number, column, &line_index, file_id);
+            let range = FileRange {
+                file_id,
+                range: TextRange::new(TextSize::from(offset), TextSize::from(offset)),
+            };
 
-        let FilePosition { file_id, offset } =
-            file_position(line_number, column, &line_index, file_id);
-        let range = FileRange {
-            file_id,
-            range: TextRange::new(TextSize::from(offset), TextSize::from(offset)),
-        };
+            let info = match analysis
+                .hover(
+                    &HoverConfig {
+                        links_in_hover: true,
+                        documentation: Some(HoverDocFormat::Markdown),
+                    },
+                    range,
+                )
+                .unwrap()
+            {
+                Some(info) => info,
+                _ => return None,
+            };
 
-        let info = match self
-            .analysis()
-            .hover(
-                &HoverConfig {
-                    links_in_hover: true,
-                    documentation: Some(HoverDocFormat::Markdown),
-                },
-                range,
-            )
-            .unwrap()
-        {
-            Some(info) => info,
-            _ => return None,
-        };
-
-        let value = info.info.markup.to_string();
-        Some(Hover {
-            contents: vec![MarkdownString { value }],
-            range: text_range(&info.range, &line_index),
+            let value = info.info.markup.to_string();
+            Some(Hover {
+                contents: vec![MarkdownString { value }],
+                range: text_range(&info.range, &line_index),
+            })
         })
     }
 
     pub fn code_lenses(&self, file_ind: u32) -> Vec<CodeLensSymbol> {
         let file_id = FileId(file_ind);
+        self.with_analysis(|analysis| {
+            let line_index = analysis.file_line_index(file_id).unwrap();
 
-        let line_index = self.analysis().file_line_index(file_id).unwrap();
-
-        self.analysis()
-            .file_structure(file_id)
-            .unwrap()
-            .into_iter()
-            .filter(|it| match it.kind {
-                ide::StructureNodeKind::SymbolKind(it) => matches!(
-                    it,
-                    ide_db::SymbolKind::Trait
-                        | ide_db::SymbolKind::Struct
-                        | ide_db::SymbolKind::Enum
-                ),
-                ide::StructureNodeKind::Region => true,
-            })
-            .filter_map(|it| {
-                let position = FilePosition { file_id, offset: it.node_range.start() };
-                let nav_info = self.analysis().goto_implementation(position).unwrap()?;
-
-                let title = if nav_info.info.len() == 1 {
-                    "1 implementation".into()
-                } else {
-                    format!("{} implementations", nav_info.info.len())
-                };
-
-                let positions = nav_info
-                    .info
-                    .iter()
-                    .map(|target| target.focus_or_full_range())
-                    .map(|range| text_range(&range, &line_index))
-                    .collect();
-
-                Some(CodeLensSymbol {
-                    range: text_range(&it.node_range, &line_index),
-                    command: Some(Command {
-                        id: "editor.action.showReferences".into(),
-                        title,
-                        positions,
-                    }),
+            analysis
+                .file_structure(file_id)
+                .unwrap()
+                .into_iter()
+                .filter(|it| match it.kind {
+                    ide::StructureNodeKind::SymbolKind(it) => matches!(
+                        it,
+                        ide_db::SymbolKind::Trait
+                            | ide_db::SymbolKind::Struct
+                            | ide_db::SymbolKind::Enum
+                    ),
+                    ide::StructureNodeKind::Region => true,
                 })
-            })
-            .collect()
+                .filter_map(|it| {
+                    let position = FilePosition { file_id, offset: it.node_range.start() };
+                    let nav_info = analysis.goto_implementation(position).unwrap()?;
+
+                    let title = if nav_info.info.len() == 1 {
+                        "1 implementation".into()
+                    } else {
+                        format!("{} implementations", nav_info.info.len())
+                    };
+
+                    let positions = nav_info
+                        .info
+                        .iter()
+                        .map(|target| target.focus_or_full_range())
+                        .map(|range| text_range(&range, &line_index))
+                        .collect();
+
+                    Some(CodeLensSymbol {
+                        range: text_range(&it.node_range, &line_index),
+                        command: Some(Command {
+                            id: "editor.action.showReferences".into(),
+                            title,
+                            positions,
+                        }),
+                    })
+                })
+                .collect()
+        })
     }
 
     pub fn references(
@@ -248,41 +252,42 @@ impl LocalState {
         include_declaration: bool,
     ) -> Vec<Highlight> {
         let file_id = FileId(file_ind);
+        self.with_analysis(|analysis| {
+            let line_index = analysis.file_line_index(file_id).unwrap();
 
-        let line_index = self.analysis().file_line_index(file_id).unwrap();
+            let pos = file_position(line_number, column, &line_index, file_id);
+            let search_scope = Some(SearchScope::single_file(file_id));
+            let ref_results = match analysis.find_all_refs(pos, search_scope) {
+                Ok(Some(info)) => info,
+                _ => return vec![],
+            };
 
-        let pos = file_position(line_number, column, &line_index, file_id);
-        let search_scope = Some(SearchScope::single_file(file_id));
-        let ref_results = match self.analysis().find_all_refs(pos, search_scope) {
-            Ok(Some(info)) => info,
-            _ => return vec![],
-        };
-
-        let mut res = vec![];
-        for ref_result in ref_results {
-            if include_declaration {
-                if let Some(d) = ref_result.declaration {
-                    let r = d.nav.focus_range.unwrap_or(d.nav.full_range);
-                    res.push(Highlight {
-                        fileId: d.nav.file_id.0,
-                        tag: None,
-                        range: text_range(&r, &line_index),
-                    });
+            let mut res = vec![];
+            for ref_result in ref_results {
+                if include_declaration {
+                    if let Some(d) = ref_result.declaration {
+                        let r = d.nav.focus_range.unwrap_or(d.nav.full_range);
+                        res.push(Highlight {
+                            fileId: d.nav.file_id.0,
+                            tag: None,
+                            range: text_range(&r, &line_index),
+                        });
+                    }
                 }
+                ref_result.references.iter().for_each(|(id, ranges)| {
+                    // handle multiple files
+                    for (r, _) in ranges {
+                        res.push(Highlight {
+                            fileId: id.0,
+                            tag: None,
+                            range: text_range(&*r, &line_index),
+                        });
+                    }
+                });
             }
-            ref_result.references.iter().for_each(|(id, ranges)| {
-                // handle multiple files
-                for (r, _) in ranges {
-                    res.push(Highlight {
-                        fileId: id.0,
-                        tag: None,
-                        range: text_range(&*r, &line_index),
-                    });
-                }
-            });
-        }
 
-        res
+            res
+        })
     }
 
     pub fn prepare_rename(
@@ -292,20 +297,21 @@ impl LocalState {
         column: u32,
     ) -> Option<RenameLocation> {
         let file_id = FileId(file_ind);
+        self.with_analysis(|analysis| {
+            let line_index = analysis.file_line_index(file_id).unwrap();
 
-        let line_index = self.analysis().file_line_index(file_id).unwrap();
+            let pos = file_position(line_number, column, &line_index, file_id);
+            let range_info = match analysis.prepare_rename(pos).unwrap() {
+                Ok(refs) => refs,
+                _ => return None,
+            };
 
-        let pos = file_position(line_number, column, &line_index, file_id);
-        let range_info = match self.analysis().prepare_rename(pos).unwrap() {
-            Ok(refs) => refs,
-            _ => return None,
-        };
+            let range = text_range(&range_info.range, &line_index);
+            let file_text = analysis.file_text(file_id).unwrap();
+            let text = file_text[range_info.range].to_owned();
 
-        let range = text_range(&range_info.range, &line_index);
-        let file_text = self.analysis().file_text(file_id).unwrap();
-        let text = file_text[range_info.range].to_owned();
-
-        Some(RenameLocation { range, text })
+            Some(RenameLocation { range, text })
+        })
     }
 
     pub fn rename(
@@ -316,21 +322,22 @@ impl LocalState {
         new_name: &str,
     ) -> Vec<TextEdit> {
         let file_id = FileId(file_ind);
+        self.with_analysis(|analysis| {
+            let line_index = analysis.file_line_index(file_id).unwrap();
 
-        let line_index = self.analysis().file_line_index(file_id).unwrap();
+            let pos = file_position(line_number, column, &line_index, file_id);
+            let change = match analysis.rename(pos, new_name).unwrap() {
+                Ok(change) => change,
+                Err(_) => return vec![],
+            };
 
-        let pos = file_position(line_number, column, &line_index, file_id);
-        let change = match self.analysis().rename(pos, new_name).unwrap() {
-            Ok(change) => change,
-            Err(_) => return vec![],
-        };
-
-        change
-            .source_file_edits
-            .iter()
-            .flat_map(|(_, edit)| edit.iter())
-            .map(|atom: &Indel| text_edit(atom, &line_index))
-            .collect()
+            change
+                .source_file_edits
+                .iter()
+                .flat_map(|(_, edit)| edit.iter())
+                .map(|atom: &Indel| text_edit(atom, &line_index))
+                .collect()
+        })
     }
 
     pub fn signature_help(
@@ -341,36 +348,39 @@ impl LocalState {
     ) -> Option<SignatureHelp> {
         let file_id = FileId(file_ind);
 
-        let line_index = self.analysis().file_line_index(file_id).unwrap();
+        self.with_analysis(|analysis| {
+            let line_index = analysis.file_line_index(file_id).unwrap();
 
-        let pos = file_position(line_number, column, &line_index, file_id);
-        let call_info = match self.analysis().call_info(pos) {
-            Ok(Some(call_info)) => call_info,
-            _ => return None,
-        };
+            let pos = file_position(line_number, column, &line_index, file_id);
+            let call_info = match analysis.call_info(pos) {
+                Ok(Some(call_info)) => call_info,
+                _ => return None,
+            };
 
-        let active_parameter = call_info.active_parameter;
-        let sig_info = signature_information(call_info);
+            let active_parameter = call_info.active_parameter;
+            let sig_info = signature_information(call_info);
 
-        Some(SignatureHelp {
-            signatures: [sig_info],
-            activeSignature: 0,
-            activeParameter: active_parameter,
+            Some(SignatureHelp {
+                signatures: [sig_info],
+                activeSignature: 0,
+                activeParameter: active_parameter,
+            })
         })
     }
 
     pub fn definition(&self, file_ind: u32, line_number: u32, column: u32) -> Vec<LocationLink> {
         let file_id = FileId(file_ind);
+        self.with_analysis(|analysis| {
+            let line_index = analysis.file_line_index(file_id).unwrap();
 
-        let line_index = self.analysis().file_line_index(file_id).unwrap();
+            let pos = file_position(line_number, column, &line_index, file_id);
+            let nav_info = match analysis.goto_definition(pos) {
+                Ok(Some(nav_info)) => nav_info,
+                _ => return vec![],
+            };
 
-        let pos = file_position(line_number, column, &line_index, file_id);
-        let nav_info = match self.analysis().goto_definition(pos) {
-            Ok(Some(nav_info)) => nav_info,
-            _ => return vec![],
-        };
-
-        location_links(nav_info, &line_index, &self.analysis())
+            location_links(nav_info, &line_index, analysis)
+        })
     }
 
     pub fn type_definition(
@@ -380,57 +390,59 @@ impl LocalState {
         column: u32,
     ) -> Vec<LocationLink> {
         let file_id = FileId(file_ind);
+        self.with_analysis(|analysis| {
+            let line_index = analysis.file_line_index(file_id).unwrap();
 
-        let line_index = self.analysis().file_line_index(file_id).unwrap();
+            let pos = file_position(line_number, column, &line_index, file_id);
+            let nav_info = match analysis.goto_type_definition(pos) {
+                Ok(Some(nav_info)) => nav_info,
+                _ => return vec![],
+            };
 
-        let pos = file_position(line_number, column, &line_index, file_id);
-        let nav_info = match self.analysis().goto_type_definition(pos) {
-            Ok(Some(nav_info)) => nav_info,
-            _ => return vec![],
-        };
-
-        location_links(nav_info, &line_index, &self.analysis())
+            location_links(nav_info, &line_index, analysis)
+        })
     }
 
     pub fn document_symbols(&self, file_ind: u32) -> Vec<DocumentSymbol> {
         let file_id = FileId(file_ind);
+        self.with_analysis(|analysis| {
+            let line_index = analysis.file_line_index(file_id).unwrap();
 
-        let line_index = self.analysis().file_line_index(file_id).unwrap();
-
-        let struct_nodes = match self.analysis().file_structure(file_id) {
-            Ok(struct_nodes) => struct_nodes,
-            _ => return vec![],
-        };
-        let mut parents: Vec<(DocumentSymbol, Option<usize>)> = Vec::new();
-
-        for symbol in struct_nodes {
-            let doc_symbol = DocumentSymbol {
-                name: symbol.label.clone(),
-                detail: symbol.detail.unwrap_or(symbol.label),
-                kind: symbol_kind(symbol.kind),
-                range: text_range(&symbol.node_range, &line_index),
-                children: None,
-                tags: [if symbol.deprecated { SymbolTag::Deprecated } else { SymbolTag::None }],
-                containerName: None,
-                selectionRange: text_range(&symbol.navigation_range, &line_index),
+            let struct_nodes = match analysis.file_structure(file_id) {
+                Ok(struct_nodes) => struct_nodes,
+                _ => return vec![],
             };
-            parents.push((doc_symbol, symbol.parent));
-        }
-        let mut res = Vec::new();
-        while let Some((node, parent)) = parents.pop() {
-            match parent {
-                None => res.push(node),
-                Some(i) => {
-                    let children = &mut parents[i].0.children;
-                    if children.is_none() {
-                        *children = Some(Vec::new());
+            let mut parents: Vec<(DocumentSymbol, Option<usize>)> = Vec::new();
+
+            for symbol in struct_nodes {
+                let doc_symbol = DocumentSymbol {
+                    name: symbol.label.clone(),
+                    detail: symbol.detail.unwrap_or(symbol.label),
+                    kind: symbol_kind(symbol.kind),
+                    range: text_range(&symbol.node_range, &line_index),
+                    children: None,
+                    tags: [if symbol.deprecated { SymbolTag::Deprecated } else { SymbolTag::None }],
+                    containerName: None,
+                    selectionRange: text_range(&symbol.navigation_range, &line_index),
+                };
+                parents.push((doc_symbol, symbol.parent));
+            }
+            let mut res = Vec::new();
+            while let Some((node, parent)) = parents.pop() {
+                match parent {
+                    None => res.push(node),
+                    Some(i) => {
+                        let children = &mut parents[i].0.children;
+                        if children.is_none() {
+                            *children = Some(Vec::new());
+                        }
+                        children.as_mut().unwrap().push(node);
                     }
-                    children.as_mut().unwrap().push(node);
                 }
             }
-        }
 
-        res
+            res
+        })
     }
 
     pub fn type_formatting(
@@ -441,30 +453,33 @@ impl LocalState {
         ch: char,
     ) -> Vec<TextEdit> {
         let file_id = FileId(file_ind);
+        self.with_analysis(|analysis| {
+            let line_index = analysis.file_line_index(file_id).unwrap();
 
-        let line_index = self.analysis().file_line_index(file_id).unwrap();
+            let mut pos = file_position(line_number, column, &line_index, file_id);
+            pos.offset -= TextSize::of('.');
 
-        let mut pos = file_position(line_number, column, &line_index, file_id);
-        pos.offset -= TextSize::of('.');
+            let edit = analysis.on_char_typed(pos, ch);
 
-        let edit = self.analysis().on_char_typed(pos, ch);
+            let (_file, edit) = match edit {
+                Ok(Some(it)) => it.source_file_edits.into_iter().next().unwrap(),
+                _ => return vec![],
+            };
 
-        let (_file, edit) = match edit {
-            Ok(Some(it)) => it.source_file_edits.into_iter().next().unwrap(),
-            _ => return vec![],
-        };
-
-        text_edits(edit, &line_index)
+            text_edits(edit, &line_index)
+        })
     }
 
     pub fn folding_ranges(&self, file_ind: u32) -> Vec<FoldingRange> {
         let file_id = FileId(file_ind);
 
-        let line_index = self.analysis().file_line_index(file_id).unwrap();
-        if let Ok(folds) = self.analysis().folding_ranges(file_id) {
-            return folds.into_iter().map(|fold| folding_range(fold, &line_index)).collect();
-        }
-        vec![]
+        self.with_analysis(|analysis| {
+            let line_index = analysis.file_line_index(file_id).unwrap();
+            if let Ok(folds) = analysis.folding_ranges(file_id) {
+                return folds.into_iter().map(|fold| folding_range(fold, &line_index)).collect();
+            }
+            vec![]
+        })
     }
 
     pub fn goto_implementation(
@@ -474,15 +489,16 @@ impl LocalState {
         column: u32,
     ) -> Vec<LocationLink> {
         let file_id = FileId(file_ind);
+        self.with_analysis(|analysis| {
+            let line_index = analysis.file_line_index(file_id).unwrap();
 
-        let line_index = self.analysis().file_line_index(file_id).unwrap();
-
-        let pos = file_position(line_number, column, &line_index, file_id);
-        let nav_info = match self.analysis().goto_implementation(pos) {
-            Ok(Some(it)) => it,
-            _ => return vec![],
-        };
-        location_links(nav_info, &line_index, &self.analysis())
+            let pos = file_position(line_number, column, &line_index, file_id);
+            let nav_info = match analysis.goto_implementation(pos) {
+                Ok(Some(it)) => it,
+                _ => return vec![],
+            };
+            location_links(nav_info, &line_index, analysis)
+        })
     }
 }
 
