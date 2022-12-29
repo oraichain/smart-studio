@@ -3,7 +3,7 @@ use std::sync::Arc;
 use cfg::CfgOptions;
 use ide::{Change, CrateGraph, CrateId, Edition, FileId, SourceRoot};
 
-use ide_db::base_db::{CrateName, Dependency, Env, FileSet, VfsPath};
+use ide_db::base_db::{CrateName, CrateOrigin, Dependency, Env, FileSet, VfsPath};
 
 use change_json::ChangeJson;
 
@@ -25,6 +25,7 @@ pub fn create_crate(crate_graph: &mut CrateGraph, f: FileId) -> CrateId {
         Default::default(),
         Env::default(),
         Vec::new(),
+        CrateOrigin::CratesIo { repo: None },
     )
 }
 

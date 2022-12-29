@@ -13,7 +13,8 @@
 // limitations under the License.
 
 use base_db::{
-    CrateData, CrateDisplayName, CrateGraph, CrateId, CrateName, Dependency, Edition, Env, FileId,
+    CrateData, CrateDisplayName, CrateGraph, CrateId, CrateName, CrateOrigin, Dependency, Edition,
+    Env, FileId,
 };
 use cfg::CfgOptions;
 use serde::{Deserialize, Serialize};
@@ -37,6 +38,7 @@ struct CrateDataJson {
     potential_cfg_options: CfgOptionsJson,
     env: EnvJson,
     proc_macro: Vec<String>,
+    origin: CrateOriginJson,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq, Eq)]
@@ -54,6 +56,19 @@ struct DepJson {
     from: u32,
     name: String,
     to: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum CrateOriginJson {
+    CratesIo { repo: Option<String> },
+    Lang,
+    Unknown,
+}
+
+impl Default for CrateOriginJson {
+    fn default() -> Self {
+        CrateOriginJson::CratesIo { repo: None }
+    }
 }
 
 impl From<&CrateGraph> for CrateGraphJson {
@@ -96,7 +111,7 @@ impl From<&CrateGraphJson> for CrateGraph {
             let cfg_options = CfgOptions::from(&data.cfg_options);
             let potential_cfg_options = CfgOptions::from(&data.potential_cfg_options);
             let env = Env::from(&data.env);
-
+            let origin = CrateOrigin::from(&data.origin);
             crate_graph.add_crate_root(
                 file_id,
                 edition,
@@ -106,6 +121,7 @@ impl From<&CrateGraphJson> for CrateGraph {
                 potential_cfg_options,
                 env,
                 Vec::new(),
+                origin,
             );
         }
 
@@ -132,7 +148,7 @@ impl From<&CrateData> for CrateDataJson {
         let potential_cfg_options = CfgOptionsJson::from(&crate_data.potential_cfg_options);
         let env = EnvJson::from(&crate_data.env);
         let proc_macro = Vec::new();
-
+        let origin = CrateOriginJson::from(&crate_data.origin);
         CrateDataJson {
             root_file_id,
             edition,
@@ -142,6 +158,7 @@ impl From<&CrateData> for CrateDataJson {
             potential_cfg_options,
             env,
             proc_macro,
+            origin,
         }
     }
 }
@@ -200,6 +217,32 @@ impl From<&EnvJson> for Env {
     }
 }
 
+impl From<&CrateOrigin> for CrateOriginJson {
+    fn from(crate_origin: &CrateOrigin) -> Self {
+        match crate_origin {
+            CrateOrigin::Lang => CrateOriginJson::Lang,
+            CrateOrigin::CratesIo { repo: value } => {
+                let value: Option<String> = value.as_ref().map(|str| str.to_string());
+                CrateOriginJson::CratesIo { repo: value }
+            }
+            CrateOrigin::Unknown => CrateOriginJson::Unknown,
+        }
+    }
+}
+
+impl From<&CrateOriginJson> for CrateOrigin {
+    fn from(crate_origin: &CrateOriginJson) -> Self {
+        match crate_origin {
+            CrateOriginJson::Lang => CrateOrigin::Lang,
+            CrateOriginJson::CratesIo { repo: value } => {
+                let value: Option<String> = value.as_ref().map(|str| str.to_string());
+                CrateOrigin::CratesIo { repo: value }
+            }
+            CrateOriginJson::Unknown => CrateOrigin::Unknown,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -217,6 +260,7 @@ mod tests {
             CfgOptions::default(),
             Env::default(),
             Default::default(),
+            CrateOrigin::Lang,
         );
         let crate2 = graph.add_crate_root(
             FileId(2u32),
@@ -227,6 +271,7 @@ mod tests {
             CfgOptions::default(),
             Env::default(),
             Default::default(),
+            CrateOrigin::Lang,
         );
         let crate3 = graph.add_crate_root(
             FileId(3u32),
@@ -237,6 +282,7 @@ mod tests {
             CfgOptions::default(),
             Env::default(),
             Default::default(),
+            CrateOrigin::Lang,
         );
         graph.add_dep(crate1, Dependency::new(CrateName::new("crate2").unwrap(), crate2)).unwrap();
         graph.add_dep(crate2, Dependency::new(CrateName::new("crate3").unwrap(), crate3)).unwrap();

@@ -49,9 +49,12 @@ pub(crate) fn completion_item_kind(
             ide::SymbolKind::Union => Struct,
             ide::SymbolKind::ValueParam => TypeParameter,
             ide::SymbolKind::Variant => User,
+            ide::SymbolKind::Attribute => Property,
+            ide::SymbolKind::BuiltinAttr => Property,
+            ide::SymbolKind::Derive => Property,
+            ide::SymbolKind::ToolModule => Property,
         },
         ide::CompletionItemKind::Method => Method,
-        ide::CompletionItemKind::Attribute => Property,
         ide::CompletionItemKind::UnresolvedReference => User,
     }
 }
@@ -189,6 +192,10 @@ pub(crate) fn symbol_kind(kind: ide::StructureNodeKind) -> return_types::SymbolK
         ide::SymbolKind::Union => SymbolKind::Struct,
         ide::SymbolKind::ValueParam => SymbolKind::TypeParameter,
         ide::SymbolKind::Variant => SymbolKind::EnumMember,
+        ide::SymbolKind::Attribute => SymbolKind::Property,
+        ide::SymbolKind::BuiltinAttr => SymbolKind::Property,
+        ide::SymbolKind::Derive => SymbolKind::Property,
+        ide::SymbolKind::ToolModule => SymbolKind::Property,
     }
 }
 

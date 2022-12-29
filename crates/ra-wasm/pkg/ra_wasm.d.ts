@@ -182,8 +182,8 @@ export interface InitOutput {
   readonly wbg_rayon_poolbuilder_numThreads: (a: number) => number;
   readonly wbg_rayon_poolbuilder_receiver: (a: number) => number;
   readonly wbg_rayon_poolbuilder_build: (a: number) => void;
-  readonly wbg_rayon_start_worker: (a: number) => void;
   readonly initThreadPool: (a: number) => number;
+  readonly wbg_rayon_start_worker: (a: number) => void;
   readonly memory: WebAssembly.Memory;
   readonly __wbindgen_malloc: (a: number) => number;
   readonly __wbindgen_realloc: (a: number, b: number, c: number) => number;

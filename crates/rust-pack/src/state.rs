@@ -21,22 +21,26 @@ use crate::to_proto::*;
 // #[wasm_bindgen]
 pub struct LocalState {
     host: AnalysisHost,
+    snapshot: Option<Analysis>,
 }
 
 impl Default for LocalState {
     fn default() -> Self {
-        Self { host: AnalysisHost::default() }
+        let host = AnalysisHost::default();
+        Self { host, snapshot: None }
     }
 }
 
 impl LocalState {
     pub fn apply_change(&mut self, change: Change) {
-        self.host.apply_change(change)
+        self.host.apply_change(change);
+        self.snapshot = Some(self.host.analysis());
     }
 
     // using snapshot to prevent thread lock
-    pub fn analysis(&self) -> Analysis {
-        self.host.analysis()
+    pub fn analysis(&self) -> &Analysis {
+        // self.host.analysis()
+        self.snapshot.as_ref().unwrap()
     }
 
     pub fn load(&mut self, json: Vec<u8>) {
@@ -44,7 +48,7 @@ impl LocalState {
         let change = extractor::load_change_from_json(&json);
 
         // apply change
-        self.host.apply_change(change);
+        self.apply_change(change);
     }
 
     pub fn update(&mut self, file_ind: u32, code: String, with_highlight: bool) -> UpdateResult {
@@ -52,7 +56,7 @@ impl LocalState {
 
         let mut change = Change::new();
         change.change_file(file_id, Some(Arc::new(code)));
-        self.host.apply_change(change);
+        self.apply_change(change);
 
         let line_index = self.analysis().file_line_index(file_id).unwrap();
 
@@ -106,6 +110,7 @@ impl LocalState {
                     type_hints: true,
                     parameter_hints: true,
                     chaining_hints: true,
+                    hide_named_constructor_hints: false,
                     max_length: Some(25),
                 },
                 file_id,

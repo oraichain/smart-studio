@@ -11,11 +11,11 @@ name = "rust-pack"
 [dependencies]
 regex = "1.7.0"
 lazy_static = "1.4.0"
-base_db = { package = "ra_ap_base_db", version = "0.0.81" }
-cfg = { package = "ra_ap_cfg", version = "0.0.81" }
-tt = { package = "ra_ap_tt", version = "0.0.81" }
-ide = { version = "0.0.81", package = "ra_ap_ide" }
-ide_db = { version = "0.0.81", package = "ra_ap_ide_db" }
+base_db = { package = "ra_ap_base_db", version = "0.0.91" }
+cfg = { package = "ra_ap_cfg", version = "0.0.91" }
+tt = { package = "ra_ap_tt", version = "0.0.91" }
+ide = { package = "ra_ap_ide", version = "0.0.91" }
+ide_db = { package = "ra_ap_ide_db",version = "0.0.91" }
 serde_repr = "0.1.8"
 serde = { version = "1.0.143", features = ["derive"] }
 serde_json = { version = "1.0.82", features = ["preserve_order"] }
