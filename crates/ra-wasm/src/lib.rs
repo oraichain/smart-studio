@@ -25,7 +25,11 @@ impl WorldState {
     }
 
     pub fn load(&mut self, json: Vec<u8>) {
-        self.state.load(json);
+        let json = String::from_utf8_lossy(&json);
+        let change = extractor::load_change_from_json(&json);
+
+        // apply change
+        self.state.apply_change(change)
     }
 
     pub fn init(

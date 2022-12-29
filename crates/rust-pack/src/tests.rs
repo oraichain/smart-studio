@@ -1,14 +1,15 @@
 use std::fs;
 
-use crate::extractor::CONTRACT_FILES;
+use crate::extractor::{self, CONTRACT_FILES};
 use crate::state::LocalState;
 
 #[test]
 fn initialize_state() {
     let mut state = LocalState::default();
-    let change_json = fs::read_to_string("../../change.json").unwrap();
-    println!("json length {}", change_json.len());
-    state.load(change_json.into_bytes());
+    let json = fs::read_to_string("../../change.json").unwrap();
+    println!("json length {}", json.len());
+    let change = extractor::load_change_from_json(&json);
+    state.apply_change(change);
 
     for id in 0..CONTRACT_FILES.len() {
         let code =
