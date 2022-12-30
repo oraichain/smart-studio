@@ -3,7 +3,7 @@ use std::sync::Arc;
 use ide::{
     AdjustmentHints, AnalysisHost, CallableSnippets, Change, ClosureReturnTypeHints,
     CompletionConfig, DiagnosticsConfig, ExprFillDefaultMode, FileId, FilePosition, FileRange,
-    HighlightConfig, HoverConfig, HoverDocFormat, Indel, InlayHintsConfig, InlayKind,
+    HighlightConfig, HoverConfig, HoverDocFormat, Indel, InlayHintsConfig, InlayKind, InlayTooltip,
     LifetimeElisionHints, TextRange, TextSize,
 };
 use ide_db::{
@@ -94,7 +94,7 @@ impl LocalState {
             insert_use: INSERT_USER_CONFIG,
             prefer_no_std: false,
         };
-
+        config.disabled.insert("unresolved-proc-macro".to_string());
         config.disabled.insert("unresolved-macro-call".to_string());
 
         let diagnostics = analysis
@@ -146,10 +146,15 @@ impl LocalState {
             .into_iter()
             .map(|ih| InlayHint {
                 label: Some(ih.label.to_string()),
+                tooltip: ih.tooltip.map(|tooltip| match tooltip {
+                    InlayTooltip::String(str) => str,
+                    _ => String::new(),
+                }),
                 hint_type: match ih.kind {
                     InlayKind::ParameterHint => InlayHintType::Parameter,
                     _ => InlayHintType::Type,
                 },
+
                 range: text_range(&ih.range, &line_index),
             })
             .collect()

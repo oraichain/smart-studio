@@ -52,6 +52,7 @@ pub enum InlayHintType {
 #[derive(Serialize)]
 pub struct InlayHint {
     pub label: Option<String>,
+    pub tooltip: Option<String>,
     pub hint_type: InlayHintType,
     pub range: Range,
 }

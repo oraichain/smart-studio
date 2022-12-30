@@ -263,9 +263,10 @@ export class LanguageUpdater {
 
     if (inlayHints) {
       return {
-        hints: inlayHints.map(({ label, hint_type, range }: any) => {
+        hints: inlayHints.map(({ label, hint_type, tooltip, range }: any) => {
           return {
             label,
+            tooltip,
             kind: hint_type,
             paddingRight: true,
             position: {
