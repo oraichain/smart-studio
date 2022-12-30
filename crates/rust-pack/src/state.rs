@@ -1,15 +1,15 @@
 use std::sync::Arc;
 
 use ide::{
-    AnalysisHost, Change, CompletionConfig, DiagnosticsConfig, FileId, FilePosition, FileRange,
-    HoverConfig, HoverDocFormat, Indel, InlayHintsConfig, InlayKind, TextRange, TextSize,
+    AdjustmentHints, AnalysisHost, CallableSnippets, Change, ClosureReturnTypeHints,
+    CompletionConfig, DiagnosticsConfig, ExprFillDefaultMode, FileId, FilePosition, FileRange,
+    HighlightConfig, HoverConfig, HoverDocFormat, Indel, InlayHintsConfig, InlayKind,
+    LifetimeElisionHints, TextRange, TextSize,
 };
 use ide_db::{
-    helpers::{
-        insert_use::{ImportGranularity, InsertUseConfig, PrefixKind},
-        SnippetCap,
-    },
+    imports::insert_use::{ImportGranularity, InsertUseConfig, PrefixKind},
     search::SearchScope,
+    FxHashSet, SnippetCap,
 };
 
 use crate::extractor;
@@ -27,6 +27,14 @@ impl Default for LocalState {
         Self { host }
     }
 }
+
+const INSERT_USER_CONFIG: InsertUseConfig = InsertUseConfig {
+    granularity: ImportGranularity::Module,
+    enforce_granularity: false,
+    prefix_kind: PrefixKind::Plain,
+    group: true,
+    skip_glob_imports: false,
+};
 
 impl LocalState {
     pub fn apply_change(&mut self, change: Change) {
@@ -51,9 +59,20 @@ impl LocalState {
         let analysis = self.host.analysis();
         let line_index = analysis.file_line_index(file_id).unwrap();
 
+        const HIGHLIGHT_CONFIG: HighlightConfig = HighlightConfig {
+            strings: true,
+            punctuation: true,
+            specialize_punctuation: true,
+            specialize_operator: true,
+            operator: true,
+            inject_doc_comment: true,
+            macro_bang: true,
+            syntactic_name_ref_highlighting: true,
+        };
+
         let highlights = if with_highlight {
             analysis
-                .highlight(file_id)
+                .highlight(HIGHLIGHT_CONFIG, file_id)
                 .unwrap()
                 .into_iter()
                 .map(|hl| Highlight {
@@ -66,7 +85,16 @@ impl LocalState {
             vec![]
         };
 
-        let mut config = DiagnosticsConfig::default();
+        let mut config = DiagnosticsConfig {
+            proc_macros_enabled: false,
+            proc_attr_macros_enabled: false,
+            disable_experimental: true,
+            disabled: FxHashSet::default(),
+            expr_fill_default: ExprFillDefaultMode::Default,
+            insert_use: INSERT_USER_CONFIG,
+            prefer_no_std: false,
+        };
+
         config.disabled.insert("unresolved-macro-call".to_string());
 
         let diagnostics = analysis
@@ -92,26 +120,35 @@ impl LocalState {
     pub fn inlay_hints(&self, file_ind: u32) -> Vec<InlayHint> {
         let file_id = FileId(file_ind);
 
+        const INLAY_HINTS_CONFIG: InlayHintsConfig = InlayHintsConfig {
+            type_hints: true,
+            parameter_hints: true,
+            chaining_hints: true,
+            hide_named_constructor_hints: false,
+            max_length: Some(25),
+            location_links: true,
+            render_colons: true,
+            adjustment_hints: AdjustmentHints::Always,
+            adjustment_hints_hide_outside_unsafe: true,
+            closure_return_type_hints: ClosureReturnTypeHints::Always,
+            binding_mode_hints: true,
+            lifetime_elision_hints: LifetimeElisionHints::Always,
+            param_names_for_lifetime_elision_hints: true,
+            hide_closure_initialization_hints: false,
+            closing_brace_hints_min_lines: None,
+        };
+
         let analysis = self.host.analysis();
         let line_index = analysis.file_line_index(file_id).unwrap();
         analysis
-            .inlay_hints(
-                &InlayHintsConfig {
-                    type_hints: true,
-                    parameter_hints: true,
-                    chaining_hints: true,
-                    hide_named_constructor_hints: false,
-                    max_length: Some(25),
-                },
-                file_id,
-            )
+            .inlay_hints(&INLAY_HINTS_CONFIG, file_id, None)
             .unwrap()
             .into_iter()
             .map(|ih| InlayHint {
                 label: Some(ih.label.to_string()),
                 hint_type: match ih.kind {
-                    InlayKind::TypeHint | InlayKind::ChainingHint => InlayHintType::Type,
                     InlayKind::ParameterHint => InlayHintType::Parameter,
+                    _ => InlayHintType::Type,
                 },
                 range: text_range(&ih.range, &line_index),
             })
@@ -125,24 +162,19 @@ impl LocalState {
             enable_postfix_completions: true,
             enable_imports_on_the_fly: true,
             enable_self_on_the_fly: true,
-            add_call_parenthesis: true,
-            add_call_argument_snippets: true,
+            enable_private_editable: true,
+            callable: Some(CallableSnippets::FillArguments),
             snippet_cap: SnippetCap::new(true),
-            insert_use: InsertUseConfig {
-                granularity: ImportGranularity::Crate,
-                enforce_granularity: true,
-                prefix_kind: PrefixKind::Plain,
-                group: true,
-                skip_glob_imports: true,
-            },
             snippets: Vec::new(),
+            prefer_no_std: false,
+            insert_use: INSERT_USER_CONFIG,
         };
 
         let analysis = self.host.analysis();
         let line_index = analysis.file_line_index(file_id).unwrap();
 
         let pos = file_position(line_number, column, &line_index, file_id);
-        let res = match analysis.completions(&COMPLETION_CONFIG, pos).unwrap() {
+        let res = match analysis.completions(&COMPLETION_CONFIG, pos, None).unwrap() {
             Some(items) => items,
             None => return vec![],
         };
@@ -155,6 +187,12 @@ impl LocalState {
         let analysis = self.host.analysis();
         let line_index = analysis.file_line_index(file_id).unwrap();
 
+        const HOVER_CONFIG: HoverConfig = HoverConfig {
+            links_in_hover: true,
+            documentation: Some(HoverDocFormat::Markdown),
+            keywords: true,
+        };
+
         let FilePosition { file_id, offset } =
             file_position(line_number, column, &line_index, file_id);
         let range = FileRange {
@@ -162,16 +200,7 @@ impl LocalState {
             range: TextRange::new(TextSize::from(offset), TextSize::from(offset)),
         };
 
-        let info = match analysis
-            .hover(
-                &HoverConfig {
-                    links_in_hover: true,
-                    documentation: Some(HoverDocFormat::Markdown),
-                },
-                range,
-            )
-            .unwrap()
-        {
+        let info = match analysis.hover(&HOVER_CONFIG, range).unwrap() {
             Some(info) => info,
             _ => return None,
         };
@@ -335,13 +364,13 @@ impl LocalState {
         let line_index = analysis.file_line_index(file_id).unwrap();
 
         let pos = file_position(line_number, column, &line_index, file_id);
-        let call_info = match analysis.call_info(pos) {
-            Ok(Some(call_info)) => call_info,
+        let signature_help = match analysis.signature_help(pos) {
+            Ok(Some(signature_help)) => signature_help,
             _ => return None,
         };
 
-        let active_parameter = call_info.active_parameter;
-        let sig_info = signature_information(call_info);
+        let active_parameter = signature_help.active_parameter;
+        let sig_info = signature_information(signature_help);
 
         Some(SignatureHelp {
             signatures: [sig_info],
@@ -438,7 +467,7 @@ impl LocalState {
         let mut pos = file_position(line_number, column, &line_index, file_id);
         pos.offset -= TextSize::of('.');
 
-        let edit = analysis.on_char_typed(pos, ch);
+        let edit = analysis.on_char_typed(pos, ch, false);
 
         let (_file, edit) = match edit {
             Ok(Some(it)) => it.source_file_edits.into_iter().next().unwrap(),
@@ -485,6 +514,6 @@ fn file_position(
     file_id: ide::FileId,
 ) -> ide::FilePosition {
     let line_col = ide::LineCol { line: line_number - 1, col: column - 1 };
-    let offset = line_index.offset(line_col);
+    let offset = line_index.offset(line_col).unwrap();
     ide::FilePosition { file_id, offset }
 }

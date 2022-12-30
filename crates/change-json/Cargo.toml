@@ -8,6 +8,6 @@ readme = "README.md"
 
 [dependencies]
 serde = { version = "1.0.143", features = ["derive"] }
-base_db = { package = "ra_ap_base_db", version = "0.0.91" }
-cfg = { package = "ra_ap_cfg", version = "0.0.91" }
-tt = { package = "ra_ap_tt", version = "0.0.91" }
+base_db = { package = "ra_ap_base_db", version = "0.0.145" }
+cfg = { package = "ra_ap_cfg", version = "0.0.145" }
+tt = { package = "ra_ap_tt", version = "0.0.145" }

@@ -25,12 +25,16 @@ pub(crate) fn completion_item_kind(
     match kind {
         ide::CompletionItemKind::Keyword => Keyword,
         ide::CompletionItemKind::Snippet => Snippet,
+        ide::CompletionItemKind::InferredType => Keyword,
 
         ide::CompletionItemKind::BuiltinType => Struct,
         ide::CompletionItemKind::Binding => Variable,
         ide::CompletionItemKind::SymbolKind(it) => match it {
+            ide::SymbolKind::Attribute => Property,
+            ide::SymbolKind::BuiltinAttr => Property,
             ide::SymbolKind::Const => Constant,
             ide::SymbolKind::ConstParam => Constant,
+            ide::SymbolKind::Derive => Property,
             ide::SymbolKind::Enum => Enum,
             ide::SymbolKind::Field => Field,
             ide::SymbolKind::Function => Function,
@@ -43,16 +47,15 @@ pub(crate) fn completion_item_kind(
             ide::SymbolKind::SelfParam => Value,
             ide::SymbolKind::Static => Value,
             ide::SymbolKind::Struct => Struct,
+            ide::SymbolKind::SelfType => Property,
+            ide::SymbolKind::ToolModule => Property,
             ide::SymbolKind::Trait => Interface,
             ide::SymbolKind::TypeAlias => Value,
             ide::SymbolKind::TypeParam => TypeParameter,
             ide::SymbolKind::Union => Struct,
             ide::SymbolKind::ValueParam => TypeParameter,
             ide::SymbolKind::Variant => User,
-            ide::SymbolKind::Attribute => Property,
-            ide::SymbolKind::BuiltinAttr => Property,
-            ide::SymbolKind::Derive => Property,
-            ide::SymbolKind::ToolModule => Property,
+            ide::SymbolKind::DeriveHelper => Property,
         },
         ide::CompletionItemKind::Method => Method,
         ide::CompletionItemKind::UnresolvedReference => User,
@@ -121,7 +124,7 @@ pub(crate) fn completion_item(
 }
 
 pub(crate) fn signature_information(
-    call_info: ide::CallInfo,
+    call_info: ide::SignatureHelp,
 ) -> return_types::SignatureInformation {
     use return_types::{ParameterInformation, SignatureInformation};
 
@@ -196,6 +199,8 @@ pub(crate) fn symbol_kind(kind: ide::StructureNodeKind) -> return_types::SymbolK
         ide::SymbolKind::BuiltinAttr => SymbolKind::Property,
         ide::SymbolKind::Derive => SymbolKind::Property,
         ide::SymbolKind::ToolModule => SymbolKind::Property,
+        ide::SymbolKind::DeriveHelper => SymbolKind::Property,
+        ide::SymbolKind::SelfType => SymbolKind::Variable,
     }
 }
 

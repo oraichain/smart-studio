@@ -24,8 +24,10 @@ pub fn create_crate(crate_graph: &mut CrateGraph, f: FileId) -> CrateId {
         cfg,
         Default::default(),
         Env::default(),
-        Vec::new(),
-        CrateOrigin::CratesIo { repo: None },
+        Ok(Default::default()),
+        false,
+        CrateOrigin::CratesIo { repo: None, name: None },
+        None,
     )
 }
 
