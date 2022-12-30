@@ -373,7 +373,9 @@ fn main() {
             output = remove_skip_format(&output);
             output = remove_extern_c(&output);
             if name != "libcore" {
-                output = remove_unstable_feature(&output);
+                if name != "liballoc" {
+                    output = remove_unstable_feature(&output);
+                }
                 output = remove_function_body(&output);
             } else {
                 let (left, right) = output.split_at(output.len() * 24 / 100); // 23-24%

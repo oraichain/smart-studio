@@ -29,11 +29,11 @@ impl Default for LocalState {
 }
 
 const INSERT_USER_CONFIG: InsertUseConfig = InsertUseConfig {
-    granularity: ImportGranularity::Module,
-    enforce_granularity: false,
+    granularity: ImportGranularity::Crate,
+    enforce_granularity: true,
     prefix_kind: PrefixKind::Plain,
     group: true,
-    skip_glob_imports: false,
+    skip_glob_imports: true,
 };
 
 impl LocalState {
@@ -86,8 +86,8 @@ impl LocalState {
         };
 
         let mut config = DiagnosticsConfig {
-            proc_macros_enabled: false,
-            proc_attr_macros_enabled: false,
+            proc_macros_enabled: true,
+            proc_attr_macros_enabled: true,
             disable_experimental: true,
             disabled: FxHashSet::default(),
             expr_fill_default: ExprFillDefaultMode::Default,
