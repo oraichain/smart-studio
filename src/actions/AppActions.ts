@@ -214,7 +214,7 @@ export async function openProjectFiles(template: Template) {
   openProject(newProject);
 }
 
-export function openProject(newProject: Project, openedFiles: string[] = ['README.md', 'src/contract.rs']) {
+export function openProject(newProject: Project, openedFiles: string[] = ['README.md', 'src/lib.rs']) {
   loadProject(newProject);
   // open files existed in project
   openFiles([openedFiles.filter((path) => newProject.getFile(path))]);
