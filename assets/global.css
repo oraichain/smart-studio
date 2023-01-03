@@ -1244,4 +1244,6 @@ a {
   background-color: transparent!important;  
 }
 
-
+.hidden > .monaco-tree-row{  
+  display: none;
+}
