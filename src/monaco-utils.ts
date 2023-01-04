@@ -71,7 +71,7 @@ export class MonacoUtils {
         const range = input.options.selection;
         const position = { lineNumber: range.startLineNumber, column: range.startColumn };
         // open this file
-        openFile(file, undefined, undefined, position);
+        openFile(file, undefined, false, position);
       }
 
       return result; // always return the base result
