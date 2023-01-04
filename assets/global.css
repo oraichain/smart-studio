@@ -1009,6 +1009,10 @@ a {
   color: inherit !important; /* first label is dark-blue otherwise? */
 }
 
+.monaco-icon-label {
+  user-select:none;
+}
+
 .monaco-icon-label.dirty::after {
   content: 'M';
   font-size: 10px;
