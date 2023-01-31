@@ -85,6 +85,7 @@ export class Monaco extends React.Component<MonacoProps, {}> {
       monaco.editor.setModelLanguage(this.editor.getModel(), languageForFileType(view.file.type));
       if (view.position) {
         this.editor.setPosition(view.position);
+        this.editor.revealPositionInCenterIfOutsideViewport(view.position);
         // clear position to get from state
         view.position = null;
       }
