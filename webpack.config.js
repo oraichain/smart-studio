@@ -118,7 +118,7 @@ module.exports = (env, options) => {
         compiler.hooks.afterEmit.tap('AfterEmitPlugin', (compilation) => {
           // copy file to destination
           shell.exec(`yarn templates ${distPath}/templates`);
-          shell.cp(['index.html', 'config.json', 'change.json'], distPath);
+          shell.cp(['index.html', 'change.json'], distPath);
           shell.cp('-r', 'lib', distPath);
           shell.cp('-r', ['notes', 'assets'], distPath);
         });

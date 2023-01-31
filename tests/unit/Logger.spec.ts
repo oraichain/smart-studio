@@ -16,16 +16,6 @@ jest.mock('raven-js', () => ({
   captureMessage
 }));
 
-jest.mock(
-  '../../config.json',
-  () => ({
-    default: {
-      sentryDNS: 'testDNS'
-    }
-  }),
-  { virtual: true }
-);
-
 import { Logger } from '../../src/utils/Logger';
 
 describe('Tests for Logger', () => {
