@@ -2,6 +2,3 @@
 	path = server
 	url = https://github.com/oraichain/smart-studio-server.git
 	branch = master
-[submodule "crates/cosmwasm-vm-js-zk"]
-	path = crates/cosmwasm-vm-js-zk
-	url = https://github.com/oraichain/cosmwasm-vm-js-zk.git

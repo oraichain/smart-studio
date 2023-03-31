@@ -1993,6 +1993,10 @@ cosmiconfig@^6.0.0:
     path-type "^4.0.0"
     yaml "^1.7.2"
 
+"cosmwasm-vm-js-zk@https://github.com/oraichain/cosmwasm-vm-js-zk.git":
+  version "0.0.0"
+  resolved "https://github.com/oraichain/cosmwasm-vm-js-zk.git#75287630d95c7c9ab01e0eae9bdda9354f4853bb"
+
 coveralls@^3.0.2:
   version "3.0.2"
   resolved "https://registry.yarnpkg.com/coveralls/-/coveralls-3.0.2.tgz"

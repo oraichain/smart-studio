@@ -5,7 +5,7 @@ export * from './backend';
 export * from './instance';
 export * from './environment';
 
-import { default as init, Poseidon, curve_hash, groth16_verify, keccak_256, sha256 } from '../../crates/cosmwasm-vm-js-zk/pkg';
+import { default as init, Poseidon, curve_hash, groth16_verify, keccak_256, sha256 } from 'cosmwasm-vm-js-zk/web';
 // update zk wasm implementation
 import { VMInstance } from './instance';
 

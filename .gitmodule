@@ -1,3 +1,0 @@
-[submodule "crates/cosmwasm-vm-js-zk"]
-	path = crates/cosmwasm-vm-js-zk
-	url = https://github.com/oraichain/cosmwasm-vm-js-zk.git
