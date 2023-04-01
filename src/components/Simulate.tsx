@@ -2,9 +2,19 @@ import React from 'react';
 import ReactCodeMirror from '@uiw/react-codemirror';
 import { json } from '@codemirror/lang-json';
 import { fromAscii, fromBase64 } from '@cosmjs/encoding';
-import { VMInstance, BasicBackendApi, BasicKVIterStorage, BasicQuerier, IBackend } from '../cwvm';
-import { Env, MessageInfo } from '../cwvm/types';
 import appStore from '../stores/AppStore';
+import { Env, MessageInfo, VMInstance, BasicBackendApi, BasicKVIterStorage, BasicQuerier, IBackend } from '@terran-one/cosmwasm-vm-js';
+import { default as init, Poseidon, curve_hash, groth16_verify, keccak_256, sha256 } from 'cosmwasm-vm-js-zk/web';
+
+// update zk wasm implementation
+init().then(() => {
+  const poseidon = new Poseidon();
+  VMInstance.poseidon_hash = poseidon.hash.bind(poseidon);
+  VMInstance.curve_hash = curve_hash;
+  VMInstance.groth16_verify = groth16_verify;
+  VMInstance.keccak_256 = keccak_256;
+  VMInstance.sha256 = sha256;
+});
 
 const backend: IBackend = {
   backend_api: new BasicBackendApi('orai'),

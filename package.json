@@ -55,9 +55,11 @@
     "@codemirror/lang-json": "^6.0.1",
     "@cosmjs/crypto": "^0.29.5",
     "@cosmjs/encoding": "^0.29.5",
+    "@terran-one/cosmwasm-vm-js": "https://github.com/oraichain/cosmwasm-vm-js.git",
     "@uiw/react-codemirror": "^4.0.0",
     "bech32": "^2.0.0",
     "cassowary": "0.0.2",
+    "cosmwasm-vm-js-zk": "https://github.com/oraichain/cosmwasm-vm-js-zk.git",
     "elliptic": "^6.5.4",
     "flux": "^3.1.3",
     "get-port": "^5.1.1",
@@ -80,8 +82,7 @@
     "secp256k1": "^4.0.3",
     "shelljs": "^0.8.4",
     "tar-js": "^0.3.0",
-    "tslint-react": "^5.0.0",
-    "cosmwasm-vm-js-zk": "https://github.com/oraichain/cosmwasm-vm-js-zk.git"
+    "tslint-react": "^5.0.0"
   },
   "devDependencies": {
     "@hot-loader/react-dom": "17.0.2",
