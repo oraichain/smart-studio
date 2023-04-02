@@ -76,7 +76,7 @@ module.exports = (env, options) => {
         // All files with a '.ts' or '.tsx' extension will be handled by 'ts-loader'.
         {
           test: /\.(j|t)s(x)?$/,
-          exclude: /node_modules/,
+          exclude: /node_modules\/(?!@terran-one)/,
           use: 'ts-loader'
         },
 
