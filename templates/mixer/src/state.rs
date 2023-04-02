@@ -32,7 +32,7 @@ impl MerkleTree {
         left: &[u8; 32],
         right: &[u8; 32],
     ) -> Result<[u8; 32], ContractError> {
-        match api.poseidon_hash(&[left, right]) {
+        match api.poseidon_hash(left, right, 1) {
             Ok(hash) => Ok(element_encoder(&hash)),
             Err(err) => Err(ContractError::Std(err)),
         }
@@ -45,10 +45,7 @@ impl MerkleTree {
         store: &mut dyn Storage,
     ) -> Result<u32, ContractError> {
         let next_index = self.next_index;
-        assert!(
-            next_index != 2u32.pow(self.levels as u32),
-            "Merkle tree is full"
-        );
+        assert!(next_index != 2u32.pow(self.levels as u32), "Merkle tree is full");
 
         let mut current_index = next_index;
         let mut current_level_hash = leaf;
@@ -132,9 +129,7 @@ pub fn nullifier_write(storage: &mut dyn Storage, hash: &[u8; 32]) {
     prefixed(storage, USED_NULLIFIERS_KEY).set(hash, &[1u8])
 }
 pub fn nullifier_read(storage: &dyn Storage, hash: &[u8; 32]) -> bool {
-    prefixed_read(storage, USED_NULLIFIERS_KEY)
-        .get(hash)
-        .is_some()
+    prefixed_read(storage, USED_NULLIFIERS_KEY).get(hash).is_some()
 }
 
 // put the length bytes at the first for compatibility with legacy singleton store

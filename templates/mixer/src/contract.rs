@@ -32,20 +32,13 @@ pub fn instantiate(
     }
 
     // Initialize the "Mixer"
-    let merkle_tree: MerkleTree = MerkleTree {
-        levels: msg.merkletree_levels,
-        current_root_index: 0,
-        next_index: 0,
-    };
+    let merkle_tree: MerkleTree =
+        MerkleTree { levels: msg.merkletree_levels, current_root_index: 0, next_index: 0 };
     let native_token_denom = msg.native_token_denom;
 
     let deposit_size = msg.deposit_size;
 
-    let mixer: Mixer = Mixer {
-        native_token_denom,
-        deposit_size,
-        merkle_tree,
-    };
+    let mixer: Mixer = Mixer { native_token_denom, deposit_size, merkle_tree };
     mixer_write(deps.storage, &mixer)?;
 
     for i in 0..msg.merkletree_levels {
@@ -54,9 +47,7 @@ pub fn instantiate(
 
     save_root(deps.storage, 0_u32, &zeroes(msg.merkletree_levels));
 
-    Ok(Response::new()
-        .add_attribute("action", "instantiate")
-        .add_attribute("owner", info.sender))
+    Ok(Response::new().add_attribute("action", "instantiate").add_attribute("owner", info.sender))
 }
 
 #[entry_point]
@@ -81,11 +72,8 @@ pub fn deposit(
 ) -> Result<Response, ContractError> {
     let mut mixer = mixer_read(deps.storage)?;
 
-    let sent_tokens: Vec<Coin> = info
-        .funds
-        .into_iter()
-        .filter(|x| x.denom == mixer.native_token_denom)
-        .collect();
+    let sent_tokens: Vec<Coin> =
+        info.funds.into_iter().filter(|x| x.denom == mixer.native_token_denom).collect();
     if sent_tokens.is_empty() || sent_tokens[0].amount < mixer.deposit_size {
         return Err(ContractError::InsufficientFunds {});
     }
@@ -94,17 +82,13 @@ pub fn deposit(
     let commitment_bytes = element_encoder(msg.commitment.as_slice());
 
     // insert commitment into merke_tree
-    let inserted_index = mixer
-        .merkle_tree
-        .insert(deps.api, commitment_bytes, deps.storage)?;
+    let inserted_index = mixer.merkle_tree.insert(deps.api, commitment_bytes, deps.storage)?;
     mixer_write(deps.storage, &mixer)?;
-    return Ok(
-        Response::new().add_event(Event::new("mixer-deposit").add_attributes(vec![
-            attr("action", "deposit"),
-            attr("inserted_index", inserted_index.to_string()),
-            attr("commitment", msg.commitment.to_base64()),
-        ])),
-    );
+    return Ok(Response::new().add_event(Event::new("mixer-deposit").add_attributes(vec![
+        attr("action", "deposit"),
+        attr("inserted_index", inserted_index.to_string()),
+        attr("commitment", msg.commitment.to_base64()),
+    ])));
 }
 
 pub fn withdraw(
@@ -154,10 +138,8 @@ pub fn withdraw(
     arbitrary_data_bytes.extend_from_slice(&fee.to_le_bytes());
     arbitrary_data_bytes.extend_from_slice(&refund.to_le_bytes());
 
-    let arbitrary_input = deps
-        .api
-        .curve_hash(&arbitrary_data_bytes)
-        .map_err(|_| ContractError::HashError)?;
+    let arbitrary_input =
+        deps.api.curve_hash(&arbitrary_data_bytes, 1).map_err(|_| ContractError::HashError)?;
 
     // Join the public input bytes
     let mut bytes = Vec::new();
@@ -168,7 +150,7 @@ pub fn withdraw(
     // Verify the proof
     let result = deps
         .api
-        .groth16_verify(&bytes, &proof_bytes_vec, VK_BYTES)
+        .groth16_verify(&bytes, &proof_bytes_vec, VK_BYTES, 1)
         .map_err(|_| ContractError::VerifyError)?;
 
     if !result {
@@ -178,10 +160,7 @@ pub fn withdraw(
     }
 
     // Set used nullifier to true after successful verification
-    nullifier_write(
-        deps.storage,
-        &element_encoder(msg.nullifier_hash.as_slice()),
-    );
+    nullifier_write(deps.storage, &element_encoder(msg.nullifier_hash.as_slice()));
 
     // Send the funds
     let mut msgs: Vec<CosmosMsg> = vec![];
@@ -189,11 +168,7 @@ pub fn withdraw(
     // Send the funds to "recipient"
     let amt_to_recipient = match mixer.deposit_size.checked_sub(fee) {
         Ok(v) => v,
-        Err(e) => {
-            return Err(ContractError::Std(StdError::GenericErr {
-                msg: e.to_string(),
-            }))
-        }
+        Err(e) => return Err(ContractError::Std(StdError::GenericErr { msg: e.to_string() })),
     };
 
     if !amt_to_recipient.is_zero() {
@@ -208,10 +183,7 @@ pub fn withdraw(
     if !fee.is_zero() {
         msgs.push(CosmosMsg::Bank(BankMsg::Send {
             to_address: relayer,
-            amount: vec![Coin {
-                denom: mixer.native_token_denom,
-                amount: fee,
-            }],
+            amount: vec![Coin { denom: mixer.native_token_denom, amount: fee }],
         }));
     }
 
@@ -222,14 +194,14 @@ pub fn withdraw(
         }));
     }
 
-    Ok(Response::new()
-        .add_messages(msgs)
-        .add_event(Event::new("mixer-withdraw").add_attributes(vec![
+    Ok(Response::new().add_messages(msgs).add_event(Event::new("mixer-withdraw").add_attributes(
+        vec![
             attr("action", "withdraw"),
             attr("recipient", recipient),
             attr("root", msg.root.to_base64()),
             attr("nullifier_hash", msg.nullifier_hash.to_base64()),
-        ])))
+        ],
+    )))
 }
 
 #[entry_point]
@@ -246,10 +218,7 @@ fn get_config(deps: Deps) -> StdResult<ConfigResponse> {
     let native_token_denom = mixer.native_token_denom;
 
     let deposit_size = mixer.deposit_size.to_string();
-    Ok(ConfigResponse {
-        native_token_denom,
-        deposit_size,
-    })
+    Ok(ConfigResponse { native_token_denom, deposit_size })
 }
 
 fn get_merkle_tree_info(deps: Deps) -> StdResult<MerkleTreeInfoResponse> {
@@ -266,4 +235,3 @@ fn get_merkle_root(deps: Deps, id: u32) -> StdResult<MerkleRootResponse> {
     let root_binary = Binary::from(root.as_slice());
     Ok(MerkleRootResponse { root: root_binary })
 }
-

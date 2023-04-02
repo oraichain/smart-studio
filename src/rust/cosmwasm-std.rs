@@ -1,4 +1,5 @@
-#![cfg_attr(feature = "backtraces", feature(backtrace))]
+#![cfg_attr(feature = "backtraces", feature(error_generic_member_access))]
+#![cfg_attr(feature = "backtraces", feature(provide_any))]
 
 // Exposed on all platforms
 
@@ -12,6 +13,7 @@ use sha2::{
 use std::borrow::Cow;
 use std::fmt;
 use std::ops::Deref;
+use thiserror::Error;
 
 use crate::{binary::Binary, HexBinary};
 
@@ -247,12 +249,17 @@ impl fmt::Display for CanonicalAddr {
 }
 }
 
-#[derive(Debug)]
+#[derive(Error, Debug, PartialEq, Eq)]
 pub enum Instantiate2AddressError {
     /// Checksum must be 32 bytes
     InvalidChecksumLength,
     /// Salt must be between 1 and 64 bytes
     InvalidSaltLength,
+}
+
+impl fmt::Display for Instantiate2AddressError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+}
 }
 
 /// Creates a contract address using the predictable address format introduced with
@@ -287,7 +294,7 @@ pub enum Instantiate2AddressError {
 ///     let canonical_creator = deps.api.addr_canonicalize(env.contract.address.as_str())?;
 ///     let checksum = HexBinary::from_hex("9af782a3a1bcbcd22dbb6a45c751551d9af782a3a1bcbcd22dbb6a45c751551d")?;
 ///     let salt = b"instance 1231";
-///     let canonical_addr = instantiate2_address(&checksum, &canonical_creator, salt, None)
+///     let canonical_addr = instantiate2_address(&checksum, &canonical_creator, salt)
 ///         .map_err(|_| StdError::generic_err("Could not calculate addr"))?;
 ///     let addr = deps.api.addr_humanize(&canonical_addr)?;
 ///
@@ -298,7 +305,18 @@ pub fn instantiate2_address(
     checksum: &[u8],
     creator: &CanonicalAddr,
     salt: &[u8],
-    msg: Option<&[u8]>,
+) -> Result<CanonicalAddr, Instantiate2AddressError> {
+}
+
+/// The instantiate2 address derivation implementation. This API is used for
+/// testing puposes only. The `msg` field is discouraged and should not be used.
+/// Use [`instantiate2_address`].
+#[doc(hidden)]
+fn instantiate2_address_impl(
+    checksum: &[u8],
+    creator: &CanonicalAddr,
+    salt: &[u8],
+    msg: &[u8],
 ) -> Result<CanonicalAddr, Instantiate2AddressError> {
 }
 
@@ -489,11 +507,6 @@ impl fmt::Debug for Binary {
 }
 }
 
-impl From<&[u8]> for Binary {
-    fn from(binary: &[u8]) -> Self {
-}
-}
-
 /// Just like Vec<u8>, Binary is a smart pointer to [u8].
 /// This implements `*binary` for us and allows us to
 /// do `&*binary`, returning a `&[u8]` from a `&Binary`.
@@ -506,13 +519,24 @@ impl Deref for Binary {
 }
 }
 
-// Reference
+impl AsRef<[u8]> for Binary {
+    fn as_ref(&self) -> &[u8] {
+}
+}
+
+// Slice
+impl From<&[u8]> for Binary {
+    fn from(binary: &[u8]) -> Self {
+}
+}
+
+// Array reference
 impl<const LENGTH: usize> From<&[u8; LENGTH]> for Binary {
     fn from(source: &[u8; LENGTH]) -> Self {
 }
 }
 
-// Owned
+// Owned array
 impl<const LENGTH: usize> From<[u8; LENGTH]> for Binary {
     fn from(source: [u8; LENGTH]) -> Self {
 }
@@ -1045,7 +1069,7 @@ impl ConversionOverflowError {
 }
 
 #[derive(Error, Debug, PartialEq, Eq)]
-#[error("Cannot devide {operand} by zero")]
+#[error("Cannot divide {operand} by zero")]
 pub struct DivideByZeroError {
     pub operand: String,
 }
@@ -1053,6 +1077,18 @@ pub struct DivideByZeroError {
 impl DivideByZeroError {
     pub fn new(operand: impl ToString) -> Self {
 }
+}
+
+#[derive(Error, Debug, PartialEq, Eq)]
+pub enum CheckedMultiplyFractionError {
+    #[error("{0}")]
+    DivideByZero(#[from] DivideByZeroError),
+
+    #[error("{0}")]
+    ConversionOverflow(#[from] ConversionOverflowError),
+
+    #[error("{0}")]
+    Overflow(#[from] OverflowError),
 }
 
 #[derive(Error, Debug, PartialEq, Eq)]
@@ -1112,6 +1148,11 @@ pub enum SystemError {
         /// The address that was attempted to query
         addr: String,
     },
+    /// A Wasm code was not found.
+    NoSuchCode {
+        /// The code ID that is missing
+        code_id: u64,
+    },
     Unknown {},
     UnsupportedRequest {
         kind: String,
@@ -1123,6 +1164,10 @@ impl std::error::Error for SystemError {}
 impl std::fmt::Display for SystemError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 }
+}
+
+#[cfg(test)]
+mod tests {
 }
 }
 mod verification_error {
@@ -1179,8 +1224,9 @@ mod tests {
 
 pub use recover_pubkey_error::RecoverPubkeyError;
 pub use std_error::{
-    CheckedFromRatioError, CheckedMultiplyRatioError, ConversionOverflowError, DivideByZeroError,
-    OverflowError, OverflowOperation, RoundUpOverflowError, StdError, StdResult,
+    CheckedFromRatioError, CheckedMultiplyFractionError, CheckedMultiplyRatioError,
+    ConversionOverflowError, DivideByZeroError, OverflowError, OverflowOperation,
+    RoundUpOverflowError, StdError, StdResult,
 };
 pub use system_error::SystemError;
 pub use verification_error::VerificationError;
@@ -1247,11 +1293,6 @@ impl fmt::Debug for HexBinary {
 }
 }
 
-impl From<&[u8]> for HexBinary {
-    fn from(binary: &[u8]) -> Self {
-}
-}
-
 /// Just like Vec<u8>, HexBinary is a smart pointer to [u8].
 /// This implements `*data` for us and allows us to
 /// do `&*data`, returning a `&[u8]` from a `&HexBinary`.
@@ -1264,13 +1305,24 @@ impl Deref for HexBinary {
 }
 }
 
-// Reference
+impl AsRef<[u8]> for HexBinary {
+    fn as_ref(&self) -> &[u8] {
+}
+}
+
+// Slice
+impl From<&[u8]> for HexBinary {
+    fn from(binary: &[u8]) -> Self {
+}
+}
+
+// Array reference
 impl<const LENGTH: usize> From<&[u8; LENGTH]> for HexBinary {
     fn from(source: &[u8; LENGTH]) -> Self {
 }
 }
 
-// Owned
+// Owned array
 impl<const LENGTH: usize> From<[u8; LENGTH]> for HexBinary {
     fn from(source: [u8; LENGTH]) -> Self {
 }
@@ -2079,7 +2131,7 @@ use super::{Uint128, Uint256};
 /// A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0
 ///
 /// The greatest possible value that can be represented is 340282366920938463463.374607431768211455 (which is (2^128 - 1) / 10^18)
-#[derive(Copy, Clone, Default, Debug, PartialEq, Eq, PartialOrd, Ord, JsonSchema)]
+#[derive(Copy, Clone, Default, PartialEq, Eq, PartialOrd, Ord, JsonSchema)]
 pub struct Decimal(#[schemars(with = "String")] Uint128);
 
 #[derive(Error, Debug, PartialEq, Eq)]
@@ -2261,6 +2313,48 @@ impl Decimal {
 
     pub fn saturating_pow(self, exp: u32) -> Self {
 }
+
+    /// Converts this decimal to an unsigned integer by truncating
+    /// the fractional part, e.g. 22.5 becomes 22.
+    ///
+    /// ## Examples
+    ///
+    /// ```
+    /// use std::str::FromStr;
+    /// use cosmwasm_std::{Decimal, Uint128};
+    ///
+    /// let d = Decimal::from_str("12.345").unwrap();
+    /// assert_eq!(d.to_uint_floor(), Uint128::new(12));
+    ///
+    /// let d = Decimal::from_str("12.999").unwrap();
+    /// assert_eq!(d.to_uint_floor(), Uint128::new(12));
+    ///
+    /// let d = Decimal::from_str("75.0").unwrap();
+    /// assert_eq!(d.to_uint_floor(), Uint128::new(75));
+    /// ```
+    pub fn to_uint_floor(self) -> Uint128 {
+}
+
+    /// Converts this decimal to an unsigned integer by rounting up
+    /// to the next integer, e.g. 22.3 becomes 23.
+    ///
+    /// ## Examples
+    ///
+    /// ```
+    /// use std::str::FromStr;
+    /// use cosmwasm_std::{Decimal, Uint128};
+    ///
+    /// let d = Decimal::from_str("12.345").unwrap();
+    /// assert_eq!(d.to_uint_ceil(), Uint128::new(13));
+    ///
+    /// let d = Decimal::from_str("12.999").unwrap();
+    /// assert_eq!(d.to_uint_ceil(), Uint128::new(13));
+    ///
+    /// let d = Decimal::from_str("75.0").unwrap();
+    /// assert_eq!(d.to_uint_ceil(), Uint128::new(75));
+    /// ```
+    pub fn to_uint_ceil(self) -> Uint128 {
+}
 }
 
 impl Fraction<Uint128> for Decimal {
@@ -2293,6 +2387,11 @@ impl FromStr for Decimal {
 }
 
 impl fmt::Display for Decimal {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+}
+}
+
+impl fmt::Debug for Decimal {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 }
 }
@@ -2483,7 +2582,7 @@ use super::Uint256;
 /// The greatest possible value that can be represented is
 /// 115792089237316195423570985008687907853269984665640564039457.584007913129639935
 /// (which is (2^256 - 1) / 10^18)
-#[derive(Copy, Clone, Default, Debug, PartialEq, Eq, PartialOrd, Ord, JsonSchema)]
+#[derive(Copy, Clone, Default, PartialEq, Eq, PartialOrd, Ord, JsonSchema)]
 pub struct Decimal256(#[schemars(with = "String")] Uint256);
 
 #[derive(Error, Debug, PartialEq, Eq)]
@@ -2675,6 +2774,48 @@ impl Decimal256 {
 
     pub fn saturating_pow(self, exp: u32) -> Self {
 }
+
+    /// Converts this decimal to an unsigned integer by truncating
+    /// the fractional part, e.g. 22.5 becomes 22.
+    ///
+    /// ## Examples
+    ///
+    /// ```
+    /// use std::str::FromStr;
+    /// use cosmwasm_std::{Decimal256, Uint256};
+    ///
+    /// let d = Decimal256::from_str("12.345").unwrap();
+    /// assert_eq!(d.to_uint_floor(), Uint256::from(12u64));
+    ///
+    /// let d = Decimal256::from_str("12.999").unwrap();
+    /// assert_eq!(d.to_uint_floor(), Uint256::from(12u64));
+    ///
+    /// let d = Decimal256::from_str("75.0").unwrap();
+    /// assert_eq!(d.to_uint_floor(), Uint256::from(75u64));
+    /// ```
+    pub fn to_uint_floor(self) -> Uint256 {
+}
+
+    /// Converts this decimal to an unsigned integer by rounting up
+    /// to the next integer, e.g. 22.3 becomes 23.
+    ///
+    /// ## Examples
+    ///
+    /// ```
+    /// use std::str::FromStr;
+    /// use cosmwasm_std::{Decimal256, Uint256};
+    ///
+    /// let d = Decimal256::from_str("12.345").unwrap();
+    /// assert_eq!(d.to_uint_ceil(), Uint256::from(13u64));
+    ///
+    /// let d = Decimal256::from_str("12.999").unwrap();
+    /// assert_eq!(d.to_uint_ceil(), Uint256::from(13u64));
+    ///
+    /// let d = Decimal256::from_str("75.0").unwrap();
+    /// assert_eq!(d.to_uint_ceil(), Uint256::from(75u64));
+    /// ```
+    pub fn to_uint_ceil(self) -> Uint256 {
+}
 }
 
 impl Fraction<Uint256> for Decimal256 {
@@ -2712,6 +2853,11 @@ impl FromStr for Decimal256 {
 }
 
 impl fmt::Display for Decimal256 {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+}
+}
+
+impl fmt::Debug for Decimal256 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 }
 }
@@ -2892,6 +3038,124 @@ pub trait Fraction<T>: Sized {
     /// If `p` is zero, None is returned.
     fn inv(&self) -> Option<Self>;
 }
+
+impl<T: Copy + From<u8> + PartialEq> Fraction<T> for (T, T) {
+    fn numerator(&self) -> T {
+}
+
+    fn denominator(&self) -> T {
+}
+
+    fn inv(&self) -> Option<Self> {
+}
+}
+
+#[macro_export]
+macro_rules! impl_mul_fraction {
+    ($Uint:ident) => {
+        impl $Uint {
+            /// Multiply `self` with a struct implementing [`Fraction`] (e.g. [`crate::Decimal`]).
+            /// Result is rounded down.
+            ///
+            /// ## Examples
+            ///
+            /// ```
+            /// use cosmwasm_std::Uint128;
+            /// let fraction = (8u128, 21u128);
+            /// let res = Uint128::new(123456).checked_mul_floor(fraction).unwrap();
+            /// assert_eq!(Uint128::new(47030), res); // 47030.8571 rounds down
+            /// ```
+            pub fn checked_mul_floor<F: Fraction<T>, T: Into<$Uint>>(
+                self,
+                rhs: F,
+            ) -> Result<Self, CheckedMultiplyFractionError> {
+}
+
+            /// Same operation as `checked_mul_floor` except unwrapped
+            pub fn mul_floor<F: Fraction<T>, T: Into<$Uint>>(self, rhs: F) -> Self {
+}
+
+            /// Multiply `self` with a struct implementing [`Fraction`] (e.g. [`crate::Decimal`]).
+            /// Result is rounded up.
+            ///
+            /// ## Examples
+            ///
+            /// ```
+            /// use cosmwasm_std::Uint128;
+            /// let fraction = (8u128, 21u128);
+            /// let res = Uint128::new(123456).checked_mul_ceil(fraction).unwrap();
+            /// assert_eq!(Uint128::new(47031), res); // 47030.8571 rounds up
+            /// ```
+            pub fn checked_mul_ceil<F: Fraction<T>, T: Into<$Uint>>(
+                self,
+                rhs: F,
+            ) -> Result<Self, CheckedMultiplyFractionError> {
+}
+
+            /// Same operation as `checked_mul_ceil` except unwrapped
+            pub fn mul_ceil<F: Fraction<T>, T: Into<$Uint>>(self, rhs: F) -> Self {
+}
+
+            /// Divide `self` with a struct implementing [`Fraction`] (e.g. [`crate::Decimal`]).
+            /// Result is rounded down.
+            ///
+            /// ## Examples
+            ///
+            /// ```
+            /// use cosmwasm_std::Uint128;
+            /// let fraction = (4u128, 5u128);
+            /// let res = Uint128::new(789).checked_div_floor(fraction).unwrap();
+            /// assert_eq!(Uint128::new(986), res); // 986.25 rounds down
+            /// ```
+            pub fn checked_div_floor<F: Fraction<T>, T: Into<$Uint>>(
+                self,
+                rhs: F,
+            ) -> Result<Self, CheckedMultiplyFractionError>
+            where
+                Self: Sized,
+            {
+}
+
+            /// Same operation as `checked_div_floor` except unwrapped
+            pub fn div_floor<F: Fraction<T>, T: Into<$Uint>>(self, rhs: F) -> Self
+            where
+                Self: Sized,
+            {
+}
+
+            /// Divide `self` with a struct implementing [`Fraction`] (e.g. [`crate::Decimal`]).
+            /// Result is rounded up.
+            ///
+            /// ## Examples
+            ///
+            /// ```
+            /// use cosmwasm_std::Uint128;
+            /// let fraction = (4u128, 5u128);
+            /// let res = Uint128::new(789).checked_div_ceil(fraction).unwrap();
+            /// assert_eq!(Uint128::new(987), res); // 986.25 rounds up
+            /// ```
+            pub fn checked_div_ceil<F: Fraction<T>, T: Into<$Uint>>(
+                self,
+                rhs: F,
+            ) -> Result<Self, CheckedMultiplyFractionError>
+            where
+                Self: Sized,
+            {
+}
+
+            /// Same operation as `checked_div_ceil` except unwrapped
+            pub fn div_ceil<F: Fraction<T>, T: Into<$Uint>>(self, rhs: F) -> Self
+            where
+                Self: Sized,
+            {
+}
+        }
+    };
+}
+
+#[cfg(test)]
+mod tests {
+}
 }
 mod isqrt {
 use std::{cmp, ops};
@@ -2939,19 +3203,21 @@ mod tests {
 }
 }
 mod uint128 {
-use forward_ref::{forward_ref_binop, forward_ref_op_assign};
-use schemars::JsonSchema;
-use serde::{de, ser, Deserialize, Deserializer, Serialize};
 use std::fmt::{self};
 use std::ops::{
     Add, AddAssign, Div, DivAssign, Mul, MulAssign, Rem, RemAssign, Shr, ShrAssign, Sub, SubAssign,
 };
 use std::str::FromStr;
 
+use forward_ref::{forward_ref_binop, forward_ref_op_assign};
+use schemars::JsonSchema;
+use serde::{de, ser, Deserialize, Deserializer, Serialize};
+
 use crate::errors::{
-    CheckedMultiplyRatioError, DivideByZeroError, OverflowError, OverflowOperation, StdError,
+    CheckedMultiplyFractionError, CheckedMultiplyRatioError, DivideByZeroError, OverflowError,
+    OverflowOperation, StdError,
 };
-use crate::{ConversionOverflowError, Uint256, Uint64};
+use crate::{impl_mul_fraction, ConversionOverflowError, Fraction, Uint256, Uint64};
 
 /// A thin wrapper around u128 that is using strings for JSON encoding/decoding,
 /// such that the full u128 range can be used for clients that convert JSON numbers to floats,
@@ -3102,6 +3368,8 @@ impl Uint128 {
     pub const fn abs_diff(self, other: Self) -> Self {
 }
 }
+
+impl_mul_fraction!(Uint128);
 
 // `From<u{128,64,32,16,8}>` is implemented manually instead of
 // using `impl<T: Into<u128>> From<T> for Uint128` because
@@ -3360,10 +3628,10 @@ use std::ops::{
 use std::str::FromStr;
 
 use crate::errors::{
-    CheckedMultiplyRatioError, ConversionOverflowError, DivideByZeroError, OverflowError,
-    OverflowOperation, StdError,
+    CheckedMultiplyFractionError, CheckedMultiplyRatioError, ConversionOverflowError,
+    DivideByZeroError, OverflowError, OverflowOperation, StdError,
 };
-use crate::{Uint128, Uint512, Uint64};
+use crate::{impl_mul_fraction, Fraction, Uint128, Uint512, Uint64};
 
 /// This module is purely a workaround that lets us ignore lints for all the code
 /// the `construct_uint!` macro generates.
@@ -3550,6 +3818,8 @@ impl Uint256 {
     pub fn abs_diff(self, other: Self) -> Self {
 }
 }
+
+impl_mul_fraction!(Uint256);
 
 impl From<Uint128> for Uint256 {
     fn from(val: Uint128) -> Self {
@@ -4222,9 +4492,10 @@ use std::ops::{
 };
 
 use crate::errors::{
-    CheckedMultiplyRatioError, DivideByZeroError, OverflowError, OverflowOperation, StdError,
+    CheckedMultiplyFractionError, CheckedMultiplyRatioError, DivideByZeroError, OverflowError,
+    OverflowOperation, StdError,
 };
-use crate::Uint128;
+use crate::{impl_mul_fraction, Fraction, Uint128};
 
 /// A thin wrapper around u64 that is using strings for JSON encoding/decoding,
 /// such that the full u64 range can be used for clients that convert JSON numbers to floats,
@@ -4372,6 +4643,8 @@ impl Uint64 {
     pub const fn abs_diff(self, other: Self) -> Self {
 }
 }
+
+impl_mul_fraction!(Uint64);
 
 // `From<u{128,64,32,16,8}>` is implemented manually instead of
 // using `impl<T: Into<u64>> From<T> for Uint64` because
@@ -4608,6 +4881,49 @@ pub use uint64::Uint64;
 mod tests {
 }
 }
+mod never {
+/// Never can never be instantiated. This can be used in places
+/// where we want to ensure that no error is returned, such as
+/// the `ibc_packet_receive` entry point.
+///
+/// In contrast to `Empty`, this does not have a JSON schema
+/// and cannot be used for message and query types.
+///
+/// Once the ! type is stable, this is not needed anymore.
+/// See <https://github.com/rust-lang/rust/issues/35121>.
+///
+/// ## Examples
+///
+/// When using `Never` in a `Result`, we can unwrap in a type-safe way:
+///
+/// ```
+/// use cosmwasm_std::Never;
+///
+/// pub fn safe_unwrap<T>(res: Result<T, Never>) -> T {
+///     match res {
+///         Ok(value) => value,
+///         Err(err) => match err {},
+///     }
+/// }
+///
+/// let res: Result<i32, Never> = Ok(5);
+/// assert_eq!(safe_unwrap(res), 5);
+/// ```
+pub enum Never {}
+
+// The Debug implementation is needed to allow the use of `Result::unwrap`.
+impl core::fmt::Debug for Never {
+    fn fmt(&self, _f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+}
+}
+
+// The Display implementation is needed to fulfill the ToString requirement of
+// entry point errors: `Result<IbcReceiveResponse<C>, E>` with `E: ToString`.
+impl core::fmt::Display for Never {
+    fn fmt(&self, _f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+}
+}
+}
 mod panic {
 /// Installs a panic handler that aborts the contract execution
 /// and sends the panic message and location to the host.
@@ -4632,6 +4948,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::Coin;
 
+use super::query_response::QueryResponseType;
+
 #[non_exhaustive]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -4651,7 +4969,7 @@ pub enum BankQuery {
 }
 
 #[cfg(feature = "cosmwasm_1_1")]
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 #[non_exhaustive]
 pub struct SupplyResponse {
@@ -4660,7 +4978,10 @@ pub struct SupplyResponse {
     pub amount: Coin,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cfg(feature = "cosmwasm_1_1")]
+impl QueryResponseType for SupplyResponse {}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub struct BalanceResponse {
     /// Always returns a Coin with the requested denom.
@@ -4668,12 +4989,16 @@ pub struct BalanceResponse {
     pub amount: Coin,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+impl QueryResponseType for BalanceResponse {}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub struct AllBalanceResponse {
     /// Returns all non-zero coins held by this account.
     pub amount: Vec<Coin>,
 }
+
+impl QueryResponseType for AllBalanceResponse {}
 }
 mod ibc {
 #![cfg(feature = "stargate")]
@@ -4724,6 +5049,24 @@ pub struct ListChannelsResponse {
 pub struct ChannelResponse {
     pub channel: Option<IbcChannel>,
 }
+}
+mod query_response {
+use serde::de::DeserializeOwned;
+
+/// A marker trait for query response types.
+///
+/// Those types have in common that they should be `#[non_exhaustive]` in order
+/// to allow adding fields in a backwards compatible way. In contracts they are
+/// only constructed through deserialization. We want to make it hard for
+/// contract developers to construct those types themselves as this is most likely
+/// not what they should do.
+///
+/// In hosts they are constructed as follows:
+/// - wasmvm: Go types with the same JSON layout
+/// - multi-test/cw-sdk: create a default instance and mutate the fields
+///
+/// This trait is crate-internal and can change any time.
+pub(crate) trait QueryResponseType: Default + DeserializeOwned {}
 }
 mod staking {
 #![cfg(feature = "staking")]
@@ -4846,6 +5189,10 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::Binary;
+#[cfg(feature = "cosmwasm_1_2")]
+use crate::HexBinary;
+
+use super::query_response::QueryResponseType;
 
 #[non_exhaustive]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
@@ -4866,12 +5213,15 @@ pub enum WasmQuery {
         /// Key is the raw key used in the contracts Storage
         key: Binary,
     },
-    /// returns a ContractInfoResponse with metadata on the contract from the runtime
+    /// Returns a [`ContractInfoResponse`] with metadata on the contract from the runtime
     ContractInfo { contract_addr: String },
+    /// Returns a [`CodeInfoResponse`] with metadata of the code
+    #[cfg(feature = "cosmwasm_1_2")]
+    CodeInfo { code_id: u64 },
 }
 
 #[non_exhaustive]
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Default, Debug, PartialEq, Eq, JsonSchema)]
 pub struct ContractInfoResponse {
     pub code_id: u64,
     /// address that instantiated this contract
@@ -4884,11 +5234,44 @@ pub struct ContractInfoResponse {
     pub ibc_port: Option<String>,
 }
 
+impl QueryResponseType for ContractInfoResponse {}
+
 impl ContractInfoResponse {
-    /// Convenience constructor for tests / mocks
+    /// Constructor for testing frameworks such as cw-multi-test.
+    /// This is required because query response types should be #[non_exhaustive].
+    /// As a contract developer you should not need this constructor since
+    /// query responses are constructed for you via deserialization.
     #[doc(hidden)]
+    #[deprecated(
+        note = "Use ContractInfoResponse::default() and mutate the fields you want to set."
+    )]
     pub fn new(code_id: u64, creator: impl Into<String>) -> Self {
 }
+}
+
+/// The essential data from wasmd's [CodeInfo]/[CodeInfoResponse].
+///
+/// `code_hash`/`data_hash` was renamed to `checksum` to follow the CosmWasm
+/// convention and naming in `instantiate2_address`.
+///
+/// [CodeInfo]: https://github.com/CosmWasm/wasmd/blob/v0.30.0/proto/cosmwasm/wasm/v1/types.proto#L62-L72
+/// [CodeInfoResponse]: https://github.com/CosmWasm/wasmd/blob/v0.30.0/proto/cosmwasm/wasm/v1/query.proto#L184-L199
+#[non_exhaustive]
+#[derive(Serialize, Deserialize, Clone, Default, Debug, PartialEq, Eq, JsonSchema)]
+#[cfg(feature = "cosmwasm_1_2")]
+pub struct CodeInfoResponse {
+    pub code_id: u64,
+    /// The address that initially stored the code
+    pub creator: String,
+    /// The hash of the Wasm blob
+    pub checksum: HexBinary,
+}
+
+#[cfg(feature = "cosmwasm_1_2")]
+impl QueryResponseType for CodeInfoResponse {}
+
+#[cfg(test)]
+mod tests {
 }
 }
 
@@ -4902,6 +5285,8 @@ pub use staking::{
     AllDelegationsResponse, AllValidatorsResponse, BondedDenomResponse, Delegation,
     DelegationResponse, FullDelegation, StakingQuery, Validator, ValidatorResponse,
 };
+#[cfg(feature = "cosmwasm_1_2")]
+pub use wasm::CodeInfoResponse;
 pub use wasm::{ContractInfoResponse, WasmQuery};
 
 #[non_exhaustive]
@@ -5203,7 +5588,12 @@ pub enum WasmMsg {
     },
     /// Instantiates a new contracts from previously uploaded Wasm code.
     ///
-    /// This is translated to a [MsgInstantiateContract](https://github.com/CosmWasm/wasmd/blob/v0.16.0-alpha1/x/wasm/internal/types/tx.proto#L47-L61).
+    /// The contract address is non-predictable. But it is guaranteed that
+    /// when emitting the same Instantiate message multiple times,
+    /// multiple instances on different addresses will be generated. See also
+    /// Instantiate2.
+    ///
+    /// This is translated to a [MsgInstantiateContract](https://github.com/CosmWasm/wasmd/blob/v0.29.2/proto/cosmwasm/wasm/v1/tx.proto#L53-L71).
     /// `sender` is automatically filled with the current contract's address.
     Instantiate {
         admin: Option<String>,
@@ -5214,6 +5604,25 @@ pub enum WasmMsg {
         funds: Vec<Coin>,
         /// A human-readbale label for the contract
         label: String,
+    },
+    /// Instantiates a new contracts from previously uploaded Wasm code
+    /// using a predictable address derivation algorithm implemented in
+    /// [`cosmwasm_std::instantiate2_address`].
+    ///
+    /// This is translated to a [MsgInstantiateContract2](https://github.com/CosmWasm/wasmd/blob/v0.29.2/proto/cosmwasm/wasm/v1/tx.proto#L73-L96).
+    /// `sender` is automatically filled with the current contract's address.
+    /// `fix_msg` is automatically set to false.
+    #[cfg(feature = "cosmwasm_1_2")]
+    Instantiate2 {
+        admin: Option<String>,
+        code_id: u64,
+        /// A human-readbale label for the contract
+        label: String,
+        /// msg is the JSON-encoded InstantiateMsg struct (as raw Binary)
+        #[derivative(Debug(format_with = "binary_to_string"))]
+        msg: Binary,
+        funds: Vec<Coin>,
+        salt: Binary,
     },
     /// Migrates a given contracts to use new wasm code. Passes a MigrateMsg to allow us to
     /// customize behavior.
@@ -5241,17 +5650,93 @@ pub enum WasmMsg {
     ClearAdmin { contract_addr: String },
 }
 
+/// This message type allows the contract interact with the [x/gov] module in order
+/// to cast votes.
+///
+/// [x/gov]: https://github.com/cosmos/cosmos-sdk/tree/v0.45.12/x/gov
+///
+/// ## Examples
+///
+/// Cast a simple vote:
+///
+/// ```
+/// # use cosmwasm_std::{
+/// #     HexBinary,
+/// #     Storage, Api, Querier, DepsMut, Deps, entry_point, Env, StdError, MessageInfo,
+/// #     Response, QueryResponse,
+/// # };
+/// # type ExecuteMsg = ();
+/// use cosmwasm_std::{GovMsg, VoteOption};
+///
+/// #[entry_point]
+/// pub fn execute(
+///     deps: DepsMut,
+///     env: Env,
+///     info: MessageInfo,
+///     msg: ExecuteMsg,
+/// ) -> Result<Response, StdError> {
+///     // ...
+///     Ok(Response::new().add_message(GovMsg::Vote {
+///         proposal_id: 4,
+///         vote: VoteOption::Yes,
+///     }))
+/// }
+/// ```
+///
+/// Cast a weighted vote:
+///
+/// ```
+/// # use cosmwasm_std::{
+/// #     HexBinary,
+/// #     Storage, Api, Querier, DepsMut, Deps, entry_point, Env, StdError, MessageInfo,
+/// #     Response, QueryResponse,
+/// # };
+/// # type ExecuteMsg = ();
+/// # #[cfg(feature = "cosmwasm_1_2")]
+/// use cosmwasm_std::{Decimal, GovMsg, VoteOption, WeightedVoteOption};
+///
+/// # #[cfg(feature = "cosmwasm_1_2")]
+/// #[entry_point]
+/// pub fn execute(
+///     deps: DepsMut,
+///     env: Env,
+///     info: MessageInfo,
+///     msg: ExecuteMsg,
+/// ) -> Result<Response, StdError> {
+///     // ...
+///     Ok(Response::new().add_message(GovMsg::VoteWeighted {
+///         proposal_id: 4,
+///         options: vec![
+///             WeightedVoteOption {
+///                 option: VoteOption::Yes,
+///                 weight: Decimal::percent(65),
+///             },
+///             WeightedVoteOption {
+///                 option: VoteOption::Abstain,
+///                 weight: Decimal::percent(35),
+///             },
+///         ],
+///     }))
+/// }
+/// ```
 #[cfg(feature = "stargate")]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum GovMsg {
     /// This maps directly to [MsgVote](https://github.com/cosmos/cosmos-sdk/blob/v0.42.5/proto/cosmos/gov/v1beta1/tx.proto#L46-L56) in the Cosmos SDK with voter set to the contract address.
-    Vote { proposal_id: u64, vote: VoteOption },
+    Vote {
+        proposal_id: u64,
+        /// The vote option.
+        ///
+        /// This should be called "option" for consistency with Cosmos SDK. Sorry for that.
+        /// See <https://github.com/CosmWasm/cosmwasm/issues/1571>.
+        vote: VoteOption,
+    },
     /// This maps directly to [MsgVoteWeighted](https://github.com/cosmos/cosmos-sdk/blob/v0.45.8/proto/cosmos/gov/v1beta1/tx.proto#L66-L78) in the Cosmos SDK with voter set to the contract address.
     #[cfg(feature = "cosmwasm_1_2")]
     VoteWeighted {
         proposal_id: u64,
-        vote: WeightedVoteOption,
+        options: Vec<WeightedVoteOption>,
     },
 }
 
@@ -5268,8 +5753,8 @@ pub enum VoteOption {
 #[cfg(all(feature = "stargate", feature = "cosmwasm_1_2"))]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct WeightedVoteOption {
-    option: VoteOption,
-    weight: Decimal,
+    pub option: VoteOption,
+    pub weight: Decimal,
 }
 
 /// Shortcut helper as the construction of WasmMsg::Instantiate can be quite verbose in contract code.
@@ -6110,15 +6595,19 @@ impl Timestamp {
     pub const fn from_seconds(seconds_since_epoch: u64) -> Self {
 }
 
+    #[must_use = "this returns the result of the operation, without modifying the original"]
     pub const fn plus_seconds(&self, addition: u64) -> Timestamp {
 }
 
+    #[must_use = "this returns the result of the operation, without modifying the original"]
     pub const fn plus_nanos(&self, addition: u64) -> Timestamp {
 }
 
+    #[must_use = "this returns the result of the operation, without modifying the original"]
     pub const fn minus_seconds(&self, subtrahend: u64) -> Timestamp {
 }
 
+    #[must_use = "this returns the result of the operation, without modifying the original"]
     pub const fn minus_nanos(&self, subtrahend: u64) -> Timestamp {
 }
 
@@ -6159,6 +6648,8 @@ use crate::coin::Coin;
 use crate::errors::{RecoverPubkeyError, StdError, StdResult, VerificationError};
 #[cfg(feature = "iterator")]
 use crate::iterator::{Order, Record};
+#[cfg(feature = "cosmwasm_1_2")]
+use crate::query::CodeInfoResponse;
 #[cfg(feature = "cosmwasm_1_1")]
 use crate::query::SupplyResponse;
 use crate::query::{
@@ -6266,16 +6757,40 @@ pub trait Api {
         public_key: &[u8],
     ) -> Result<bool, VerificationError>;
 
+    /// Do groth 16 verify
+    ///
+    /// # Arguments
+    ///
+    /// * `curve`: 0: Curve::Bls12_381, 1: Curve::Bn254   
+    /// ```
     fn groth16_verify(
         &self,
         input: &[u8],
         proof: &[u8],
         vk: &[u8],
+        curve: u8,
     ) -> Result<bool, VerificationError>;
 
-    fn poseidon_hash(&self, inputs: &[&[u8]]) -> StdResult<Vec<u8>>;
+    /// Calculate poseidon hash
+    ///
+    /// # Arguments
+    ///
+    /// * `curve`: 0: Curve::Bls12_381, 1: Curve::Bn254   
+    /// ```
+    fn poseidon_hash(&self, left_input: &[u8], right_input: &[u8], curve: u8)
+        -> StdResult<Vec<u8>>;
 
-    fn curve_hash(&self, input: &[u8]) -> StdResult<Vec<u8>>;
+    /// Calculate curve hash
+    ///
+    /// # Arguments
+    ///
+    /// * `curve`: 0: Curve::Bls12_381, 1: Curve::Bn254   
+    /// ```
+    fn curve_hash(&self, input: &[u8], curve: u8) -> StdResult<Vec<u8>>;
+
+    fn keccak_256(&self, input: &[u8]) -> StdResult<Vec<u8>>;
+
+    fn sha256(&self, input: &[u8]) -> StdResult<Vec<u8>>;
 
     fn secp256k1_recover_pubkey(
         &self,
@@ -6390,6 +6905,11 @@ impl<'a, C: CustomQuery> QuerierWrapper<'a, C> {
         &self,
         contract_addr: impl Into<String>,
     ) -> StdResult<ContractInfoResponse> {
+}
+
+    /// Given a code ID, query information about that code.
+    #[cfg(feature = "cosmwasm_1_2")]
+    pub fn query_wasm_code_info(&self, code_id: u64) -> StdResult<CodeInfoResponse> {
 }
 
     #[cfg(feature = "staking")]
@@ -6538,14 +7058,14 @@ pub struct ContractInfo {
 }
 }
 
-pub use crate::addresses::{instantiate2_address, Addr, CanonicalAddr};
+pub use crate::addresses::{instantiate2_address, Addr, CanonicalAddr, Instantiate2AddressError};
 pub use crate::binary::Binary;
 pub use crate::coin::{coin, coins, has_coins, Coin};
 pub use crate::deps::{Deps, DepsMut, OwnedDeps};
 pub use crate::errors::{
-    CheckedFromRatioError, CheckedMultiplyRatioError, ConversionOverflowError, DivideByZeroError,
-    OverflowError, OverflowOperation, RecoverPubkeyError, StdError, StdResult, SystemError,
-    VerificationError,
+    CheckedFromRatioError, CheckedMultiplyFractionError, CheckedMultiplyRatioError,
+    ConversionOverflowError, DivideByZeroError, OverflowError, OverflowOperation,
+    RecoverPubkeyError, StdError, StdResult, SystemError, VerificationError,
 };
 pub use crate::hex_binary::HexBinary;
 #[cfg(feature = "stargate")]
@@ -6561,6 +7081,9 @@ pub use crate::math::{
     Decimal, Decimal256, Decimal256RangeExceeded, DecimalRangeExceeded, Fraction, Isqrt, Uint128,
     Uint256, Uint512, Uint64,
 };
+pub use crate::never::Never;
+#[cfg(feature = "cosmwasm_1_2")]
+pub use crate::query::CodeInfoResponse;
 #[cfg(feature = "cosmwasm_1_1")]
 pub use crate::query::SupplyResponse;
 pub use crate::query::{
@@ -6738,13 +7261,25 @@ impl Api for ExternalApi {
         input: &[u8],
         proof: &[u8],
         vk: &[u8],
+        curve: u8,
     ) -> Result<bool, VerificationError> {
 }
 
-    fn poseidon_hash(&self, inputs: &[&[u8]]) -> StdResult<Vec<u8>> {
+    fn poseidon_hash(
+        &self,
+        left_input: &[u8],
+        right_input: &[u8],
+        curve: u8,
+    ) -> StdResult<Vec<u8>> {
 }
 
-    fn curve_hash(&self, input: &[u8]) -> StdResult<Vec<u8>> {
+    fn curve_hash(&self, input: &[u8], curve: u8) -> StdResult<Vec<u8>> {
+}
+
+    fn keccak_256(&self, input: &[u8]) -> StdResult<Vec<u8>> {
+}
+
+    fn sha256(&self, input: &[u8]) -> StdResult<Vec<u8>> {
 }
 
     fn secp256k1_recover_pubkey(
@@ -6957,6 +7492,10 @@ use crate::timestamp::Timestamp;
 use crate::traits::{Api, Querier, QuerierResult};
 use crate::types::{BlockInfo, ContractInfo, Env, MessageInfo, TransactionInfo};
 use crate::Attribute;
+#[cfg(feature = "stargate")]
+use crate::{ChannelResponse, IbcQuery, ListChannelsResponse, PortIdResponse};
+
+use super::riffle_shuffle;
 
 pub const MOCK_CONTRACT_ADDR: &str = "cosmos2contract";
 
@@ -6986,12 +7525,17 @@ pub fn mock_dependencies_with_balances(
 // We can later make simplifications here if needed
 pub type MockStorage = MemoryStorage;
 
-/// Length of canonical addresses created with this API. Contracts should not make any assumtions
+/// Length of canonical addresses created with this API. Contracts should not make any assumptions
 /// what this value is.
+///
+/// The mock API can only canonicalize and humanize addresses up to this length. So it must be
+/// long enough to store common bech32 addresses.
+///
 /// The value here must be restorable with `SHUFFLES_ENCODE` + `SHUFFLES_DECODE` in-shuffles.
-const CANONICAL_LENGTH: usize = 54;
+/// See <https://oeis.org/A002326/list> for a table of those values.
+const CANONICAL_LENGTH: usize = 90; // n = 45
 
-const SHUFFLES_ENCODE: usize = 18;
+const SHUFFLES_ENCODE: usize = 10;
 const SHUFFLES_DECODE: usize = 2;
 
 // MockPrecompiles zero pads all human addresses to make them fit the canonical_length
@@ -6999,7 +7543,7 @@ const SHUFFLES_DECODE: usize = 2;
 // not really smart, but allows us to see a difference (and consistent length for canonical adddresses)
 #[derive(Clone)]
 pub struct MockApi {
-    /// Length of canonical addresses created with this API. Contracts should not make any assumtions
+    /// Length of canonical addresses created with this API. Contracts should not make any assumptions
     /// what this value is.
     canonical_length: usize,
     poseidon: Poseidon,
@@ -7028,10 +7572,21 @@ impl Api for MockApi {
     ) -> Result<bool, VerificationError> {
 }
 
-    fn poseidon_hash(&self, inputs: &[&[u8]]) -> StdResult<Vec<u8>> {
+    fn poseidon_hash(
+        &self,
+        left_input: &[u8],
+        right_input: &[u8],
+        curve: u8,
+    ) -> StdResult<Vec<u8>> {
 }
 
-    fn curve_hash(&self, input: &[u8]) -> StdResult<Vec<u8>> {
+    fn curve_hash(&self, input: &[u8], curve: u8) -> StdResult<Vec<u8>> {
+}
+
+    fn keccak_256(&self, input: &[u8]) -> StdResult<Vec<u8>> {
+}
+
+    fn sha256(&self, input: &[u8]) -> StdResult<Vec<u8>> {
 }
 
     fn groth16_verify(
@@ -7039,6 +7594,7 @@ impl Api for MockApi {
         input: &[u8],
         proof: &[u8],
         vk: &[u8],
+        curve: u8,
     ) -> Result<bool, VerificationError> {
 }
 
@@ -7191,6 +7747,8 @@ pub struct MockQuerier<C: DeserializeOwned = Empty> {
     #[cfg(feature = "staking")]
     staking: StakingQuerier,
     wasm: WasmQuerier,
+    #[cfg(feature = "stargate")]
+    ibc: IbcQuerier,
     /// A handler to handle custom queries. This is set to a dummy handler that
     /// always errors by default. Update it via `with_custom_handler`.
     ///
@@ -7217,6 +7775,10 @@ impl<C: DeserializeOwned> MockQuerier<C> {
         validators: &[crate::query::Validator],
         delegations: &[crate::query::FullDelegation],
     ) {
+}
+
+    #[cfg(feature = "stargate")]
+    pub fn update_ibc(&mut self, port_id: &str, channels: &[IbcChannel]) {
 }
 
     pub fn update_wasm<WH: 'static>(&mut self, handler: WH)
@@ -7301,6 +7863,25 @@ impl BankQuerier {
 }
 }
 
+#[cfg(feature = "stargate")]
+#[derive(Clone, Default)]
+pub struct IbcQuerier {
+    port_id: String,
+    channels: Vec<IbcChannel>,
+}
+
+#[cfg(feature = "stargate")]
+impl IbcQuerier {
+    /// Create a mock querier where:
+    /// - port_id is the port the "contract" is bound to
+    /// - channels are a list of ibc channels
+    pub fn new(port_id: &str, channels: &[IbcChannel]) -> Self {
+}
+
+    pub fn query(&self, request: &IbcQuery) -> QuerierResult {
+}
+}
+
 #[cfg(feature = "staking")]
 #[derive(Clone, Default)]
 pub struct StakingQuerier {
@@ -7318,62 +7899,38 @@ impl StakingQuerier {
 }
 }
 
-/// Performs a perfect shuffle (in shuffle)
-///
-/// https://en.wikipedia.org/wiki/Riffle_shuffle_permutation#Perfect_shuffles
-/// https://en.wikipedia.org/wiki/In_shuffle
-///
-/// The number of shuffles required to restore the original order are listed in
-/// https://oeis.org/A002326, e.g.:
-///
-/// ```ignore
-/// 2: 2
-/// 4: 4
-/// 6: 3
-/// 8: 6
-/// 10: 10
-/// 12: 12
-/// 14: 4
-/// 16: 8
-/// 18: 18
-/// 20: 6
-/// 22: 11
-/// 24: 20
-/// 26: 18
-/// 28: 28
-/// 30: 5
-/// 32: 10
-/// 34: 12
-/// 36: 36
-/// 38: 12
-/// 40: 20
-/// 42: 14
-/// 44: 12
-/// 46: 23
-/// 48: 21
-/// 50: 8
-/// 52: 52
-/// 54: 20
-/// 56: 18
-/// 58: 58
-/// 60: 60
-/// 62: 6
-/// 64: 12
-/// 66: 66
-/// 68: 22
-/// 70: 35
-/// 72: 9
-/// 74: 20
-/// ```
-pub fn riffle_shuffle<T: Clone>(input: &[T]) -> Vec<T> {
-}
-
 pub fn digit_sum(input: &[u8]) -> usize {
 }
 
 /// Only for test code. This bypasses assertions in new, allowing us to create _*
 /// Attributes to simulate responses from the blockchain
 pub fn mock_wasmd_attr(key: impl Into<String>, value: impl Into<String>) -> Attribute {
+}
+
+#[cfg(test)]
+mod tests {
+}
+}
+mod shuffle {
+/// Performs a perfect shuffle (in shuffle)
+///
+/// https://en.wikipedia.org/wiki/Riffle_shuffle_permutation#Perfect_shuffles
+/// https://en.wikipedia.org/wiki/In_shuffle
+///
+/// The number of shuffles required to restore the original order are listed in
+/// <https://oeis.org/A002326> and <https://oeis.org/A002326/list>, e.g.:
+///
+/// ```text
+///  2 (n=1):  2
+///  4 (n=2):  4
+///  6 (n=3):  3
+///  8 (n=4):  6
+/// 10 (n=5): 10
+/// 12 (n=6): 12
+/// 14 (n=7):  4
+/// 16 (n=8):  8
+/// ```
+pub fn riffle_shuffle<T: Clone>(input: &[T]) -> Vec<T> {
 }
 
 #[cfg(test)]
@@ -7387,7 +7944,7 @@ pub use assertions::assert_approx_eq_impl;
 pub use mock::StakingQuerier;
 pub use mock::{
     digit_sum, mock_dependencies, mock_dependencies_with_balance, mock_dependencies_with_balances,
-    mock_env, mock_info, mock_wasmd_attr, riffle_shuffle, BankQuerier, MockApi, MockQuerier,
+    mock_env, mock_info, mock_wasmd_attr, BankQuerier, MockApi, MockQuerier,
     MockQuerierCustomHandlerResult, MockStorage, MOCK_CONTRACT_ADDR,
 };
 #[cfg(feature = "stargate")]
@@ -7396,6 +7953,7 @@ pub use mock::{
     mock_ibc_channel_connect_ack, mock_ibc_channel_connect_confirm, mock_ibc_channel_open_init,
     mock_ibc_channel_open_try, mock_ibc_packet_ack, mock_ibc_packet_recv, mock_ibc_packet_timeout,
 };
+pub use shuffle::riffle_shuffle;
 }
 
 // Re-exports

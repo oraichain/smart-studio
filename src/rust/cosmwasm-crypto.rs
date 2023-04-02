@@ -2,7 +2,8 @@
 //! Please don't use any of these types directly, as
 //! they might change frequently, or be removed in the future.
 //! This crate does not adhere to semantic versioning.
-#![cfg_attr(feature = "backtraces", feature(backtrace))]
+#![cfg_attr(feature = "backtraces", feature(error_generic_member_access))]
+#![cfg_attr(feature = "backtraces", feature(provide_any))]
 
 mod ed25519 {
 use ed25519_zebra::{batch, Signature, VerificationKey};
@@ -237,6 +238,11 @@ pub const ECDSA_PUBKEY_MAX_LEN: usize = ECDSA_UNCOMPRESSED_PUBKEY_LEN;
 /// - signature:  Serialized "compact" signature (64 bytes).
 /// - public key: [Serialized according to SEC 2](https://www.oreilly.com/library/view/programming-bitcoin/9781492031482/ch04.html)
 /// (33 or 65 bytes).
+///
+/// This implementation accepts both high-S and low-S signatures. Some applications
+/// including Ethereum transactions consider high-S signatures invalid in order to
+/// avoid malleability. If that's the case for your protocol, the signature needs
+/// to be tested for low-S in addition to this verification.
 pub fn secp256k1_verify(
     message_hash: &[u8],
     signature: &[u8],
@@ -255,6 +261,22 @@ pub fn secp256k1_verify(
 ///
 /// Returns the recovered pubkey in compressed form, which can be used
 /// in secp256k1_verify directly.
+///
+/// This implementation accepts both high-S and low-S signatures. This is the
+/// same behavior as Ethereum's `ecrecover`. The reason is that high-S signatures
+/// may be perfectly valid if the application protocol does not disallow them.
+/// Or as [EIP-2] put it "The ECDSA recover precompiled contract remains unchanged
+/// and will keep accepting high s-values; this is useful e.g. if a contract
+/// recovers old Bitcoin signatures.".
+///
+/// See also OpenZeppelin's [ECDSA.recover implementation](https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v4.8.1/contracts/utils/cryptography/ECDSA.sol#L138-L149)
+/// which adds further restrictions to avoid potential signature malleability.
+/// Please note that restricting signatures to low-S does not make signatures unique
+/// in the sense that for each (pubkey, message) there is only one signature. The
+/// signer can generate an arbitrary amount of valid signatures.
+/// <https://medium.com/@simonwarta/signature-determinism-for-blockchain-developers-dbd84865a93e>
+///
+/// [EIP-2]: https://eips.ethereum.org/EIPS/eip-2
 pub fn secp256k1_recover_pubkey(
     message_hash: &[u8],
     signature: &[u8],
@@ -318,8 +340,8 @@ pub enum ZKError {
         backtrace: Backtrace,
     },
 
-    #[error("Invalid hash input")]
-    InvalidHashInput {},
+    #[error("Curve is unimplemented")]
+    Unimplemented {},
 
     #[error("ZK error: {msg}")]
     GenericErr {
@@ -342,30 +364,47 @@ impl ZKError {
 
 #[allow(clippy::all)]
 mod poseidon {
-use ark_bn254::Fr as Bn254Fr;
+use crate::{Bls381Fr, Bn254Fr};
 use ark_ff::{BigInteger, PrimeField};
 use ark_std::vec::Vec;
-use arkworks_native_gadgets::poseidon::{FieldHasher, Poseidon as ArkworksPoseidon};
+use arkworks_native_gadgets::poseidon::sbox::PoseidonSbox;
+use arkworks_native_gadgets::poseidon::{
+    FieldHasher, Poseidon as ArkworksPoseidon, PoseidonParameters,
+};
 use arkworks_native_gadgets::to_field_elements;
-use arkworks_setups::common::setup_params;
-use arkworks_setups::Curve;
+use arkworks_utils::poseidon_params::setup_poseidon_params;
+use arkworks_utils::{bytes_matrix_to_f, bytes_vec_to_f, Curve};
 
 use crate::ZKError;
 
-pub type PoseidonHasher = ArkworksPoseidon<Bn254Fr>;
+pub type PoseidonHasherBn254 = ArkworksPoseidon<Bn254Fr>;
+pub type PoseidonHasherBls381 = ArkworksPoseidon<Bls381Fr>;
 
 #[derive(Debug, Clone)]
 pub struct Poseidon {
-    poseidon_width_3_bytes: PoseidonHasher,
-    poseidon_width_4_bytes: PoseidonHasher,
-    poseidon_width_5_bytes: PoseidonHasher,
+    hasher_bn254: PoseidonHasherBn254,
+    hasher_bls381: PoseidonHasherBls381,
+}
+
+fn inner_hash<F: PrimeField>(
+    hasher: &ArkworksPoseidon<F>,
+    inputs: &[&[u8]],
+) -> Result<Vec<u8>, ZKError> {
+}
+
+pub fn setup_params<F: PrimeField>(curve: Curve, exp: i8, width: u8) -> PoseidonParameters<F> {
 }
 
 impl Poseidon {
     pub fn new() -> Self {
 }
 
-    pub fn hash(&self, inputs: &[&[u8]]) -> Result<Vec<u8>, ZKError> {
+    pub fn hash(
+        &self,
+        left_input: &[u8],
+        right_input: &[u8],
+        curve: u8,
+    ) -> Result<Vec<u8>, ZKError> {
 }
 }
 
@@ -381,12 +420,10 @@ fn test_hash() {
 
 #[allow(clippy::all)]
 mod verifier {
-use super::{ZKError, ZKResult};
-
+use crate::{Bls381, Bn254, ZKError, ZKResult};
 pub const GROTH16_VERIFIER_KEY_LEN: usize = 360;
 pub const GROTH16_PROOF_LEN: usize = 128;
 
-use ark_bn254::Bn254;
 #[allow(clippy::all)]
 use ark_crypto_primitives::{Error, SNARK};
 use ark_ec::PairingEngine;
@@ -407,28 +444,39 @@ impl<E: PairingEngine> ArkworksVerifierGroth16<E> {
 }
 
 pub type ArkworksVerifierBn254 = ArkworksVerifierGroth16<Bn254>;
+pub type ArkworksVerifierBls381 = ArkworksVerifierGroth16<Bls381>;
 
 pub fn groth16_verify(
     public_inp_bytes: &[u8],
     proof_bytes: &[u8],
     vk_bytes: &[u8],
+    curve: u8,
 ) -> ZKResult<bool> {
 }
 }
 
 #[allow(clippy::all)]
-mod keccak {
-use ark_bn254::Fr as Bn254Fr;
+mod hash {
+use crate::{Bls381Fr, Bn254Fr};
 use ark_ff::{BigInteger, PrimeField};
 use ark_std::vec::Vec;
-use arkworks_setups::common::keccak_256;
+use sha2::{Digest, Sha256};
+use sha3::Keccak256;
 
-pub fn curve_hash(input: &[u8]) -> Vec<u8> {
+pub fn keccak_256(sign_bytes: &[u8]) -> Vec<u8> {
+}
+
+pub fn sha256(sign_bytes: &[u8]) -> Vec<u8> {
+}
+
+pub fn curve_hash(input: &[u8], curve: u8) -> Vec<u8> {
 }
 }
 
+pub use ark_bls12_381::{Bls12_381 as Bls381, Fr as Bls381Fr};
+pub use ark_bn254::{Bn254, Fr as Bn254Fr};
 pub use errors::{ZKError, ZKResult};
-pub use keccak::curve_hash;
+pub use hash::{curve_hash, keccak_256, sha256};
 pub use poseidon::Poseidon;
 pub use verifier::{
     groth16_verify, ArkworksVerifierBn254, GROTH16_PROOF_LEN, GROTH16_VERIFIER_KEY_LEN,
