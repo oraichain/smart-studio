@@ -6,6 +6,8 @@ pub struct InstantiateMsg {
     pub deposit_size: Uint128,
     pub merkletree_levels: u32,
     pub native_token_denom: String,
+    pub curve: u8,
+    pub vk_raw: Binary,
 }
 
 #[cw_serde]

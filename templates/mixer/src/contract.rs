@@ -17,8 +17,6 @@ use crate::state::{
     MerkleTree, Mixer,
 };
 
-const VK_BYTES: &[u8; 360] = include_bytes!("../../../bn254/x5/verifying_key.bin");
-
 #[entry_point]
 pub fn instantiate(
     deps: DepsMut,
@@ -32,13 +30,17 @@ pub fn instantiate(
     }
 
     // Initialize the "Mixer"
-    let merkle_tree: MerkleTree =
-        MerkleTree { levels: msg.merkletree_levels, current_root_index: 0, next_index: 0 };
+    let merkle_tree: MerkleTree = MerkleTree {
+        levels: msg.merkletree_levels,
+        curve: msg.curve,
+        current_root_index: 0,
+        next_index: 0,
+    };
     let native_token_denom = msg.native_token_denom;
 
     let deposit_size = msg.deposit_size;
 
-    let mixer: Mixer = Mixer { native_token_denom, deposit_size, merkle_tree };
+    let mixer: Mixer = Mixer { native_token_denom, deposit_size, merkle_tree, vk_raw: msg.vk_raw };
     mixer_write(deps.storage, &mixer)?;
 
     for i in 0..msg.merkletree_levels {
@@ -138,8 +140,10 @@ pub fn withdraw(
     arbitrary_data_bytes.extend_from_slice(&fee.to_le_bytes());
     arbitrary_data_bytes.extend_from_slice(&refund.to_le_bytes());
 
-    let arbitrary_input =
-        deps.api.curve_hash(&arbitrary_data_bytes, 1).map_err(|_| ContractError::HashError)?;
+    let arbitrary_input = deps
+        .api
+        .curve_hash(&arbitrary_data_bytes, merkle_tree.curve)
+        .map_err(|_| ContractError::HashError)?;
 
     // Join the public input bytes
     let mut bytes = Vec::new();
@@ -150,7 +154,7 @@ pub fn withdraw(
     // Verify the proof
     let result = deps
         .api
-        .groth16_verify(&bytes, &proof_bytes_vec, VK_BYTES, 1)
+        .groth16_verify(&bytes, &proof_bytes_vec, &mixer.vk_raw, merkle_tree.curve)
         .map_err(|_| ContractError::VerifyError)?;
 
     if !result {
@@ -234,4 +238,63 @@ fn get_merkle_root(deps: Deps, id: u32) -> StdResult<MerkleRootResponse> {
     let root = read_root(deps.storage, id);
     let root_binary = Binary::from(root.as_slice());
     Ok(MerkleRootResponse { root: root_binary })
+}
+
+#[cfg(test)]
+mod tests {
+
+    const VK_RAW: &str = "qNKepAYpvnYvKhK9p8xFuZijTEOpbExnRMjHqQDo+Ape7Ob6V3FInLAwb0ma2Roz0BWfKXhjMteC24cKCYBECqEiWtI8DkdsfTa3luaptQJAhBtL6VXRPqVN2NoBEo4M+SCUtFn/iCeAq98+F4TAbfbIXAAG/X8ll+PpBS2SFSdPCPxPlNyBKfKaV43Bf16mDqhdLIingpS3ktvy+o0wlzuAymtWdGO2kLizqPcOtkaCJzWOXzFuuBUKkhUrdTUZxMqCf+wX9yg9FSKHZ7Vrc27JSY85/ltRGor1A7Y6GZcEAAAAAAAAALnIa74+XvNJDV20eL4KeTOTTktaFI4sAWArR1yD4lAIkdxEpv4vMx2ptm81YjmKdiZ397fJXTqCqWmODPYhISjW6yej8Rq7UqmKUJvxUC8JR+mrnB1yoIYUDA0xaGbWJMIqafjftZV+NdjT01CzyD7pXoiXx7dtQYgWg9JWHNkZ";
+
+    fn create_mixer() -> OwnedDeps<MockStorage, MockApi, MockQuerier> {
+        let mut deps = mock_dependencies();
+        // Initialize the contract
+        let env = mock_env();
+        let info = mock_info("anyone", &[]);
+        let instantiate_msg = InstantiateMsg {
+            merkletree_levels: 30u32,
+            deposit_size: 1000000u128.into(),
+            native_token_denom: "orai".to_string(),
+            curve: 1,
+            vk_raw: Binary::from_base64(VK_RAW).unwrap(),
+        };
+
+        let _ = instantiate(deps.as_mut(), env, info, instantiate_msg).unwrap();
+
+        deps
+    }
+
+    #[test]
+    fn test_mixer_should_be_able_to_deposit_native_token() {
+        let mut deps = create_mixer();
+
+        // Initialize the mixer
+        let res = deps
+            .api
+            .poseidon_hash(
+                &Fr::one().into_repr().to_bytes_le(),
+                &Fr::one().into_repr().to_bytes_le(),
+                1,
+            )
+            .unwrap();
+        let mut element: [u8; 32] = [0u8; 32];
+        element.copy_from_slice(&res);
+
+        let element_bin = Binary::from(element.as_slice());
+
+        // Try the deposit with insufficient fund
+        let info = mock_info("depositor", &[Coin::new(1_000_u128, NATIVE_TOKEN_DENOM)]);
+        let deposit_msg = DepositMsg { commitment: element_bin.clone() };
+
+        let err =
+            execute(deps.as_mut(), mock_env(), info, ExecuteMsg::Deposit(deposit_msg)).unwrap_err();
+        assert_eq!(err.to_string(), "Insufficient_funds".to_string());
+
+        // Try the deposit for success
+        let info = mock_info("depositor", &[Coin::new(1_000_000_u128, NATIVE_TOKEN_DENOM)]);
+        let deposit_msg = DepositMsg { commitment: element_bin };
+
+        let response =
+            execute(deps.as_mut(), mock_env(), info, ExecuteMsg::Deposit(deposit_msg)).unwrap();
+        assert_eq!(response.events.len(), 1);
+    }
 }

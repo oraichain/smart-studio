@@ -1,5 +1,5 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Api, StdResult, Storage, Uint128};
+use cosmwasm_std::{Api, Binary, StdResult, Storage, Uint128};
 use cosmwasm_storage::{prefixed, prefixed_read, singleton, singleton_read};
 
 use crate::error::ContractError;
@@ -14,6 +14,7 @@ pub const ROOT_HISTORY_SIZE: u32 = 100;
 pub struct Mixer {
     pub deposit_size: Uint128,
     pub native_token_denom: String,
+    pub vk_raw: Binary,
     pub merkle_tree: MerkleTree,
 }
 
@@ -23,6 +24,7 @@ pub struct MerkleTree {
     pub levels: u32,
     pub current_root_index: u32,
     pub next_index: u32,
+    pub curve: u8,
 }
 
 impl MerkleTree {
@@ -32,7 +34,7 @@ impl MerkleTree {
         left: &[u8; 32],
         right: &[u8; 32],
     ) -> Result<[u8; 32], ContractError> {
-        match api.poseidon_hash(left, right, 1) {
+        match api.poseidon_hash(left, right, self.curve) {
             Ok(hash) => Ok(element_encoder(&hash)),
             Err(err) => Err(ContractError::Std(err)),
         }
