@@ -242,6 +242,16 @@ fn get_merkle_root(deps: Deps, id: u32) -> StdResult<MerkleRootResponse> {
 
 #[cfg(test)]
 mod tests {
+    use crate::{
+        contract::{execute, instantiate},
+        msg::{DepositMsg, ExecuteMsg, InstantiateMsg},
+        zeroes::DEFAULT_LEAF,
+    };
+    use cosmwasm_std::{
+        testing::{mock_dependencies, mock_env, mock_info, MockApi, MockQuerier, MockStorage},
+        Api,
+    };
+    use cosmwasm_std::{Binary, Coin, OwnedDeps};
 
     const VK_RAW: &str = "qNKepAYpvnYvKhK9p8xFuZijTEOpbExnRMjHqQDo+Ape7Ob6V3FInLAwb0ma2Roz0BWfKXhjMteC24cKCYBECqEiWtI8DkdsfTa3luaptQJAhBtL6VXRPqVN2NoBEo4M+SCUtFn/iCeAq98+F4TAbfbIXAAG/X8ll+PpBS2SFSdPCPxPlNyBKfKaV43Bf16mDqhdLIingpS3ktvy+o0wlzuAymtWdGO2kLizqPcOtkaCJzWOXzFuuBUKkhUrdTUZxMqCf+wX9yg9FSKHZ7Vrc27JSY85/ltRGor1A7Y6GZcEAAAAAAAAALnIa74+XvNJDV20eL4KeTOTTktaFI4sAWArR1yD4lAIkdxEpv4vMx2ptm81YjmKdiZ397fJXTqCqWmODPYhISjW6yej8Rq7UqmKUJvxUC8JR+mrnB1yoIYUDA0xaGbWJMIqafjftZV+NdjT01CzyD7pXoiXx7dtQYgWg9JWHNkZ";
 
@@ -268,21 +278,15 @@ mod tests {
         let mut deps = create_mixer();
 
         // Initialize the mixer
-        let res = deps
-            .api
-            .poseidon_hash(
-                &Fr::one().into_repr().to_bytes_le(),
-                &Fr::one().into_repr().to_bytes_le(),
-                1,
-            )
-            .unwrap();
+
+        let res = deps.api.poseidon_hash(&DEFAULT_LEAF, &DEFAULT_LEAF, 1).unwrap();
         let mut element: [u8; 32] = [0u8; 32];
         element.copy_from_slice(&res);
 
         let element_bin = Binary::from(element.as_slice());
 
         // Try the deposit with insufficient fund
-        let info = mock_info("depositor", &[Coin::new(1_000_u128, NATIVE_TOKEN_DENOM)]);
+        let info = mock_info("depositor", &[Coin::new(1_000_u128, "orai")]);
         let deposit_msg = DepositMsg { commitment: element_bin.clone() };
 
         let err =
@@ -290,7 +294,7 @@ mod tests {
         assert_eq!(err.to_string(), "Insufficient_funds".to_string());
 
         // Try the deposit for success
-        let info = mock_info("depositor", &[Coin::new(1_000_000_u128, NATIVE_TOKEN_DENOM)]);
+        let info = mock_info("depositor", &[Coin::new(1_000_000_u128, "orai")]);
         let deposit_msg = DepositMsg { commitment: element_bin };
 
         let response =
