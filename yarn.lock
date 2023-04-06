@@ -216,6 +216,16 @@
     style-mod "^4.0.0"
     w3c-keyname "^2.2.4"
 
+"@cosmjs/amino@^0.29.5":
+  version "0.29.5"
+  resolved "https://registry.yarnpkg.com/@cosmjs/amino/-/amino-0.29.5.tgz#053b4739a90b15b9e2b781ccd484faf64bd49aec"
+  integrity sha512-Qo8jpC0BiziTSUqpkNatBcwtKNhCovUnFul9SlT/74JUCdLYaeG5hxr3q1cssQt++l4LvlcpF+OUXL48XjNjLw==
+  dependencies:
+    "@cosmjs/crypto" "^0.29.5"
+    "@cosmjs/encoding" "^0.29.5"
+    "@cosmjs/math" "^0.29.5"
+    "@cosmjs/utils" "^0.29.5"
+
 "@cosmjs/crypto@^0.28.4":
   version "0.28.13"
   resolved "https://registry.yarnpkg.com/@cosmjs/crypto/-/crypto-0.28.13.tgz#541b6a36f616b2da5a568ead46d4e83841ceb412"
@@ -531,14 +541,11 @@
 
 "@terran-one/cosmwasm-vm-js@https://github.com/oraichain/cosmwasm-vm-js.git":
   version "0.2.16"
-  resolved "https://github.com/oraichain/cosmwasm-vm-js.git#8711df71ea2696ace67d956512381df2e7a5a2b3"
+  resolved "https://github.com/oraichain/cosmwasm-vm-js.git#6a562a6b25fcbdf858bffb71d88246b18d02ef0a"
   dependencies:
-    "@cosmjs/crypto" "^0.28.4"
-    "@cosmjs/encoding" "^0.28.4"
-    "@polkadot/util" "^10.1.11"
-    "@polkadot/util-crypto" "^10.1.11"
-    "@types/elliptic" "^6.4.14"
-    "@types/secp256k1" "^4.0.3"
+    "@cosmjs/amino" "^0.29.5"
+    "@cosmjs/crypto" "^0.29.5"
+    "@cosmjs/encoding" "^0.29.5"
     bech32 "1.1.4"
     elliptic "^6.5.4"
     immutable "^4.1.0"

@@ -6,23 +6,35 @@ import appStore from '../stores/AppStore';
 import { Env, MessageInfo, VMInstance, BasicBackendApi, BasicKVIterStorage, BasicQuerier, IBackend } from '@terran-one/cosmwasm-vm-js';
 import { default as init, Poseidon, curve_hash, groth16_verify, keccak_256, sha256 } from 'cosmwasm-vm-js-zk/web';
 
+let poseidon: Poseidon;
 // update zk wasm implementation
 init().then(() => {
-  const poseidon = new Poseidon();
-  VMInstance.poseidon_hash = poseidon.hash.bind(poseidon);
-  VMInstance.curve_hash = curve_hash;
-  VMInstance.groth16_verify = groth16_verify;
-  VMInstance.keccak_256 = keccak_256;
-  VMInstance.sha256 = sha256;
+  poseidon = new Poseidon();
 });
 
-const backend: IBackend = {
-  backend_api: new BasicBackendApi('orai'),
+class ZkBackendApi extends BasicBackendApi {
+  poseidon_hash(left_input: Uint8Array, right_input: Uint8Array, curve: number): Uint8Array {
+    return poseidon.hash(left_input, right_input, curve);
+  }
+  curve_hash(input: Uint8Array, curve: number): Uint8Array {
+    return curve_hash(input, curve);
+  }
+  groth16_verify(input: Uint8Array, proof: Uint8Array, vk: Uint8Array, curve: number): boolean {
+    return groth16_verify(input, proof, vk, curve);
+  }
+  keccak_256(input: Uint8Array): Uint8Array {
+    return keccak_256(input);
+  }
+  sha256(input: Uint8Array): Uint8Array {
+    return sha256(input);
+  }
+}
+
+const vm = new VMInstance({
+  backend_api: new ZkBackendApi('orai'),
   storage: new BasicKVIterStorage(),
   querier: new BasicQuerier()
-};
-
-const vm = new VMInstance(backend);
+});
 
 const mockEnv: Env = {
   block: {
@@ -95,10 +107,11 @@ export class Simulate extends React.Component<SimulateProps, SimulateState> {
 
   instantiate = () => {
     try {
-      const res = vm.instantiate(mockEnv, JSON.parse(this.state.info), JSON.parse(this.state.payload));
-      const error = (res.json as { error: string }).error;
-      if (error) throw new Error(error);
-      this.setOutput((res.json as { ok: any }).ok);
+      const json = vm.instantiate(mockEnv, JSON.parse(this.state.info), JSON.parse(this.state.payload)) as { error: string } | { ok: any };
+      if ('error' in json) {
+        throw new Error(json.error);
+      }
+      this.setOutput(json.ok);
     } catch (ex) {
       alert(ex.message);
     }
@@ -106,10 +119,11 @@ export class Simulate extends React.Component<SimulateProps, SimulateState> {
 
   execute = () => {
     try {
-      const res = vm.execute(mockEnv, JSON.parse(this.state.info), JSON.parse(this.state.payload));
-      const error = (res.json as { error: string }).error;
-      if (error) throw new Error(error);
-      this.setOutput((res.json as { ok: any }).ok);
+      const json = vm.execute(mockEnv, JSON.parse(this.state.info), JSON.parse(this.state.payload)) as { error: string } | { ok: any };
+      if ('error' in json) {
+        throw new Error(json.error);
+      }
+      this.setOutput(json.ok);
     } catch (ex) {
       alert(ex.message);
     }
@@ -117,11 +131,11 @@ export class Simulate extends React.Component<SimulateProps, SimulateState> {
 
   query = () => {
     try {
-      const res = vm.query(mockEnv, JSON.parse(this.state.payload));
-      const error = (res.json as { error: string }).error;
-      if (error) throw new Error(error);
-      const data = (res.json as { ok: any }).ok;
-      this.setOutput(JSON.parse(fromAscii(fromBase64(data))));
+      const json = vm.query(mockEnv, JSON.parse(this.state.payload)) as { error: string } | { ok: string };
+      if ('error' in json) {
+        throw new Error(json.error);
+      }
+      this.setOutput(JSON.parse(fromAscii(fromBase64(json.ok))));
     } catch (ex) {
       alert(ex.message);
     }
