@@ -1,6 +1,6 @@
 [workspace]
 members = ["crates/*"]
-
+resolver = "2"
 default-members = ["crates/rust-pack"]
 
 [profile.release]

@@ -11,5 +11,7 @@
   ],
   "module": "ra_wasm.js",
   "types": "ra_wasm.d.ts",
-  "sideEffects": false
+  "sideEffects": [
+    "./snippets/*"
+  ]
 }
