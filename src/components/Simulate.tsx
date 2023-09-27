@@ -3,8 +3,8 @@ import ReactCodeMirror from '@uiw/react-codemirror';
 import { json } from '@codemirror/lang-json';
 import { fromAscii, fromBase64 } from '@cosmjs/encoding';
 import appStore from '../stores/AppStore';
-import { Env, MessageInfo, VMInstance, BasicBackendApi, BasicKVIterStorage, BasicQuerier, IBackend } from '@terran-one/cosmwasm-vm-js';
-import { default as init, Poseidon, curve_hash, groth16_verify, keccak_256, sha256 } from 'cosmwasm-vm-js-zk/web';
+import { Env, MessageInfo, VMInstance, BasicBackendApi, BasicKVIterStorage, BasicQuerier, IBackend } from '@oraichain/cosmwasm-vm-js';
+import { default as init, Poseidon, curve_hash, groth16_verify, keccak_256, sha256 } from '@oraichain/cosmwasm-vm-zk-web';
 
 let poseidon: Poseidon;
 // update zk wasm implementation
