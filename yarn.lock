@@ -392,10 +392,10 @@
     elliptic "^6.5.4"
     secp256k1 "^4.0.3"
 
-"@oraichain/cosmwasm-vm-zk-web@^0.0.2":
-  version "0.0.2"
-  resolved "https://registry.yarnpkg.com/@oraichain/cosmwasm-vm-zk-web/-/cosmwasm-vm-zk-web-0.0.2.tgz#7412c49a013b62d7b45806177437949942fe16cf"
-  integrity sha512-sM1P5vZN33kn7E9f12TwzYiGl6PsUfFwuDaOxFgJU4H4bQfi4rUlGMNGLyNHQM+CJhUcUxuC4TkipqEskpHqng==
+"@oraichain/cosmwasm-vm-zk@^0.1.3":
+  version "0.1.3"
+  resolved "https://registry.yarnpkg.com/@oraichain/cosmwasm-vm-zk/-/cosmwasm-vm-zk-0.1.3.tgz#84c3169291e7dc95035c6456d66642a119b0d18e"
+  integrity sha512-w1JHv6OrGkdnzNnB4Fk70KnXsWUc6Dn9cJhmNGRZJzYMOdf9Jlavl+OkRkYTYC+0sEFp9cKvvFA3i2zllMTUxA==
 
 "@oraichain/immutable@^4.3.9":
   version "4.3.9"

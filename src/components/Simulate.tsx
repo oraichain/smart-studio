@@ -4,7 +4,7 @@ import { json } from '@codemirror/lang-json';
 import { fromAscii, fromBase64 } from '@cosmjs/encoding';
 import appStore from '../stores/AppStore';
 import { Env, MessageInfo, VMInstance, BasicBackendApi, BasicKVIterStorage, BasicQuerier, IBackend } from '@oraichain/cosmwasm-vm-js';
-import { default as init, Poseidon, curve_hash, groth16_verify, keccak_256, sha256 } from '@oraichain/cosmwasm-vm-zk-web';
+import { default as init, Poseidon, curve_hash, groth16_verify, keccak_256, sha256 } from '@oraichain/cosmwasm-vm-zk';
 
 let poseidon: Poseidon;
 // update zk wasm implementation
@@ -87,7 +87,7 @@ export class Simulate extends React.Component<SimulateProps, SimulateState> {
     const project = appStore.getProject().getModel();
     const wasmFile = project.getFile(wasmFilePath);
     if (wasmFile) {
-      await vm.build(wasmFile.data as ArrayBuffer);
+      await vm.build(new Uint8Array(wasmFile.data as ArrayBuffer));
     } else {
       this.setIsValid(false);
     }
