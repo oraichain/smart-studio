@@ -1,5 +1,7 @@
 # Oraichain Studio
 
+![OraiStudio](./docs/images/studio.jpg)
+
 To build Oraichain Studio whenever a file changes run:
 
 ```bash
